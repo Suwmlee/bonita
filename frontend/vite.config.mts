@@ -14,19 +14,6 @@ import { defineConfig } from "vite"
 export default defineConfig({
   plugins: [
     Layouts(),
-    AutoImport({
-      imports: ["vue", "vue-router", "@vueuse/core"],
-      dts: "src/auto-imports.d.ts",
-      eslintrc: {
-        enabled: true,
-        filepath: "./.eslintrc.d.json",
-      },
-      vueTemplate: true,
-    }),
-    Components({
-      dirs: ["src/@core/components", "src/components"],
-      dts: "src/components.d.ts",
-    }),
     Vue({
       template: { transformAssetUrls },
     }),
@@ -37,36 +24,32 @@ export default defineConfig({
         configFile: "src/assets/styles/variables/_vuetify.scss",
       },
     }),
-    Fonts({
-      google: {
-        families: [
-          {
-            name: "Roboto",
-            styles: "wght@100;300;400;500;700;900",
-          },
-        ],
-      },
+    Components({
+      dirs: ["src/@core/components", "src/components"],
+      dts: "src/components.d.ts",
+    }),
+    // Docs: https://github.com/antfu/unplugin-auto-import#unplugin-auto-import
+    AutoImport({
+      imports: ['vue', 'vue-router', '@vueuse/core', 'pinia'],
+      dts: "src/auto-imports.d.ts",
+      vueTemplate: true,
+      // ℹ️ Disabled to avoid confusion & accidental usage
+      ignore: ['useCookies', 'useStorage'],
     }),
   ],
+  define: { 'process.env': {} },
   resolve: {
     alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-      "@core": fileURLToPath(new URL("./src/@core", import.meta.url)),
-      "@layouts": fileURLToPath(new URL("./src/@layouts", import.meta.url)),
-      "@images": fileURLToPath(
-        new URL("./src/assets/images/", import.meta.url),
-      ),
-      "@styles": fileURLToPath(
-        new URL("./src/assets/styles/", import.meta.url),
-      ),
-      "@configured-variables": fileURLToPath(
-        new URL(
-          "./src/assets/styles/variables/_template.scss",
-          import.meta.url,
-        ),
-      ),
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@core': fileURLToPath(new URL('./src/@core', import.meta.url)),
+      '@layouts': fileURLToPath(new URL('./src/@layouts', import.meta.url)),
+      '@images': fileURLToPath(new URL('./src/assets/images/', import.meta.url)),
+      '@styles': fileURLToPath(new URL('./src/assets/styles/', import.meta.url)),
+      '@configured-variables': fileURLToPath(new URL('./src/assets/styles/variables/_template.scss', import.meta.url)),
     },
-    extensions: [".js", ".json", ".jsx", ".mjs", ".ts", ".tsx", ".vue"],
+  },
+  build: {
+    chunkSizeWarningLimit: 5000,
   },
   server: {
     port: 3000,
