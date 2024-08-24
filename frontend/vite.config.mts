@@ -30,22 +30,31 @@ export default defineConfig({
     }),
     // Docs: https://github.com/antfu/unplugin-auto-import#unplugin-auto-import
     AutoImport({
-      imports: ['vue', 'vue-router', '@vueuse/core', 'pinia'],
+      imports: ["vue", "vue-router", "@vueuse/core", "pinia"],
       dts: "src/auto-imports.d.ts",
       vueTemplate: true,
       // ℹ️ Disabled to avoid confusion & accidental usage
-      ignore: ['useCookies', 'useStorage'],
+      ignore: ["useCookies", "useStorage"],
     }),
   ],
-  define: { 'process.env': {} },
+  define: { "process.env": {} },
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@core': fileURLToPath(new URL('./src/@core', import.meta.url)),
-      '@layouts': fileURLToPath(new URL('./src/@layouts', import.meta.url)),
-      '@images': fileURLToPath(new URL('./src/assets/images/', import.meta.url)),
-      '@styles': fileURLToPath(new URL('./src/assets/styles/', import.meta.url)),
-      '@configured-variables': fileURLToPath(new URL('./src/assets/styles/variables/_template.scss', import.meta.url)),
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      "@core": fileURLToPath(new URL("./src/@core", import.meta.url)),
+      "@layouts": fileURLToPath(new URL("./src/@layouts", import.meta.url)),
+      "@images": fileURLToPath(
+        new URL("./src/assets/images/", import.meta.url),
+      ),
+      "@styles": fileURLToPath(
+        new URL("./src/assets/styles/", import.meta.url),
+      ),
+      "@configured-variables": fileURLToPath(
+        new URL(
+          "./src/assets/styles/variables/_template.scss",
+          import.meta.url,
+        ),
+      ),
     },
   },
   build: {

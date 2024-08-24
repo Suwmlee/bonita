@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import NavItems from '@/layouts/components/NavItems.vue'
-import logo from '@images/logo.svg?raw'
-import VerticalNavLayout from '@layouts/components/VerticalNavLayout.vue'
+import NavItems from "@/layouts/components/NavItems.vue"
+import logo from "@images/logo.svg?raw"
+import VerticalNavLayout from "@layouts/components/VerticalNavLayout.vue"
 
 // Components
-import NavbarThemeSwitcher from '@/layouts/components/NavbarThemeSwitcher.vue'
+import NavbarThemeSwitcher from "@/layouts/components/NavbarThemeSwitcher.vue"
 </script>
 
 <template>
