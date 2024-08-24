@@ -13,7 +13,7 @@ import App from "./App.vue"
 import { createApp } from "vue"
 
 // Plugins
-import { registerPlugins } from "@/plugins"
+import { registerPlugins } from "./plugins"
 
 // Styles
 import "@core/scss/template/index.scss"
