@@ -1,10 +1,10 @@
 import Vue from "@vitejs/plugin-vue"
 // Plugins
 import AutoImport from "unplugin-auto-import/vite"
-import Fonts from "unplugin-fonts/vite"
 import Components from "unplugin-vue-components/vite"
 import Layouts from "vite-plugin-vue-layouts"
 import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify"
+import svgLoader from "vite-svg-loader"
 
 import { URL, fileURLToPath } from "node:url"
 // Utilities
@@ -36,6 +36,7 @@ export default defineConfig({
       // ℹ️ Disabled to avoid confusion & accidental usage
       ignore: ["useCookies", "useStorage"],
     }),
+    svgLoader(),
   ],
   define: { "process.env": {} },
   resolve: {
