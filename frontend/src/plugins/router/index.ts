@@ -1,4 +1,5 @@
 import { useAuthStore } from "@/stores/auth.store"
+import type { App } from "vue"
 // Composables
 import { createRouter, createWebHistory } from "vue-router"
 import { routes } from "./routes"
@@ -22,4 +23,8 @@ router.beforeEach((to, from, next) => {
   }
 })
 
-export default router
+export default function (app: App) {
+  app.use(router)
+}
+
+export { router }

@@ -1,7 +1,7 @@
 // Utilities
 import { LoginService } from "@/client"
 import type { Body_login_login_access_token as AccessToken } from "@/client"
-import router from "@/router"
+import { router } from "@/plugins/router"
 import { defineStore } from "pinia"
 
 export const useAuthStore = defineStore("auth", {

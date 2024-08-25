@@ -13,7 +13,8 @@ import App from "./App.vue"
 import { createApp } from "vue"
 
 // Plugins
-import { registerPlugins } from "./plugins"
+import { registerPlugins } from "@core/utils/plugins"
+import authCheck from "./hook/authCheck"
 
 // Styles
 import "@core/scss/template/index.scss"
@@ -28,5 +29,6 @@ OpenAPI.TOKEN = async () => {
 const app = createApp(App)
 
 registerPlugins(app)
+app.use(authCheck)
 
 app.mount("#app")
