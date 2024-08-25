@@ -9,6 +9,11 @@ export const routes = [
         meta: { requiresAuth: true },
         component: () => import("@/pages/dashboard.vue"),
       },
+      {
+        path: "settings",
+        meta: { requiresAuth: true },
+        component: () => import("@/pages/settings.vue"),
+      },
     ],
   },
   {
@@ -21,7 +26,7 @@ export const routes = [
       },
       {
         path: "/:pathMatch(.*)*",
-        component: () => import("@/pages/[...404].vue"),
+        component: () => import("@/pages/[...error].vue"),
       },
     ],
   },

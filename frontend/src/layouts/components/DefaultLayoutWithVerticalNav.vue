@@ -1,6 +1,5 @@
-<script lang="ts" setup>
+<script setup lang="ts">
 import NavItems from "@/layouts/components/NavItems.vue"
-import logo from "@images/logo.svg?raw"
 import VerticalNavLayout from "@layouts/components/VerticalNavLayout.vue"
 
 // Components
@@ -13,10 +12,7 @@ import NavbarThemeSwitcher from "@/layouts/components/NavbarThemeSwitcher.vue"
     <template #navbar="{ toggleVerticalOverlayNavActive }">
       <div class="d-flex h-100 align-center">
         <!-- 👉 Vertical nav toggle in overlay mode -->
-        <IconBtn
-          class="ms-n3 d-lg-none"
-          @click="toggleVerticalOverlayNavActive(true)"
-        >
+        <IconBtn class="ms-n3 d-lg-none" @click="toggleVerticalOverlayNavActive(true)">
           <VIcon icon="bx-menu" />
         </IconBtn>
 
@@ -27,22 +23,16 @@ import NavbarThemeSwitcher from "@/layouts/components/NavbarThemeSwitcher.vue"
     </template>
 
     <template #vertical-nav-header="{ toggleIsOverlayNavActive }">
-      <RouterLink
-        to="/"
-        class="app-logo app-title-wrapper"
-      >
+      <RouterLink to="/" class="app-logo app-title-wrapper">
         <!-- eslint-disable vue/no-v-html -->
         <!-- eslint-enable -->
 
         <h1 class="app-logo-title">
-          sneat
+          Bonita
         </h1>
       </RouterLink>
 
-      <IconBtn
-        class="d-block d-lg-none"
-        @click="toggleIsOverlayNavActive(false)"
-      >
+      <IconBtn class="d-block d-lg-none" @click="toggleIsOverlayNavActive(false)">
         <VIcon icon="bx-x" />
       </IconBtn>
     </template>

@@ -7,12 +7,6 @@
 
     <!-- 👉 Image -->
     <div class="misc-avatar w-100 text-center">
-      <VImg
-        :src="misc404"
-        alt="Coming Soon"
-        :max-width="500"
-        class="mx-auto"
-      />
       <VBtn
         to="/"
         class="mt-10"
@@ -22,20 +16,6 @@
     </div>
   </div>
 </template>
-
-
-<script setup lang="ts">
-import misc404 from "@images/pages/404.png"
-</script>
-
-<route lang="json">
-{
-  "meta": {
-    "title": "404",
-    "layout": "blank"
-  }
-}
-</route>
 
 <style lang="scss">
 @use "@core/scss/template/pages/misc.scss";

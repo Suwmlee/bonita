@@ -23,4 +23,9 @@ import VerticalNavLink from "@layouts/components/VerticalNavLink.vue"
   <VerticalNavSectionTitle :item="{
     heading: 'User Interface',
   }" />
+  <VerticalNavLink :item="{
+    title: 'Settings',
+    icon: 'bx-home',
+    to: '/settings',
+  }" />
 </template>
