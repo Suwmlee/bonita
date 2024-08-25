@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import NavItems from "@/layouts/components/NavItems.vue"
 import VerticalNavLayout from "@layouts/components/VerticalNavLayout.vue"
+import logo from '@images/logo.png'
 
 // Components
 import NavbarThemeSwitcher from "@/layouts/components/NavbarThemeSwitcher.vue"
@@ -27,10 +28,11 @@ import UserProfile from "@/layouts/components/UserProfile.vue"
 
     <template #vertical-nav-header="{ toggleIsOverlayNavActive }">
       <RouterLink to="/" class="app-logo app-title-wrapper">
-        <!-- eslint-disable vue/no-v-html -->
-        <!-- eslint-enable -->
+        <div class="d-flex">
+          <VImg style="width: 38px;" :src="logo"></VImg>
+        </div>
 
-        <h1 class="app-logo-title">
+        <h1 class="logo-title">
           Bonita
         </h1>
       </RouterLink>
@@ -64,12 +66,11 @@ import UserProfile from "@/layouts/components/UserProfile.vue"
   display: flex;
   align-items: center;
   column-gap: 0.75rem;
+}
 
-  .app-logo-title {
-    font-size: 1.25rem;
-    font-weight: 500;
-    line-height: 1.75rem;
-    text-transform: uppercase;
-  }
+.logo-title {
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.75rem;
 }
 </style>
