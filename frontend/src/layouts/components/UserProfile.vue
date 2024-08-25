@@ -1,5 +1,11 @@
 <script setup lang="ts">
+import { useAuthStore } from "@/stores/auth.store"
 import avatar1 from "@images/avatar1.png"
+
+const logout = () => {
+  const authStore = useAuthStore()
+  authStore.logout()
+}
 </script>
 
 <template>
@@ -63,7 +69,7 @@ import avatar1 from "@images/avatar1.png"
             <VListItemTitle>Settings</VListItemTitle>
           </VListItem>
           <!-- 👉 Logout -->
-          <VListItem to="/login">
+          <VListItem @click="logout">
             <template #prepend>
               <VIcon
                 class="me-2"
