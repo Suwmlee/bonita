@@ -4,6 +4,7 @@ import VerticalNavLayout from "@layouts/components/VerticalNavLayout.vue"
 
 // Components
 import NavbarThemeSwitcher from "@/layouts/components/NavbarThemeSwitcher.vue"
+import UserProfile from '@/layouts/components/UserProfile.vue'
 </script>
 
 <template>
@@ -19,6 +20,8 @@ import NavbarThemeSwitcher from "@/layouts/components/NavbarThemeSwitcher.vue"
         <VSpacer />
 
         <NavbarThemeSwitcher class="me-1" />
+
+        <UserProfile />
       </div>
     </template>
 
