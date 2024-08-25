@@ -10,6 +10,11 @@ export const routes = [
         component: () => import("@/pages/dashboard.vue"),
       },
       {
+        path: "librarysetup",
+        meta: { requiresAuth: true },
+        component: () => import("@/pages/librarysetup.vue"),
+      },
+      {
         path: "settings",
         meta: { requiresAuth: true },
         component: () => import("@/pages/settings.vue"),

@@ -9,6 +9,11 @@ import VerticalNavLink from "@layouts/components/VerticalNavLink.vue"
     to: '/dashboard',
   }" />
   <VerticalNavLink :item="{
+    title: 'LibrarySetup',
+    icon: 'bx-folder',
+    to: '/librarysetup',
+  }" />
+  <VerticalNavLink :item="{
     title: 'Settings',
     icon: 'bx-cog',
     to: '/settings',
