@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import avatar1 from '@images/avatar1.png'
+import avatar1 from "@images/avatar1.png"
 </script>
 
 <template>

@@ -2,6 +2,7 @@ import { Icon } from "@iconify/vue"
 import type { IconAliases } from "vuetify"
 
 const aliases: IconAliases = {
+  calendar: "bx-calendar",
   collapse: "bx-chevron-up",
   complete: "bx-check",
   cancel: "bx-x",

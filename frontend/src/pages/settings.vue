@@ -1,14 +1,12 @@
 <script lang="ts" setup>
-import AccountSettingsSecurity from '@/views/settings/AccountSettingsSecurity.vue'
+import AccountSettingsSecurity from "@/views/settings/AccountSettingsSecurity.vue"
 
 const route = useRoute()
 
 const activeTab = ref(route.params.tab)
 
 // tabs
-const tabs = [
-  { title: 'Security', icon: 'bx-lock-open', tab: 'security' },
-]
+const tabs = [{ title: "Security", icon: "bx-lock-open", tab: "security" }]
 </script>
 
 <template>
