@@ -1,8 +1,0 @@
-fastapi
-pydantic_settings
-sqlalchemy
-uvicorn
-pydantic[email]
-python-jose
-bcrypt
-python-multipart

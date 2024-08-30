@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "bonita-backend"
+version = "0.1.0"
+description = ""
+authors = ["Mathhew <Suwmlee@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.112.2"
+uvicorn = {extras = ["standard"], version = "^0.30.6"}
+pydantic-settings = "^2.4.0"
+pydantic = {extras = ["email"], version = "^2.8.2"}
+python-jose = "^3.3.0"
+sqlalchemy = "^2.0.32"
+bcrypt = "^4.2.0"
+python-multipart = "^0.0.9"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
