@@ -1,4 +1,6 @@
 
+from alembic.command import upgrade, stamp
+from alembic.config import Config
 from app.core.config import settings
 from app.core.db import Base, engine, SessionFactory
 from app.db.models import *
@@ -10,6 +12,7 @@ def init_db():
     初始化数据库
     """
     Base.metadata.create_all(bind=engine)
+    init_super_user()
 
 
 def init_super_user():
@@ -27,3 +30,17 @@ def init_super_user():
                 is_superuser=True
             )
             _user.create(session)
+
+
+def upgrade_db():
+    """
+    更新数据库
+    """
+    alembic_cfg = Config()
+    script_location = "./app/alembic"
+    alembic_cfg.set_main_option('script_location', str(script_location))
+    alembic_cfg.set_main_option('sqlalchemy.url', settings.SQLALCHEMY_DATABASE_URI)
+    try:
+        upgrade(alembic_cfg, 'head')
+    except Exception as e:
+        stamp(alembic_cfg, 'head')

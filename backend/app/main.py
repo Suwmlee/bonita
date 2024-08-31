@@ -5,7 +5,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.api.main import api_router
-from app.db import init_db, init_super_user
+from app.db import init_db, upgrade_db
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
@@ -34,6 +34,5 @@ def init_router():
 
 
 init_db()
+upgrade_db()
 init_router()
-
-init_super_user()
