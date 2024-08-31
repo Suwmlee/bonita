@@ -4,18 +4,27 @@
 ### 部署
 
 ```sh
+poetry install
 
-# python 版本需要 3.10 以上
-# 使用 virtulenv 新建环境
-python3 -m pip install venv
-python3 -m venv .venv
-
-# 安装依赖
-pip install -r requirements.txt
+# 进入虚拟环境
+poetry shell
 
 # 启动
 uvicorn app.main:app app.main:app --host 0.0.0.0 --port 12380  --reload
 ```
+
+#### alembic迁移
+
+```
+alembic init app/alembic
+
+alembic revision --autogenerate -m "update"
+
+alembic upgrade head
+
+alembic downgrade -1
+```
+
 
 #### 注册为服务
 ```sh
