@@ -1,6 +1,9 @@
 
+
 from sqlalchemy import Column, Integer, String, Boolean
-from app.core.db import Base
+
+from app.db import Base
+
 
 class ScrapingConfig(Base):
     """

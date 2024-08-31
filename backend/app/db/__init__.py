@@ -1,46 +1,45 @@
 
-from alembic.command import upgrade, stamp
-from alembic.config import Config
+from typing import Generator
+from sqlalchemy import create_engine, inspect
+from sqlalchemy.orm import sessionmaker, Session, declared_attr, as_declarative
+
 from app.core.config import settings
-from app.core.db import Base, engine, SessionFactory
-from app.db.models import *
-from app.core.security import get_password_hash
+
+engine = create_engine(settings.SQLALCHEMY_DATABASE_URI,
+                       connect_args={"check_same_thread": False})
+
+SessionFactory = sessionmaker(bind=engine)
 
 
-def init_db():
+def get_db() -> Generator:
     """
-    初始化数据库
+    获取数据库会话, 用于WEB请求
+    :return: Session
     """
-    Base.metadata.create_all(bind=engine)
-    init_super_user()
-
-
-def init_super_user():
-    """
-    初始化超级管理员
-    """
-    with SessionFactory() as session:
-        _user = User.get_user_by_email(session=session, email=settings.FIRST_SUPERUSER_EMAIL)
-        if not _user:
-            _user = User(
-                name=settings.FIRST_SUPERUSER,
-                email=settings.FIRST_SUPERUSER_EMAIL,
-                hashed_password=get_password_hash(settings.FIRST_SUPERUSER_PASSWORD),
-                is_active=True,
-                is_superuser=True
-            )
-            _user.create(session)
-
-
-def upgrade_db():
-    """
-    更新数据库
-    """
-    alembic_cfg = Config()
-    script_location = "./app/alembic"
-    alembic_cfg.set_main_option('script_location', str(script_location))
-    alembic_cfg.set_main_option('sqlalchemy.url', settings.SQLALCHEMY_DATABASE_URI)
+    db = None
     try:
-        upgrade(alembic_cfg, 'head')
-    except Exception as e:
-        stamp(alembic_cfg, 'head')
+        db = SessionFactory()
+        yield db
+    finally:
+        if db:
+            db.close()
+
+
+@as_declarative()
+class Base:
+    __name__: str
+
+    def create(self, session: Session):
+        session.add(self)
+        session.commit()
+
+    @declared_attr
+    def __tablename__(self) -> str:
+        return self.__name__.lower()
+
+    def update(self, session: Session, payload: dict):
+        payload = {k: v for k, v in payload.items() if v is not None}
+        for key, value in payload.items():
+            setattr(self, key, value)
+        if inspect(self).detached:
+            session.add(self)

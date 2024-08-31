@@ -3,8 +3,8 @@
 from sqlalchemy import Column, Integer, String, Boolean
 from sqlalchemy.orm import Session
 
-from app.core.db import Base
 from app.core.security import verify_password
+from app.db import Base
 
 
 class User(Base):
