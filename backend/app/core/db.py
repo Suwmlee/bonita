@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker, scoped_session, Session
 from app.core.config import settings
 
 
-engine = create_engine(settings.SQLALCHEMY_DATABASE_URL,
+engine = create_engine(settings.SQLALCHEMY_DATABASE_URI,
                        connect_args={"check_same_thread": False})
 
 SessionFactory = sessionmaker(bind=engine)
