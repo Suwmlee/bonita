@@ -9,7 +9,7 @@ from app import schemas
 from app.api.deps import SessionDep
 from app.core import security
 from app.core.config import settings
-from app.db.models import User
+from app.db.models.user import User
 
 
 router = APIRouter()

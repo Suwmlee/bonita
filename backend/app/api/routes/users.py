@@ -10,7 +10,7 @@ from app.api.deps import (
     get_current_active_superuser
 )
 from app import schemas
-from app.db.models import User
+from app.db.models.user import User
 
 router = APIRouter()
 

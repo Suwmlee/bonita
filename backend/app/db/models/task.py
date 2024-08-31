@@ -5,7 +5,7 @@ from sqlalchemy import Column, Integer, String, Boolean
 from app.db import Base
 
 
-class Library(Base):
+class TransferTask(Base):
     """
     媒体库表
     lib_type:

@@ -1,5 +1,5 @@
 
 from .user import User
-from .library import Library
+from .task import TransferTask
 from .scrapingconfig import ScrapingConfig
 from .metadata import Metadata

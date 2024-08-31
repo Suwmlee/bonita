@@ -10,7 +10,7 @@ from app import schemas
 from app.core import security
 from app.core.config import settings
 from app.db import get_db
-from app.db.models import User
+from app.db.models.user import User
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
