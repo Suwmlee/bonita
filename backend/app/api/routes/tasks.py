@@ -29,7 +29,8 @@ def create_task(
     """
     创建新任务
     """
-    task = TransferTask(task_in)
+    task_info = task_in.__dict__
+    task = TransferTask(**task_info)
     session.add(task)
     session.commit()
     session.refresh(task)
