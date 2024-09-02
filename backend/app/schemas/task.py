@@ -18,3 +18,11 @@ class TaskPublic(TaskBase):
 class TasksPublic(BaseModel):
     data: List[TaskPublic]
     count: int
+
+
+class TaskCreate(TaskBase):
+    description: str
+    task_type: int
+
+    sc_enabled: bool | None
+    sc_id: int | None

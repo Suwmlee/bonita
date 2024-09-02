@@ -8,7 +8,7 @@ from app.db import Base
 class TransferTask(Base):
     """
     媒体库表
-    lib_type:
+    task_type:
     1. 移动
     2. 整理?
 
@@ -19,11 +19,11 @@ class TransferTask(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, default='movie')
     description = Column(String, default='')
-    lib_type = Column(Integer, default=1)
+    task_type = Column(Integer, default=1)
     enabled = Column(Boolean, default=True)
     auto_watch = Column(Boolean, default=False, comment="开启自动监测")
 
-    link_type = Column(Integer, default=1)
+    transfer_type = Column(Integer, default=1)
     source_folder = Column(String, default='/media')
     output_folder = Column(String, default='/media/output')
     failed_folder = Column(String, default='/media/failed')
