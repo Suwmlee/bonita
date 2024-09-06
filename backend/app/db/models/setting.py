@@ -5,7 +5,7 @@ from sqlalchemy import Column, Integer, String, Boolean
 from app.db import Base
 
 
-class ScrapingConfig(Base):
+class ScrapingSetting(Base):
     """
     """
     id = Column(Integer, primary_key=True, index=True)

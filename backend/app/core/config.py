@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     LOGGING_FORMAT: str = "[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
     LOGGING_LOCATION: str = "./data/bonita.log"
     LOGGING_LEVEL: int = logging.INFO
-    SECRET_KEY: str = secrets.token_urlsafe(32)
+    # SECRET_KEY: str = secrets.token_urlsafe(32)
+    SECRET_KEY: str = "secret key"
     # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     # 跨域

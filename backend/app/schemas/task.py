@@ -2,8 +2,10 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 
-# Shared properties
-class TaskBase(BaseModel):
+class TransferTaskBase(BaseModel):
+    """
+    Shared properties
+    """
     name: str
     description: str
     task_type: int = 1
@@ -20,22 +22,23 @@ class TaskBase(BaseModel):
     sc_enabled: bool = False
     sc_id: Optional[int] = None
 
-# Properties to return via API, id is always required
 
-
-class TaskPublic(TaskBase):
+class TransferTaskPublic(TransferTaskBase):
+    """
+    Properties to return via API, id is always required
+    """
     id: int
 
     class Config:
         from_attributes = True
 
 
-class TasksPublic(BaseModel):
-    data: List[TaskPublic]
+class TransferTasksPublic(BaseModel):
+    data: List[TransferTaskPublic]
     count: int
 
 
-class TaskCreate(TaskBase):
+class TransferTaskCreate(TransferTaskBase):
     scraping_sites: Optional[str] = None
     location_rule: Optional[str] = None
     naming_rule: Optional[str] = None
