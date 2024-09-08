@@ -2,6 +2,7 @@
 import { LoginService } from "@/client"
 import type { Body_login_login_access_token as AccessToken, Token } from "@/client"
 import { router } from "@/plugins/router"
+import { handleError } from "@/utils"
 import { defineStore } from "pinia"
 
 export const useAuthStore = defineStore("auth", {
@@ -24,7 +25,7 @@ export const useAuthStore = defineStore("auth", {
           router.push(this.returnUrl || "/dashboard")
         })
         .catch((error) => {
-          console.log('Rejected:', error.body?.detail);
+          handleError(error)
         });
     },
     logout() {
