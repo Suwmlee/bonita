@@ -1,6 +1,6 @@
 // Utilities
 import { LoginService } from "@/client"
-import type { Body_login_login_access_token as AccessToken } from "@/client"
+import type { Body_login_login_access_token as AccessToken, Token } from "@/client"
 import { router } from "@/plugins/router"
 import { defineStore } from "pinia"
 
@@ -17,10 +17,15 @@ export const useAuthStore = defineStore("auth", {
         username: email,
         password: pwd,
       }
-      const response = await LoginService.loginAccessToken({ formData: data })
-      localStorage.setItem("access_token", response.access_token)
-      // redirect to previous url or default to home page
-      router.push(this.returnUrl || "/dashboard")
+      await LoginService.loginAccessToken({ formData: data })
+        .then((response: Token) => {
+          localStorage.setItem("access_token", response.access_token)
+          // redirect to previous url or default to home page
+          router.push(this.returnUrl || "/dashboard")
+        })
+        .catch((error) => {
+          console.log('Rejected:', error.body?.detail);
+        });
     },
     logout() {
       localStorage.removeItem("access_token")

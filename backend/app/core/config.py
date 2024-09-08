@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     # 初始化管理员
     FIRST_SUPERUSER: str = "admin"
     FIRST_SUPERUSER_EMAIL: str = "admin@example.com"
-    FIRST_SUPERUSER_PASSWORD: str = "change"
+    FIRST_SUPERUSER_PASSWORD: str = "changepwd"
     # 是否开放注册
     USERS_OPEN_REGISTRATION: bool = False
 
