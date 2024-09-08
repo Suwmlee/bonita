@@ -108,6 +108,151 @@ export const $Response = {
     title: 'Response'
 } as const;
 
+export const $ScrapingSettingCreate = {
+    properties: {
+        name: {
+            type: 'string',
+            title: 'Name'
+        },
+        description: {
+            type: 'string',
+            title: 'Description'
+        },
+        save_metadata: {
+            type: 'boolean',
+            title: 'Save Metadata',
+            default: false
+        },
+        scraping_sites: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Scraping Sites'
+        },
+        location_rule: {
+            type: 'string',
+            title: 'Location Rule'
+        },
+        naming_rule: {
+            type: 'string',
+            title: 'Naming Rule'
+        },
+        max_title_len: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Max Title Len'
+        },
+        watermark_enabled: {
+            type: 'boolean',
+            title: 'Watermark Enabled',
+            default: false
+        }
+    },
+    type: 'object',
+    required: ['name', 'description', 'location_rule', 'naming_rule'],
+    title: 'ScrapingSettingCreate'
+} as const;
+
+export const $ScrapingSettingPublic = {
+    properties: {
+        name: {
+            type: 'string',
+            title: 'Name'
+        },
+        description: {
+            type: 'string',
+            title: 'Description'
+        },
+        save_metadata: {
+            type: 'boolean',
+            title: 'Save Metadata',
+            default: false
+        },
+        scraping_sites: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Scraping Sites'
+        },
+        location_rule: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Location Rule'
+        },
+        naming_rule: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Naming Rule'
+        },
+        max_title_len: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Max Title Len'
+        },
+        id: {
+            type: 'integer',
+            title: 'Id'
+        }
+    },
+    type: 'object',
+    required: ['name', 'description', 'id'],
+    title: 'ScrapingSettingPublic',
+    description: 'Properties to return via API, id is always required'
+} as const;
+
+export const $ScrapingSettingsPublic = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/ScrapingSettingPublic'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'ScrapingSettingsPublic'
+} as const;
+
 export const $Token = {
     properties: {
         access_token: {
@@ -123,6 +268,280 @@ export const $Token = {
     type: 'object',
     required: ['access_token'],
     title: 'Token'
+} as const;
+
+export const $TransferTaskCreate = {
+    properties: {
+        name: {
+            type: 'string',
+            title: 'Name'
+        },
+        description: {
+            type: 'string',
+            title: 'Description'
+        },
+        task_type: {
+            type: 'integer',
+            title: 'Task Type',
+            default: 1
+        },
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled',
+            default: true
+        },
+        auto_watch: {
+            type: 'boolean',
+            title: 'Auto Watch',
+            default: false
+        },
+        transfer_type: {
+            type: 'integer',
+            title: 'Transfer Type',
+            default: 1
+        },
+        source_folder: {
+            type: 'string',
+            title: 'Source Folder'
+        },
+        output_folder: {
+            type: 'string',
+            title: 'Output Folder'
+        },
+        failed_folder: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Failed Folder'
+        },
+        escape_folder: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Escape Folder'
+        },
+        escape_literals: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Escape Literals'
+        },
+        escape_size: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Escape Size',
+            default: 1
+        },
+        threads_num: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Threads Num',
+            default: 1
+        },
+        sc_enabled: {
+            type: 'boolean',
+            title: 'Sc Enabled',
+            default: false
+        },
+        sc_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Sc Id'
+        },
+        scraping_sites: {
+            type: 'string',
+            title: 'Scraping Sites'
+        },
+        location_rule: {
+            type: 'string',
+            title: 'Location Rule'
+        },
+        naming_rule: {
+            type: 'string',
+            title: 'Naming Rule'
+        },
+        max_title_len: {
+            type: 'string',
+            title: 'Max Title Len'
+        }
+    },
+    type: 'object',
+    required: ['name', 'description', 'source_folder', 'output_folder', 'scraping_sites', 'location_rule', 'naming_rule', 'max_title_len'],
+    title: 'TransferTaskCreate'
+} as const;
+
+export const $TransferTaskPublic = {
+    properties: {
+        name: {
+            type: 'string',
+            title: 'Name'
+        },
+        description: {
+            type: 'string',
+            title: 'Description'
+        },
+        task_type: {
+            type: 'integer',
+            title: 'Task Type',
+            default: 1
+        },
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled',
+            default: true
+        },
+        auto_watch: {
+            type: 'boolean',
+            title: 'Auto Watch',
+            default: false
+        },
+        transfer_type: {
+            type: 'integer',
+            title: 'Transfer Type',
+            default: 1
+        },
+        source_folder: {
+            type: 'string',
+            title: 'Source Folder'
+        },
+        output_folder: {
+            type: 'string',
+            title: 'Output Folder'
+        },
+        failed_folder: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Failed Folder'
+        },
+        escape_folder: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Escape Folder'
+        },
+        escape_literals: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Escape Literals'
+        },
+        escape_size: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Escape Size',
+            default: 1
+        },
+        threads_num: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Threads Num',
+            default: 1
+        },
+        sc_enabled: {
+            type: 'boolean',
+            title: 'Sc Enabled',
+            default: false
+        },
+        sc_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Sc Id'
+        },
+        id: {
+            type: 'integer',
+            title: 'Id'
+        }
+    },
+    type: 'object',
+    required: ['name', 'description', 'source_folder', 'output_folder', 'id'],
+    title: 'TransferTaskPublic',
+    description: 'Properties to return via API, id is always required'
+} as const;
+
+export const $TransferTasksPublic = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/TransferTaskPublic'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'TransferTasksPublic'
 } as const;
 
 export const $UpdatePassword = {

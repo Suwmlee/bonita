@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
+import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, GetAllTasksData, GetAllTasksResponse, CreateTaskData, CreateTaskResponse, GetAllSettingsData, GetAllSettingsResponse, CreateSettingData, CreateSettingResponse } from './types.gen';
 
 export class LoginService {
     /**
@@ -28,7 +28,7 @@ export class LoginService {
     
 }
 
-export class UsersService {
+export class UserService {
     /**
      * Read Users
      * Retrieve users.
@@ -218,6 +218,98 @@ export class UsersService {
             path: {
                 user_id: data.userId
             },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+}
+
+export class TransferTaskService {
+    /**
+     * Get All Tasks
+     * 获取所有任务.
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @returns TransferTasksPublic Successful Response
+     * @throws ApiError
+     */
+    public static getAllTasks(data: GetAllTasksData = {}): CancelablePromise<GetAllTasksResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/tasks/transfer/all',
+            query: {
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Create Task
+     * 创建新任务
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns TransferTaskPublic Successful Response
+     * @throws ApiError
+     */
+    public static createTask(data: CreateTaskData): CancelablePromise<CreateTaskResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/tasks/transfer/',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+}
+
+export class ScrapingSettingService {
+    /**
+     * Get All Settings
+     * 获取所有配置.
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @returns ScrapingSettingsPublic Successful Response
+     * @throws ApiError
+     */
+    public static getAllSettings(data: GetAllSettingsData = {}): CancelablePromise<GetAllSettingsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/settings/scraping/all',
+            query: {
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Create Setting
+     * 创建新配置
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns ScrapingSettingPublic Successful Response
+     * @throws ApiError
+     */
+    public static createSetting(data: CreateSettingData): CancelablePromise<CreateSettingResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/settings/scraping/',
+            body: data.requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: 'Validation Error'
             }

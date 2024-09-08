@@ -21,9 +21,88 @@ export type Response = {
 } | Array<unknown> | null;
 };
 
+export type ScrapingSettingCreate = {
+    name: string;
+    description: string;
+    save_metadata?: boolean;
+    scraping_sites?: string | null;
+    location_rule: string;
+    naming_rule: string;
+    max_title_len?: string | null;
+    watermark_enabled?: boolean;
+};
+
+/**
+ * Properties to return via API, id is always required
+ */
+export type ScrapingSettingPublic = {
+    name: string;
+    description: string;
+    save_metadata?: boolean;
+    scraping_sites?: string | null;
+    location_rule?: string | null;
+    naming_rule?: string | null;
+    max_title_len?: string | null;
+    id: number;
+};
+
+export type ScrapingSettingsPublic = {
+    data: Array<ScrapingSettingPublic>;
+    count: number;
+};
+
 export type Token = {
     access_token: string;
     token_type?: string;
+};
+
+export type TransferTaskCreate = {
+    name: string;
+    description: string;
+    task_type?: number;
+    enabled?: boolean;
+    auto_watch?: boolean;
+    transfer_type?: number;
+    source_folder: string;
+    output_folder: string;
+    failed_folder?: string | null;
+    escape_folder?: string | null;
+    escape_literals?: string | null;
+    escape_size?: number | null;
+    threads_num?: number | null;
+    sc_enabled?: boolean;
+    sc_id?: number | null;
+    scraping_sites: string;
+    location_rule: string;
+    naming_rule: string;
+    max_title_len: string;
+};
+
+/**
+ * Properties to return via API, id is always required
+ */
+export type TransferTaskPublic = {
+    name: string;
+    description: string;
+    task_type?: number;
+    enabled?: boolean;
+    auto_watch?: boolean;
+    transfer_type?: number;
+    source_folder: string;
+    output_folder: string;
+    failed_folder?: string | null;
+    escape_folder?: string | null;
+    escape_literals?: string | null;
+    escape_size?: number | null;
+    threads_num?: number | null;
+    sc_enabled?: boolean;
+    sc_id?: number | null;
+    id: number;
+};
+
+export type TransferTasksPublic = {
+    data: Array<TransferTaskPublic>;
+    count: number;
 };
 
 export type UpdatePassword = {
@@ -136,6 +215,32 @@ export type DeleteUserData = {
 };
 
 export type DeleteUserResponse = Response;
+
+export type GetAllTasksData = {
+    limit?: number;
+    skip?: number;
+};
+
+export type GetAllTasksResponse = TransferTasksPublic;
+
+export type CreateTaskData = {
+    requestBody: TransferTaskCreate;
+};
+
+export type CreateTaskResponse = TransferTaskPublic;
+
+export type GetAllSettingsData = {
+    limit?: number;
+    skip?: number;
+};
+
+export type GetAllSettingsResponse = ScrapingSettingsPublic;
+
+export type CreateSettingData = {
+    requestBody: ScrapingSettingCreate;
+};
+
+export type CreateSettingResponse = ScrapingSettingPublic;
 
 export type $OpenApiTs = {
     '/api/v1/login/access-token': {
@@ -276,6 +381,66 @@ export type $OpenApiTs = {
                  * Successful Response
                  */
                 200: Response;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/tasks/transfer/all': {
+        get: {
+            req: GetAllTasksData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: TransferTasksPublic;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/tasks/transfer/': {
+        post: {
+            req: CreateTaskData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: TransferTaskPublic;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/settings/scraping/all': {
+        get: {
+            req: GetAllSettingsData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: ScrapingSettingsPublic;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/settings/scraping/': {
+        post: {
+            req: CreateSettingData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: ScrapingSettingPublic;
                 /**
                  * Validation Error
                  */

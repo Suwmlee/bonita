@@ -9,6 +9,10 @@ class ScrapingSettingBase(BaseModel):
     name: str
     description: str
     save_metadata: bool = False
+    scraping_sites: Optional[str] = None
+    location_rule: Optional[str] = None
+    naming_rule: Optional[str] = None
+    max_title_len: Optional[str] = None
 
 
 class ScrapingSettingPublic(ScrapingSettingBase):
@@ -27,8 +31,6 @@ class ScrapingSettingsPublic(BaseModel):
 
 
 class ScrapingSettingCreate(ScrapingSettingBase):
-    scraping_sites: Optional[str] = None
-    location_rule: Optional[str] = None
-    naming_rule: Optional[str] = None
-    max_title_len: Optional[int] = 50
-    watermark_enabled: Optional[bool] = True
+    location_rule: str
+    naming_rule: str
+    watermark_enabled: bool = False

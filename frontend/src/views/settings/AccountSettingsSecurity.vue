@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { UsersService } from "@/client"
+import { UserService } from "@/client"
 import type { UpdatePassword } from "@/client/types.gen"
 
 const isCurrentPasswordVisible = ref(false)
@@ -18,7 +18,7 @@ const changePasswd = async () => {
     current_password: currentPassword.value,
     new_password: newPassword.value,
   }
-  const response = await UsersService.updatePasswordMe({ requestBody: data })
+  const response = await UserService.updatePasswordMe({ requestBody: data })
   console.log(response)
 }
 </script>
