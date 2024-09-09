@@ -4,6 +4,7 @@ import type { Body_login_login_access_token as AccessToken, Token } from "@/clie
 import { router } from "@/plugins/router"
 import { handleError } from "@/utils"
 import { defineStore } from "pinia"
+import { useToastStore } from "./toast.store"
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -14,6 +15,7 @@ export const useAuthStore = defineStore("auth", {
       return localStorage.getItem("access_token") !== null
     },
     async login(email: string, pwd: string) {
+      const showToast = useToastStore()
       const data: AccessToken = {
         username: email,
         password: pwd,
@@ -25,7 +27,7 @@ export const useAuthStore = defineStore("auth", {
           router.push(this.returnUrl || "/dashboard")
         })
         .catch((error) => {
-          handleError(error)
+          handleError(error, showToast)
         });
     },
     logout() {

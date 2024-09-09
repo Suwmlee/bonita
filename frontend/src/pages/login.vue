@@ -13,7 +13,6 @@ const isPasswordVisible = ref(false)
 const login = () => {
   const authStore = useAuthStore()
   const { email, password } = form.value
-  // 这里应该添加实际的登录逻辑，例如 API 调用
   if (email && password) {
     authStore.login(email, password)
   }
