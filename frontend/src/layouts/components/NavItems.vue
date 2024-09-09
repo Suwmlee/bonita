@@ -9,13 +9,18 @@ import VerticalNavLink from "@layouts/components/VerticalNavLink.vue"
     to: '/dashboard',
   }" />
   <VerticalNavLink :item="{
-    title: 'LibrarySetup',
-    icon: 'bx-folder',
-    to: '/librarysetup',
+    title: 'Task',
+    icon: 'bx-task',
+    to: '/tasks/transfer',
   }" />
   <VerticalNavLink :item="{
-    title: 'Settings',
-    icon: 'bx-cog',
-    to: '/settings',
+    title: 'Scraping',
+    icon: 'bx-detail',
+    to: '/settings/scraping',
+  }" />
+  <VerticalNavLink :item="{
+    title: 'UserSettings',
+    icon: 'bxs-user-detail',
+    to: '/settings/user',
   }" />
 </template>

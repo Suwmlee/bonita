@@ -17,6 +17,13 @@ npm install
 npm run dev
 ```
 
+### 更新 .env
+
+```sh
+# dev
+VITE_API_URL="http://localhost:8000"
+```
+
 ### 更新 client API
 ```sh
 node modify-openapi-operationids.js

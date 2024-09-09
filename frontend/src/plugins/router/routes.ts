@@ -1,3 +1,13 @@
+
+import errorpage from '@/pages/[...error].vue'
+import DashboardPage from "@/pages/Dashboard.vue"
+import LoginPage from "@/pages/Login.vue"
+import TransferTaskPage from '@/pages/TransferTask.vue'
+import TaskSetupPage from '@/pages/TaskSetup.vue'
+import ScrapingSettingsPage from "@/pages/ScrapingSettings.vue"
+import UserSettingsPage from "@/pages/UserSettings.vue"
+
+
 export const routes = [
   { path: "/", redirect: "/dashboard" },
   {
@@ -7,17 +17,39 @@ export const routes = [
       {
         path: "dashboard",
         meta: { requiresAuth: true },
-        component: () => import("@/pages/dashboard.vue"),
+        component: () => DashboardPage,
+      },
+    ],
+  },
+  {
+    path: "/tasks/",
+    component: () => import("@/layouts/default.vue"),
+    children: [
+      {
+        path: "transfer",
+        meta: { requiresAuth: true },
+        component: () => TransferTaskPage,
       },
       {
-        path: "librarysetup",
+        path: "setup",
         meta: { requiresAuth: true },
-        component: () => import("@/pages/librarysetup.vue"),
+        component: () => TaskSetupPage,
+      }
+    ],
+  },
+  {
+    path: "/settings/",
+    component: () => import("@/layouts/default.vue"),
+    children: [
+      {
+        path: "scraping",
+        meta: { requiresAuth: true },
+        component: () => ScrapingSettingsPage,
       },
       {
-        path: "settings",
+        path: "user",
         meta: { requiresAuth: true },
-        component: () => import("@/pages/settings.vue"),
+        component: () => UserSettingsPage,
       },
     ],
   },
@@ -27,11 +59,11 @@ export const routes = [
     children: [
       {
         path: "login",
-        component: () => import("@/pages/login.vue"),
+        component: () => LoginPage,
       },
       {
         path: "/:pathMatch(.*)*",
-        component: () => import("@/pages/[...error].vue"),
+        component: () => errorpage,
       },
     ],
   },

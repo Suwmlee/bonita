@@ -1,3 +1,4 @@
+
 <script setup lang="ts">
 
 
@@ -5,6 +6,6 @@
 
 <template>
   <div>
-    Librarysetup
+    Task Setup
   </div>
 </template>

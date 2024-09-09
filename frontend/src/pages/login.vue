@@ -15,7 +15,7 @@ const login = () => {
   const { email, password } = form.value
   // 这里应该添加实际的登录逻辑，例如 API 调用
   if (email && password) {
-    return authStore.login(email, password)
+    authStore.login(email, password)
   }
 }
 </script>
