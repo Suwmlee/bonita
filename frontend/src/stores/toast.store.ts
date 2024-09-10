@@ -1,30 +1,29 @@
-import { defineStore } from 'pinia'
+import { defineStore } from "pinia"
 
 interface ToastState {
-    /** 通知内容 */
-    msg: string;
-    /** 通知颜色 */
-    color: string;
-    /** 显示 */
-    visible?: boolean;
-    /** 是否显示关闭按钮 */
-    showClose?:boolean;
-    /** 超时时间 */
-    timeout?: number;
-    /** 防抖计时器 */
-    debounceTimer?: NodeJS.Timeout | null
+  /** 通知内容 */
+  msg: string
+  /** 通知颜色 */
+  color: string
+  /** 显示 */
+  visible?: boolean
+  /** 是否显示关闭按钮 */
+  showClose?: boolean
+  /** 超时时间 */
+  timeout?: number
+  /** 防抖计时器 */
+  debounceTimer?: NodeJS.Timeout | null
 }
 
-
-export const useToastStore = defineStore('toastStore', {
-  state: ():ToastState => {
+export const useToastStore = defineStore("toastStore", {
+  state: (): ToastState => {
     return {
-      msg: '',
-      color: 'info',
+      msg: "",
+      color: "info",
       visible: false,
       showClose: true,
       timeout: 3000,
-      debounceTimer: null
+      debounceTimer: null,
     }
   },
   actions: {
@@ -32,7 +31,7 @@ export const useToastStore = defineStore('toastStore', {
      * 显示通知
      * @param options 参数
      */
-    open (options:ToastState) {
+    open(options: ToastState) {
       this.msg = options.msg
       if (options?.color) {
         this.color = options.color
@@ -53,41 +52,41 @@ export const useToastStore = defineStore('toastStore', {
      * 成功通知
      * @param msg 消息
      */
-    success (msg:string) {
+    success(msg: string) {
       this.open({
         msg,
-        color: 'success'
+        color: "success",
       })
     },
     /**
      * 错误通知
      * @param msg 消息
      */
-    error (msg:string) {
+    error(msg: string) {
       this.open({
         msg,
-        color: 'error'
+        color: "error",
       })
     },
     /**
      * info通知
      * @param msg 消息
      */
-    info (msg:string) {
+    info(msg: string) {
       this.open({
         msg,
-        color: 'info'
+        color: "info",
       })
     },
     /**
      * 警告通知
      * @param msg 消息
      */
-    warning (msg:string) {
+    warning(msg: string) {
       this.open({
         msg,
-        color: 'warning'
+        color: "warning",
       })
-    }
-  }
+    },
+  },
 })

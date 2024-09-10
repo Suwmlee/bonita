@@ -1,6 +1,9 @@
 // Utilities
 import { LoginService } from "@/client"
-import type { Body_login_login_access_token as AccessToken, Token } from "@/client"
+import type {
+  Body_login_login_access_token as AccessToken,
+  Token,
+} from "@/client"
 import { router } from "@/plugins/router"
 import { handleError } from "@/utils"
 import { defineStore } from "pinia"
@@ -28,7 +31,7 @@ export const useAuthStore = defineStore("auth", {
         })
         .catch((error) => {
           handleError(error, showToast)
-        });
+        })
     },
     logout() {
       localStorage.removeItem("access_token")
