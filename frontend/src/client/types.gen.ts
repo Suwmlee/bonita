@@ -24,12 +24,11 @@ export type Response = {
 export type ScrapingSettingCreate = {
     name: string;
     description: string;
-    save_metadata?: boolean;
+    save_metadata?: boolean | null;
     scraping_sites?: string | null;
-    location_rule: string;
-    naming_rule: string;
+    location_rule?: string | null;
+    naming_rule?: string | null;
     max_title_len?: string | null;
-    watermark_enabled?: boolean;
 };
 
 /**
@@ -38,7 +37,7 @@ export type ScrapingSettingCreate = {
 export type ScrapingSettingPublic = {
     name: string;
     description: string;
-    save_metadata?: boolean;
+    save_metadata?: boolean | null;
     scraping_sites?: string | null;
     location_rule?: string | null;
     naming_rule?: string | null;
@@ -418,7 +417,7 @@ export type $OpenApiTs = {
             };
         };
     };
-    '/api/v1/settings/scraping/all': {
+    '/api/v1/scraping/settings/all': {
         get: {
             req: GetAllSettingsData;
             res: {
@@ -433,7 +432,7 @@ export type $OpenApiTs = {
             };
         };
     };
-    '/api/v1/settings/scraping/': {
+    '/api/v1/scraping/settings/': {
         post: {
             req: CreateSettingData;
             res: {

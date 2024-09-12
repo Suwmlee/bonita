@@ -285,7 +285,7 @@ export class ScrapingSettingService {
     public static getAllSettings(data: GetAllSettingsData = {}): CancelablePromise<GetAllSettingsResponse> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/v1/settings/scraping/all',
+            url: '/api/v1/scraping/settings/all',
             query: {
                 skip: data.skip,
                 limit: data.limit
@@ -307,7 +307,7 @@ export class ScrapingSettingService {
     public static createSetting(data: CreateSettingData): CancelablePromise<CreateSettingResponse> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/v1/settings/scraping/',
+            url: '/api/v1/scraping/settings/',
             body: data.requestBody,
             mediaType: 'application/json',
             errors: {

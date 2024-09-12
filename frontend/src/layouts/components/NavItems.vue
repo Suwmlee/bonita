@@ -16,7 +16,7 @@ import VerticalNavLink from "@layouts/components/VerticalNavLink.vue"
   <VerticalNavLink :item="{
     title: 'Scraping',
     icon: 'bx-detail',
-    to: '/settings/scraping',
+    to: '/scraping/settings',
   }" />
   <VerticalNavLink :item="{
     title: 'UserSettings',

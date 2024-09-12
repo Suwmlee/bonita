@@ -119,7 +119,14 @@ export const $ScrapingSettingCreate = {
             title: 'Description'
         },
         save_metadata: {
-            type: 'boolean',
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
             title: 'Save Metadata',
             default: false
         },
@@ -135,11 +142,25 @@ export const $ScrapingSettingCreate = {
             title: 'Scraping Sites'
         },
         location_rule: {
-            type: 'string',
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
             title: 'Location Rule'
         },
         naming_rule: {
-            type: 'string',
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
             title: 'Naming Rule'
         },
         max_title_len: {
@@ -152,15 +173,10 @@ export const $ScrapingSettingCreate = {
                 }
             ],
             title: 'Max Title Len'
-        },
-        watermark_enabled: {
-            type: 'boolean',
-            title: 'Watermark Enabled',
-            default: false
         }
     },
     type: 'object',
-    required: ['name', 'description', 'location_rule', 'naming_rule'],
+    required: ['name', 'description'],
     title: 'ScrapingSettingCreate'
 } as const;
 
@@ -175,7 +191,14 @@ export const $ScrapingSettingPublic = {
             title: 'Description'
         },
         save_metadata: {
-            type: 'boolean',
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
             title: 'Save Metadata',
             default: false
         },

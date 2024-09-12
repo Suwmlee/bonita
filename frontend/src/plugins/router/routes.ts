@@ -1,3 +1,5 @@
+import blanklayout from "@/layouts/blank.vue"
+import defaultlayout from "@/layouts/default.vue"
 import DashboardPage from "@/pages/Dashboard.vue"
 import LoginPage from "@/pages/Login.vue"
 import ScrapingSettingsPage from "@/pages/ScrapingSettings.vue"
@@ -10,58 +12,64 @@ export const routes = [
   { path: "/", redirect: "/dashboard" },
   {
     path: "/",
-    component: () => import("@/layouts/default.vue"),
+    component: defaultlayout,
     children: [
       {
         path: "dashboard",
         meta: { requiresAuth: true },
-        component: () => DashboardPage,
+        component: DashboardPage,
       },
     ],
   },
   {
     path: "/tasks/",
-    component: () => import("@/layouts/default.vue"),
+    component: defaultlayout,
     children: [
       {
         path: "transfer",
         meta: { requiresAuth: true },
-        component: () => TransferTaskPage,
+        component: TransferTaskPage,
       },
       {
         path: "setup",
         meta: { requiresAuth: true },
-        component: () => TaskSetupPage,
+        component: TaskSetupPage,
+      },
+    ],
+  },
+  {
+    path: "/scraping/",
+    component: defaultlayout,
+    children: [
+      {
+        path: "settings",
+        meta: { requiresAuth: true },
+        component: ScrapingSettingsPage,
       },
     ],
   },
   {
     path: "/settings/",
-    component: () => import("@/layouts/default.vue"),
+    component: defaultlayout,
     children: [
-      {
-        path: "scraping",
-        meta: { requiresAuth: true },
-        component: () => ScrapingSettingsPage,
-      },
       {
         path: "user",
         meta: { requiresAuth: true },
-        component: () => UserSettingsPage,
+        component: UserSettingsPage,
       },
     ],
   },
   {
     path: "/",
-    component: () => import("@/layouts/blank.vue"),
+    component: blanklayout,
     children: [
       {
         path: "login",
-        component: () => LoginPage,
+        component: LoginPage,
       },
       {
         path: "/:pathMatch(.*)*",
-        component: () => errorpage,
+        component: errorpage,
       },
     ],
   },
