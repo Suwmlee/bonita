@@ -1,5 +1,15 @@
 <script setup lang="ts">
+import { ScrapingSettingService } from "@/client"
 import ScrapingSettingForm from "@/views/scraping/ScrapingSettingForm.vue"
+
+async function getAllSettings() {
+  const allSettings = await ScrapingSettingService.getAllSettings()
+  console.log(allSettings)
+}
+
+onMounted(() => {
+  getAllSettings()
+})
 </script>
 
 <template>

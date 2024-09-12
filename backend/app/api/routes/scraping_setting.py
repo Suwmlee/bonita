@@ -19,7 +19,7 @@ def get_all_settings(session: SessionDep, skip: int = 0, limit: int = 100) -> An
     count = session.query(ScrapingSetting).count()
 
     setting_list = [schemas.ScrapingSettingPublic.model_validate(setting) for setting in settings]
-    return schemas.TransferTasksPublic(data=setting_list, count=count)
+    return schemas.ScrapingSettingsPublic(data=setting_list, count=count)
 
 
 @router.post("/", response_model=schemas.ScrapingSettingPublic)
