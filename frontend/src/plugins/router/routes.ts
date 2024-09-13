@@ -22,7 +22,8 @@ export const routes = [
     ],
   },
   {
-    path: "/tasks/",
+    path: "/tasks",
+    redirect: "/tasks/transfer",
     component: defaultlayout,
     children: [
       {
@@ -38,7 +39,7 @@ export const routes = [
     ],
   },
   {
-    path: "/scraping/",
+    path: "/scraping",
     component: defaultlayout,
     children: [
       {
@@ -49,7 +50,7 @@ export const routes = [
     ],
   },
   {
-    path: "/settings/",
+    path: "/settings",
     component: defaultlayout,
     children: [
       {

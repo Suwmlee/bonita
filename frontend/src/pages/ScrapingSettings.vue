@@ -1,25 +1,74 @@
 <script setup lang="ts">
-import { ScrapingSettingService } from "@/client"
-import ScrapingSettingForm from "@/views/scraping/ScrapingSettingForm.vue"
+import { useScrapingStore } from "@/stores/scraping.store"
 
-async function getAllSettings() {
-  const allSettings = await ScrapingSettingService.getAllSettings()
-  console.log(allSettings)
+const scrapingStore = useScrapingStore()
+
+async function updateSettings() {
+  scrapingStore.getAllSetting()
+}
+
+function addNewSetting() {
+  console.log("add new")
+}
+
+const showSelectedSetting = (item: any) => {
+  console.log(item)
 }
 
 onMounted(() => {
-  getAllSettings()
+  updateSettings()
 })
 </script>
 
 <template>
   <div>
+
+    <p class="text-2xl mb-6">
+      Scraping Settings
+    </p>
+
     <VRow>
-      <VCol cols="12" md="6">
-        <!-- 👉 Horizontal Form -->
-        <VCard title="Scraping Setting">
+      <VCol v-for="data in scrapingStore.allSettings" :key="data.id" cols="12" md="6" lg="4"
+        @click="showSelectedSetting(data)">
+        <VCard>
+          <VCardItem>
+            <VCardTitle>
+              {{ data.name }}
+            </VCardTitle>
+          </VCardItem>
+
           <VCardText>
-            <ScrapingSettingForm />
+            <p class="clamp-text mb-0">
+              {{ data.description }}
+            </p>
+          </VCardText>
+
+          <VCardText class="d-flex justify-space-between align-center flex-wrap">
+            <div class="text-no-wrap">
+              <span class="ms-2">{{ data.location_rule }}</span>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+
+      <VCol cols="12" md="6" lg="4" @click="addNewSetting">
+        <VCard>
+          <VCardItem>
+            <VCardTitle>
+              New Setting
+            </VCardTitle>
+          </VCardItem>
+
+          <VCardText>
+            <p class="clamp-text mb-0">
+              Add new setting
+            </p>
+          </VCardText>
+
+          <VCardText class="d-flex justify-space-between align-center flex-wrap">
+            <div class="text-no-wrap">
+              <span class="ms-2">+</span>
+            </div>
           </VCardText>
         </VCard>
       </VCol>
