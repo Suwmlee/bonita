@@ -9,7 +9,7 @@ import { handleError } from "@/utils"
 import { defineStore } from "pinia"
 import { useToastStore } from "./toast.store"
 
-export const useAuthStore = defineStore("auth", {
+export const useAuthStore = defineStore("auth-store", {
   state: () => ({
     returnUrl: "",
   }),

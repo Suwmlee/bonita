@@ -24,7 +24,7 @@ onMounted(() => {
 <template>
   <div>
 
-    <p class="text-2xl mb-6">
+    <p class="text-xl mb-6">
       Scraping Settings
     </p>
 

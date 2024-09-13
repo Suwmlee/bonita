@@ -13,7 +13,7 @@ class TransferTaskBase(BaseModel):
     auto_watch: bool = False
     transfer_type: int = 1
     source_folder: str
-    output_folder: str
+    output_folder: Optional[str] = None
     failed_folder: Optional[str] = None
     escape_folder: Optional[str] = None
     escape_literals: Optional[str] = None
@@ -39,7 +39,5 @@ class TransferTasksPublic(BaseModel):
 
 
 class TransferTaskCreate(TransferTaskBase):
-    scraping_sites: str
-    location_rule: str
-    naming_rule: str
-    max_title_len: str
+    transfer_type: int
+    source_folder: str

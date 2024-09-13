@@ -35,4 +35,4 @@ class TransferTask(Base):
 
     # 仅在刮削模式下生效,刮削配置
     sc_enabled = Column(Boolean, default=False, comment="启用刮削")
-    sc_id = Column(Integer, default="", comment="使用的刮削配置")
+    sc_id = Column(Integer, default=0, comment="使用的刮削配置")

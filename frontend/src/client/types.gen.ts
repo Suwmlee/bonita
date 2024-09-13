@@ -61,9 +61,9 @@ export type TransferTaskCreate = {
     task_type?: number;
     enabled?: boolean;
     auto_watch?: boolean;
-    transfer_type?: number;
+    transfer_type: number;
     source_folder: string;
-    output_folder: string;
+    output_folder?: string | null;
     failed_folder?: string | null;
     escape_folder?: string | null;
     escape_literals?: string | null;
@@ -71,10 +71,6 @@ export type TransferTaskCreate = {
     threads_num?: number | null;
     sc_enabled?: boolean;
     sc_id?: number | null;
-    scraping_sites: string;
-    location_rule: string;
-    naming_rule: string;
-    max_title_len: string;
 };
 
 /**
@@ -88,7 +84,7 @@ export type TransferTaskPublic = {
     auto_watch?: boolean;
     transfer_type?: number;
     source_folder: string;
-    output_folder: string;
+    output_folder?: string | null;
     failed_folder?: string | null;
     escape_folder?: string | null;
     escape_literals?: string | null;
@@ -227,6 +223,13 @@ export type CreateTaskData = {
 };
 
 export type CreateTaskResponse = TransferTaskPublic;
+
+export type UpdateTaskData = {
+    id: number;
+    requestBody: TransferTaskPublic;
+};
+
+export type UpdateTaskResponse = TransferTaskPublic;
 
 export type GetAllSettingsData = {
     limit?: number;
@@ -412,6 +415,21 @@ export type $OpenApiTs = {
     '/api/v1/tasks/transfer/': {
         post: {
             req: CreateTaskData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: TransferTaskPublic;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/tasks/transfer/{id}': {
+        put: {
+            req: UpdateTaskData;
             res: {
                 /**
                  * Successful Response

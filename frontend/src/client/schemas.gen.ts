@@ -320,15 +320,21 @@ export const $TransferTaskCreate = {
         },
         transfer_type: {
             type: 'integer',
-            title: 'Transfer Type',
-            default: 1
+            title: 'Transfer Type'
         },
         source_folder: {
             type: 'string',
             title: 'Source Folder'
         },
         output_folder: {
-            type: 'string',
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
             title: 'Output Folder'
         },
         failed_folder: {
@@ -403,26 +409,10 @@ export const $TransferTaskCreate = {
                 }
             ],
             title: 'Sc Id'
-        },
-        scraping_sites: {
-            type: 'string',
-            title: 'Scraping Sites'
-        },
-        location_rule: {
-            type: 'string',
-            title: 'Location Rule'
-        },
-        naming_rule: {
-            type: 'string',
-            title: 'Naming Rule'
-        },
-        max_title_len: {
-            type: 'string',
-            title: 'Max Title Len'
         }
     },
     type: 'object',
-    required: ['name', 'description', 'source_folder', 'output_folder', 'scraping_sites', 'location_rule', 'naming_rule', 'max_title_len'],
+    required: ['name', 'description', 'transfer_type', 'source_folder'],
     title: 'TransferTaskCreate'
 } as const;
 
@@ -461,7 +451,14 @@ export const $TransferTaskPublic = {
             title: 'Source Folder'
         },
         output_folder: {
-            type: 'string',
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
             title: 'Output Folder'
         },
         failed_folder: {
@@ -543,7 +540,7 @@ export const $TransferTaskPublic = {
         }
     },
     type: 'object',
-    required: ['name', 'description', 'source_folder', 'output_folder', 'id'],
+    required: ['name', 'description', 'source_folder', 'id'],
     title: 'TransferTaskPublic',
     description: 'Properties to return via API, id is always required'
 } as const;

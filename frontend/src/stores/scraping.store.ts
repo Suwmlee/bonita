@@ -1,13 +1,11 @@
-import { ApiError, ScrapingSettingService } from "@/client"
+import { ScrapingSettingService } from "@/client"
 import type {
   ScrapingSettingCreate,
   ScrapingSettingPublic,
 } from "@/client/types.gen"
-import { useToastStore } from "@/stores/toast.store"
-import { handleError } from "@/utils"
 import { defineStore } from "pinia"
 
-export const useScrapingStore = defineStore("scraping", {
+export const useScrapingStore = defineStore("scraping-store", {
   state: () => ({
     allSettings: [] as ScrapingSettingPublic[],
     showDialog: false,

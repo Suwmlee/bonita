@@ -1,6 +1,6 @@
 
 from typing import Any
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from app import schemas
 from app.api.deps import CurrentUser, SessionDep
@@ -32,6 +32,26 @@ def create_task(
     task_info = task_in.__dict__
     task = TransferTask(**task_info)
     session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
+
+
+@router.put("/{id}", response_model=schemas.TransferTaskPublic)
+def update_task(
+    *,
+    session: SessionDep,
+    id: int,
+    task_in: schemas.TransferTaskPublic,
+) -> Any:
+    """
+    Update an setting.
+    """
+    task = session.get(TransferTask, id)
+    if not task:
+        raise HTTPException(status_code=404, detail="task not found")
+    update_dict = task_in.model_dump(exclude_unset=True)
+    task.update(session, update_dict)
     session.commit()
     session.refresh(task)
     return task

@@ -15,7 +15,7 @@ interface ToastState {
   debounceTimer?: NodeJS.Timeout | null
 }
 
-export const useToastStore = defineStore("toastStore", {
+export const useToastStore = defineStore("toast-store", {
   state: (): ToastState => {
     return {
       msg: "",
