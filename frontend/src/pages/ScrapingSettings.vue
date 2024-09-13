@@ -9,10 +9,11 @@ async function updateSettings() {
 
 function addNewSetting() {
   console.log("add new")
+  scrapingStore.showAddSetting()
 }
 
 const showSelectedSetting = (item: any) => {
-  console.log(item)
+  scrapingStore.showUpdateSetting(item)
 }
 
 onMounted(() => {
@@ -74,4 +75,6 @@ onMounted(() => {
       </VCol>
     </VRow>
   </div>
+
+  <ScrapingSettingDialog/>
 </template>

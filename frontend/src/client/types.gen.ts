@@ -28,7 +28,7 @@ export type ScrapingSettingCreate = {
     scraping_sites?: string | null;
     location_rule?: string | null;
     naming_rule?: string | null;
-    max_title_len?: string | null;
+    max_title_len?: number | null;
 };
 
 /**
@@ -41,7 +41,7 @@ export type ScrapingSettingPublic = {
     scraping_sites?: string | null;
     location_rule?: string | null;
     naming_rule?: string | null;
-    max_title_len?: string | null;
+    max_title_len?: number | null;
     id: number;
 };
 
@@ -241,6 +241,13 @@ export type CreateSettingData = {
 
 export type CreateSettingResponse = ScrapingSettingPublic;
 
+export type UpdateSettingData = {
+    id: number;
+    requestBody: ScrapingSettingPublic;
+};
+
+export type UpdateSettingResponse = ScrapingSettingPublic;
+
 export type $OpenApiTs = {
     '/api/v1/login/access-token': {
         post: {
@@ -435,6 +442,21 @@ export type $OpenApiTs = {
     '/api/v1/scraping/settings/': {
         post: {
             req: CreateSettingData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: ScrapingSettingPublic;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/scraping/settings/{id}': {
+        put: {
+            req: UpdateSettingData;
             res: {
                 /**
                  * Successful Response

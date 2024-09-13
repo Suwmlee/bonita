@@ -1,18 +1,16 @@
 <script lang="ts" setup>
-import { ApiError, ScrapingSettingService } from "@/client"
 import type {
   ScrapingSettingCreate,
   ScrapingSettingPublic,
 } from "@/client/types.gen"
-import { useToastStore } from "@/stores/toast.store"
-import { handleError } from "@/utils"
+import { useScrapingStore } from "@/stores/scraping.store"
 
 interface Props {
   updateSetting?: ScrapingSettingPublic
 }
 const props = defineProps<Props>()
 
-const showToast = useToastStore()
+const scrapingStore = useScrapingStore()
 
 const { updateSetting } = props as {
   updateSetting: ScrapingSettingPublic
@@ -32,18 +30,9 @@ if (updateSetting) {
 async function handleSubmit() {
   console.log(currentSetting)
   if (updateSetting) {
-    console.log("update")
+    scrapingStore.updateSetting(currentSetting.value)
   } else {
-    try {
-      const response = await ScrapingSettingService.createSetting({
-        requestBody: currentSetting.value,
-      })
-      currentSetting.value = response
-    } catch (error) {
-      if (error instanceof ApiError) {
-        handleError(error, showToast)
-      }
-    }
+    scrapingStore.addSetting(currentSetting.value)
   }
 }
 </script>

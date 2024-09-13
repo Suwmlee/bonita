@@ -166,7 +166,7 @@ export const $ScrapingSettingCreate = {
         max_title_len: {
             anyOf: [
                 {
-                    type: 'string'
+                    type: 'integer'
                 },
                 {
                     type: 'null'
@@ -238,7 +238,7 @@ export const $ScrapingSettingPublic = {
         max_title_len: {
             anyOf: [
                 {
-                    type: 'string'
+                    type: 'integer'
                 },
                 {
                     type: 'null'

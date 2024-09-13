@@ -1,6 +1,6 @@
 
 from typing import Any
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from app import schemas
 from app.api.deps import CurrentUser, SessionDep
@@ -32,6 +32,26 @@ def create_setting(
     setting_info = setting_in.__dict__
     setting = ScrapingSetting(**setting_info)
     session.add(setting)
+    session.commit()
+    session.refresh(setting)
+    return setting
+
+
+@router.put("/{id}", response_model=schemas.ScrapingSettingPublic)
+def update_setting(
+    *,
+    session: SessionDep,
+    id: int,
+    setting_in: schemas.ScrapingSettingPublic,
+) -> Any:
+    """
+    Update an setting.
+    """
+    setting = session.get(ScrapingSetting, id)
+    if not setting:
+        raise HTTPException(status_code=404, detail="Setting not found")
+    update_dict = setting_in.model_dump(exclude_unset=True)
+    setting.update(session, update_dict)
     session.commit()
     session.refresh(setting)
     return setting

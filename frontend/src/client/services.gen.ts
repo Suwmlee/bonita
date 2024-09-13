@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, GetAllTasksData, GetAllTasksResponse, CreateTaskData, CreateTaskResponse, GetAllSettingsData, GetAllSettingsResponse, CreateSettingData, CreateSettingResponse } from './types.gen';
+import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, GetAllTasksData, GetAllTasksResponse, CreateTaskData, CreateTaskResponse, GetAllSettingsData, GetAllSettingsResponse, CreateSettingData, CreateSettingResponse, UpdateSettingData, UpdateSettingResponse } from './types.gen';
 
 export class LoginService {
     /**
@@ -308,6 +308,30 @@ export class ScrapingSettingService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/scraping/settings/',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Setting
+     * Update an setting.
+     * @param data The data for the request.
+     * @param data.id
+     * @param data.requestBody
+     * @returns ScrapingSettingPublic Successful Response
+     * @throws ApiError
+     */
+    public static updateSetting(data: UpdateSettingData): CancelablePromise<UpdateSettingResponse> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/v1/scraping/settings/{id}',
+            path: {
+                id: data.id
+            },
             body: data.requestBody,
             mediaType: 'application/json',
             errors: {
