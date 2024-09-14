@@ -16,6 +16,7 @@ sqlalchemy = "^2.0.32"
 bcrypt = "^4.2.0"
 python-multipart = "^0.0.9"
 alembic = "^1.13.2"
+celery = "^5.4.0"
 
 
 [build-system]

@@ -45,7 +45,7 @@ def update_task(
     task_in: schemas.TransferTaskPublic,
 ) -> Any:
     """
-    Update an setting.
+    更新任务
     """
     task = session.get(TransferTask, id)
     if not task:
