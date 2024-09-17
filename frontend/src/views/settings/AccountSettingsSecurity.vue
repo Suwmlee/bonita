@@ -35,8 +35,7 @@ const changePasswd = async () => {
               <VCol cols="12" md="6">
                 <!-- 👉 current password -->
                 <VTextField v-model="currentPassword" :type="isCurrentPasswordVisible ? 'text' : 'password'"
-                  :append-inner-icon="isCurrentPasswordVisible ? 'bx-hide' : 'bx-show'" label="Current Password"
-                  placeholder="············"
+                  :append-inner-icon="isCurrentPasswordVisible ? 'bx-hide' : 'bx-show'" placeholder="Current Password"
                   @click:append-inner="isCurrentPasswordVisible = !isCurrentPasswordVisible" />
               </VCol>
             </VRow>
@@ -46,16 +45,15 @@ const changePasswd = async () => {
               <VCol cols="12" md="6">
                 <!-- 👉 new password -->
                 <VTextField v-model="newPassword" :type="isNewPasswordVisible ? 'text' : 'password'"
-                  :append-inner-icon="isNewPasswordVisible ? 'bx-hide' : 'bx-show'" label="New Password"
-                  autocomplete="on" placeholder="············"
-                  @click:append-inner="isNewPasswordVisible = !isNewPasswordVisible" />
+                  :append-inner-icon="isNewPasswordVisible ? 'bx-hide' : 'bx-show'" autocomplete="on"
+                  placeholder="New Password" @click:append-inner="isNewPasswordVisible = !isNewPasswordVisible" />
               </VCol>
 
               <VCol cols="12" md="6">
                 <!-- 👉 confirm password -->
                 <VTextField v-model="confirmPassword" :type="isConfirmPasswordVisible ? 'text' : 'password'"
-                  :append-inner-icon="isConfirmPasswordVisible ? 'bx-hide' : 'bx-show'" label="Confirm New Password"
-                  placeholder="············"
+                  :append-inner-icon="isConfirmPasswordVisible ? 'bx-hide' : 'bx-show'"
+                  placeholder="Confirm New Password"
                   @click:append-inner="isConfirmPasswordVisible = !isConfirmPasswordVisible" />
               </VCol>
             </VRow>

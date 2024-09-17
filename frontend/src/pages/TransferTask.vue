@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useTaskStore } from "@/stores/task.store"
+import { VCardActions } from "vuetify/components";
 
 const taskStore = useTaskStore()
 
@@ -10,6 +11,10 @@ async function updateTasks() {
 function addNewTask() {
   console.log("add new")
   taskStore.showAddTask()
+}
+
+function runTask(id: Number) {
+  console.log(id)
 }
 
 const showSelectedTask = (item: any) => {
@@ -29,8 +34,7 @@ onMounted(() => {
     </p>
 
     <VRow>
-      <VCol v-for="data in taskStore.allTasks" :key="data.id" cols="12" md="6" lg="4"
-        @click="showSelectedTask(data)">
+      <VCol v-for="data in taskStore.allTasks" :key="data.id" cols="12" md="6" lg="4" @click="showSelectedTask(data)">
         <VCard>
           <VCardItem>
             <VCardTitle>
@@ -49,6 +53,11 @@ onMounted(() => {
               <span class="ms-2">{{ data.source_folder }}</span>
             </div>
           </VCardText>
+          <VCardActions class="justify-space-between">
+            <VBtn type="submit" class="me-4" @click.stop="runTask(data.id)">
+              立即执行
+            </VBtn>
+          </VCardActions>
         </VCard>
       </VCol>
 
@@ -76,5 +85,5 @@ onMounted(() => {
     </VRow>
   </div>
 
-  <TransferTaskDetailDialog/>
+  <TransferTaskDetailDialog />
 </template>
