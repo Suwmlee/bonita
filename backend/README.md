@@ -11,6 +11,9 @@ poetry shell
 
 # 启动
 uvicorn app.main:app app.main:app --host 0.0.0.0 --port 8000  --reload
+
+celery --app app.worker.celery worker
+
 ```
 
 #### alembic迁移
@@ -23,4 +26,44 @@ alembic revision --autogenerate -m "update"
 alembic upgrade head
 
 alembic downgrade -1
+```
+
+#### VSCode
+
+```sh
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "FastAPI",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app.main:app", "--host=0.0.0.0", "--reload"],
+      "jinja": true
+    },
+    {
+      "name": "Celery",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "celery",
+      "console": "integratedTerminal",
+      "args": [
+        "--app",
+        "app.worker.celery",
+        "worker",
+        "--loglevel",
+        "DEBUG",
+        "-P",
+        "solo"
+      ]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Celery and FastAPI",
+      "configurations": ["Celery", "FastAPI"]
+    }
+  ]
+}
 ```

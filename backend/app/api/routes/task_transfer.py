@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from app import schemas
 from app.api.deps import CurrentUser, SessionDep
 from app.db.models.task import TransferTask
-
+from app.tasks.tasks import test_app_task
 
 router = APIRouter()
 
@@ -39,7 +39,6 @@ def create_task(
 
 @router.put("/{id}", response_model=schemas.TransferTaskPublic)
 def update_task(
-    *,
     session: SessionDep,
     id: int,
     task_in: schemas.TransferTaskPublic,
@@ -55,3 +54,13 @@ def update_task(
     session.commit()
     session.refresh(task)
     return task
+
+
+@router.post("/run/{id}")
+def run_transfer_task(id: int) -> Any:
+    """
+    立即执行任务
+    """
+    print(f"post task {id}")
+    task = test_app_task.delay(5)
+    return task.id
