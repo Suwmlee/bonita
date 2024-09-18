@@ -43,3 +43,6 @@ class Base:
             setattr(self, key, value)
         if inspect(self).detached:
             session.add(self)
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name, None) for c in self.__table__.columns}

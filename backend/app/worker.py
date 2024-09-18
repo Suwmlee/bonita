@@ -21,7 +21,4 @@ def create_celery():
     celery.conf.update(worker_prefetch_multiplier=1)
     celery.conf.update(broker_connection_retry_on_startup=True)  # 启动时重试代理连接
 
-
     return celery
-
-

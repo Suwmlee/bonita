@@ -55,7 +55,6 @@ app = create_app()
 app.celery_app = create_celery()
 celery = app.celery_app
 
-
 log_config()
 init_db()
 upgrade_db()
