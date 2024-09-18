@@ -5,7 +5,6 @@ from fastapi import APIRouter, HTTPException
 from app import schemas
 from app.api.deps import CurrentUser, SessionDep
 from app.db.models.task import TransferTask
-from app.tasks.tasks import test_app_task
 
 router = APIRouter()
 
@@ -13,7 +12,7 @@ router = APIRouter()
 @router.get("/all", response_model=schemas.TransferTasksPublic)
 def get_all_tasks(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
     """
-    获取所有任务.
+    获取所有任务配置
     """
     tasks = session.query(TransferTask).offset(skip).limit(limit).all()
     count = session.query(TransferTask).count()
@@ -24,10 +23,10 @@ def get_all_tasks(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
 
 @router.post("/", response_model=schemas.TransferTaskPublic)
 def create_task(
-    *, session: SessionDep, current_user: CurrentUser, task_in: schemas.TransferTaskCreate
+    session: SessionDep, current_user: CurrentUser, task_in: schemas.TransferTaskCreate
 ) -> Any:
     """
-    创建新任务
+    创建新任务配置
     """
     task_info = task_in.__dict__
     task = TransferTask(**task_info)
@@ -44,7 +43,7 @@ def update_task(
     task_in: schemas.TransferTaskPublic,
 ) -> Any:
     """
-    更新任务
+    更新任务配置
     """
     task = session.get(TransferTask, id)
     if not task:
@@ -54,13 +53,3 @@ def update_task(
     session.commit()
     session.refresh(task)
     return task
-
-
-@router.post("/run/{id}")
-def run_transfer_task(id: int) -> Any:
-    """
-    立即执行任务
-    """
-    print(f"post task {id}")
-    task = test_app_task.delay(5)
-    return task.id

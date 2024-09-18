@@ -2,6 +2,15 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 
+class TaskBase(BaseModel):
+    id: str
+
+
+class TaskStatus(TaskBase):
+    status: Optional[str] = None
+    detail: Optional[str] = None
+
+
 class TransferTaskBase(BaseModel):
     """
     Shared properties
