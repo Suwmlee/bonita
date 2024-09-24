@@ -20,10 +20,11 @@ class TransferTaskBase(BaseModel):
     task_type: int = 1
     enabled: bool = True
     auto_watch: bool = False
-    transfer_type: int = 1
+    content_type: int = 1
     source_folder: str
     output_folder: Optional[str] = None
     failed_folder: Optional[str] = None
+    transfer_type: int = 1
     escape_folder: Optional[str] = None
     escape_literals: Optional[str] = None
     escape_size: Optional[int] = 1

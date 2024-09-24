@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, GetAllTasksData, GetAllTasksResponse, CreateTaskData, CreateTaskResponse, UpdateTaskData, UpdateTaskResponse, GetAllSettingsData, GetAllSettingsResponse, CreateSettingData, CreateSettingResponse, UpdateSettingData, UpdateSettingResponse } from './types.gen';
+import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetTaskStatusData, GetTaskStatusResponse, GetAllTasksData, GetAllTasksResponse, CreateTaskData, CreateTaskResponse, UpdateTaskData, UpdateTaskResponse, GetAllSettingsData, GetAllSettingsResponse, CreateSettingData, CreateSettingResponse, UpdateSettingData, UpdateSettingResponse } from './types.gen';
 
 export class LoginService {
     /**
@@ -226,10 +226,55 @@ export class UserService {
     
 }
 
+export class TaskService {
+    /**
+     * Run Transfer Task
+     * 立即执行任务
+     * @param data The data for the request.
+     * @param data.id
+     * @returns TaskBase Successful Response
+     * @throws ApiError
+     */
+    public static runTransferTask(data: RunTransferTaskData): CancelablePromise<RunTransferTaskResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/task/run/{id}',
+            path: {
+                id: data.id
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Task Status
+     * 查看任务状态
+     * @param data The data for the request.
+     * @param data.taskId
+     * @returns TaskStatus Successful Response
+     * @throws ApiError
+     */
+    public static getTaskStatus(data: GetTaskStatusData): CancelablePromise<GetTaskStatusResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/task/{task_id}',
+            path: {
+                task_id: data.taskId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+}
+
 export class TransferTaskService {
     /**
      * Get All Tasks
-     * 获取所有任务.
+     * 获取所有任务配置
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
@@ -252,7 +297,7 @@ export class TransferTaskService {
     
     /**
      * Create Task
-     * 创建新任务
+     * 创建新任务配置
      * @param data The data for the request.
      * @param data.requestBody
      * @returns TransferTaskPublic Successful Response
@@ -272,7 +317,7 @@ export class TransferTaskService {
     
     /**
      * Update Task
-     * Update an setting.
+     * 更新任务配置
      * @param data The data for the request.
      * @param data.id
      * @param data.requestBody

@@ -276,6 +276,52 @@ export const $ScrapingSettingsPublic = {
     title: 'ScrapingSettingsPublic'
 } as const;
 
+export const $TaskBase = {
+    properties: {
+        id: {
+            type: 'string',
+            title: 'Id'
+        }
+    },
+    type: 'object',
+    required: ['id'],
+    title: 'TaskBase'
+} as const;
+
+export const $TaskStatus = {
+    properties: {
+        id: {
+            type: 'string',
+            title: 'Id'
+        },
+        status: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Status'
+        },
+        detail: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Detail'
+        }
+    },
+    type: 'object',
+    required: ['id'],
+    title: 'TaskStatus'
+} as const;
+
 export const $Token = {
     properties: {
         access_token: {
@@ -318,9 +364,10 @@ export const $TransferTaskCreate = {
             title: 'Auto Watch',
             default: false
         },
-        transfer_type: {
+        content_type: {
             type: 'integer',
-            title: 'Transfer Type'
+            title: 'Content Type',
+            default: 1
         },
         source_folder: {
             type: 'string',
@@ -347,6 +394,10 @@ export const $TransferTaskCreate = {
                 }
             ],
             title: 'Failed Folder'
+        },
+        transfer_type: {
+            type: 'integer',
+            title: 'Transfer Type'
         },
         escape_folder: {
             anyOf: [
@@ -412,7 +463,7 @@ export const $TransferTaskCreate = {
         }
     },
     type: 'object',
-    required: ['name', 'description', 'transfer_type', 'source_folder'],
+    required: ['name', 'description', 'source_folder', 'transfer_type'],
     title: 'TransferTaskCreate'
 } as const;
 
@@ -441,9 +492,9 @@ export const $TransferTaskPublic = {
             title: 'Auto Watch',
             default: false
         },
-        transfer_type: {
+        content_type: {
             type: 'integer',
-            title: 'Transfer Type',
+            title: 'Content Type',
             default: 1
         },
         source_folder: {
@@ -471,6 +522,11 @@ export const $TransferTaskPublic = {
                 }
             ],
             title: 'Failed Folder'
+        },
+        transfer_type: {
+            type: 'integer',
+            title: 'Transfer Type',
+            default: 1
         },
         escape_folder: {
             anyOf: [

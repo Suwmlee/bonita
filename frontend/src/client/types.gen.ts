@@ -50,6 +50,16 @@ export type ScrapingSettingsPublic = {
     count: number;
 };
 
+export type TaskBase = {
+    id: string;
+};
+
+export type TaskStatus = {
+    id: string;
+    status?: string | null;
+    detail?: string | null;
+};
+
 export type Token = {
     access_token: string;
     token_type?: string;
@@ -61,10 +71,11 @@ export type TransferTaskCreate = {
     task_type?: number;
     enabled?: boolean;
     auto_watch?: boolean;
-    transfer_type: number;
+    content_type?: number;
     source_folder: string;
     output_folder?: string | null;
     failed_folder?: string | null;
+    transfer_type: number;
     escape_folder?: string | null;
     escape_literals?: string | null;
     escape_size?: number | null;
@@ -82,10 +93,11 @@ export type TransferTaskPublic = {
     task_type?: number;
     enabled?: boolean;
     auto_watch?: boolean;
-    transfer_type?: number;
+    content_type?: number;
     source_folder: string;
     output_folder?: string | null;
     failed_folder?: string | null;
+    transfer_type?: number;
     escape_folder?: string | null;
     escape_literals?: string | null;
     escape_size?: number | null;
@@ -210,6 +222,18 @@ export type DeleteUserData = {
 };
 
 export type DeleteUserResponse = Response;
+
+export type RunTransferTaskData = {
+    id: number;
+};
+
+export type RunTransferTaskResponse = TaskBase;
+
+export type GetTaskStatusData = {
+    taskId: string;
+};
+
+export type GetTaskStatusResponse = TaskStatus;
 
 export type GetAllTasksData = {
     limit?: number;
@@ -390,6 +414,36 @@ export type $OpenApiTs = {
                  * Successful Response
                  */
                 200: Response;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/task/run/{id}': {
+        post: {
+            req: RunTransferTaskData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: TaskBase;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/task/{task_id}': {
+        get: {
+            req: GetTaskStatusData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: TaskStatus;
                 /**
                  * Validation Error
                  */
