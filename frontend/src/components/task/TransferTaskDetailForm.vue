@@ -1,8 +1,5 @@
 <script lang="ts" setup>
-import type {
-  TransferTaskCreate,
-  TransferTaskPublic,
-} from "@/client/types.gen"
+import type { TransferTaskCreate, TransferTaskPublic } from "@/client/types.gen"
 import { useTaskStore } from "@/stores/task.store"
 
 interface Props {
@@ -48,7 +45,7 @@ async function handleSubmit() {
             <label for="name">Name</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField v-model="currentTask.name" />
+            <VTextField id="name" v-model="currentTask.name" />
           </VCol>
         </VRow>
       </VCol>
@@ -56,10 +53,10 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="mobile">description</label>
+            <label for="description">description</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField v-model="currentTask.description" />
+            <VTextField id="description" v-model="currentTask.description" />
           </VCol>
         </VRow>
       </VCol>
@@ -67,10 +64,10 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="mobile">content type</label>
+            <label for="content_type">content type</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField type="number" v-model="currentTask.content_type" />
+            <VTextField id="content_type" type="number" v-model="currentTask.content_type" />
           </VCol>
         </VRow>
       </VCol>
@@ -78,10 +75,10 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="mobile">source folder</label>
+            <label for="source_folder">source folder</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField v-model="currentTask.source_folder" />
+            <VTextField id="source_folder" v-model="currentTask.source_folder" />
           </VCol>
         </VRow>
       </VCol>
@@ -89,10 +86,10 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="mobile">output folder</label>
+            <label for="output_folder">output folder</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField v-model="currentTask.output_folder" />
+            <VTextField id="output_folder" v-model="currentTask.output_folder" />
           </VCol>
         </VRow>
       </VCol>
@@ -100,10 +97,10 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="mobile">enbale scraping</label>
+            <label for="sc_enabled">enbale scraping</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VCheckbox v-model="currentTask.sc_enabled" />
+            <VCheckbox id="sc_enabled" v-model="currentTask.sc_enabled" />
           </VCol>
         </VRow>
       </VCol>
@@ -111,10 +108,10 @@ async function handleSubmit() {
       <VCol cols="12" v-if="currentTask.sc_enabled">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="mobile">scraping ID</label>
+            <label for="sc_id">scraping ID</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField type="number" v-model="currentTask.sc_id" />
+            <VTextField id="sc_id" type="number" v-model="currentTask.sc_id" />
           </VCol>
         </VRow>
       </VCol>

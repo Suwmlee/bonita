@@ -1,8 +1,5 @@
 import { TaskService, TransferTaskService } from "@/client"
-import type {
-  TransferTaskCreate,
-  TransferTaskPublic,
-} from "@/client/types.gen"
+import type { TransferTaskCreate, TransferTaskPublic } from "@/client/types.gen"
 import { defineStore } from "pinia"
 
 export const useTaskStore = defineStore("task-store", {

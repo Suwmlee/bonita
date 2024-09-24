@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useTaskStore } from "@/stores/task.store"
-import { VCardActions } from "vuetify/components";
+import { VCardActions } from "vuetify/components"
 
 const taskStore = useTaskStore()
 
