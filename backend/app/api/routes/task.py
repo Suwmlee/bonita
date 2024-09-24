@@ -31,6 +31,7 @@ def get_task_status(task_id: str) -> Any:
     """
     task_result = main.celery.AsyncResult(task_id)
     try:
+        # detail = task_result.traceback if task_result.failed() else task_result.result
         detail = json.dumps(task_result.result)
     except:
         detail = ""
