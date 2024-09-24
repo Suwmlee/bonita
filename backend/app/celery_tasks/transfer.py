@@ -94,46 +94,18 @@ def transfer(src_folder, dest_folder,
             if not isinstance(currentfile, FileInfo):
                 continue
             # task = taskService.getTask('transfer')
-            task = dict()
-            if task.status == 0:
-                return False
+            # task = dict()
+            # if task.status == 0:
+            #     return False
             count += 1
             logger.debug('[!] - ' + str(count) + '/' + total + ' -')
             logger.debug("[+] start check [{}] ".format(currentfile.realpath))
 
             # 修正后给链接使用的源地址
-            link_path = os.path.join(prefix, currentfile.midfolder, currentfile.realname)
+            link_path = os.path.join(src_folder, currentfile.midfolder, currentfile.realname)
 
             # currentrecord = transrecordService.add(currentfile.realpath)
-            currentrecord = dict()
-            currentrecord.srcfolder = src_folder
-            # 忽略标记，直接下一个
-            if currentrecord.ignored:
-                continue
-            # 锁定
-            if currentrecord.locked:
-                # TODO
-                currentfile.locked = True
-            # 记录优先
-            # 如果是剧集，season优先
-            if currentrecord.topfolder and currentrecord.topfolder != '.':
-                currentfile.topfolder = currentrecord.topfolder
-            if currentrecord.secondfolder:
-                currentfile.secondfolder = currentrecord.secondfolder
-
-            if currentrecord.isepisode:
-                currentfile.isepisode = True
-                if isinstance(currentrecord.season, int) and currentrecord.season > -1:
-                    currentfile.season = currentrecord.season
-                    currentfile.forcedseason = True
-                if isinstance(currentrecord.episode, int) and currentrecord.episode > -1:
-                    currentfile.epnum = currentrecord.episode
-                elif isinstance(currentrecord.episode, str) and currentrecord != '':
-                    currentfile.epnum = currentrecord.episode
-            elif not fixseries_tag:
-                currentfile.isepisode = False
-            if currentrecord.forcedname:
-                currentfile.updateForcedname(currentrecord.forcedname)
+            # 根据历史记录进行预处理，标记、锁定、剧集
 
             # 优化命名
             naming(currentfile, movie_list, simplify_tag, fixseries_tag)

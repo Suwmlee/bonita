@@ -67,10 +67,32 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="mobile">source_folder</label>
+            <label for="mobile">content type</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField type="number" v-model="currentTask.content_type" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="mobile">source folder</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentTask.source_folder" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="mobile">output folder</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField v-model="currentTask.output_folder" />
           </VCol>
         </VRow>
       </VCol>

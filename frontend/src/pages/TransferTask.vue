@@ -13,8 +13,8 @@ function addNewTask() {
   taskStore.showAddTask()
 }
 
-function runTask(id: Number) {
-  console.log(id)
+function runTask(id: number) {
+  taskStore.runTaskById(id)
 }
 
 const showSelectedTask = (item: any) => {

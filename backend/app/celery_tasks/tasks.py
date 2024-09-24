@@ -10,12 +10,15 @@ def celery_transfer(self, task_json):
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "transfer task: start"})
     task_info = schemas.TransferTaskPublic(**task_json)
 
+    fixseries = False
+    if task_info.content_type == 2:
+        fixseries = True
     # 此处进行文件夹级别区分
     # 然后将实际转移，传递给 transfer
 
     # 开始转移
     transfer(task_info.source_folder, task_info.output_folder,
-             task_info.transfer_type, "", ""
+             task_info.transfer_type, "", "", fixseries_tag=fixseries
              )
     print("app_task end")
     data = True

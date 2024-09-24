@@ -1,4 +1,4 @@
-import { TransferTaskService } from "@/client"
+import { TaskService, TransferTaskService } from "@/client"
 import type {
   TransferTaskCreate,
   TransferTaskPublic,
@@ -55,6 +55,11 @@ export const useTaskStore = defineStore("task-store", {
       } else {
         console.error(`Task with id ${id} not found.`)
       }
+    },
+    runTaskById(id: number) {
+      const task = TaskService.runTransferTask({
+        id: id,
+      })
     },
   },
 })
