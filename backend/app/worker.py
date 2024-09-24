@@ -2,6 +2,8 @@
 import os
 
 from celery import Celery
+# load tasks
+from app.celery_tasks import tasks
 
 
 def create_celery():
@@ -22,3 +24,6 @@ def create_celery():
     celery.conf.update(broker_connection_retry_on_startup=True)  # 启动时重试代理连接
 
     return celery
+
+
+celery = create_celery()

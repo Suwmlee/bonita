@@ -13,10 +13,10 @@ poetry shell
 uvicorn app.main:app app.main:app --host 0.0.0.0 --port 8000  --reload
 
 # 启动 worker
-celery --app app.main.celery worker
+celery --app app.worker.celery worker
 
 # 注册的任务列表
-celery --app app.main.celery inspect registered
+celery --app app.worker.celery inspect registered
 ```
 
 #### alembic迁移

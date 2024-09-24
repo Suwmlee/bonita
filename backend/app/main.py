@@ -8,7 +8,9 @@ from starlette.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.db import init_db, upgrade_db
 from app.api.main import api_router
-from app.worker import create_celery
+
+# celery client
+from app.worker import celery
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
@@ -52,8 +54,8 @@ def log_config():
 
 
 app = create_app()
-app.celery_app = create_celery()
-celery = app.celery_app
+app.celery_app = celery
+
 
 log_config()
 init_db()
