@@ -33,7 +33,10 @@ function formatScrapingItem(item: {
   name: string
   description: string
 }) {
-  return `${item.id}: ${item.name}- ${item.description}`
+  if (item) {
+    return `${item.id}: ${item.name}- ${item.description}`
+  }
+  return ""
 }
 
 async function handleSubmit() {

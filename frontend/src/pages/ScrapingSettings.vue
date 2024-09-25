@@ -3,7 +3,7 @@ import { useScrapingStore } from "@/stores/scraping.store"
 
 const scrapingStore = useScrapingStore()
 
-async function updateSettings() {
+async function initial() {
   scrapingStore.getAllSetting()
 }
 
@@ -21,7 +21,7 @@ const showSelectedSetting = (item: any) => {
 }
 
 onMounted(() => {
-  updateSettings()
+  initial()
 })
 </script>
 

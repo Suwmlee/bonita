@@ -1,11 +1,14 @@
 <script setup lang="ts">
+import { useScrapingStore } from "@/stores/scraping.store"
 import { useTaskStore } from "@/stores/task.store"
 import { VCardActions } from "vuetify/components"
 
 const taskStore = useTaskStore()
+const scrapingStore = useScrapingStore()
 
-async function updateTasks() {
+async function initial() {
   taskStore.getAllTasks()
+  scrapingStore.getAllSetting()
 }
 
 function addNewTask() {
@@ -26,7 +29,7 @@ function deleteTask(id: number) {
 }
 
 onMounted(() => {
-  updateTasks()
+  initial()
 })
 </script>
 
