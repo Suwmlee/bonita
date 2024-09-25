@@ -28,6 +28,14 @@ if (updateTask) {
   currentTask.value = createTask
 }
 
+function formatScrapingItem(item: {
+  id: number
+  name: string
+  description: string
+}) {
+  return `${item.id}: ${item.name}- ${item.description}`
+}
+
 async function handleSubmit() {
   console.log(currentTask)
   if (updateTask) {
@@ -113,19 +121,11 @@ async function handleSubmit() {
             <label for="sc_id">scraping ID</label>
           </VCol>
           <VCol cols="12" md="9">
-            <!-- <VTextField id="sc_id" type="number" v-model="currentTask.sc_id" /> -->
-            <div v-if="scrapingStore.allSettings" class="d-flex flex-wrap bg-var-theme-background">
-              <VCol v-for="data in scrapingStore.allSettings" :key="data.id" cols="6" md="5" lg="5">
-                <VCard>
-                  <VCardItem>
-                    <VCardTitle>
-                      {{ data.name }}
-                    </VCardTitle>
-                  </VCardItem>
-                </VCard>
-              </VCol>
-            </div>
-            <span class="text-capitalize">如此处没有您要选择的配置, 请在config处新增</span>
+            <VSelect placeholder="Select scraping setting" v-model="currentTask.sc_id"
+              :items="scrapingStore.allSettings" :item-title="formatScrapingItem" item-value="id"
+              :menu-props="{ maxHeight: 200 }">
+            </VSelect>
+            <span class="text-capitalize">若此处没有您想要的配置, 请在 "刮削配置" 内新增</span>
           </VCol>
         </VRow>
       </VCol>
