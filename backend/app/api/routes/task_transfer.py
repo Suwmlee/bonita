@@ -53,3 +53,17 @@ def update_task(
     session.commit()
     session.refresh(task)
     return task
+
+
+@router.delete("/{id}", response_model=schemas.Response)
+def delete_task(
+    session: SessionDep,
+    id: int
+) -> Any:
+    """
+    Delete an task.
+    """
+    setting = session.get(TransferTask, id)
+    session.delete(setting)
+    session.commit()
+    return schemas.Response(success=True, message="TransferTask deleted successfully")

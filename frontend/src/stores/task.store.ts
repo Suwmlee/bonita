@@ -53,6 +53,14 @@ export const useTaskStore = defineStore("task-store", {
         console.error(`Task with id ${id} not found.`)
       }
     },
+    async deleteTaskById(idToRemove: number) {
+      const response = await TransferTaskService.deleteTask({
+        id: idToRemove,
+      })
+      if (response.success) {
+        this.allTasks = this.allTasks.filter((task) => task.id !== idToRemove)
+      }
+    },
     runTaskById(id: number) {
       const task = TaskService.runTransferTask({
         id: id,

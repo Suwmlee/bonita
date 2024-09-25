@@ -67,4 +67,4 @@ def delete_setting(
     setting = session.get(ScrapingSetting, id)
     session.delete(setting)
     session.commit()
-    return schemas.Response(success=True, message="Item deleted successfully")
+    return schemas.Response(success=True, message="ScrapingSetting deleted successfully")

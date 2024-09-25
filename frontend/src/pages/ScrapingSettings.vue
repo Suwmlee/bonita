@@ -55,11 +55,7 @@ onMounted(() => {
           </VCardText>
           <VCardActions class="justify-space-between">
             <VBtn type="submit" class="me-4" @click.stop="deleteConfig(data.id)">
-              <VIcon
-                style="color: red;"
-                icon="bx-trash"
-                size="30"
-              />
+              <VIcon style="color: red;" icon="bx-trash" size="22" />
             </VBtn>
           </VCardActions>
         </VCard>
@@ -89,5 +85,5 @@ onMounted(() => {
     </VRow>
   </div>
 
-  <ScrapingSettingDialog/>
+  <ScrapingSettingDialog />
 </template>

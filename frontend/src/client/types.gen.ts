@@ -255,6 +255,12 @@ export type UpdateTaskData = {
 
 export type UpdateTaskResponse = TransferTaskPublic;
 
+export type DeleteTaskData = {
+    id: number;
+};
+
+export type DeleteTaskResponse = Response;
+
 export type GetAllSettingsData = {
     limit?: number;
     skip?: number;
@@ -495,6 +501,19 @@ export type $OpenApiTs = {
                  * Successful Response
                  */
                 200: TransferTaskPublic;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+        delete: {
+            req: DeleteTaskData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
                 /**
                  * Validation Error
                  */
