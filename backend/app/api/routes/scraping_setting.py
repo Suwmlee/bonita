@@ -24,7 +24,7 @@ def get_all_settings(session: SessionDep, skip: int = 0, limit: int = 100) -> An
 
 @router.post("/", response_model=schemas.ScrapingSettingPublic)
 def create_setting(
-    *, session: SessionDep, current_user: CurrentUser, setting_in: schemas.ScrapingSettingCreate
+    session: SessionDep, current_user: CurrentUser, setting_in: schemas.ScrapingSettingCreate
 ) -> Any:
     """
     创建新配置
@@ -39,7 +39,6 @@ def create_setting(
 
 @router.put("/{id}", response_model=schemas.ScrapingSettingPublic)
 def update_setting(
-    *,
     session: SessionDep,
     id: int,
     setting_in: schemas.ScrapingSettingPublic,
@@ -55,3 +54,17 @@ def update_setting(
     session.commit()
     session.refresh(setting)
     return setting
+
+
+@router.delete("/{id}", response_model=schemas.Response)
+def delete_setting(
+    session: SessionDep,
+    id: int
+) -> Any:
+    """
+    Delete an setting.
+    """
+    setting = session.get(ScrapingSetting, id)
+    session.delete(setting)
+    session.commit()
+    return schemas.Response(success=True, message="Item deleted successfully")

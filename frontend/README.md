@@ -24,6 +24,10 @@ npm run dev
 VITE_API_URL="http://localhost:8000"
 ```
 
+### icon
+
+https://boxicons.com/
+
 ### 更新 client API
 ```sh
 node modify-openapi-operationids.js

@@ -56,5 +56,13 @@ export const useScrapingStore = defineStore("scraping-store", {
         console.error(`Setting with id ${id} not found.`)
       }
     },
+    async deleteSetting(idToRemove: number){
+      const response = await ScrapingSettingService.deleteSetting({
+        id: idToRemove,
+      })
+      if (response.success) {
+        this.allSettings = this.allSettings.filter(setting => setting.id !== idToRemove);
+      }
+    }
   },
 })

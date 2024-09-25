@@ -275,6 +275,12 @@ export type UpdateSettingData = {
 
 export type UpdateSettingResponse = ScrapingSettingPublic;
 
+export type DeleteSettingData = {
+    id: number;
+};
+
+export type DeleteSettingResponse = Response;
+
 export type $OpenApiTs = {
     '/api/v1/login/access-token': {
         post: {
@@ -534,6 +540,19 @@ export type $OpenApiTs = {
                  * Successful Response
                  */
                 200: ScrapingSettingPublic;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+        delete: {
+            req: DeleteSettingData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
                 /**
                  * Validation Error
                  */

@@ -12,6 +12,10 @@ function addNewSetting() {
   scrapingStore.showAddSetting()
 }
 
+function deleteConfig(id: number) {
+  scrapingStore.deleteSetting(id)
+}
+
 const showSelectedSetting = (item: any) => {
   scrapingStore.showUpdateSetting(item)
 }
@@ -49,6 +53,15 @@ onMounted(() => {
               <span class="ms-2">{{ data.location_rule }}</span>
             </div>
           </VCardText>
+          <VCardActions class="justify-space-between">
+            <VBtn type="submit" class="me-4" @click.stop="deleteConfig(data.id)">
+              <VIcon
+                style="color: red;"
+                icon="bx-trash"
+                size="30"
+              />
+            </VBtn>
+          </VCardActions>
         </VCard>
       </VCol>
 
