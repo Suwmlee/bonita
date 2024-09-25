@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { TransferTaskCreate, TransferTaskPublic } from "@/client/types.gen"
+import { useScrapingStore } from "@/stores/scraping.store"
 import { useTaskStore } from "@/stores/task.store"
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const taskStore = useTaskStore()
+const scrapingStore = useScrapingStore()
 
 const { updateTask } = props as {
   updateTask: TransferTaskPublic
@@ -111,7 +113,19 @@ async function handleSubmit() {
             <label for="sc_id">scraping ID</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField id="sc_id" type="number" v-model="currentTask.sc_id" />
+            <!-- <VTextField id="sc_id" type="number" v-model="currentTask.sc_id" /> -->
+            <div v-if="scrapingStore.allSettings" class="d-flex flex-wrap bg-var-theme-background">
+              <VCol v-for="data in scrapingStore.allSettings" :key="data.id" cols="6" md="5" lg="5">
+                <VCard>
+                  <VCardItem>
+                    <VCardTitle>
+                      {{ data.name }}
+                    </VCardTitle>
+                  </VCardItem>
+                </VCard>
+              </VCol>
+            </div>
+            <span class="text-capitalize">如此处没有您要选择的配置, 请在config处新增</span>
           </VCol>
         </VRow>
       </VCol>
