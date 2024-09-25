@@ -29,12 +29,11 @@ if (updateTask) {
 }
 
 function formatScrapingItem(item: {
-  id: number
   name: string
   description: string
 }) {
   if (item) {
-    return `${item.id}: ${item.name}- ${item.description}`
+    return `${item.name}- ${item.description}`
   }
   return ""
 }

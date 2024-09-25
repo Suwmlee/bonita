@@ -65,7 +65,7 @@ onMounted(() => {
               立即执行
             </VBtn>
             <VBtn type="submit" class="me-4" @click.stop="deleteTask(data.id)">
-              <VIcon style="color: red;" icon="bx-trash" size="22" />
+              <VIcon style="color: firebrick;" icon="bx-trash" size="22" />
             </VBtn>
           </VCardActions>
         </VCard>
