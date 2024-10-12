@@ -7,9 +7,8 @@ import time
 import logging
 
 from app.celery_tasks.fileinfo import FileInfo
-
-from .utils.regex import extractEpNum, matchSeason, matchEpPart, matchSeries, simpleMatchEp
-from .utils.filehelper import linkFile, video_type, ext_type, replaceRegex, cleanFolderWithoutSuffix, \
+from app.utils.regex import extractEpNum, matchSeason, matchEpPart, matchSeries, simpleMatchEp
+from app.utils.filehelper import linkFile, video_type, ext_type, replaceRegex, cleanFolderWithoutSuffix, \
     replaceCJK, cleanbyNameSuffix, cleanExtraMedia, moveSubs
 
 logger = logging.getLogger(__name__)
@@ -44,7 +43,8 @@ def findAllVideos(root, src_folder, escape_folder, mode=1):
 
 def transfer(src_folder, dest_folder,
              linktype, prefix,
-             escape_folders, specified_files='',
+             specified_files='',
+             escape_folders="",
              clean_others_tag=True,
              simplify_tag=False,
              fixseries_tag=False

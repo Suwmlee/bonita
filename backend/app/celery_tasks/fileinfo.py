@@ -3,7 +3,7 @@
 import os
 import logging
 
-from app.celery_tasks.utils.regex import extractEpNum, matchEpPart, matchSeries, simpleMatchEp
+from app.utils.regex import extractEpNum, matchEpPart, matchSeries, simpleMatchEp
 
 logger = logging.getLogger(__name__)
 

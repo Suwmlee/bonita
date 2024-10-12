@@ -6,8 +6,7 @@ from fastapi import APIRouter
 from app import schemas, main
 from app.api.deps import SessionDep
 from app.db.models.task import TransferTask
-from app.celery_tasks.tasks import celery_transfer
-
+from app.celery_tasks.tasks import celery_transfer_entry
 
 router = APIRouter()
 
@@ -20,7 +19,8 @@ async def run_transfer_task(
     立即执行任务
     """
     task_conf = session.get(TransferTask, id)
-    task = celery_transfer.delay(task_conf.to_dict())
+    task_dict = task_conf.to_dict()
+    task = celery_transfer_entry.delay(task_dict)
     return schemas.TaskBase(id=task.id)
 
 
