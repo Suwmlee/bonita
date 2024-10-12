@@ -15,6 +15,7 @@ class TransferTask(Base):
     # 任务类型: 1. 移动 2. 不移动,整理?
     task_type = Column(Integer, default=1)
     enabled = Column(Boolean, default=True)
+    deleted = Column(Boolean, default=True)
     auto_watch = Column(Boolean, default=False, comment="开启自动监测")
 
     # 内容类型: 1. 电影 2. 电视节目

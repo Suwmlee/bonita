@@ -6,7 +6,7 @@ from fastapi.routing import APIRoute
 from starlette.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.core.db import init_db, upgrade_db
+from app.core.db import init_db, init_super_user, upgrade_db
 from app.api.main import api_router
 
 # celery client
@@ -59,4 +59,5 @@ app.celery_app = celery
 
 log_config()
 init_db()
+init_super_user()
 upgrade_db()

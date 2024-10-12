@@ -13,7 +13,6 @@ def init_db():
     初始化数据库
     """
     Base.metadata.create_all(bind=engine)
-    init_super_user()
 
 
 def init_super_user():
