@@ -17,14 +17,16 @@ class TransferTaskBase(BaseModel):
     """
     name: str
     description: str
-    task_type: int = 1
     enabled: bool = True
-    auto_watch: bool = False
+    task_type: int = 1
     content_type: int = 1
+    transfer_type: int = 1
+    auto_watch: bool = False
+    clean_others: bool = False
+    optimize_name: bool = False
     source_folder: str
     output_folder: Optional[str] = None
     failed_folder: Optional[str] = None
-    transfer_type: int = 1
     escape_folder: Optional[str] = None
     escape_literals: Optional[str] = None
     escape_size: Optional[int] = 1

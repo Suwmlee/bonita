@@ -68,14 +68,16 @@ export type Token = {
 export type TransferTaskCreate = {
     name: string;
     description: string;
-    task_type?: number;
     enabled?: boolean;
-    auto_watch?: boolean;
+    task_type?: number;
     content_type?: number;
+    transfer_type: number;
+    auto_watch?: boolean;
+    clean_others?: boolean;
+    optimize_name?: boolean;
     source_folder: string;
     output_folder?: string | null;
     failed_folder?: string | null;
-    transfer_type: number;
     escape_folder?: string | null;
     escape_literals?: string | null;
     escape_size?: number | null;
@@ -90,14 +92,16 @@ export type TransferTaskCreate = {
 export type TransferTaskPublic = {
     name: string;
     description: string;
-    task_type?: number;
     enabled?: boolean;
-    auto_watch?: boolean;
+    task_type?: number;
     content_type?: number;
+    transfer_type?: number;
+    auto_watch?: boolean;
+    clean_others?: boolean;
+    optimize_name?: boolean;
     source_folder: string;
     output_folder?: string | null;
     failed_folder?: string | null;
-    transfer_type?: number;
     escape_folder?: string | null;
     escape_literals?: string | null;
     escape_size?: number | null;

@@ -349,25 +349,39 @@ export const $TransferTaskCreate = {
             type: 'string',
             title: 'Description'
         },
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled',
+            default: true
+        },
         task_type: {
             type: 'integer',
             title: 'Task Type',
             default: 1
         },
-        enabled: {
-            type: 'boolean',
-            title: 'Enabled',
-            default: true
+        content_type: {
+            type: 'integer',
+            title: 'Content Type',
+            default: 1
+        },
+        transfer_type: {
+            type: 'integer',
+            title: 'Transfer Type'
         },
         auto_watch: {
             type: 'boolean',
             title: 'Auto Watch',
             default: false
         },
-        content_type: {
-            type: 'integer',
-            title: 'Content Type',
-            default: 1
+        clean_others: {
+            type: 'boolean',
+            title: 'Clean Others',
+            default: false
+        },
+        optimize_name: {
+            type: 'boolean',
+            title: 'Optimize Name',
+            default: false
         },
         source_folder: {
             type: 'string',
@@ -394,10 +408,6 @@ export const $TransferTaskCreate = {
                 }
             ],
             title: 'Failed Folder'
-        },
-        transfer_type: {
-            type: 'integer',
-            title: 'Transfer Type'
         },
         escape_folder: {
             anyOf: [
@@ -463,7 +473,7 @@ export const $TransferTaskCreate = {
         }
     },
     type: 'object',
-    required: ['name', 'description', 'source_folder', 'transfer_type'],
+    required: ['name', 'description', 'transfer_type', 'source_folder'],
     title: 'TransferTaskCreate'
 } as const;
 
@@ -477,25 +487,40 @@ export const $TransferTaskPublic = {
             type: 'string',
             title: 'Description'
         },
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled',
+            default: true
+        },
         task_type: {
             type: 'integer',
             title: 'Task Type',
             default: 1
         },
-        enabled: {
-            type: 'boolean',
-            title: 'Enabled',
-            default: true
+        content_type: {
+            type: 'integer',
+            title: 'Content Type',
+            default: 1
+        },
+        transfer_type: {
+            type: 'integer',
+            title: 'Transfer Type',
+            default: 1
         },
         auto_watch: {
             type: 'boolean',
             title: 'Auto Watch',
             default: false
         },
-        content_type: {
-            type: 'integer',
-            title: 'Content Type',
-            default: 1
+        clean_others: {
+            type: 'boolean',
+            title: 'Clean Others',
+            default: false
+        },
+        optimize_name: {
+            type: 'boolean',
+            title: 'Optimize Name',
+            default: false
         },
         source_folder: {
             type: 'string',
@@ -522,11 +547,6 @@ export const $TransferTaskPublic = {
                 }
             ],
             title: 'Failed Folder'
-        },
-        transfer_type: {
-            type: 'integer',
-            title: 'Transfer Type',
-            default: 1
         },
         escape_folder: {
             anyOf: [
