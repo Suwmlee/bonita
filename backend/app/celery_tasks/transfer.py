@@ -147,7 +147,6 @@ def transfer(src_folder, dest_folder,
     except Exception as e:
         logger.error(e)
 
-
     return True
 
 
@@ -223,3 +222,37 @@ def naming(currentfile: FileInfo, movie_list: list, simplify_tag, fixseries_tag)
                                 currentfile.fixEpName(0)
                         except Exception as ex:
                             logger.error(ex)
+
+
+def transferfile(currentfile: FileInfo, src_folder, simplify_tag, fixseries_tag, dest_folder,
+                 movie_list, linktype):
+    """
+    转移文件
+    """
+    destpath = ""
+
+    # 修正后给链接使用的源地址
+    link_path = os.path.join(src_folder, currentfile.midfolder, currentfile.realname)
+
+    # currentrecord = transrecordService.add(currentfile.realpath)
+    # 根据历史记录进行预处理，标记、锁定、剧集
+
+    # 优化命名
+    naming(currentfile, movie_list, simplify_tag, fixseries_tag)
+
+    if currentfile.topfolder == '.':
+        destpath = os.path.join(dest_folder, currentfile.fixFinalName())
+    else:
+        destpath = os.path.join(dest_folder, currentfile.fixMidFolder(), currentfile.fixFinalName())
+    currentfile.updateFinalPath(destpath)
+    if linktype == 0:
+        linkFile(link_path, destpath, 1)
+    else:
+        linkFile(link_path, destpath, 2)
+
+    # 使用最终的文件名
+    cleanbyNameSuffix(currentfile.finalfolder, currentfile.name, ext_type)
+    oldname = os.path.splitext(currentfile.realname)[0]
+    moveSubs(currentfile.realfolder, currentfile.finalfolder, oldname, currentfile.name)
+
+    return destpath
