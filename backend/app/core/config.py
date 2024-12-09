@@ -7,9 +7,14 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Bonita"
     API_V1_STR: str = "/api/v1"
-    # 要与 alembic.ini 同步
+    # 与 alembic.ini 同步
     ALEMBIC_LOCATION: str = "./app/alembic"
-    SQLALCHEMY_DATABASE_URI: str = "sqlite:///./data/db.sqlite3"
+    # DATABASE_LOCATION
+    DATABASE_LOCATION: str = "./data/db.sqlite3"
+    SQLALCHEMY_DATABASE_URI: str = f"sqlite:///{DATABASE_LOCATION}"
+    # CELERY
+    CELERY_BROKER_URL: str = f"sqla+sqlite:///{DATABASE_LOCATION}"
+    CELERY_RESULT_BACKEND: str = f"db+sqlite:///{DATABASE_LOCATION}"
     # 日志
     LOGGING_FORMAT: str = "[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
     LOGGING_LOCATION: str = "./data/bonita.log"

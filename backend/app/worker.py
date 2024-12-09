@@ -4,15 +4,15 @@ import os
 from celery import Celery
 # load tasks
 from app.celery_tasks import tasks
-
+from app.core.config import settings
 
 def create_celery():
     """
     配置 https://docs.celeryq.dev/en/stable/userguide/configuration.html#general-settings
     """
     celery = Celery(__name__)
-    celery.conf.broker_url = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
-    celery.conf.result_backend = os.environ.get("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+    celery.conf.broker_url = os.environ.get("CELERY_BROKER_URL", settings.CELERY_BROKER_URL)
+    celery.conf.result_backend = os.environ.get("CELERY_RESULT_BACKEND", settings.CELERY_RESULT_BACKEND)
 
     celery.conf.update(timezone="Asia/Shanghai")  # 时区
     celery.conf.update(enable_utc=False)  # 关闭UTC时区。默认启动
