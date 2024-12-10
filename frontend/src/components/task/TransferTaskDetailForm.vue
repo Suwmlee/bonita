@@ -109,6 +109,17 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
+            <label for="clean_others">clean others</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VCheckbox id="clean_others" v-model="currentTask.clean_others" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
             <label for="sc_enabled">enbale scraping</label>
           </VCol>
           <VCol cols="12" md="9">

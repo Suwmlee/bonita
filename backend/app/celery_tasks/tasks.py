@@ -28,22 +28,17 @@ def celery_transfer_entry(self, task_json):
     """
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "transfer task: start"})
     task_info = schemas.TransferTaskPublic(**task_json)
+    logger.info(f"transfer task {task_info.id}: start")
     # 获取 source 文件夹下所有顶层文件/文件夹
     dirs = os.listdir(task_info.source_folder)
 
     task_group = group(celery_transfer_group.s(task_json, os.path.join(
         task_info.source_folder, single_folder)) for single_folder in dirs)
-    result = task_group.apply()
 
-    # if task_info.clean_others:
-    #     for donefile in done_list:
-    #         if donefile in old_list:
-    #             old_list.remove(donefile)
-    #         else:
-    #             os.remove(donefile)
-    #     if os.path.isdir(full_path):
-    #         cleanExtraMedia(full_path)
-    #         cleanFolderWithoutSuffix(full_path, video_type)
+    if task_info.clean_others:
+        task_group.tasks.append(celery_clean_others.s(task_json))
+
+    result = task_group.apply_async()
 
     return result
 
@@ -117,3 +112,28 @@ def celery_transfer_group(self, task_json, full_path):
              name='scraping:single')
 def celery_scrapping(self, task_json):
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "scraping task: start"})
+    logger.debug(f"[+] scraping task: start")
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
+             name='clean:clean_others')
+def celery_clean_others(self, task_json):
+    self.update_state(state="PROGRESS", meta={"progress": 0, "step": "clean others: start"})
+    logger.debug(f"[+] clean others: start")
+
+    # if task_info.clean_others:
+    #     for donefile in done_list:
+    #         if donefile in old_list:
+    #             old_list.remove(donefile)
+    #         else:
+    #             os.remove(donefile)
+    #     if os.path.isdir(full_path):
+    #         cleanExtraMedia(full_path)
+    #         cleanFolderWithoutSuffix(full_path, video_type)
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
+             name='emby:scan')
+def celery_emby_scan(self, task_json):
+    self.update_state(state="PROGRESS", meta={"progress": 0, "step": "emby scan: start"})
+    logger.debug(f"[+] emby scan: start")
