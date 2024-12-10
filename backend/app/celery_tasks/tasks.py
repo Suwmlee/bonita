@@ -59,16 +59,15 @@ def celery_transfer_group(self, task_json, full_path):
 
         if os.path.isdir(full_path):
             waiting_list = findAllVideos(full_path, task_info.source_folder, re.split("[,，]", task_info.escape_folder))
-            old_list = findAllVideos(task_info.output_folder, '', [], 2)
         else:
             waiting_list = []
             tf = FileInfo(full_path)
-            midfolder = tf.realfolder.replace(task_info.source_folder, '').lstrip("\\").lstrip("/")
-            tf.updateMidFolder(midfolder)
+            # 最顶层是文件情况，midfolder 应为 ''
+            # midfolder = tf.realfolder.replace(task_info.source_folder, '').lstrip("\\").lstrip("/")
+            tf.updateMidFolder('')
             if tf.topfolder != '.':
                 tf.parse()
             waiting_list.append(tf)
-            old_list = []
 
         logger.debug(f"[+] Transfer check {full_path}")
         # 创建一个新的数据库会话
@@ -95,9 +94,9 @@ def celery_transfer_group(self, task_json, full_path):
                                             fixseries_tag=fixseries, dest_folder=task_info.output_folder,
                                             movie_list=waiting_list, linktype=task_info.transfer_type)
                     done_list.append(destpath)
-                    # 执行数据库操作
-                    record.destpath = destpath
-                    record.updatetime = datetime.datetime.now()
+                # 更新
+                record.destpath = destpath
+                record.updatetime = datetime.datetime.now()
         except Exception as e:
             logger.error(e)
         finally:
