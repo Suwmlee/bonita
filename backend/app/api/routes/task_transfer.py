@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from app import schemas
 from app.api.deps import CurrentUser, SessionDep
 from app.db.models.task import TransferTask
+from app.watcher.manager import watcher_manager
 
 router = APIRouter()
 
@@ -33,6 +34,9 @@ def create_task(
     session.add(task)
     session.commit()
     session.refresh(task)
+
+    if task.auto_watch:
+        watcher_manager.add_directory(task.source_folder, task.id)
     return task
 
 
@@ -52,6 +56,9 @@ def update_task(
     task.update(session, update_dict)
     session.commit()
     session.refresh(task)
+    
+    if task.auto_watch:
+        watcher_manager.add_directory(task.source_folder, task.id)
     return task
 
 
