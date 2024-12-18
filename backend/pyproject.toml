@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "bonita-backend"
+name = "app"
 version = "0.1.0"
 description = ""
 authors = ["Mathhew <Suwmlee@users.noreply.github.com>"]
