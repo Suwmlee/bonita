@@ -3,7 +3,10 @@ import os
 import datetime
 import logging
 import re
+import time
 from celery import shared_task, group
+from celery.result import allow_join_result
+
 from multiprocessing import Semaphore
 
 from app import schemas
@@ -94,6 +97,16 @@ def celery_transfer_group(self, task_json, full_path):
                     session.commit()
                 if task_info.sc_enabled:
                     logger.debug(f"[-] need scraping")
+
+                    scraping_task = celery_scrapping.apply(args=[currentfile.realpath])
+                    with allow_join_result():
+                        meta = scraping_task.get()
+                    logger.debug(f"[-] scraping end: {meta}")
+                    # 保存 meta
+
+                    # 移动
+
+                    logger.debug(f"[-] scraping transfer end")
                 else:
                     logger.debug(f"[-] start transfer")
                     # 开始转移
@@ -101,9 +114,9 @@ def celery_transfer_group(self, task_json, full_path):
                                             fixseries_tag=fixseries, dest_folder=task_info.output_folder,
                                             movie_list=waiting_list, linktype=task_info.transfer_type)
                     done_list.append(destpath)
-                # 更新
-                record.destpath = destpath
-                record.updatetime = datetime.datetime.now()
+                    # 更新
+                    record.destpath = destpath
+                    record.updatetime = datetime.datetime.now()
         except Exception as e:
             logger.error(e)
         finally:
@@ -119,6 +132,8 @@ def celery_transfer_group(self, task_json, full_path):
 def celery_scrapping(self, task_json):
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "scraping task: start"})
     logger.debug(f"[+] scraping task: start")
+    time.sleep(10)
+    return "scraping single: done"
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
