@@ -10,11 +10,10 @@ from celery.result import allow_join_result
 from multiprocessing import Semaphore
 
 from app import schemas
-from app.celery_tasks.fileinfo import FileInfo
 from app.db import SessionFactory
 from app.db.models.record import TransRecords
-from app.celery_tasks.transfer import transferfile, findAllVideos
-from app.utils.filehelper import cleanExtraMedia, cleanFolderWithoutSuffix, video_type
+from app.modules.transfer.fileinfo import FileInfo
+from app.modules.transfer.transfer import transferfile, findAllVideos
 
 # 创建信号量，最多允许 5 个任务同时执行
 max_concurrent_tasks = 5

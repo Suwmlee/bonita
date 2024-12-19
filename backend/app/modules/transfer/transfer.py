@@ -6,7 +6,7 @@ import re
 import time
 import logging
 
-from app.celery_tasks.fileinfo import FileInfo
+from app.modules.transfer.fileinfo import FileInfo
 from app.utils.regex import extractEpNum, matchSeason, matchEpPart, matchSeries, simpleMatchEp
 from app.utils.filehelper import linkFile, video_type, ext_type, replaceRegex, cleanFolderWithoutSuffix, \
     replaceCJK, cleanbyNameSuffix, cleanExtraMedia, moveSubs
