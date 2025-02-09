@@ -10,19 +10,19 @@ poetry install
 poetry shell
 
 # 启动
-uvicorn app.main:app app.main:app --host 0.0.0.0 --port 8000  --reload
+uvicorn bonita.main:app --host 0.0.0.0 --port 8000  --reload
 
 # 启动 worker
-celery --app app.worker.celery worker
+celery --app bonita.worker.celery worker
 
 # 注册的任务列表
-celery --app app.worker.celery inspect registered
+celery --app bonita.worker.celery inspect registered
 ```
 
 #### alembic迁移
 
 ```
-alembic init app/alembic
+alembic init bonita/alembic
 
 alembic revision --autogenerate -m "update"
 
@@ -53,7 +53,7 @@ alembic downgrade -1
       "console": "integratedTerminal",
       "args": [
         "--app",
-        "app.worker.celery",
+        "bonita.worker.celery",
         "worker",
         "--loglevel",
         "DEBUG",

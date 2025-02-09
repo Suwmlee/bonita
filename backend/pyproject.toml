@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "app"
+name = "bonita"
 version = "0.1.0"
 description = ""
 authors = ["Mathhew <Suwmlee@users.noreply.github.com>"]
