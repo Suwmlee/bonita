@@ -1,5 +1,6 @@
 from typing import List, Optional
 from pydantic import BaseModel
+from datetime import datetime
 
 
 class RecordBase(BaseModel):
@@ -27,8 +28,23 @@ class TransferRecordBase(BaseModel):
     linkpath: Optional[str] = None
     destpath: Optional[str] = None
 
-    updatetime: Optional[str] = None
-    deadtime: Optional[str] = None
+    updatetime: Optional[datetime] = None
+    deadtime: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+
+
+class TransferRecordPublic(TransferRecordBase):
+    """
+    Properties to return via API, id is always required
+    """
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class TransferRecordsPublic(BaseModel):
+    data: List[TransferRecordPublic]
+    count: int
