@@ -1,5 +1,6 @@
 
 import json
+import logging
 from typing import Any
 from fastapi import APIRouter
 
@@ -9,6 +10,7 @@ from bonita.db.models.task import TransferTask
 from bonita.celery_tasks.tasks import celery_transfer_entry
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/run/{id}", response_model=schemas.TaskBase)
@@ -18,6 +20,7 @@ async def run_transfer_task(
     """
     立即执行任务
     """
+    logger.info(f"run transfer task: {id}")
     task_conf = session.get(TransferTask, id)
     task_dict = task_conf.to_dict()
     task = celery_transfer_entry.delay(task_dict)

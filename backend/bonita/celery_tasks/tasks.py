@@ -131,7 +131,7 @@ def celery_transfer_group(self, task_json, full_path):
 def celery_scrapping(self, task_json):
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "scraping task: start"})
     logger.debug(f"[+] scraping task: start")
-    time.sleep(10)
+    time.sleep(5)
     return "scraping single: done"
 
 
