@@ -147,7 +147,7 @@
         @include mixins.before-pseudo;
 
         // Adds vuetify states
-
+        // 悬浮阴影效果
         &:not(.router-link-active, .router-link-exact-active) {
           @include vuetifyStates.states($active: false);
         }
