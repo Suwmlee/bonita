@@ -24,7 +24,7 @@ class Metadata(Base):
     director = Column(String, default="", comment="导演")
     actor = Column(String, default="", comment="演员")
     actor_photo = Column(String, default="", comment="演员图片")
-    cover = Column(String, default="", nullable=False, comment="封面海报")
+    cover = Column(String, default="", comment="封面海报")
     cover_small = Column(String, default="", comment="缩略图")
     extrafanart = Column(String, default="", comment="影片橱窗")
     trailer = Column(String, default="", comment="预告")
