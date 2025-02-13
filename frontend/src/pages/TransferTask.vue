@@ -72,7 +72,7 @@ onMounted(() => {
       </VCol>
 
       <VCol cols="12" md="6" lg="4" @click="addNewTask">
-        <VCard>
+        <VCard style="height: 100%;">
           <VCardItem>
             <VCardTitle>
               Add Task
