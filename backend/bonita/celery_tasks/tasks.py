@@ -3,7 +3,6 @@ import os
 import datetime
 import logging
 import re
-import time
 from celery import shared_task, group
 from celery.result import allow_join_result
 
@@ -11,9 +10,15 @@ from multiprocessing import Semaphore
 
 from bonita import schemas
 from bonita.db import SessionFactory
+from bonita.db.models.extrainfo import ExtraInfo
+from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
+from bonita.db.models.setting import ScrapingSetting
+from bonita.modules.scraping.number_parser import FileNumInfo
+from bonita.modules.scraping.scraping import scraping
 from bonita.modules.transfer.fileinfo import FileInfo
 from bonita.modules.transfer.transfer import transferfile, findAllVideos
+
 
 # 创建信号量，最多允许 5 个任务同时执行
 max_concurrent_tasks = 5
@@ -97,13 +102,16 @@ def celery_transfer_group(self, task_json, full_path):
                 if task_info.sc_enabled:
                     logger.debug(f"[-] need scraping")
 
-                    scraping_task = celery_scrapping.apply(args=[currentfile.realpath])
+                    scraping_task = celery_scrapping.apply(args=[currentfile.realpath, task_info.sc_id])
                     with allow_join_result():
                         meta = scraping_task.get()
                     logger.debug(f"[-] scraping end: {meta}")
-                    # 保存 meta
-
                     # 移动
+                    # 基于 transferfile 方法，拓展支持 poster nfo 文件
+
+                    # 写入NFO文件
+
+                    # 下载图片
 
                     logger.debug(f"[-] scraping transfer end")
                 else:
@@ -128,10 +136,36 @@ def celery_transfer_group(self, task_json, full_path):
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='scraping:single')
-def celery_scrapping(self, task_json):
+def celery_scrapping(self, file_path, scraping_id):
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "scraping task: start"})
     logger.debug(f"[+] scraping task: start")
-    time.sleep(5)
+    try:
+        session = SessionFactory()
+
+        scraping_conf = session.query(ScrapingSetting).filter(ScrapingSetting.id == scraping_id).first()
+        if scraping_conf:
+            # 根据路径获取额外自定义信息
+            extrainfo = session.query(ExtraInfo).filter(ExtraInfo.filepath == file_path).first()
+            if not extrainfo:
+                extrainfo = ExtraInfo(filepath=file_path)
+                extrainfo.number = FileNumInfo(file_path).num
+                session.add(extrainfo)
+                session.commit()
+
+            metadata_record = session.query(Metadata).filter(Metadata.number == extrainfo.number).first()
+            if not metadata_record:
+                # scraping
+                metadata_base = scraping(file_path, scraping_conf, extrainfo)
+                # 保存 metadata 到数据库
+                metadata_record = Metadata(**metadata_base.model_dump())
+                session.add(metadata_record)
+                session.commit()
+
+            # 根据 extra修正 写入到 NFO 文件的元数据
+
+            return metadata_record
+    except Exception as e:
+        logger.error(e)
     return "scraping single: done"
 
 
