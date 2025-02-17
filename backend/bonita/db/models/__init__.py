@@ -5,3 +5,4 @@ from .setting import ScrapingSetting
 from .metadata import Metadata
 from .extrainfo import ExtraInfo
 from .record import TransRecords
+from .downloads import Downloads
