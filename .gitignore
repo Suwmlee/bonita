@@ -132,3 +132,6 @@ dmypy.json
 bin/
 include/
 pyvenv.cfg
+
+# Poetry
+*.lock
