@@ -1,7 +1,7 @@
 
 
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Date
+from sqlalchemy import Column, Integer, String, Date, FLOAT
 
 from bonita.db import Base
 
@@ -31,7 +31,7 @@ class Metadata(Base):
     tag = Column(String, default="", comment="标签（用于分类）")
     label = Column(String, default="", comment="标记（用于标记）")
     series = Column(String, default="", comment="系列")
-    userrating = Column(String, default="", comment="用户评分")
-    uservotes = Column(String, default="", comment="用户投票数")
+    userrating = Column(FLOAT, default=0.0, comment="用户评分")
+    uservotes = Column(Integer, default=0, comment="用户投票数")
     detailurl = Column(String, default="", comment="来源链接")
     site = Column(String, default="", comment="资源站点")

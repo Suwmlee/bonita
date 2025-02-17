@@ -58,8 +58,8 @@ def upgrade() -> None:
     sa.Column('tag', sa.String(), nullable=True),
     sa.Column('label', sa.String(), nullable=True),
     sa.Column('series', sa.String(), nullable=True),
-    sa.Column('userrating', sa.String(), nullable=True),
-    sa.Column('uservotes', sa.String(), nullable=True),
+    sa.Column('userrating', sa.Float(), nullable=True),
+    sa.Column('uservotes', sa.Integer(), nullable=True),
     sa.Column('detailurl', sa.String(), nullable=True),
     sa.Column('site', sa.String(), nullable=True),
     sa.PrimaryKeyConstraint('id')
