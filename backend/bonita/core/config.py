@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     # DATABASE_LOCATION
     DATABASE_LOCATION: str = "./data/db.sqlite3"
     SQLALCHEMY_DATABASE_URI: str = f"sqlite:///{DATABASE_LOCATION}"
+    # CACHE_LOCATION
+    CACHE_LOCATION: str = "./data/cache"
     # CELERY
     CELERY_BROKER_URL: str = f"sqla+sqlite:///{DATABASE_LOCATION}"
     CELERY_RESULT_BACKEND: str = f"db+sqlite:///{DATABASE_LOCATION}"
