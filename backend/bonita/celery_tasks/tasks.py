@@ -17,7 +17,7 @@ from bonita.db.models.setting import ScrapingSetting
 from bonita.modules.scraping.number_parser import FileNumInfo
 from bonita.modules.scraping.scraping import add_mark, process_nfo_file, process_cover, scraping
 from bonita.modules.transfer.fileinfo import FileInfo
-from bonita.modules.transfer.transfer import transferfile, findAllVideos
+from bonita.modules.transfer.transfer import transSingleFile, transferfile, findAllVideos
 from bonita.utils.downloader import get_cached_file
 from bonita.utils.filehelper import video_type
 
@@ -128,8 +128,11 @@ def celery_transfer_group(self, task_json, full_path):
                     if scraping_conf.watermark_enabled:
                         add_mark(pics, metabase.tag, scraping_conf.watermark_location, scraping_conf.watermark_size)
                     # 移动
-                    # 基于 transferfile 方法，拓展支持 poster nfo 文件
-
+                    destpath = transSingleFile(currentfile, output_folder, metabase.extra_filename, task_info.transfer_type)
+                    done_list.append(destpath)
+                    # 更新
+                    record.destpath = destpath
+                    record.updatetime = datetime.now()
                     logger.debug(f"[-] scraping transfer end")
                 else:
                     logger.debug(f"[-] start transfer")
@@ -141,6 +144,7 @@ def celery_transfer_group(self, task_json, full_path):
                     # 更新
                     record.destpath = destpath
                     record.updatetime = datetime.now()
+                    logger.debug(f"[-] transfer end")
         except Exception as e:
             logger.error(e)
         finally:

@@ -256,3 +256,14 @@ def transferfile(currentfile: FileInfo, src_folder, simplify_tag, fixseries_tag,
     moveSubs(currentfile.realfolder, currentfile.finalfolder, oldname, currentfile.name)
 
     return destpath
+
+
+def transSingleFile(currentfile: FileInfo, output_folder, prefilename, linktype):
+    """ 转移单个文件
+    """
+    dest_path = os.path.join(output_folder, prefilename + currentfile.ext)
+    if linktype == 0:
+        linkFile(currentfile.realpath, dest_path, 1)
+    else:
+        linkFile(currentfile.realpath, dest_path, 2)
+    return dest_path
