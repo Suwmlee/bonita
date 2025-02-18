@@ -1,7 +1,7 @@
 
 
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Date, FLOAT
+from sqlalchemy import Column, DateTime, Integer, String, Date, FLOAT
 
 from bonita.db import Base
 
@@ -35,3 +35,4 @@ class Metadata(Base):
     uservotes = Column(Integer, default=0, comment="用户投票数")
     detailurl = Column(String, default="", comment="来源链接")
     site = Column(String, default="", comment="资源站点")
+    updatetime = Column(DateTime, default=datetime.now(), comment="更新时间")

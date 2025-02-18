@@ -1,5 +1,5 @@
 
-import datetime
+from datetime import datetime
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
 
 from bonita.db import Base
@@ -31,5 +31,5 @@ class TransRecords(Base):
     linkpath = Column(String, default='')
     destpath = Column(String, default='')
 
-    updatetime = Column(DateTime, default=datetime.datetime.now)
+    updatetime = Column(DateTime, default=datetime.now(), comment="更新时间")
     deadtime = Column(DateTime, default=None, comment='time to delete files')

@@ -11,4 +11,4 @@ class Downloads(Base):
     id = Column(Integer, primary_key=True, index=True)
     url = Column(String, nullable=False, comment="下载链接")
     filepath = Column(String, nullable=False, comment="文件路径")
-    updatetime = Column(DateTime, default=datetime.now, comment="更新时间")
+    updatetime = Column(DateTime, default=datetime.now(), comment="更新时间")
