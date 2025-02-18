@@ -46,3 +46,8 @@ class Base:
 
     def to_dict(self):
         return {c.name: getattr(self, c.name, None) for c in self.__table__.columns}
+
+    def filter_dict(self, source_dict):
+        valid_columns = {column.name for column in self.__table__.columns}
+        filtered_dict = {key: value for key, value in source_dict.items() if key in valid_columns}
+        return filtered_dict

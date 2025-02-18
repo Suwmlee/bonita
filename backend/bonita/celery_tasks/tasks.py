@@ -15,7 +15,7 @@ from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
 from bonita.db.models.setting import ScrapingSetting
 from bonita.modules.scraping.number_parser import FileNumInfo
-from bonita.modules.scraping.scraping import process_cover, scraping
+from bonita.modules.scraping.scraping import process_nfo_file, process_cover, scraping
 from bonita.modules.transfer.fileinfo import FileInfo
 from bonita.modules.transfer.transfer import transferfile, findAllVideos
 from bonita.utils.downloader import get_cached_file
@@ -115,7 +115,7 @@ def celery_transfer_group(self, task_json, full_path):
                     if not os.path.exists(output_folder):
                         os.makedirs(output_folder)
                     # 写入NFO文件
-
+                    process_nfo_file(output_folder, metabase.extra_filename, metabase.__dict__)
                     cache_cover_filepath = get_cached_file(session, metabase.cover, metabase.number)
                     process_cover(cache_cover_filepath, metabase.extra_filename, output_folder)
                     # 移动
@@ -167,16 +167,20 @@ def celery_scrapping(self, file_path, scraping_id):
                 metadata_base = schemas.MetadataBase(**metadata_record.__dict__)
             else:
                 # scraping
-                metadata_base = scraping(file_path, scraping_conf, extrainfo)
+                metadata_base = scraping(extrainfo.number,
+                                         scraping_conf.scraping_sites,
+                                         extrainfo.specifiedsource,
+                                         extrainfo.specifiedurl)
                 # 保存 metadata 到数据库
-                metadata_record = Metadata(**metadata_base.model_dump())
+                filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
+                metadata_record = Metadata(**filter_dict)
                 session.add(metadata_record)
                 session.commit()
             # 根据 extra修正 写入到 NFO 文件的元数据
             # tag
 
             # 根据规则生成文件夹和文件名
-            maxlen = 50
+            maxlen = scraping_conf.max_title_len
             extra_folder = eval(scraping_conf.location_rule, metadata_base.__dict__)
             if 'actor' in scraping_conf.location_rule and len(metadata_base.actor) > 100:
                 extra_folder = eval(scraping_conf.location_rule.replace("actor", "'多人作品'"), metadata_base.__dict__)

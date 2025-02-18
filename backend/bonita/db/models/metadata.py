@@ -15,7 +15,7 @@ class Metadata(Base):
     studio = Column(String, default="", comment="制作公司")
     release = Column(Date, comment="发行日期")
     year = Column(Integer, default=datetime.now().year, comment="发行年份")
-    duration = Column(Integer, default=0, comment="时长（分钟）")
+    runtime = Column(String, default="", comment="时长")
     genre = Column(String, default="", comment="类型")
     rating = Column(String, default="", comment="评级")
     language = Column(String, default="", comment="语言")

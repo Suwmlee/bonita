@@ -9,7 +9,7 @@ class MetadataBase(BaseModel):
     studio: Optional[str] = None
     release: Optional[date] = None
     year: Optional[int] = None
-    duration: Optional[int] = None
+    runtime: Optional[str] = None
     genre: Optional[str] = None
     rating: Optional[str] = None
     language: Optional[str] = None
