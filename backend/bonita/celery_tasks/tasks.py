@@ -15,10 +15,11 @@ from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
 from bonita.db.models.setting import ScrapingSetting
 from bonita.modules.scraping.number_parser import FileNumInfo
-from bonita.modules.scraping.scraping import process_nfo_file, process_cover, scraping
+from bonita.modules.scraping.scraping import add_mark, process_nfo_file, process_cover, scraping
 from bonita.modules.transfer.fileinfo import FileInfo
 from bonita.modules.transfer.transfer import transferfile, findAllVideos
 from bonita.utils.downloader import get_cached_file
+from bonita.utils.filehelper import video_type
 
 
 # 创建信号量，最多允许 5 个任务同时执行
@@ -75,6 +76,9 @@ def celery_transfer_group(self, task_json, full_path):
         if os.path.isdir(full_path):
             waiting_list = findAllVideos(full_path, task_info.source_folder, re.split("[,，]", task_info.escape_folder))
         else:
+            if not os.path.splitext(full_path)[1].lower() in video_type:
+                logger.debug(f"[!] Transfer failed {full_path}")
+                return []
             waiting_list = []
             tf = FileInfo(full_path)
             # 最顶层是文件情况，midfolder 应为 ''
@@ -102,8 +106,11 @@ def celery_transfer_group(self, task_json, full_path):
                     session.commit()
                 if task_info.sc_enabled:
                     logger.debug(f"[-] need scraping")
-
-                    scraping_task = celery_scrapping.apply(args=[currentfile.realpath, task_info.sc_id])
+                    scraping_conf = session.query(ScrapingSetting).filter(ScrapingSetting.id == task_info.sc_id).first()
+                    if not scraping_conf:
+                        logger.debug(f"[-] scraping config not found")
+                        continue
+                    scraping_task = celery_scrapping.apply(args=[currentfile.realpath, scraping_conf.to_dict()])
                     with allow_join_result():
                         metabase_json = scraping_task.get()
                     if not metabase_json:
@@ -117,11 +124,9 @@ def celery_transfer_group(self, task_json, full_path):
                     # 写入NFO文件
                     process_nfo_file(output_folder, metabase.extra_filename, metabase.__dict__)
                     cache_cover_filepath = get_cached_file(session, metabase.cover, metabase.number)
-                    process_cover(cache_cover_filepath, output_folder, metabase.extra_filename)
-                    # if conf.watermark_enable:
-                    #     pics = [os.path.join(path, prefilename + '-poster.jpg'),
-                    #             os.path.join(path, prefilename + '-thumb.jpg')]
-                    #     add_mark(pics, numinfo, conf.watermark_location, conf.watermark_size)
+                    pics = process_cover(cache_cover_filepath, output_folder, metabase.extra_filename)
+                    if scraping_conf.watermark_enabled:
+                        add_mark(pics, metabase.tag, scraping_conf.watermark_location, scraping_conf.watermark_size)
                     # 移动
                     # 基于 transferfile 方法，拓展支持 poster nfo 文件
 
@@ -148,58 +153,63 @@ def celery_transfer_group(self, task_json, full_path):
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='scraping:single')
-def celery_scrapping(self, file_path, scraping_id):
+def celery_scrapping(self, file_path, scraping_dict):
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "scraping task: start"})
     logger.debug(f"[+] scraping task: start")
     try:
         session = SessionFactory()
+        scraping_conf = schemas.ScrapingSettingPublic(**scraping_dict)
+        # 根据路径获取额外自定义信息
+        fileNumInfo = FileNumInfo(file_path)
+        extrainfo = session.query(ExtraInfo).filter(ExtraInfo.filepath == file_path).first()
+        if not extrainfo:
+            extrainfo = ExtraInfo(filepath=file_path)
+            extrainfo.number = fileNumInfo.num
+            extrainfo.partNumber = int(fileNumInfo.part.replace("-CD", "")) if fileNumInfo.part else 0
+            session.add(extrainfo)
+            session.commit()
+        # TODO 处理指定源
+        metadata_record = session.query(Metadata).filter(Metadata.number == extrainfo.number).first()
+        if metadata_record:
+            metadata_base = schemas.MetadataBase(**metadata_record.to_dict())
+        else:
+            # scraping
+            metadata_base = scraping(extrainfo.number,
+                                        scraping_conf.scraping_sites,
+                                        extrainfo.specifiedsource,
+                                        extrainfo.specifiedurl)
+            # 保存 metadata 到数据库
+            filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
+            metadata_record = Metadata(**filter_dict)
+            session.add(metadata_record)
+            session.commit()
+        # 根据 extra修正 写入到 NFO 文件的元数据
+        if fileNumInfo.chs_tag:
+            metadata_base.tag += ", 中文字幕"
+        if fileNumInfo.leak_tag:
+            metadata_base.tag += ", 流出"
+        if fileNumInfo.uncensored_tag:
+            metadata_base.tag += ", 无码"
+        if fileNumInfo.hack_tag:
+            metadata_base.tag += ", 破解"
 
-        scraping_conf = session.query(ScrapingSetting).filter(ScrapingSetting.id == scraping_id).first()
-        if scraping_conf:
-            # 根据路径获取额外自定义信息
-            extrainfo = session.query(ExtraInfo).filter(ExtraInfo.filepath == file_path).first()
-            if not extrainfo:
-                extrainfo = ExtraInfo(filepath=file_path)
-                fileinfo = FileNumInfo(file_path)
-                extrainfo.number = fileinfo.num
-                extrainfo.partNumber = fileinfo.part
-                session.add(extrainfo)
-                session.commit()
-            # TODO 处理指定源
-            metadata_record = session.query(Metadata).filter(Metadata.number == extrainfo.number).first()
-            if metadata_record:
-                metadata_base = schemas.MetadataBase(**metadata_record.__dict__)
-            else:
-                # scraping
-                metadata_base = scraping(extrainfo.number,
-                                         scraping_conf.scraping_sites,
-                                         extrainfo.specifiedsource,
-                                         extrainfo.specifiedurl)
-                # 保存 metadata 到数据库
-                filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
-                metadata_record = Metadata(**filter_dict)
-                session.add(metadata_record)
-                session.commit()
-            # 根据 extra修正 写入到 NFO 文件的元数据
-            # tag
+        # 根据规则生成文件夹和文件名
+        maxlen = scraping_conf.max_title_len
+        extra_folder = eval(scraping_conf.location_rule, metadata_base.__dict__)
+        if 'actor' in scraping_conf.location_rule and len(metadata_base.actor) > 100:
+            extra_folder = eval(scraping_conf.location_rule.replace("actor", "'多人作品'"), metadata_base.__dict__)
+        if 'title' in scraping_conf.location_rule and len(metadata_base.title) > maxlen:
+            shorttitle = metadata_base.title[0:maxlen]
+            extra_folder = extra_folder.replace(metadata_base.title, shorttitle)
+        metadata_base.extra_folder = extra_folder
+        metadata_base.extra_filename = eval(scraping_conf.naming_rule, metadata_base.__dict__)
 
-            # 根据规则生成文件夹和文件名
-            maxlen = scraping_conf.max_title_len
-            extra_folder = eval(scraping_conf.location_rule, metadata_base.__dict__)
-            if 'actor' in scraping_conf.location_rule and len(metadata_base.actor) > 100:
-                extra_folder = eval(scraping_conf.location_rule.replace("actor", "'多人作品'"), metadata_base.__dict__)
-            if 'title' in scraping_conf.location_rule and len(metadata_base.title) > maxlen:
-                shorttitle = metadata_base.title[0:maxlen]
-                extra_folder = extra_folder.replace(metadata_base.title, shorttitle)
-            metadata_base.extra_folder = extra_folder
-            metadata_base.extra_filename = eval(scraping_conf.naming_rule, metadata_base.__dict__)
+        # 更新文件名称，part -C -CD1
+        if extrainfo.partNumber:
+            metadata_base.extra_filename += f"-CD{extrainfo.partNumber}"
+            metadata_base.extra_part = extrainfo.partNumber
 
-            # 更新文件名称，part -C -CD1
-            if extrainfo.partNumber:
-                metadata_base.extra_filename += f"-CD{extrainfo.partNumber}"
-                metadata_base.extra_part = extrainfo.partNumber
-
-            return metadata_base
+        return metadata_base
     except Exception as e:
         logger.error(e)
     finally:

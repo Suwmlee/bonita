@@ -86,28 +86,11 @@ def process_nfo_file(output_folder, prefilename, metadata_dict):
                 pass
             print("  <maker>" + studio + "</maker>", file=code)
             print("  <label>" + label + "</label>", file=code)
-            # if numinfo.chs_tag:
-            #     print("  <tag>中文字幕</tag>", file=code)
-            # if numinfo.leak_tag:
-            #     print("  <tag>流出</tag>", file=code)
-            # if numinfo.uncensored_tag:
-            #     print("  <tag>无码</tag>", file=code)
-            # if numinfo.hack_tag:
-            #     print("  <tag>破解</tag>", file=code)
             try:
                 for i in tags:
                     print("  <tag>" + i + "</tag>", file=code)
-                # print("  <tag>" + series + "</tag>", file=code)
             except:
                 pass
-            # if numinfo.chs_tag:
-            #     print("  <genre>中文字幕</genre>", file=code)
-            # if numinfo.leak_tag:
-            #     print("  <genre>流出</genre>", file=code)
-            # if numinfo.uncensored_tag:
-            #     print("  <genre>无码</genre>", file=code)
-            # if numinfo.hack_tag:
-            #     print("  <genre>破解</genre>", file=code)
             try:
                 for i in tags:
                     print("  <genre>" + i + "</genre>", file=code)
@@ -149,85 +132,94 @@ def process_nfo_file(output_folder, prefilename, metadata_dict):
 
 
 def process_cover(tmp_cover_path, output_folder, prefilename):
-    """ Cover
+    """ 处理封面
+    :param tmp_cover_path: 临时图片
+    :param output_folder: 输出目录
+    :param prefilename: 文件名前缀
+    :return: 需要添加水印的图片
     """
     fanartpath = os.path.join(output_folder, prefilename + '-fanart.jpg')
     thumbpath = os.path.join(output_folder, prefilename + '-thumb.jpg')
+    posterpath = os.path.join(output_folder, prefilename + '-poster.jpg')
     shutil.copyfile(tmp_cover_path, fanartpath)
     shutil.copyfile(tmp_cover_path, thumbpath)
+    crop_poster(tmp_cover_path, posterpath)
+    return [fanartpath, posterpath]
 
 
-def crop_poster(imagecut, output_folder, prefilename):
-    """ crop fanart to poster
+def crop_poster(tmp_file, posterpath):
+    """ crop to poster
     """
-    fanartpath = os.path.join(output_folder, prefilename + '-fanart.jpg')
-    posterpath = os.path.join(output_folder, prefilename + '-poster.jpg')
     try:
-        if imagecut == 1:
-            img = Image.open(fanartpath)
-            w = img.width
-            h = img.height
-            img2 = img.crop((w / 1.9, 0, w, h))
+        img = Image.open(tmp_file)
+        w = img.width
+        h = img.height
+        if w / h > 1:
+            # img2 width / height = 0.7
+            width2 = h * 0.7
+            img2 = img.crop((w - width2, 0, w, h))
             img2.save(posterpath)
             logger.debug('[+]Image Cutted!     ' + posterpath)
-        elif imagecut != 3:
+        else:
             # 复制封面
-            shutil.copyfile(fanartpath, posterpath)
+            shutil.copyfile(tmp_file, posterpath)
             logger.debug('[+]Image Copyed!     ' + posterpath)
     except:
         logger.info('[-]Cover cut failed!')
 
 
-def add_mark(pics, numinfo, count, size):
-    """ 
-    Add water mark 
-    :param numinfo          番号信息,内有详细Tag信息
-    :param count            右上:0 左上:1 左下:2 右下:3
-    :param size             添加的水印相对整图的比例
+def add_mark(pics, meta_tags, count, size):
+    """ Add water mark 
+    :param tags:   番号信息,内有详细Tag信息
+    :param count:  右上:0 左上:1 左下:2 右下:3
+    :param size:   添加的水印相对整图的比例
     """
-    mark_type = ''
-    if numinfo.chs_tag:
-        mark_type += ',字幕'
-    if numinfo.leak_tag:
-        mark_type += ',流出'
-    if numinfo.uncensored_tag:
-        mark_type += ',无码'
-    if numinfo.hack_tag:
-        mark_type += ',破解'
-    if mark_type == '':
+    mark_type = []
+    tags = [word.strip() for word in meta_tags.split(',')]
+    if "中文字幕" in tags:
+        mark_type.append('chs')
+    if "流出" in tags:
+        mark_type.append('leak')
+    if "无码" in tags:
+        mark_type.append('uncensored')
+    if "破解" in tags:
+        mark_type.append('hack')
+    if len(mark_type) == 0:
         return
     for pic in pics:
-        add_mark_thread(pic, numinfo, count, size)
-        logger.debug('[+]Image Add Mark:   ' + mark_type.strip(','))
+        add_mark_thread(pic, mark_type, count, size)
+        logger.debug('[+]Image Add Mark:   ' + ', '.join(map(str, mark_type)))
 
 
-def add_mark_thread(pic_path, numinfo, count, size):
+def add_mark_thread(pic_path, marks, count, size):
     img_pic = Image.open(pic_path)
-    if numinfo.chs_tag:
+    if "chs" in marks:
         add_to_pic(pic_path, img_pic, size, count, 1)
         count = (count + 1) % 4
-    if numinfo.leak_tag:
+    if "leak" in marks:
         add_to_pic(pic_path, img_pic, size, count, 2)
         count = (count + 1) % 4
-    if numinfo.uncensored_tag:
+    if "uncensored" in marks:
         add_to_pic(pic_path, img_pic, size, count, 3)
         count = (count + 1) % 4
-    if numinfo.hack_tag:
+    if "hack" in marks:
         add_to_pic(pic_path, img_pic, size, count, 4)
     img_pic.close()
 
 
 def add_to_pic(pic_path, img_pic, size, count, mode):
+    """ 添加水印
+    """
     mark_pic_path = ''
     basedir = os.path.abspath(os.path.dirname(__file__))
     if mode == 1:
-        mark_pic_path = basedir + '/../images/CNSUB.png'
+        mark_pic_path = basedir + '/watermark/CNSUB.png'
     elif mode == 2:
-        mark_pic_path = basedir + '/../images/LEAK.png'
+        mark_pic_path = basedir + '/watermark/LEAK.png'
     elif mode == 3:
-        mark_pic_path = basedir + '/../images/UNCENSORED.png'
+        mark_pic_path = basedir + '/watermark/UNCENSORED.png'
     elif mode == 4:
-        mark_pic_path = basedir + '/../images/HACK.png'
+        mark_pic_path = basedir + '/watermark/HACK.png'
     img_subt = Image.open(mark_pic_path)
     scroll_high = int(img_pic.height / size)
     scroll_wide = int(scroll_high * img_subt.width / img_subt.height)
