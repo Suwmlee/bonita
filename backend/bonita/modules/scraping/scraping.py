@@ -4,6 +4,7 @@ import os
 import logging
 import shutil
 from scrapinglib import search
+from PIL import Image
 
 from bonita import schemas
 
@@ -147,10 +148,97 @@ def process_nfo_file(output_folder, prefilename, metadata_dict):
         return False
 
 
-def process_cover(tmp_cover_path, prefilename, output_folder):
+def process_cover(tmp_cover_path, output_folder, prefilename):
     """ Cover
     """
     fanartpath = os.path.join(output_folder, prefilename + '-fanart.jpg')
     thumbpath = os.path.join(output_folder, prefilename + '-thumb.jpg')
     shutil.copyfile(tmp_cover_path, fanartpath)
     shutil.copyfile(tmp_cover_path, thumbpath)
+
+
+def crop_poster(imagecut, output_folder, prefilename):
+    """ crop fanart to poster
+    """
+    fanartpath = os.path.join(output_folder, prefilename + '-fanart.jpg')
+    posterpath = os.path.join(output_folder, prefilename + '-poster.jpg')
+    try:
+        if imagecut == 1:
+            img = Image.open(fanartpath)
+            w = img.width
+            h = img.height
+            img2 = img.crop((w / 1.9, 0, w, h))
+            img2.save(posterpath)
+            logger.debug('[+]Image Cutted!     ' + posterpath)
+        elif imagecut != 3:
+            # 复制封面
+            shutil.copyfile(fanartpath, posterpath)
+            logger.debug('[+]Image Copyed!     ' + posterpath)
+    except:
+        logger.info('[-]Cover cut failed!')
+
+
+def add_mark(pics, numinfo, count, size):
+    """ 
+    Add water mark 
+    :param numinfo          番号信息,内有详细Tag信息
+    :param count            右上:0 左上:1 左下:2 右下:3
+    :param size             添加的水印相对整图的比例
+    """
+    mark_type = ''
+    if numinfo.chs_tag:
+        mark_type += ',字幕'
+    if numinfo.leak_tag:
+        mark_type += ',流出'
+    if numinfo.uncensored_tag:
+        mark_type += ',无码'
+    if numinfo.hack_tag:
+        mark_type += ',破解'
+    if mark_type == '':
+        return
+    for pic in pics:
+        add_mark_thread(pic, numinfo, count, size)
+        logger.debug('[+]Image Add Mark:   ' + mark_type.strip(','))
+
+
+def add_mark_thread(pic_path, numinfo, count, size):
+    img_pic = Image.open(pic_path)
+    if numinfo.chs_tag:
+        add_to_pic(pic_path, img_pic, size, count, 1)
+        count = (count + 1) % 4
+    if numinfo.leak_tag:
+        add_to_pic(pic_path, img_pic, size, count, 2)
+        count = (count + 1) % 4
+    if numinfo.uncensored_tag:
+        add_to_pic(pic_path, img_pic, size, count, 3)
+        count = (count + 1) % 4
+    if numinfo.hack_tag:
+        add_to_pic(pic_path, img_pic, size, count, 4)
+    img_pic.close()
+
+
+def add_to_pic(pic_path, img_pic, size, count, mode):
+    mark_pic_path = ''
+    basedir = os.path.abspath(os.path.dirname(__file__))
+    if mode == 1:
+        mark_pic_path = basedir + '/../images/CNSUB.png'
+    elif mode == 2:
+        mark_pic_path = basedir + '/../images/LEAK.png'
+    elif mode == 3:
+        mark_pic_path = basedir + '/../images/UNCENSORED.png'
+    elif mode == 4:
+        mark_pic_path = basedir + '/../images/HACK.png'
+    img_subt = Image.open(mark_pic_path)
+    scroll_high = int(img_pic.height / size)
+    scroll_wide = int(scroll_high * img_subt.width / img_subt.height)
+    img_subt = img_subt.resize((scroll_wide, scroll_high), Image.Resampling.LANCZOS)
+    r, g, b, a = img_subt.split()  # 获取颜色通道，保持png的透明性
+    # 封面四个角的位置
+    pos = [
+        {'x': img_pic.width - scroll_wide, 'y': 0},
+        {'x': 0, 'y': 0},
+        {'x': 0, 'y': img_pic.height - scroll_high},
+        {'x': img_pic.width - scroll_wide, 'y': img_pic.height - scroll_high},
+    ]
+    img_pic.paste(img_subt, (pos[count]['x'], pos[count]['y']), mask=a)
+    img_pic.save(pic_path, quality=95)

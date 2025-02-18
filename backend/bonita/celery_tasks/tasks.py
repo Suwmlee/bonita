@@ -117,7 +117,11 @@ def celery_transfer_group(self, task_json, full_path):
                     # 写入NFO文件
                     process_nfo_file(output_folder, metabase.extra_filename, metabase.__dict__)
                     cache_cover_filepath = get_cached_file(session, metabase.cover, metabase.number)
-                    process_cover(cache_cover_filepath, metabase.extra_filename, output_folder)
+                    process_cover(cache_cover_filepath, output_folder, metabase.extra_filename)
+                    # if conf.watermark_enable:
+                    #     pics = [os.path.join(path, prefilename + '-poster.jpg'),
+                    #             os.path.join(path, prefilename + '-thumb.jpg')]
+                    #     add_mark(pics, numinfo, conf.watermark_location, conf.watermark_size)
                     # 移动
                     # 基于 transferfile 方法，拓展支持 poster nfo 文件
 
