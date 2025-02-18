@@ -2,13 +2,31 @@ import os
 import requests
 import hashlib
 import mimetypes
+from sqlalchemy.orm import Session
 
 from bonita.core.config import settings
+from bonita.db.models.downloads import Downloads
+
+
+def get_cached_file(session: Session, url: str, folder) -> str:
+    """ 获取缓存图片
+    :param session: 数据库会话
+    :param url: 下载链接
+    :param folder: 下载文件保存的缓存目录
+    :return: 缓存的文件路径
+    """
+    cache_downloads_cover = session.query(Downloads).filter(Downloads.url == url).first()
+    # TODO 文件过期
+    if not cache_downloads_cover or not os.path.exists(cache_downloads_cover.filepath):
+        cache_cover_path = download_file(url, folder, None)
+        cache_downloads_cover = Downloads(url=url, filepath=cache_cover_path)
+        session.add(cache_downloads_cover)
+        session.commit()
+    return cache_downloads_cover.filepath
 
 
 def get_file_extension(response):
-    """
-    根据 HTTP 头中的 Content-Type 获取文件扩展名
+    """ 根据 HTTP 头中的 Content-Type 获取文件扩展名
     :param response: HTTP 响应对象
     :return: 文件扩展名
     """
@@ -19,8 +37,7 @@ def get_file_extension(response):
 
 
 def generate_file_name(url, response):
-    """
-    根据 URL 和 HTTP 响应生成文件名
+    """ 根据 URL 和 HTTP 响应生成文件名
     :param url: 下载链接
     :param response: HTTP 响应对象
     :return: 生成的文件名
@@ -38,8 +55,7 @@ def generate_file_name(url, response):
 
 
 def download_file(url, download_dir, proxy=None):
-    """
-    下载文件
+    """ 下载文件
     :param url: 下载链接
     :param download_dir: 下载文件保存的目录
     :param proxy: 代理信息，格式为 {"http": "http://proxy.com:8080", "https": "http://proxy.com:8080"}

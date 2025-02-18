@@ -10,7 +10,6 @@ from multiprocessing import Semaphore
 
 from bonita import schemas
 from bonita.db import SessionFactory
-from bonita.db.models.downloads import Downloads
 from bonita.db.models.extrainfo import ExtraInfo
 from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
@@ -19,7 +18,7 @@ from bonita.modules.scraping.number_parser import FileNumInfo
 from bonita.modules.scraping.scraping import process_cover, scraping
 from bonita.modules.transfer.fileinfo import FileInfo
 from bonita.modules.transfer.transfer import transferfile, findAllVideos
-from bonita.utils.downloader import download_file
+from bonita.utils.downloader import get_cached_file
 
 
 # 创建信号量，最多允许 5 个任务同时执行
@@ -125,15 +124,8 @@ def celery_transfer_group(self, task_json, full_path):
 
                     # 写入NFO文件
 
-                    # 下载图片
-                    cache_cover_path = session.query(Downloads).filter(Downloads.url == metabase.cover).first()
-                    if not cache_cover_path:
-                        cache_cover_path = download_file(metabase.cover, metabase.number, None)
-                        tmp_cover = Downloads(url=metabase.cover, filepath=cache_cover_path)
-                        session.add(tmp_cover)
-                        session.commit()
-
-                    process_cover(cache_cover_path, filename, output_folder)
+                    cache_cover_filepath = get_cached_file(session, metabase.cover, metabase.number)
+                    process_cover(cache_cover_filepath, filename, output_folder)
 
                     logger.debug(f"[-] scraping transfer end")
                 else:
