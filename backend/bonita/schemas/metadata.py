@@ -29,6 +29,8 @@ class MetadataBase(BaseModel):
     uservotes: Optional[int] = None
     detailurl: Optional[str] = None
     site: Optional[str] = None
+    # 额外自定义信息，不是元数据内容
+    extra_part: Optional[int] = None
 
     @model_validator(mode='before')
     def process_fields(cls, values):

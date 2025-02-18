@@ -133,5 +133,6 @@ bin/
 include/
 pyvenv.cfg
 
-# Poetry
+# Custom
 *.lock
+cache/

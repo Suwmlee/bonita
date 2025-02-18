@@ -1,8 +1,8 @@
 
 import os
-import datetime
 import logging
 import re
+from datetime import datetime
 from celery import shared_task, group
 from celery.result import allow_join_result
 
@@ -10,14 +10,16 @@ from multiprocessing import Semaphore
 
 from bonita import schemas
 from bonita.db import SessionFactory
+from bonita.db.models.downloads import Downloads
 from bonita.db.models.extrainfo import ExtraInfo
 from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
 from bonita.db.models.setting import ScrapingSetting
 from bonita.modules.scraping.number_parser import FileNumInfo
-from bonita.modules.scraping.scraping import scraping
+from bonita.modules.scraping.scraping import process_cover, scraping
 from bonita.modules.transfer.fileinfo import FileInfo
 from bonita.modules.transfer.transfer import transferfile, findAllVideos
+from bonita.utils.downloader import download_file
 
 
 # 创建信号量，最多允许 5 个任务同时执行
@@ -104,14 +106,34 @@ def celery_transfer_group(self, task_json, full_path):
 
                     scraping_task = celery_scrapping.apply(args=[currentfile.realpath, task_info.sc_id])
                     with allow_join_result():
-                        meta = scraping_task.get()
-                    logger.debug(f"[-] scraping end: {meta}")
+                        metabase_json = scraping_task.get()
+                    if not metabase_json:
+                        logger.debug(f"[-] scraping failed")
+                        continue
+                    # metabase = schemas.MetadataBase(**metabase)
+                    metabase = schemas.MetadataBase.model_validate(metabase_json)
+                    filename = metabase.number
+                    if metabase.extra_part:
+                        filename += f"-CD{metabase.extra_part}"
+                    # 更新文件名称，part -C -CD1
                     # 移动
                     # 基于 transferfile 方法，拓展支持 poster nfo 文件
+                    location = metabase.number
+                    output_folder = os.path.join(task_info.output_folder, location)
+                    if not os.path.exists(output_folder):
+                        os.makedirs(output_folder)
 
                     # 写入NFO文件
 
                     # 下载图片
+                    cache_cover_path = session.query(Downloads).filter(Downloads.url == metabase.cover).first()
+                    if not cache_cover_path:
+                        cache_cover_path = download_file(metabase.cover, metabase.number, None)
+                        tmp_cover = Downloads(url=metabase.cover, filepath=cache_cover_path)
+                        session.add(tmp_cover)
+                        session.commit()
+
+                    process_cover(cache_cover_path, filename, output_folder)
 
                     logger.debug(f"[-] scraping transfer end")
                 else:
@@ -123,7 +145,7 @@ def celery_transfer_group(self, task_json, full_path):
                     done_list.append(destpath)
                     # 更新
                     record.destpath = destpath
-                    record.updatetime = datetime.datetime.now()
+                    record.updatetime = datetime.now()
         except Exception as e:
             logger.error(e)
         finally:
@@ -153,7 +175,9 @@ def celery_scrapping(self, file_path, scraping_id):
                 session.commit()
 
             metadata_record = session.query(Metadata).filter(Metadata.number == extrainfo.number).first()
-            if not metadata_record:
+            if metadata_record:
+                metadata_base = schemas.MetadataBase(**metadata_record.__dict__)
+            else:
                 # scraping
                 metadata_base = scraping(file_path, scraping_conf, extrainfo)
                 # 保存 metadata 到数据库
@@ -162,11 +186,14 @@ def celery_scrapping(self, file_path, scraping_id):
                 session.commit()
 
             # 根据 extra修正 写入到 NFO 文件的元数据
+            # part -C -CD1
 
-            return metadata_record
+            return metadata_base
     except Exception as e:
         logger.error(e)
-    return "scraping single: done"
+    finally:
+        session.close()
+    return None
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
