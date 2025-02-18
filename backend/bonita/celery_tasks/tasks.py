@@ -109,23 +109,17 @@ def celery_transfer_group(self, task_json, full_path):
                     if not metabase_json:
                         logger.debug(f"[-] scraping failed")
                         continue
-                    # metabase = schemas.MetadataBase(**metabase)
                     metabase = schemas.MetadataBase.model_validate(metabase_json)
-                    filename = metabase.number
-                    if metabase.extra_part:
-                        filename += f"-CD{metabase.extra_part}"
-                    # 更新文件名称，part -C -CD1
-                    # 移动
-                    # 基于 transferfile 方法，拓展支持 poster nfo 文件
-                    location = metabase.number
-                    output_folder = os.path.join(task_info.output_folder, location)
+
+                    output_folder = os.path.abspath(os.path.join(task_info.output_folder, metabase.extra_folder))
                     if not os.path.exists(output_folder):
                         os.makedirs(output_folder)
-
                     # 写入NFO文件
 
                     cache_cover_filepath = get_cached_file(session, metabase.cover, metabase.number)
-                    process_cover(cache_cover_filepath, filename, output_folder)
+                    process_cover(cache_cover_filepath, metabase.extra_filename, output_folder)
+                    # 移动
+                    # 基于 transferfile 方法，拓展支持 poster nfo 文件
 
                     logger.debug(f"[-] scraping transfer end")
                 else:
@@ -162,10 +156,12 @@ def celery_scrapping(self, file_path, scraping_id):
             extrainfo = session.query(ExtraInfo).filter(ExtraInfo.filepath == file_path).first()
             if not extrainfo:
                 extrainfo = ExtraInfo(filepath=file_path)
-                extrainfo.number = FileNumInfo(file_path).num
+                fileinfo = FileNumInfo(file_path)
+                extrainfo.number = fileinfo.num
+                extrainfo.partNumber = fileinfo.part
                 session.add(extrainfo)
                 session.commit()
-
+            # TODO 处理指定源
             metadata_record = session.query(Metadata).filter(Metadata.number == extrainfo.number).first()
             if metadata_record:
                 metadata_base = schemas.MetadataBase(**metadata_record.__dict__)
@@ -176,9 +172,24 @@ def celery_scrapping(self, file_path, scraping_id):
                 metadata_record = Metadata(**metadata_base.model_dump())
                 session.add(metadata_record)
                 session.commit()
-
             # 根据 extra修正 写入到 NFO 文件的元数据
-            # part -C -CD1
+            # tag
+
+            # 根据规则生成文件夹和文件名
+            maxlen = 50
+            extra_folder = eval(scraping_conf.location_rule, metadata_base.__dict__)
+            if 'actor' in scraping_conf.location_rule and len(metadata_base.actor) > 100:
+                extra_folder = eval(scraping_conf.location_rule.replace("actor", "'多人作品'"), metadata_base.__dict__)
+            if 'title' in scraping_conf.location_rule and len(metadata_base.title) > maxlen:
+                shorttitle = metadata_base.title[0:maxlen]
+                extra_folder = extra_folder.replace(metadata_base.title, shorttitle)
+            metadata_base.extra_folder = extra_folder
+            metadata_base.extra_filename = eval(scraping_conf.naming_rule, metadata_base.__dict__)
+
+            # 更新文件名称，part -C -CD1
+            if extrainfo.partNumber:
+                metadata_base.extra_filename += f"-CD{extrainfo.partNumber}"
+                metadata_base.extra_part = extrainfo.partNumber
 
             return metadata_base
     except Exception as e:

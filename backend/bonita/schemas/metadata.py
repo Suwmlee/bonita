@@ -30,6 +30,8 @@ class MetadataBase(BaseModel):
     detailurl: Optional[str] = None
     site: Optional[str] = None
     # 额外自定义信息，不是元数据内容
+    extra_filename: Optional[str] = None
+    extra_folder: Optional[str] = None
     extra_part: Optional[int] = None
 
     @model_validator(mode='before')
