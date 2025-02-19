@@ -29,6 +29,9 @@ VITE_API_URL="http://localhost:8000"
 https://boxicons.com/
 
 ### 更新 client API
+
+http://localhost:8000/api/v1/openapi.json
+
 ```sh
 node modify-openapi-operationids.js
 

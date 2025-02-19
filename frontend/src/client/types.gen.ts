@@ -13,6 +13,12 @@ export type HTTPValidationError = {
     detail?: Array<ValidationError>;
 };
 
+/**
+ * 操作类型: 1. 硬链接 2. 软链接 3. 移动 4. 复制
+ *
+ */
+export type OperationMethod = 1 | 2 | 3 | 4;
+
 export type Response = {
     success?: boolean;
     message?: string | null;
@@ -65,13 +71,40 @@ export type Token = {
     token_type?: string;
 };
 
+/**
+ * Properties to return via API, id is always required
+ */
+export type TransferRecordPublic = {
+    srcname: string;
+    srcpath: string;
+    srcfolder?: string | null;
+    ignored?: boolean;
+    locked?: boolean;
+    deleted?: boolean;
+    forced_name?: string | null;
+    top_folder?: string | null;
+    second_folder?: string | null;
+    isepisode?: boolean | null;
+    season?: number | null;
+    episode?: number | null;
+    linkpath?: string | null;
+    destpath?: string | null;
+    updatetime?: string | null;
+    deadtime?: string | null;
+    id: number;
+};
+
+export type TransferRecordsPublic = {
+    data: Array<TransferRecordPublic>;
+    count: number;
+};
+
 export type TransferTaskCreate = {
     name: string;
     description: string;
     enabled?: boolean;
-    task_type?: number;
     content_type?: number;
-    transfer_type: number;
+    operation: OperationMethod;
     auto_watch?: boolean;
     clean_others?: boolean;
     optimize_name?: boolean;
@@ -93,9 +126,8 @@ export type TransferTaskPublic = {
     name: string;
     description: string;
     enabled?: boolean;
-    task_type?: number;
     content_type?: number;
-    transfer_type?: number;
+    operation?: OperationMethod;
     auto_watch?: boolean;
     clean_others?: boolean;
     optimize_name?: boolean;
@@ -290,6 +322,13 @@ export type DeleteSettingData = {
 };
 
 export type DeleteSettingResponse = Response;
+
+export type GetTransRecordsData = {
+    limit?: number;
+    skip?: number;
+};
+
+export type GetTransRecordsResponse = TransferRecordsPublic;
 
 export type $OpenApiTs = {
     '/api/v1/login/access-token': {
@@ -576,6 +615,21 @@ export type $OpenApiTs = {
                  * Successful Response
                  */
                 200: Response;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/records/transrecords': {
+        get: {
+            req: GetTransRecordsData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: TransferRecordsPublic;
                 /**
                  * Validation Error
                  */

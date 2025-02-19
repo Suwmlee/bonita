@@ -6,9 +6,10 @@ import errno
 import shutil
 import stat
 import logging
+from enum import Enum as PyEnum
 
 video_type = ['.mp4', '.avi', '.rmvb', '.wmv', '.strm',
-              '.mov', '.mkv', '.flv', '.ts', '.m2ts','.webm', '.iso']
+              '.mov', '.mkv', '.flv', '.ts', '.m2ts', '.webm', '.iso']
 ext_type = ['.ass', '.srt', '.sub', '.ssa', '.smi', '.idx', '.sup',
             '.psb', '.usf', '.xss', '.ssf', '.rt', '.lrc', '.sbv', '.vtt', '.ttml']
 
@@ -18,6 +19,15 @@ ext_filter = ['*.ass', '*.srt', '*.sub', '*.ssa', '*.smi', '*.idx', '*.sup',
               '*.psb', '*.usf', '*.xss', '*.ssf', '*.rt', '*.lrc', '*.sbv', '*.vtt', '*.ttml']
 
 logger = logging.getLogger(__name__)
+
+
+class OperationMethod(PyEnum):
+    """ 操作类型: 1. 硬链接 2. 软链接 3. 移动 4. 复制
+    """
+    HARD_LINK = 1
+    SYMLINK = 2
+    MOVE = 3
+    COPY = 4
 
 
 def creatFolder(foldername):
@@ -229,6 +239,7 @@ def forceHardlink(srcpath, dstpath):
         else:
             raise e
 
+
 def checkFileExists(filepath):
     """ 检测文件是否存在
     软/硬链接
@@ -240,26 +251,30 @@ def checkFileExists(filepath):
     else:
         return False
 
-def linkFile(srcpath, dstpath, linktype=1):
-    """ 链接文件
 
-    params: linktype: `1` 软链接 `2` 硬链接
+def linkFile(srcpath, dstpath, operation: OperationMethod):
+    """ 链接文件
+    params: linktype: 操作方式
 
     https://stackoverflow.com/questions/41941401/how-to-find-out-if-a-folder-is-a-hard-link-and-get-its-real-path
     """
-    if os.path.exists(dstpath) and os.path.samefile(srcpath, dstpath) and linktype == 2:
+    if os.path.exists(dstpath) and os.path.samefile(srcpath, dstpath) and operation == OperationMethod.HARD_LINK:
         logger.debug("[!] same file already exists")
-    elif pathlib.Path(dstpath).is_symlink() and os.readlink(dstpath) == srcpath and linktype == 1:
+    elif pathlib.Path(dstpath).is_symlink() and os.readlink(dstpath) == srcpath and operation == OperationMethod.SYMLINK:
         logger.debug("[!] link file already exists")
     else:
         dstfolder = os.path.dirname(dstpath)
         if not os.path.exists(dstfolder):
             os.makedirs(dstfolder)
         logger.debug("[-] create link from [{}] to [{}]".format(srcpath, dstpath))
-        if linktype == 1:
+        if operation == OperationMethod.SYMLINK:
             forceSymlink(srcpath, dstpath)
-        else:
+        elif operation == OperationMethod.HARD_LINK:
             forceHardlink(srcpath, dstpath)
+        elif operation == OperationMethod.MOVE:
+            shutil.move(srcpath, dstpath)
+        elif operation == OperationMethod.COPY:
+            shutil.copyfile(srcpath, dstpath)
 
 
 def replaceCJK(base: str):
@@ -299,4 +314,3 @@ def replaceRegex(base: str, regex: str):
     base = cop.sub('', base)
     base = re.sub(r'(\W)\1+', r'\1', base).lstrip(' !?@#$.:：]）)').rstrip(' !?@#$.:：[(（')
     return base
-

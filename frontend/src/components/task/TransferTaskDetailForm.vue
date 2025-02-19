@@ -22,7 +22,7 @@ if (updateTask) {
   const createTask: TransferTaskCreate = {
     name: "name",
     description: "descrip",
-    transfer_type: 0,
+    operation: 1,
     source_folder: "/volume/source",
   }
   currentTask.value = createTask
@@ -79,7 +79,7 @@ async function handleSubmit() {
             <label for="content_type">content type</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField id="content_type" type="number" v-model="currentTask.content_type" />
+            <VTextField id="content_type" type="number" v-model.number="currentTask.content_type" />
           </VCol>
         </VRow>
       </VCol>
@@ -102,6 +102,17 @@ async function handleSubmit() {
           </VCol>
           <VCol cols="12" md="9">
             <VTextField id="output_folder" v-model="currentTask.output_folder" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="operation">Operation</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField id="operation" type="number" v-model.number="currentTask.operation" />
           </VCol>
         </VRow>
       </VCol>

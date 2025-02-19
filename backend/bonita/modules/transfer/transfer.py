@@ -8,7 +8,7 @@ import logging
 
 from bonita.modules.transfer.fileinfo import FileInfo
 from bonita.utils.regex import extractEpNum, matchSeason, matchEpPart, matchSeries, simpleMatchEp
-from bonita.utils.filehelper import linkFile, video_type, ext_type, replaceRegex, cleanFolderWithoutSuffix, \
+from bonita.utils.filehelper import OperationMethod, linkFile, video_type, ext_type, replaceRegex, cleanFolderWithoutSuffix, \
     replaceCJK, cleanbyNameSuffix, cleanExtraMedia, moveSubs
 
 logger = logging.getLogger(__name__)
@@ -245,10 +245,7 @@ def transferfile(currentfile: FileInfo, src_folder, simplify_tag, fixseries_tag,
     else:
         destpath = os.path.join(dest_folder, currentfile.fixMidFolder(), currentfile.fixFinalName())
     currentfile.updateFinalPath(destpath)
-    if linktype == 0:
-        linkFile(link_path, destpath, 1)
-    else:
-        linkFile(link_path, destpath, 2)
+    linkFile(link_path, destpath, linktype)
 
     # 使用最终的文件名
     cleanbyNameSuffix(currentfile.finalfolder, currentfile.name, ext_type)
@@ -258,12 +255,9 @@ def transferfile(currentfile: FileInfo, src_folder, simplify_tag, fixseries_tag,
     return destpath
 
 
-def transSingleFile(currentfile: FileInfo, output_folder, prefilename, linktype):
+def transSingleFile(currentfile: FileInfo, output_folder, prefilename, linktype: OperationMethod):
     """ 转移单个文件
     """
     dest_path = os.path.join(output_folder, prefilename + currentfile.ext)
-    if linktype == 0:
-        linkFile(currentfile.realpath, dest_path, 1)
-    else:
-        linkFile(currentfile.realpath, dest_path, 2)
+    linkFile(currentfile.realpath, dest_path, linktype)
     return dest_path

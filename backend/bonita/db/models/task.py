@@ -1,8 +1,9 @@
 
 
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Enum, Integer, String, Boolean
 
 from bonita.db import Base
+from bonita.utils.filehelper import OperationMethod
 
 
 class TransferTask(Base):
@@ -15,13 +16,11 @@ class TransferTask(Base):
     enabled = Column(Boolean, default=True)
     deleted = Column(Boolean, default=True)
 
-    # 任务类型: 1. 移动 2. 不移动,整理?
-    task_type = Column(Integer, default=1)
-    # 转移类型: 1. 硬链接 2. 移动 3. 复制
-    transfer_type = Column(Integer, default=1)
+    # 操作类型: 1. 硬链接 2. 移动 3. 复制
+    operation = Column(Enum(OperationMethod), default=OperationMethod.HARD_LINK)
     auto_watch = Column(Boolean, default=False, comment="开启自动监测")
     clean_others = Column(Boolean, default=True, comment="清理其他文件")
-    optimize_name = Column(Boolean, default=True, comment="优化名字") 
+    optimize_name = Column(Boolean, default=True, comment="优化名字")
 
     # 内容类型: 1. 电影 2. 电视节目
     content_type = Column(Integer, default=1, comment="内容类型")

@@ -1,6 +1,8 @@
 from typing import List, Optional
 from pydantic import BaseModel
 
+from bonita.utils.filehelper import OperationMethod
+
 
 class TaskBase(BaseModel):
     id: str
@@ -18,9 +20,8 @@ class TransferTaskBase(BaseModel):
     name: str
     description: str
     enabled: bool = True
-    task_type: int = 1
     content_type: int = 1
-    transfer_type: int = 1
+    operation: OperationMethod = OperationMethod.HARD_LINK
     auto_watch: bool = False
     clean_others: bool = False
     optimize_name: bool = False
@@ -51,5 +52,5 @@ class TransferTasksPublic(BaseModel):
 
 
 class TransferTaskCreate(TransferTaskBase):
-    transfer_type: int
+    operation: OperationMethod
     source_folder: str

@@ -126,7 +126,7 @@ def celery_transfer_group(self, task_json, full_path):
                     if scraping_conf.watermark_enabled:
                         add_mark(pics, metabase.tag, scraping_conf.watermark_location, scraping_conf.watermark_size)
                     # 移动
-                    destpath = transSingleFile(currentfile, output_folder, metabase.extra_filename, task_info.transfer_type)
+                    destpath = transSingleFile(currentfile, output_folder, metabase.extra_filename, task_info.operation)
                     done_list.append(destpath)
                     # 更新
                     record.destpath = destpath
@@ -137,7 +137,7 @@ def celery_transfer_group(self, task_json, full_path):
                     # 开始转移
                     destpath = transferfile(currentfile, task_info.source_folder, simplify_tag=task_info.optimize_name,
                                             fixseries_tag=fixseries, dest_folder=task_info.output_folder,
-                                            movie_list=waiting_list, linktype=task_info.transfer_type)
+                                            movie_list=waiting_list, linktype=task_info.operation)
                     done_list.append(destpath)
                     # 更新
                     record.destpath = destpath

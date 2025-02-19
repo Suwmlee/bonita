@@ -69,6 +69,14 @@ export const $HTTPValidationError = {
     title: 'HTTPValidationError'
 } as const;
 
+export const $OperationMethod = {
+    type: 'integer',
+    enum: [1, 2, 3, 4],
+    title: 'OperationMethod',
+    description: `操作类型: 1. 硬链接 2. 软链接 3. 移动 4. 复制
+    `
+} as const;
+
 export const $Response = {
     properties: {
         success: {
@@ -339,6 +347,187 @@ export const $Token = {
     title: 'Token'
 } as const;
 
+export const $TransferRecordPublic = {
+    properties: {
+        srcname: {
+            type: 'string',
+            title: 'Srcname'
+        },
+        srcpath: {
+            type: 'string',
+            title: 'Srcpath'
+        },
+        srcfolder: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Srcfolder'
+        },
+        ignored: {
+            type: 'boolean',
+            title: 'Ignored',
+            default: false
+        },
+        locked: {
+            type: 'boolean',
+            title: 'Locked',
+            default: false
+        },
+        deleted: {
+            type: 'boolean',
+            title: 'Deleted',
+            default: false
+        },
+        forced_name: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Forced Name'
+        },
+        top_folder: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Top Folder'
+        },
+        second_folder: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Second Folder'
+        },
+        isepisode: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Isepisode',
+            default: false
+        },
+        season: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Season',
+            default: -1
+        },
+        episode: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Episode',
+            default: -1
+        },
+        linkpath: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Linkpath'
+        },
+        destpath: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Destpath'
+        },
+        updatetime: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Updatetime'
+        },
+        deadtime: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Deadtime'
+        },
+        id: {
+            type: 'integer',
+            title: 'Id'
+        }
+    },
+    type: 'object',
+    required: ['srcname', 'srcpath', 'id'],
+    title: 'TransferRecordPublic',
+    description: 'Properties to return via API, id is always required'
+} as const;
+
+export const $TransferRecordsPublic = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/TransferRecordPublic'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'TransferRecordsPublic'
+} as const;
+
 export const $TransferTaskCreate = {
     properties: {
         name: {
@@ -354,19 +543,13 @@ export const $TransferTaskCreate = {
             title: 'Enabled',
             default: true
         },
-        task_type: {
-            type: 'integer',
-            title: 'Task Type',
-            default: 1
-        },
         content_type: {
             type: 'integer',
             title: 'Content Type',
             default: 1
         },
-        transfer_type: {
-            type: 'integer',
-            title: 'Transfer Type'
+        operation: {
+            '$ref': '#/components/schemas/OperationMethod'
         },
         auto_watch: {
             type: 'boolean',
@@ -473,7 +656,7 @@ export const $TransferTaskCreate = {
         }
     },
     type: 'object',
-    required: ['name', 'description', 'transfer_type', 'source_folder'],
+    required: ['name', 'description', 'operation', 'source_folder'],
     title: 'TransferTaskCreate'
 } as const;
 
@@ -492,19 +675,13 @@ export const $TransferTaskPublic = {
             title: 'Enabled',
             default: true
         },
-        task_type: {
-            type: 'integer',
-            title: 'Task Type',
-            default: 1
-        },
         content_type: {
             type: 'integer',
             title: 'Content Type',
             default: 1
         },
-        transfer_type: {
-            type: 'integer',
-            title: 'Transfer Type',
+        operation: {
+            '$ref': '#/components/schemas/OperationMethod',
             default: 1
         },
         auto_watch: {

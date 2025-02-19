@@ -4,6 +4,7 @@ from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker, Session, declared_attr, as_declarative
 
 from bonita.core.config import settings
+from bonita.utils.filehelper import OperationMethod
 
 engine = create_engine(settings.SQLALCHEMY_DATABASE_URI,
                        connect_args={"check_same_thread": False})
@@ -45,7 +46,13 @@ class Base:
             session.add(self)
 
     def to_dict(self):
-        return {c.name: getattr(self, c.name, None) for c in self.__table__.columns}
+        result = {}
+        for c in self.__table__.columns:
+            value = getattr(self, c.name, None)
+            if isinstance(value, OperationMethod):
+                value = value.value
+            result[c.name] = value
+        return result
 
     def filter_dict(self, source_dict):
         valid_columns = {column.name for column in self.__table__.columns}
