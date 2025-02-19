@@ -39,8 +39,7 @@ def process_watcher_task(task_conf_id: int):
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='transfer:all')
 def celery_transfer_entry(self, task_json):
-    """
-    转移任务入口
+    """ 转移任务入口
     """
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "transfer task: start"})
     task_info = schemas.TransferTaskPublic(**task_json)
@@ -62,8 +61,7 @@ def celery_transfer_entry(self, task_json):
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='transfer:group')
 def celery_transfer_group(self, task_json, full_path):
-    """
-    对 group/folder 内所有关联文件进行转移
+    """ 对 group/folder 内所有关联文件进行转移
     """
     with semaphore:
         self.update_state(state="PROGRESS", meta={"progress": 0, "step": "celery_transfer_pool: start"})
@@ -172,21 +170,22 @@ def celery_scrapping(self, file_path, scraping_dict):
             extrainfo.partNumber = int(fileNumInfo.part.replace("-CD", "")) if fileNumInfo.part else 0
             session.add(extrainfo)
             session.commit()
-        # TODO 处理指定源
+        # TODO 处理指定源/强制从网站更新
         metadata_record = session.query(Metadata).filter(Metadata.number == extrainfo.number).first()
         if metadata_record:
             metadata_base = schemas.MetadataBase(**metadata_record.to_dict())
         else:
             # scraping
             metadata_base = scraping(extrainfo.number,
-                                        scraping_conf.scraping_sites,
-                                        extrainfo.specifiedsource,
-                                        extrainfo.specifiedurl)
+                                     scraping_conf.scraping_sites,
+                                     extrainfo.specifiedsource,
+                                     extrainfo.specifiedurl)
             # 保存 metadata 到数据库
-            filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
-            metadata_record = Metadata(**filter_dict)
-            session.add(metadata_record)
-            session.commit()
+            if scraping_conf.save_metadata:
+                filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
+                metadata_record = Metadata(**filter_dict)
+                session.add(metadata_record)
+                session.commit()
         # 根据 extra修正 写入到 NFO 文件的元数据
         if fileNumInfo.chs_tag:
             metadata_base.tag += ", 中文字幕"

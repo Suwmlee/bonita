@@ -157,7 +157,10 @@ def crop_poster(tmp_file, posterpath):
         if w / h > 1:
             # img2 width / height = 0.66
             width2 = h * 0.66
-            img2 = img.crop((w - width2, 0, w, h))
+            line = (w/2 - width2) / 2
+            if line < 0:
+                line = 0
+            img2 = img.crop((w - width2 - line, 0, w, h))
             img2.save(posterpath)
             logger.debug('[+]Image Cutted!     ' + posterpath)
         else:
