@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel, model_validator
 from datetime import date
 
@@ -29,10 +29,6 @@ class MetadataBase(BaseModel):
     uservotes: Optional[int] = None
     detailurl: Optional[str] = None
     site: Optional[str] = None
-    # 额外自定义信息，不是元数据内容
-    extra_filename: Optional[str] = None
-    extra_folder: Optional[str] = None
-    extra_part: Optional[int] = None
 
     @model_validator(mode='before')
     def process_fields(cls, values):
@@ -55,8 +51,23 @@ class MetadataBase(BaseModel):
         return values
 
 
+class MetadataMixed(MetadataBase):
+    # 额外自定义信息，不是元数据内容
+    extra_filename: Optional[str] = None
+    extra_folder: Optional[str] = None
+    extra_part: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
 class MetadataPublic(MetadataBase):
     id: int
 
     class Config:
         from_attributes = True
+
+
+class MetadataCollection(BaseModel):
+    data: List[MetadataPublic]
+    count: int

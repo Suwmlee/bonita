@@ -114,19 +114,19 @@ def celery_transfer_group(self, task_json, full_path):
                     if not metabase_json:
                         logger.debug(f"[-] scraping failed")
                         continue
-                    metabase = schemas.MetadataBase.model_validate(metabase_json)
+                    metamixed = schemas.MetadataMixed.model_validate(metabase_json)
 
-                    output_folder = os.path.abspath(os.path.join(task_info.output_folder, metabase.extra_folder))
+                    output_folder = os.path.abspath(os.path.join(task_info.output_folder, metamixed.extra_folder))
                     if not os.path.exists(output_folder):
                         os.makedirs(output_folder)
                     # 写入NFO文件
-                    process_nfo_file(output_folder, metabase.extra_filename, metabase.__dict__)
-                    cache_cover_filepath = get_cached_file(session, metabase.cover, metabase.number)
-                    pics = process_cover(cache_cover_filepath, output_folder, metabase.extra_filename)
+                    process_nfo_file(output_folder, metamixed.extra_filename, metamixed.__dict__)
+                    cache_cover_filepath = get_cached_file(session, metamixed.cover, metamixed.number)
+                    pics = process_cover(cache_cover_filepath, output_folder, metamixed.extra_filename)
                     if scraping_conf.watermark_enabled:
-                        add_mark(pics, metabase.tag, scraping_conf.watermark_location, scraping_conf.watermark_size)
+                        add_mark(pics, metamixed.tag, scraping_conf.watermark_location, scraping_conf.watermark_size)
                     # 移动
-                    destpath = transSingleFile(currentfile, output_folder, metabase.extra_filename, task_info.operation)
+                    destpath = transSingleFile(currentfile, output_folder, metamixed.extra_filename, task_info.operation)
                     done_list.append(destpath)
                     # 更新
                     record.destpath = destpath
@@ -173,41 +173,41 @@ def celery_scrapping(self, file_path, scraping_dict):
         # TODO 处理指定源/强制从网站更新
         metadata_record = session.query(Metadata).filter(Metadata.number == extrainfo.number).first()
         if metadata_record:
-            metadata_base = schemas.MetadataBase(**metadata_record.to_dict())
+            metadata_mixed = schemas.MetadataMixed(**metadata_record.to_dict())
         else:
             # scraping
-            metadata_base = scraping(extrainfo.number,
+            metadata_mixed = scraping(extrainfo.number,
                                      scraping_conf.scraping_sites,
                                      extrainfo.specifiedsource,
                                      extrainfo.specifiedurl)
             # 保存 metadata 到数据库
             if scraping_conf.save_metadata:
-                filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
+                filter_dict = Metadata.filter_dict(Metadata, metadata_mixed.__dict__)
                 metadata_record = Metadata(**filter_dict)
                 session.add(metadata_record)
 
         # 根据规则生成文件夹和文件名
         maxlen = scraping_conf.max_title_len
-        extra_folder = eval(scraping_conf.location_rule, metadata_base.__dict__)
-        if 'actor' in scraping_conf.location_rule and len(metadata_base.actor) > 100:
-            extra_folder = eval(scraping_conf.location_rule.replace("actor", "'多人作品'"), metadata_base.__dict__)
-        if 'title' in scraping_conf.location_rule and len(metadata_base.title) > maxlen:
-            shorttitle = metadata_base.title[0:maxlen]
-            extra_folder = extra_folder.replace(metadata_base.title, shorttitle)
-        metadata_base.extra_folder = extra_folder
-        metadata_base.extra_filename = eval(scraping_conf.naming_rule, metadata_base.__dict__)
+        extra_folder = eval(scraping_conf.location_rule, metadata_mixed.__dict__)
+        if 'actor' in scraping_conf.location_rule and len(metadata_mixed.actor) > 100:
+            extra_folder = eval(scraping_conf.location_rule.replace("actor", "'多人作品'"), metadata_mixed.__dict__)
+        if 'title' in scraping_conf.location_rule and len(metadata_mixed.title) > maxlen:
+            shorttitle = metadata_mixed.title[0:maxlen]
+            extra_folder = extra_folder.replace(metadata_mixed.title, shorttitle)
+        metadata_mixed.extra_folder = extra_folder
+        metadata_mixed.extra_filename = eval(scraping_conf.naming_rule, metadata_mixed.__dict__)
 
         # 将 extrainfo.tag 中的标签添加到 metadata_base.tag 中，过滤重复的标签
-        existing_tags = set(metadata_base.tag.split(", "))
+        existing_tags = set(metadata_mixed.tag.split(", "))
         new_tags = set(extrainfo.tag.split(", "))
         combined_tags = existing_tags.union(new_tags)
-        metadata_base.tag = ", ".join(combined_tags)
+        metadata_mixed.tag = ", ".join(combined_tags)
         # 更新文件名称，part -C -CD1
         if extrainfo.partNumber:
-            metadata_base.extra_filename += f"-CD{extrainfo.partNumber}"
-            metadata_base.extra_part = extrainfo.partNumber
+            metadata_mixed.extra_filename += f"-CD{extrainfo.partNumber}"
+            metadata_mixed.extra_part = extrainfo.partNumber
 
-        return metadata_base
+        return metadata_mixed
     except Exception as e:
         logger.error(e)
     finally:
