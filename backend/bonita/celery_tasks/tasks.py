@@ -168,8 +168,8 @@ def celery_scrapping(self, file_path, scraping_dict):
             extrainfo = ExtraInfo(filepath=file_path)
             extrainfo.number = fileNumInfo.num
             extrainfo.partNumber = int(fileNumInfo.part.replace("-CD", "")) if fileNumInfo.part else 0
+            extrainfo.tag = ', '.join(map(str, fileNumInfo.tags()))
             session.add(extrainfo)
-            session.commit()
         # TODO 处理指定源/强制从网站更新
         metadata_record = session.query(Metadata).filter(Metadata.number == extrainfo.number).first()
         if metadata_record:
@@ -185,16 +185,6 @@ def celery_scrapping(self, file_path, scraping_dict):
                 filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
                 metadata_record = Metadata(**filter_dict)
                 session.add(metadata_record)
-                session.commit()
-        # 根据 extra修正 写入到 NFO 文件的元数据
-        if fileNumInfo.chs_tag:
-            metadata_base.tag += ", 中文字幕"
-        if fileNumInfo.leak_tag:
-            metadata_base.tag += ", 流出"
-        if fileNumInfo.uncensored_tag:
-            metadata_base.tag += ", 无码"
-        if fileNumInfo.hack_tag:
-            metadata_base.tag += ", 破解"
 
         # 根据规则生成文件夹和文件名
         maxlen = scraping_conf.max_title_len
@@ -207,6 +197,11 @@ def celery_scrapping(self, file_path, scraping_dict):
         metadata_base.extra_folder = extra_folder
         metadata_base.extra_filename = eval(scraping_conf.naming_rule, metadata_base.__dict__)
 
+        # 将 extrainfo.tag 中的标签添加到 metadata_base.tag 中，过滤重复的标签
+        existing_tags = set(metadata_base.tag.split(", "))
+        new_tags = set(extrainfo.tag.split(", "))
+        combined_tags = existing_tags.union(new_tags)
+        metadata_base.tag = ", ".join(combined_tags)
         # 更新文件名称，part -C -CD1
         if extrainfo.partNumber:
             metadata_base.extra_filename += f"-CD{extrainfo.partNumber}"
@@ -216,6 +211,7 @@ def celery_scrapping(self, file_path, scraping_dict):
     except Exception as e:
         logger.error(e)
     finally:
+        session.commit()
         session.close()
     return None
 

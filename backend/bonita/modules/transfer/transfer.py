@@ -260,4 +260,7 @@ def transSingleFile(currentfile: FileInfo, output_folder, prefilename, linktype:
     """
     dest_path = os.path.join(output_folder, prefilename + currentfile.ext)
     linkFile(currentfile.realpath, dest_path, linktype)
+    oldname = os.path.splitext(currentfile.realname)[0]
+    moveSubs(currentfile.realfolder, output_folder, oldname, prefilename)
+
     return dest_path

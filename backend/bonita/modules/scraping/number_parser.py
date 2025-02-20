@@ -104,6 +104,18 @@ class FileNumInfo():
         except:
             return False
 
+    def tags(self):
+        tags = []
+        if self.chs_tag:
+            tags.append('中文字幕')
+        if self.uncensored_tag:
+            tags.append('无码')
+        if self.leak_tag:
+            tags.append('流出')
+        if self.hack_tag:
+            tags.append('破解')
+        return tags
+
 
 def get_number(file_path: str) -> str:
     """ 获取番号

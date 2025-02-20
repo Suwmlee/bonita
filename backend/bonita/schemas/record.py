@@ -2,9 +2,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
 
-
-class RecordBase(BaseModel):
-    id: str
+from bonita.schemas.extrainfo import ExtraInfoPublic
 
 
 class TransferRecordBase(BaseModel):
@@ -47,4 +45,16 @@ class TransferRecordPublic(TransferRecordBase):
 
 class TransferRecordsPublic(BaseModel):
     data: List[TransferRecordPublic]
+    count: int
+
+
+class RecordPublic(BaseModel):
+    transfer_record: TransferRecordPublic
+    extra_info: ExtraInfoPublic
+
+    class Config:
+        from_attributes = True
+
+class RecordsPublic(BaseModel):
+    data: List[RecordPublic]
     count: int
