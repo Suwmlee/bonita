@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetTaskStatusData, GetTaskStatusResponse, GetAllTasksData, GetAllTasksResponse, CreateTaskData, CreateTaskResponse, UpdateTaskData, UpdateTaskResponse, DeleteTaskData, DeleteTaskResponse, GetAllSettingsData, GetAllSettingsResponse, CreateSettingData, CreateSettingResponse, UpdateSettingData, UpdateSettingResponse, DeleteSettingData, DeleteSettingResponse, GetTransRecordsData, GetTransRecordsResponse } from './types.gen';
+import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetTaskStatusData, GetTaskStatusResponse, GetAllTasksData, GetAllTasksResponse, CreateTaskData, CreateTaskResponse, UpdateTaskData, UpdateTaskResponse, DeleteTaskData, DeleteTaskResponse, GetAllSettingsData, GetAllSettingsResponse, CreateSettingData, CreateSettingResponse, UpdateSettingData, UpdateSettingResponse, DeleteSettingData, DeleteSettingResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, GetTransRecordsData, GetTransRecordsResponse, GetMetadataData, GetMetadataResponse } from './types.gen';
 
 export class LoginService {
     /**
@@ -455,6 +455,49 @@ export class ScrapingSettingService {
 
 export class TransRecordsService {
     /**
+     * Get Records
+     * 获取记录信息 包含 ExtraInfo
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @returns RecordsPublic Successful Response
+     * @throws ApiError
+     */
+    public static getRecords(data: GetRecordsData = {}): CancelablePromise<GetRecordsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/records/all',
+            query: {
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Record
+     * 更新记录信息 包含 ExtraInfo
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns RecordPublic Successful Response
+     * @throws ApiError
+     */
+    public static updateRecord(data: UpdateRecordData): CancelablePromise<UpdateRecordResponse> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/v1/records/record',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
      * Get Trans Records
      * @param data The data for the request.
      * @param data.skip
@@ -466,6 +509,32 @@ export class TransRecordsService {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/records/transrecords',
+            query: {
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+}
+
+export class MetadataService {
+    /**
+     * Get Metadata
+     * 获取元数据
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @returns MetadataCollection Successful Response
+     * @throws ApiError
+     */
+    public static getMetadata(data: GetMetadataData = {}): CancelablePromise<GetMetadataResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/metadata/all',
             query: {
                 skip: data.skip,
                 limit: data.limit

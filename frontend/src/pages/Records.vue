@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { MetadataService } from "@/client";
+import { TransRecordsService } from "@/client";
 import { useTheme } from "vuetify"
 
 const { global: globalTheme } = useTheme()
 
-const metadata = ref()
+const AllRecords = ref()
 
-async function getMetadata() {
-  let response = await MetadataService.getMetadata()
-  metadata.value = response.data
+async function getAllRecords() {
+  let response = await TransRecordsService.getRecords()
+  AllRecords.value = response.data
 }
 
-getMetadata()
+getAllRecords()
 
 </script>
 
@@ -21,45 +21,45 @@ getMetadata()
       <thead>
         <tr>
           <th>
-            Number
+            srcpath
           </th>
           <th class="text-uppercase">
-            Title
+            destpath
           </th>
           <th class="text-uppercase">
-            Actor
+            updatetime
           </th>
           <th class="text-uppercase">
-            Cover
+            deadtime
           </th>
           <th class="text-uppercase">
-            Site
+            isepisode
           </th>
           <th class="text-uppercase">
-            URL
+            number
           </th>
         </tr>
       </thead>
 
       <tbody>
-        <tr v-for="item in metadata" :key="item.id">
+        <tr v-for="item in AllRecords" :key="item.transfer_record.id">
           <td>
-            {{ item.number }}
+            {{ item.transfer_record.srcpath }}
           </td>
           <td>
-            {{ item.title }}
+            {{ item.transfer_record.destpath }}
           </td>
           <td>
-            {{ item.actor }}
+            {{ item.transfer_record.updatetime }}
           </td>
           <td>
-            {{ item.cover }}
+            {{ item.transfer_record.deadtime }}
           </td>
           <td>
-            {{ item.site }}
+            {{ item.transfer_record.isepisode }}
           </td>
           <td>
-            {{ item.detailurl }}
+            {{ item.extra_info.number }}
           </td>
         </tr>
       </tbody>

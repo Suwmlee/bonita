@@ -9,8 +9,52 @@ export type Body_login_login_access_token = {
     client_secret?: string | null;
 };
 
+export type ExtraInfoPublic = {
+    filepath: string;
+    number: string;
+    tag?: string | null;
+    partNumber: number;
+    specifiedsource?: string | null;
+    specifiedurl?: string | null;
+    id: number;
+};
+
 export type HTTPValidationError = {
     detail?: Array<ValidationError>;
+};
+
+export type MetadataCollection = {
+    data: Array<MetadataPublic>;
+    count: number;
+};
+
+export type MetadataPublic = {
+    number: string;
+    title: string;
+    studio?: string | null;
+    release?: string | null;
+    year?: number | null;
+    runtime?: string | null;
+    genre?: string | null;
+    rating?: string | null;
+    language?: string | null;
+    country?: string | null;
+    outline?: string | null;
+    director?: string | null;
+    actor?: string | null;
+    actor_photo?: string | null;
+    cover?: string | null;
+    cover_small?: string | null;
+    extrafanart?: string | null;
+    trailer?: string | null;
+    tag?: string | null;
+    label?: string | null;
+    series?: string | null;
+    userrating?: number | null;
+    uservotes?: number | null;
+    detailurl?: string | null;
+    site?: string | null;
+    id: number;
 };
 
 /**
@@ -18,6 +62,16 @@ export type HTTPValidationError = {
  *
  */
 export type OperationMethod = 1 | 2 | 3 | 4;
+
+export type RecordPublic = {
+    transfer_record: TransferRecordPublic;
+    extra_info: ExtraInfoPublic;
+};
+
+export type RecordsPublic = {
+    data: Array<RecordPublic>;
+    count: number;
+};
 
 export type Response = {
     success?: boolean;
@@ -323,12 +377,32 @@ export type DeleteSettingData = {
 
 export type DeleteSettingResponse = Response;
 
+export type GetRecordsData = {
+    limit?: number;
+    skip?: number;
+};
+
+export type GetRecordsResponse = RecordsPublic;
+
+export type UpdateRecordData = {
+    requestBody: RecordPublic;
+};
+
+export type UpdateRecordResponse = RecordPublic;
+
 export type GetTransRecordsData = {
     limit?: number;
     skip?: number;
 };
 
 export type GetTransRecordsResponse = TransferRecordsPublic;
+
+export type GetMetadataData = {
+    limit?: number;
+    skip?: number;
+};
+
+export type GetMetadataResponse = MetadataCollection;
 
 export type $OpenApiTs = {
     '/api/v1/login/access-token': {
@@ -622,6 +696,36 @@ export type $OpenApiTs = {
             };
         };
     };
+    '/api/v1/records/all': {
+        get: {
+            req: GetRecordsData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: RecordsPublic;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/records/record': {
+        put: {
+            req: UpdateRecordData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: RecordPublic;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
     '/api/v1/records/transrecords': {
         get: {
             req: GetTransRecordsData;
@@ -630,6 +734,21 @@ export type $OpenApiTs = {
                  * Successful Response
                  */
                 200: TransferRecordsPublic;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/metadata/all': {
+        get: {
+            req: GetMetadataData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: MetadataCollection;
                 /**
                  * Validation Error
                  */

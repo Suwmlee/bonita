@@ -55,6 +55,63 @@ export const $Body_login_login_access_token = {
     title: 'Body_login-login_access_token'
 } as const;
 
+export const $ExtraInfoPublic = {
+    properties: {
+        filepath: {
+            type: 'string',
+            title: 'Filepath'
+        },
+        number: {
+            type: 'string',
+            title: 'Number'
+        },
+        tag: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Tag'
+        },
+        partNumber: {
+            type: 'integer',
+            title: 'Partnumber'
+        },
+        specifiedsource: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Specifiedsource'
+        },
+        specifiedurl: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Specifiedurl'
+        },
+        id: {
+            type: 'integer',
+            title: 'Id'
+        }
+    },
+    type: 'object',
+    required: ['filepath', 'number', 'partNumber', 'id'],
+    title: 'ExtraInfoPublic'
+} as const;
+
 export const $HTTPValidationError = {
     properties: {
         detail: {
@@ -69,12 +126,338 @@ export const $HTTPValidationError = {
     title: 'HTTPValidationError'
 } as const;
 
+export const $MetadataCollection = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/MetadataPublic'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'MetadataCollection'
+} as const;
+
+export const $MetadataPublic = {
+    properties: {
+        number: {
+            type: 'string',
+            title: 'Number'
+        },
+        title: {
+            type: 'string',
+            title: 'Title'
+        },
+        studio: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Studio'
+        },
+        release: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Release'
+        },
+        year: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Year'
+        },
+        runtime: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Runtime'
+        },
+        genre: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Genre'
+        },
+        rating: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Rating'
+        },
+        language: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Language'
+        },
+        country: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Country'
+        },
+        outline: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Outline'
+        },
+        director: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Director'
+        },
+        actor: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Actor'
+        },
+        actor_photo: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Actor Photo'
+        },
+        cover: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Cover'
+        },
+        cover_small: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Cover Small'
+        },
+        extrafanart: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Extrafanart'
+        },
+        trailer: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Trailer'
+        },
+        tag: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Tag'
+        },
+        label: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Label'
+        },
+        series: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Series'
+        },
+        userrating: {
+            anyOf: [
+                {
+                    type: 'number'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Userrating'
+        },
+        uservotes: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Uservotes'
+        },
+        detailurl: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Detailurl'
+        },
+        site: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Site'
+        },
+        id: {
+            type: 'integer',
+            title: 'Id'
+        }
+    },
+    type: 'object',
+    required: ['number', 'title', 'id'],
+    title: 'MetadataPublic'
+} as const;
+
 export const $OperationMethod = {
     type: 'integer',
     enum: [1, 2, 3, 4],
     title: 'OperationMethod',
     description: `操作类型: 1. 硬链接 2. 软链接 3. 移动 4. 复制
     `
+} as const;
+
+export const $RecordPublic = {
+    properties: {
+        transfer_record: {
+            '$ref': '#/components/schemas/TransferRecordPublic'
+        },
+        extra_info: {
+            '$ref': '#/components/schemas/ExtraInfoPublic'
+        }
+    },
+    type: 'object',
+    required: ['transfer_record', 'extra_info'],
+    title: 'RecordPublic'
+} as const;
+
+export const $RecordsPublic = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/RecordPublic'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'RecordsPublic'
 } as const;
 
 export const $Response = {

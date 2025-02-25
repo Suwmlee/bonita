@@ -9,6 +9,11 @@ import VerticalNavLink from "@layouts/components/VerticalNavLink.vue"
     to: '/dashboard',
   }" />
   <VerticalNavLink :item="{
+    title: 'Records',
+    icon: 'bx-task',
+    to: '/records',
+  }" />
+  <VerticalNavLink :item="{
     title: 'Task',
     icon: 'bx-task',
     to: '/tasks/transfer',

@@ -1,6 +1,7 @@
 import blanklayout from "@/layouts/blank.vue"
 import defaultlayout from "@/layouts/default.vue"
 import DashboardPage from "@/pages/Dashboard.vue"
+import RecordsPage from "@/pages/Records.vue"
 import LoginPage from "@/pages/Login.vue"
 import ScrapingSettingsPage from "@/pages/ScrapingSettings.vue"
 import TaskSetupPage from "@/pages/TaskSetup.vue"
@@ -21,6 +22,11 @@ export const routes = [
         path: "dashboard",
         meta: { requiresAuth: true },
         component: DashboardPage,
+      },
+      {
+        path: "records",
+        meta: { requiresAuth: true },
+        component: RecordsPage,
       },
       {
         path: "metadata",
