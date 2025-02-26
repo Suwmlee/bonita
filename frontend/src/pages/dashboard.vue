@@ -3,7 +3,6 @@ import { UserService } from "@/client/services.gen"
 
 async function getUser() {
   const currentUser = await UserService.readUserMe()
-  console.log(currentUser)
 }
 
 onMounted(() => {

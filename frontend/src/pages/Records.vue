@@ -1,10 +1,20 @@
 <script setup lang="ts">
-import { useTheme } from "vuetify"
 import { useRecordStore } from "@/stores/record.store";
-
-const { global: globalTheme } = useTheme()
+import { RecordPublic } from "@/client";
 
 const recordStore = useRecordStore()
+
+const selected: RecordPublic[] = [];
+const headers = [
+  { title: 'name', align: 'start', sortable: false, key: 'transfer_record.srcname' },
+  { title: 'path', align: 'end', key: 'transfer_record.srcpath' },
+  { title: 'updatetime', align: 'end', key: 'transfer_record.updatetime' },
+  { title: 'deadtime', align: 'end', key: 'transfer_record.deadtime' },
+  { title: 'isepisode', align: 'end', key: 'transfer_record.isepisode' },
+  { title: 'number', align: 'end', key: 'extra_info.number' },
+  { title: 'tag', align: 'end', key: 'extra_info.tag' },
+  { title: 'Actions', key: 'actions', sortable: false },
+]
 
 async function initial() {
   recordStore.getRecords()
@@ -20,69 +30,18 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
-    <VTable :theme="globalTheme.name.value" class="rounded-0">
-      <thead>
-        <tr>
-          <th>
-            name
-          </th>
-          <th class="text-uppercase">
-            path
-          </th>
-          <th class="text-uppercase">
-            updatetime
-          </th>
-          <th class="text-uppercase">
-            deadtime
-          </th>
-          <th class="text-uppercase">
-            isepisode
-          </th>
-          <th class="text-uppercase">
-            number
-          </th>
-          <th class="text-uppercase">
-            tag
-          </th>
-          <th class="text-uppercase">
-            operation
-          </th>
-        </tr>
-      </thead>
+  <v-data-table
+    v-model="selected"
+    :headers="headers"
+    :items="recordStore.records"
+    item-value="name"
+    show-select>
+    <template v-slot:item.actions="{ item }">
+      <VBtn type="submit" class="me-2" @click="showSelectedRecord(item)">
+        编辑
+      </VBtn>
+    </template>
+  </v-data-table>
 
-      <tbody>
-        <tr v-for="item in recordStore.records" :key="item.transfer_record.id">
-          <td>
-            {{ item.transfer_record.srcname }}
-          </td>
-          <td>
-            {{ item.transfer_record.destpath }}
-          </td>
-          <td>
-            {{ item.transfer_record.updatetime }}
-          </td>
-          <td>
-            {{ item.transfer_record.deadtime }}
-          </td>
-          <td>
-            {{ item.transfer_record.isepisode }}
-          </td>
-          <td>
-            {{ item.extra_info.number }}
-          </td>
-          <td>
-            {{ item.extra_info.tag }}
-          </td>
-          <td>
-            <VBtn type="submit" class="me-2" @click="showSelectedRecord(item)">
-              编辑
-            </VBtn>
-          </td>
-        </tr>
-      </tbody>
-    </VTable>
-  </div>
-
-  <RecordDetailDialog/>
+  <RecordDetailDialog />
 </template>
