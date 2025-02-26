@@ -1,18 +1,22 @@
 <script setup lang="ts">
-import { TransRecordsService } from "@/client";
 import { useTheme } from "vuetify"
+import { useRecordStore } from "@/stores/record.store";
 
 const { global: globalTheme } = useTheme()
 
-const AllRecords = ref()
+const recordStore = useRecordStore()
 
-async function getAllRecords() {
-  let response = await TransRecordsService.getRecords()
-  AllRecords.value = response.data
+async function initial() {
+  recordStore.getRecords()
 }
 
-getAllRecords()
+const showSelectedRecord = (item: any) => {
+  recordStore.showUpdateRecord(item)
+}
 
+onMounted(() => {
+  initial()
+})
 </script>
 
 <template>
@@ -21,10 +25,10 @@ getAllRecords()
       <thead>
         <tr>
           <th>
-            srcpath
+            name
           </th>
           <th class="text-uppercase">
-            destpath
+            path
           </th>
           <th class="text-uppercase">
             updatetime
@@ -38,13 +42,19 @@ getAllRecords()
           <th class="text-uppercase">
             number
           </th>
+          <th class="text-uppercase">
+            tag
+          </th>
+          <th class="text-uppercase">
+            operation
+          </th>
         </tr>
       </thead>
 
       <tbody>
-        <tr v-for="item in AllRecords" :key="item.transfer_record.id">
+        <tr v-for="item in recordStore.records" :key="item.transfer_record.id">
           <td>
-            {{ item.transfer_record.srcpath }}
+            {{ item.transfer_record.srcname }}
           </td>
           <td>
             {{ item.transfer_record.destpath }}
@@ -61,8 +71,18 @@ getAllRecords()
           <td>
             {{ item.extra_info.number }}
           </td>
+          <td>
+            {{ item.extra_info.tag }}
+          </td>
+          <td>
+            <VBtn type="submit" class="me-2" @click="showSelectedRecord(item)">
+              编辑
+            </VBtn>
+          </td>
         </tr>
       </tbody>
     </VTable>
   </div>
+
+  <RecordDetailDialog/>
 </template>
