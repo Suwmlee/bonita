@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MetadataService } from "@/client";
+import { MetadataService } from "@/client"
 import { useTheme } from "vuetify"
 
 const { global: globalTheme } = useTheme()
@@ -7,12 +7,11 @@ const { global: globalTheme } = useTheme()
 const metadata = ref()
 
 async function getMetadata() {
-  let response = await MetadataService.getMetadata()
+  const response = await MetadataService.getMetadata()
   metadata.value = response.data
 }
 
 getMetadata()
-
 </script>
 
 <template>

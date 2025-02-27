@@ -1,4 +1,4 @@
-import { RecordPublic, TransRecordsService } from "@/client"
+import { type RecordPublic, TransRecordsService } from "@/client"
 
 import { defineStore } from "pinia"
 
@@ -27,11 +27,11 @@ export const useRecordStore = defineStore("record-store", {
         this.showDialog = false
       }
     },
-    async deleteRecord(idToRemove: number) {
-
-    },
+    async deleteRecord(idToRemove: number) {},
     updateRecordById(id: number, newValue: Partial<RecordPublic>) {
-      const index = this.records.findIndex((task) => task.transfer_record.id === id)
+      const index = this.records.findIndex(
+        (task) => task.transfer_record.id === id,
+      )
 
       if (index !== -1) {
         this.records[index] = {

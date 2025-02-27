@@ -1,19 +1,24 @@
 <script setup lang="ts">
-import { useRecordStore } from "@/stores/record.store";
-import { RecordPublic } from "@/client";
+import type { RecordPublic } from "@/client"
+import { useRecordStore } from "@/stores/record.store"
 
 const recordStore = useRecordStore()
 
-const selected: RecordPublic[] = [];
+const selected: RecordPublic[] = []
 const headers = [
-  { title: 'name', align: 'start', sortable: false, key: 'transfer_record.srcname' },
-  { title: 'path', align: 'end', key: 'transfer_record.srcpath' },
-  { title: 'updatetime', align: 'end', key: 'transfer_record.updatetime' },
-  { title: 'deadtime', align: 'end', key: 'transfer_record.deadtime' },
-  { title: 'isepisode', align: 'end', key: 'transfer_record.isepisode' },
-  { title: 'number', align: 'end', key: 'extra_info.number' },
-  { title: 'tag', align: 'end', key: 'extra_info.tag' },
-  { title: 'Actions', key: 'actions', sortable: false },
+  {
+    title: "name",
+    align: "start",
+    sortable: false,
+    key: "transfer_record.srcname",
+  },
+  { title: "path", align: "end", key: "transfer_record.srcpath" },
+  { title: "updatetime", align: "end", key: "transfer_record.updatetime" },
+  { title: "deadtime", align: "end", key: "transfer_record.deadtime" },
+  { title: "isepisode", align: "end", key: "transfer_record.isepisode" },
+  { title: "number", align: "end", key: "extra_info.number" },
+  { title: "tag", align: "end", key: "extra_info.tag" },
+  { title: "Actions", key: "actions", sortable: false },
 ]
 
 async function initial() {

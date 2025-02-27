@@ -1,7 +1,10 @@
 <script lang="ts" setup>
-import { ExtraInfoPublic, RecordPublic, TransferRecordPublic } from '@/client';
-import { useRecordStore } from '@/stores/record.store';
-
+import {
+  ExtraInfoPublic,
+  type RecordPublic,
+  TransferRecordPublic,
+} from "@/client"
+import { useRecordStore } from "@/stores/record.store"
 
 interface Props {
   updateRecord?: RecordPublic
@@ -22,7 +25,7 @@ currentExtraInfo.value = { ...updateRecord.extra_info }
 async function handleSubmit() {
   const data: RecordPublic = {
     transfer_record: currentTransferRecord.value,
-    extra_info: currentExtraInfo.value
+    extra_info: currentExtraInfo.value,
   }
   recordStore.updateRecord(data)
 }

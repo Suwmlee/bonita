@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRecordStore } from "@/stores/record.store";
+import { useRecordStore } from "@/stores/record.store"
 
 const dialog = useRecordStore()
 </script>
