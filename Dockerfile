@@ -1,0 +1,28 @@
+# 构建前端
+FROM node:20 AS frontend-build
+WORKDIR /app/frontend
+COPY frontend/ .
+RUN npm install
+RUN npm run build
+
+# 构建 Bonita
+FROM python:3.12
+WORKDIR /app/backend
+
+COPY backend/ /app/backend/
+
+# 安装 Poetry
+RUN pip install poetry
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-interaction --no-ansi
+
+# 从前端构建阶段复制静态文件
+COPY --from=frontend-build /app/frontend/dist /app/frontend/dist
+
+RUN apt-get update && apt-get install -y nginx
+COPY nginx.conf /etc/nginx/nginx.conf
+
+EXPOSE 80
+
+# 启动 Nginx、FastAPI 和 Celery
+CMD ["sh", "-c", "nginx && uvicorn bonita.main:app --host 0.0.0.0 --port 8000 & celery -A bonita.worker.celery worker --loglevel=info"]

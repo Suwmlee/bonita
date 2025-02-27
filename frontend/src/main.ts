@@ -21,7 +21,7 @@ import "@core/scss/template/index.scss"
 import "@layouts/styles/index.scss"
 import "@styles/styles.scss"
 
-OpenAPI.BASE = import.meta.env.VITE_API_URL
+OpenAPI.BASE = import.meta.env.VITE_API_URL || window.location.origin
 OpenAPI.TOKEN = async () => {
   return localStorage.getItem("access_token") || ""
 }
