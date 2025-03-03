@@ -3,9 +3,9 @@ import re
 import logging
 
 G_spat = re.compile(
-    "^\w+\.(cc|com|net|me|club|jp|tv|xyz|biz|wiki|info|tw|us|de)@|^22-sht\.me|"
-    "^(fhd|hd|sd|1080p|720p|4K)(-|_)|"
-    "(-|_)(fhd|hd|sd|1080p|720p|4K|x264|x265|uncensored|hack|leak)",
+    r"^\w+\.(cc|com|net|me|club|jp|tv|xyz|biz|wiki|info|tw|us|de)@|^22-sht\.me|"
+    r"^(fhd|hd|sd|1080p|720p|4K)(-|_)|"
+    r"(-|_)(fhd|hd|sd|1080p|720p|4K|x264|x265|uncensored|hack|leak)",
     re.IGNORECASE)
 
 
@@ -171,37 +171,52 @@ def get_number(file_path: str) -> str:
         logging.getLogger().error(e)
         return
 
-
 # 定义多个匹配规则
 rules = [
+    # 6位数字-2~3位数字 如: 123456-123
     lambda x: re.search(r'\d{6}(-|_)\d{2,3}', x, re.I).group(),
+    # x-art.日期格式 如: x-art.22.01.01
     lambda x: re.search(r'x-art\.\d{2}\.\d{2}\.\d{2}', x, re.I).group(),
+    # xxx-av系列 如: xxx-av-12345
     lambda x: ''.join(['xxx-av-', re.findall(r'xxx-av[^\d]*(\d{3,5})[^\d]*', x, re.I)[0]]),
+    # heydouga系列 如: heydouga-1234-123
     lambda x: 'heydouga-' + '-'.join(re.findall(r'(\d{4})[\-_](\d{3,4})[^\d]*', x, re.I)[0]),
+    # HEYZO系列 如: HEYZO-1234
     lambda x: 'HEYZO-' + re.findall(r'heyzo[^\d]*(\d{4})', x, re.I)[0],
+    # mdbk系列 如: mdbk-123
     lambda x: re.search(r'mdbk(-|_)(\d{4})', x, re.I).group(),
+    # mdtm系列 如: mdtm-123
     lambda x: re.search(r'mdtm(-|_)(\d{4})', x, re.I).group(),
+    # s2mbd系列 如: s2mbd-123
     lambda x: re.search(r's2mbd(-|_)(\d{3})', x, re.I).group(),
+    # s2m系列 如: s2m-123
     lambda x: re.search(r's2m(-|_)(\d{3})', x, re.I).group(),
+    # fc2系列 如: fc2-123456
     lambda x: re.search(r'fc2(-|_)(\d{5,7})', x, re.I).group(),
+    # 通用规则: 2-6个字母+3-4个数字 如: ABP-123
     lambda x: re.search(r'([A-Za-z]{2,6}\-?\d{3,4})', x, re.I).group(),
 ]
 
 
 def rules_parser(filename: str):
-    """ lower filename
+    """解析文件名中的番号
+    Args:
+        filename: 文件名
+    Returns:
+        str: 提取的番号,未找到返回None
     """
     filename = filename.upper()
     for rule in rules:
         try:
+            # 特殊处理FC2系列
             if 'FC2' in filename:
                 filename = filename.replace('PPV', '').replace('--', '-').replace('_', '-').replace(' ', '')
             file_number = rule(filename)
             if file_number:
                 return file_number
         except:
-            pass
-    return
+            continue
+    return None
 
 
 class Cache_uncensored_conf:
