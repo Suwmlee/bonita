@@ -3,27 +3,27 @@ import type { RecordPublic } from "@/client"
 import { useRecordStore } from "@/stores/record.store"
 
 const recordStore = useRecordStore()
-const searchQuery = ref('')
+const searchQuery = ref("")
 const selected = ref<RecordPublic[]>([])
 const tagColorMap = {
-  '中文字幕': '#FF0000',
-  '破解': '#FFA500',
+  中文字幕: "#FF0000",
+  破解: "#FFA500",
 } as const
 
 const getTagColor = (tag: string) => {
-  return tagColorMap[tag.trim() as keyof typeof tagColorMap] || 'grey'
+  return tagColorMap[tag.trim() as keyof typeof tagColorMap] || "grey"
 }
 
 const formatDateTime = (dateStr: string | null | undefined) => {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
+  if (!dateStr) return ""
+  return new Date(dateStr).toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
   })
 }
 
@@ -96,7 +96,7 @@ const showSelectedRecord = (item: any) => {
 const handleDelete = () => {
   if (selected.value.length === 0) return
   // TODO: Implement delete functionality
-  console.log('Delete items:', selected.value)
+  console.log("Delete items:", selected.value)
 }
 
 watch(searchQuery, (newValue) => {

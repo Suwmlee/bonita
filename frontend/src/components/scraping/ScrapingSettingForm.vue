@@ -36,7 +36,7 @@ if (updateSetting) {
     watermark_location: 2,
     transalte_enabled: false,
     transalte_to_sc: false,
-    transalte_values: "title,outline"
+    transalte_values: "title,outline",
   }
   currentSetting.value = createSetting
 }
