@@ -59,7 +59,7 @@ async function handleSubmit() {
       <!-- 👉 submit and reset button -->
       <VCol cols="12">
         <VRow no-gutters>
-          <VCol cols="12" md="3"/>
+          <VCol cols="12" md="3" />
           <VCol cols="12" md="9">
             <VBtn type="submit" class="me-4">
               Submit

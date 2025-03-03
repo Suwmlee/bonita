@@ -23,6 +23,20 @@ if (updateSetting) {
   const createSetting: ScrapingSettingCreate = {
     name: "name",
     description: "descrip",
+    save_metadata: false,
+    scraping_sites: "",
+    location_rule: "",
+    naming_rule: "",
+    max_title_len: 100,
+    morestoryline: true,
+    extrafanart_enabled: false,
+    extrafanart_folder: "extrafanart",
+    watermark_enabled: true,
+    watermark_size: 9,
+    watermark_location: 2,
+    transalte_enabled: false,
+    transalte_to_sc: false,
+    transalte_values: "title,outline"
   }
   currentSetting.value = createSetting
 }
@@ -80,6 +94,147 @@ async function handleSubmit() {
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentSetting.naming_rule" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="scraping_sites">Scraping Sites</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField v-model="currentSetting.scraping_sites" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="location_rule">Location Rule</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField v-model="currentSetting.location_rule" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="max_title_len">Max Title Length</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField 
+              v-model="currentSetting.max_title_len" 
+              type="number"
+            />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="morestoryline">More Storyline</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VCheckbox v-model="currentSetting.morestoryline" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="extrafanart_enabled">Extra Fanart Enabled</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VCheckbox v-model="currentSetting.extrafanart_enabled" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="extrafanart_folder">Extra Fanart Folder</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField v-model="currentSetting.extrafanart_folder" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="watermark_enabled">Watermark Enabled</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VCheckbox v-model="currentSetting.watermark_enabled" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="watermark_size">Watermark Size</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField 
+              v-model="currentSetting.watermark_size" 
+              type="number"
+            />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="watermark_location">Watermark Location</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField 
+              v-model="currentSetting.watermark_location" 
+              type="number"
+            />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="transalte_enabled">Translate Enabled</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VCheckbox v-model="currentSetting.transalte_enabled" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="transalte_to_sc">Translate to SC</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VCheckbox v-model="currentSetting.transalte_to_sc" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="transalte_values">Translate Values</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField v-model="currentSetting.transalte_values" />
           </VCol>
         </VRow>
       </VCol>

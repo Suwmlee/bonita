@@ -89,6 +89,15 @@ export type ScrapingSettingCreate = {
     location_rule?: string | null;
     naming_rule?: string | null;
     max_title_len?: number | null;
+    morestoryline?: boolean | null;
+    extrafanart_enabled?: boolean | null;
+    extrafanart_folder?: string | null;
+    watermark_enabled?: boolean | null;
+    watermark_size?: number | null;
+    watermark_location?: number | null;
+    transalte_enabled?: boolean | null;
+    transalte_to_sc?: boolean | null;
+    transalte_values?: string | null;
 };
 
 /**
@@ -102,6 +111,15 @@ export type ScrapingSettingPublic = {
     location_rule?: string | null;
     naming_rule?: string | null;
     max_title_len?: number | null;
+    morestoryline?: boolean | null;
+    extrafanart_enabled?: boolean | null;
+    extrafanart_folder?: string | null;
+    watermark_enabled?: boolean | null;
+    watermark_size?: number | null;
+    watermark_location?: number | null;
+    transalte_enabled?: boolean | null;
+    transalte_to_sc?: boolean | null;
+    transalte_values?: string | null;
     id: number;
 };
 

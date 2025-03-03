@@ -571,6 +571,114 @@ export const $ScrapingSettingCreate = {
                 }
             ],
             title: 'Max Title Len'
+        },
+        morestoryline: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Morestoryline',
+            default: true
+        },
+        extrafanart_enabled: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Extrafanart Enabled',
+            default: false
+        },
+        extrafanart_folder: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Extrafanart Folder',
+            default: 'extrafanart'
+        },
+        watermark_enabled: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Watermark Enabled',
+            default: true
+        },
+        watermark_size: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Watermark Size',
+            default: 9
+        },
+        watermark_location: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Watermark Location',
+            default: 2
+        },
+        transalte_enabled: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Transalte Enabled',
+            default: false
+        },
+        transalte_to_sc: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Transalte To Sc',
+            default: false
+        },
+        transalte_values: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Transalte Values',
+            default: 'title,outline'
         }
     },
     type: 'object',
@@ -643,6 +751,114 @@ export const $ScrapingSettingPublic = {
                 }
             ],
             title: 'Max Title Len'
+        },
+        morestoryline: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Morestoryline',
+            default: true
+        },
+        extrafanart_enabled: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Extrafanart Enabled',
+            default: false
+        },
+        extrafanart_folder: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Extrafanart Folder',
+            default: 'extrafanart'
+        },
+        watermark_enabled: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Watermark Enabled',
+            default: true
+        },
+        watermark_size: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Watermark Size',
+            default: 9
+        },
+        watermark_location: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Watermark Location',
+            default: 2
+        },
+        transalte_enabled: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Transalte Enabled',
+            default: false
+        },
+        transalte_to_sc: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Transalte To Sc',
+            default: false
+        },
+        transalte_values: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Transalte Values',
+            default: 'title,outline'
         },
         id: {
             type: 'integer',

@@ -16,7 +16,6 @@ class TransferTask(Base):
     enabled = Column(Boolean, default=True)
     deleted = Column(Boolean, default=True)
 
-    # 操作类型: 1. 硬链接 2. 移动 3. 复制
     operation = Column(Enum(OperationMethod), default=OperationMethod.HARD_LINK)
     auto_watch = Column(Boolean, default=False, comment="开启自动监测")
     clean_others = Column(Boolean, default=True, comment="清理其他文件")

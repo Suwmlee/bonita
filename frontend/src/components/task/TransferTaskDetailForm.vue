@@ -165,6 +165,83 @@ async function handleSubmit() {
         </VRow>
       </VCol>
 
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="enabled">Enabled</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VCheckbox id="enabled" v-model="currentTask.enabled" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="optimize_name">Optimize Name</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VCheckbox id="optimize_name" v-model="currentTask.optimize_name" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="failed_folder">Failed Folder</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField id="failed_folder" v-model="currentTask.failed_folder" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="escape_folder">Escape Folder</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField id="escape_folder" v-model="currentTask.escape_folder" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="escape_literals">Escape Literals</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField id="escape_literals" v-model="currentTask.escape_literals" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="escape_size">Escape Size</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField id="escape_size" type="number" v-model.number="currentTask.escape_size" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="threads_num">Threads Number</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField id="threads_num" type="number" v-model.number="currentTask.threads_num" />
+          </VCol>
+        </VRow>
+      </VCol>
+
       <!-- 👉 submit and reset button -->
       <VCol cols="12">
         <VRow no-gutters>

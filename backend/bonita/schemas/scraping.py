@@ -13,6 +13,15 @@ class ScrapingSettingBase(BaseModel):
     location_rule: Optional[str] = None
     naming_rule: Optional[str] = None
     max_title_len: Optional[int] = None
+    morestoryline: Optional[bool] = True
+    extrafanart_enabled: Optional[bool] = False
+    extrafanart_folder: Optional[str] = 'extrafanart'
+    watermark_enabled: Optional[bool] = True
+    watermark_size: Optional[int] = 9
+    watermark_location: Optional[int] = 2
+    transalte_enabled: Optional[bool] = False
+    transalte_to_sc: Optional[bool] = False
+    transalte_values: Optional[str] = "title,outline"
 
 
 class ScrapingSettingPublic(ScrapingSettingBase):
