@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from bonita.api.routes import login, records, scraping_setting, task_transfer, users, task, metadata
+from bonita.api.routes import login, records, resource, scraping_setting, task_transfer, users, task, metadata
 from bonita.api.deps import verify_token
 
 api_router = APIRouter()
@@ -15,3 +15,5 @@ api_router.include_router(records.router, prefix="/records",
                           tags=["transRecords"], dependencies=[Depends(verify_token)])
 api_router.include_router(metadata.router, prefix="/metadata",
                           tags=["metadata"], dependencies=[Depends(verify_token)])
+api_router.include_router(resource.router, prefix="/resource",
+                          tags=["resource"])
