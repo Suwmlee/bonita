@@ -4,7 +4,7 @@ import type {
   ScrapingSettingPublic,
 } from "@/client/types.gen"
 import { defineStore } from "pinia"
-import { useConfirmationStore } from './confirmation.store'
+import { useConfirmationStore } from "./confirmation.store"
 
 export const useScrapingStore = defineStore("scraping-store", {
   state: () => ({
@@ -59,24 +59,26 @@ export const useScrapingStore = defineStore("scraping-store", {
     },
     async deleteSetting(id: number) {
       const confirmationStore = useConfirmationStore()
-      
+
       try {
         const confirmed = await confirmationStore.confirmDelete(
-          'Delete Scraping Setting',
-          'Are you sure you want to delete this scraping setting? This action cannot be undone.'
+          "Delete Scraping Setting",
+          "Are you sure you want to delete this scraping setting? This action cannot be undone.",
         )
-        
+
         if (confirmed) {
           const response = await ScrapingSettingService.deleteSetting({
             id: id,
           })
           if (response.success) {
-            this.allSettings = this.allSettings.filter((setting) => setting.id !== id)
+            this.allSettings = this.allSettings.filter(
+              (setting) => setting.id !== id,
+            )
           }
           return response
         }
       } catch (error) {
-        console.error('Error deleting scraping setting:', error)
+        console.error("Error deleting scraping setting:", error)
       }
     },
   },

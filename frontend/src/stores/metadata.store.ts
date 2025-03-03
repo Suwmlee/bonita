@@ -44,10 +44,10 @@ export const useMetadataStore = defineStore("metadata-store", {
     async confirmDeleteMetadata(id: number) {
       const confirmationStore = useConfirmationStore()
       const confirmed = await confirmationStore.confirmDelete(
-        'Delete Metadata',
-        'Are you sure you want to delete this metadata? This action cannot be undone.'
+        "Delete Metadata",
+        "Are you sure you want to delete this metadata? This action cannot be undone.",
       )
-      
+
       if (confirmed) {
         await this.deleteMetadata(id)
       }
