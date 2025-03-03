@@ -8,44 +8,75 @@ G_spat = re.compile(
     r"(-|_)(fhd|hd|sd|1080p|720p|4K|x264|x265|uncensored|hack|leak)",
     re.IGNORECASE)
 
+# 预编译常用正则表达式
+RE_CD_PART = re.compile(r"(?:-|_)cd\d{1,2}", re.IGNORECASE | re.X | re.S)
+RE_NUMBER_PART = re.compile(r"(?:-|_)\d{1,2}$", re.IGNORECASE | re.X | re.S)
+RE_SP_CHECK = re.compile(r"(?:-|_)sp(?:_|-|$)", re.IGNORECASE | re.X | re.S)
+RE_OUMEI = re.compile(r'[a-zA-Z]+\.\d{2}\.\d{2}\.\d{2}')
+RE_FILENAME = re.compile(r'[\w\-_]+', re.A)
+RE_SUB_C = re.compile(r"(-|_)c$", re.IGNORECASE)
+RE_CH_CHECK = re.compile(r"\d+ch$", re.I)
+RE_BASENAME_SEARCH = re.compile(r'([^<>/\\\\|:""\\*\\?]+)\\.\\w+$')
+RE_BASENAME_FINDALL = re.compile(r'(.+?)\.')
+RE_UNCENSORED_CHECK = re.compile(
+    r'[\d-]{4,}|\d{6}_\d{2,3}|(cz|gedo|k|n|red-|se)\d{2,4}|heyzo.+|xxx-av-.+|heydouga-.+|x-art\.\d{2}\.\d{2}\.\d{2}',
+    re.I
+)
+
 
 class FileNumInfo():
     """ 解析文件番号信息
     """
 
     def __init__(self, filepath: str):
+        if not filepath:
+            self.num = None
+            return
+
         self.num = get_number(filepath)
 
-        self.chs_tag = False
-        self.uncensored_tag = False
-        self.leak_tag = False
-        self.hack_tag = False
-        self.multipart_tag = False
-        self.special = False
-        self.part = ''
+        # 初始化所有标签
+        self.chs_tag = False        # 中文字幕
+        self.uncensored_tag = False  # 无码
+        self.leak_tag = False       # 流出
+        self.hack_tag = False       # 破解
+        self.multipart_tag = False  # 多部分
+        self.special = False        # 特典
+        self.part = ''              # 部分编号
 
-        if self.num and is_uncensored(self.num):
+        # 检查番号是否存在及是否无码
+        if not self.num:
+            return
+
+        if is_uncensored(self.num):
             self.uncensored_tag = True
-        filepath = filepath.lower()
-        if '流出' in filepath or '-leak' in filepath or '_leak' in filepath \
-                or '-uncensored' in filepath or '_uncensored' in filepath:
+
+        # 转为小写以便检查
+        filepath_lower = filepath.lower()
+
+        # 检查是否破解/流出
+        if any(term in filepath_lower for term in ['流出', '-leak', '_leak', '-uncensored', '_uncensored']):
             self.leak_tag = True
-        if '破解' in filepath or '-hack' in filepath or '_hack' in filepath or '-u' in filepath or '_u' in filepath:
+
+        if any(term in filepath_lower for term in ['破解', '-hack', '_hack', '-u', '_u']):
             self.hack_tag = True
 
-        cnlist = ['中文', '字幕', '-c.', '_c.', '_c_', '-c-', '-uc', '_uc']
-        for single in cnlist:
-            if single in filepath:
-                self.chs_tag = True
-                break
-        if re.search(r'[-_]C(\.\w+$|-\w+)|\d+ch(\.\w+$|-\w+)', filepath, re.I):
+        # 检查是否有中文字幕
+        cn_indicators = ['中文', '字幕', '-c.', '_c.', '_c_', '-c-', '-uc', '_uc']
+        if any(indicator in filepath_lower for indicator in cn_indicators) or \
+           re.search(r'[-_]C(\.\w+$|-\w+)|\d+ch(\.\w+$|-\w+)', filepath_lower, re.I):
             self.chs_tag = True
 
+        # 处理文件名
         basename = os.path.basename(filepath)
         self.originalname = os.path.splitext(basename)[0]
+
+        # 检查是否为多部分
         self.part = self.checkPart(basename)
         if self.part:
             self.multipart_tag = True
+
+        # 检查是否特典
         self.special = self.checkSp(basename)
 
     def fixedName(self):
@@ -77,14 +108,12 @@ class FileNumInfo():
     def checkPart(filename):
         try:
             if '_cd' in filename or '-cd' in filename:
-                prog = re.compile("(?:-|_)cd\d{1,2}", re.IGNORECASE | re.X | re.S)
-                result = prog.findall(filename)
+                result = RE_CD_PART.findall(filename)
                 if result:
                     part = str(result[0]).upper().replace('_', '-')
                     return part
-            prog = re.compile("(?:-|_)\d{1,2}$", re.IGNORECASE | re.X | re.S)
             bname = os.path.splitext(filename)[0]
-            result = prog.findall(bname)
+            result = RE_NUMBER_PART.findall(bname)
             if result:
                 part = str(result[0]).upper().replace('_', '-')
                 if 'CD' not in part:
@@ -96,9 +125,8 @@ class FileNumInfo():
     @staticmethod
     def checkSp(filename):
         try:
-            prog = re.compile("(?:-|_)sp(?:_|-|$)", re.IGNORECASE | re.X | re.S)
             bname = os.path.splitext(filename)[0]
-            result = prog.findall(bname)
+            result = RE_SP_CHECK.findall(bname)
             if result and len(result) == 1:
                 return True
         except:
@@ -135,66 +163,82 @@ def get_number(file_path: str) -> str:
         logging.getLogger().debug(f"[!] 特殊番号: {file_path}")
         if '字幕组' in filename or 'SUB' in filename.upper() or re.match(r'[\u30a0-\u30ff]+', filename):
             filename = G_spat.sub("", filename)
-            filename = re.sub("\[.*?\]","",filename)
+            filename = re.sub(r"\[.*?\]", "", filename)
             filename = filename.replace(".chs", "").replace(".cht", "")
             file_number = str(re.findall(r'(.+?)\.', filename)).strip(" [']")
             return file_number
         elif '-' in filename or '_' in filename:  # 普通提取番号 主要处理包含减号-和_的番号
             filename = G_spat.sub("", filename)
-            filename = str(re.sub("\[\d{4}-\d{1,2}-\d{1,2}\] - ", "", filename))  # 去除文件名中时间
-            filename = re.sub("[-_]cd\d{1,2}", "", filename, flags=re.IGNORECASE)
-            if not re.search("-|_", filename): # 去掉-CD1之后再无-的情况，例如n1012-CD1.wmv
+            filename = str(re.sub(r"\[\d{4}-\d{1,2}-\d{1,2}\] - ", "", filename))  # 去除文件名中时间
+            filename = re.sub(r"[-_]cd\d{1,2}", "", filename, flags=re.IGNORECASE)
+            if not re.search("-|_", filename):  # 去掉-CD1之后再无-的情况，例如n1012-CD1.wmv
                 return str(re.search(r'\w+', filename[:filename.find('.')], re.A).group())
-            file_number =  os.path.splitext(filename)
-            filename = re.search(r'[\w\-_]+', filename, re.A)
-            if filename:
-                file_number = str(filename.group())
+            file_number = os.path.splitext(filename)
+            filename_match = RE_FILENAME.search(filename)
+            if filename_match:
+                file_number = str(filename_match.group())
             else:
                 file_number = file_number[0]
-            file_number = re.sub("(-|_)c$", "", file_number, flags=re.IGNORECASE)
-            if re.search("\d+ch$", file_number, flags=re.I):
+            file_number = RE_SUB_C.sub("", file_number)
+            if RE_CH_CHECK.search(file_number):
                 file_number = file_number[:-2]
             return file_number.upper()
         else:  # 提取不含减号-的番号，FANZA CID
             # 欧美番号匹配规则
-            oumei = re.search(r'[a-zA-Z]+\.\d{2}\.\d{2}\.\d{2}', basename)
+            oumei = RE_OUMEI.search(basename)
             if oumei:
                 return oumei.group()
             try:
                 return str(
-                    re.findall(r'(.+?)\.',
-                               str(re.search('([^<>/\\\\|:""\\*\\?]+)\\.\\w+$', basename).group()))).strip(
+                    RE_BASENAME_FINDALL.findall(
+                        str(RE_BASENAME_SEARCH.search(basename).group()))).strip(
                     "['']").replace('_', '-')
             except:
-                return str(re.search(r'(.+?)\.', basename)[0])
+                return str(RE_BASENAME_FINDALL.search(basename)[0])
     except Exception as e:
         logging.getLogger().error(e)
         return
 
-# 定义多个匹配规则
+
+# 预编译规则中的正则表达式
+# 数字格式: 123456-123
+RE_RULE_NUMERIC = re.compile(r'\d{6}(-|_)\d{2,3}', re.I)
+# x-art日期格式: x-art.22.01.01
+RE_RULE_XART = re.compile(r'x-art\.\d{2}\.\d{2}\.\d{2}', re.I)
+# xxx-av系列: xxx-av-12345
+RE_RULE_XXXAV = re.compile(r'xxx-av[^\d]*(\d{3,5})[^\d]*', re.I)
+# heydouga系列: heydouga-1234-123
+RE_RULE_HEYDOUGA = re.compile(r'(\d{4})[\-_](\d{3,4})[^\d]*', re.I)
+# HEYZO系列: HEYZO-1234
+RE_RULE_HEYZO = re.compile(r'heyzo[^\d]*(\d{4})', re.I)
+# mdbk/mdtm系列: mdbk-123, mdtm-123
+RE_RULE_MDX = re.compile(r'(mdbk|mdtm)(-|_)(\d{3,4})', re.I)
+# s2mbd/s2m系列: s2mbd-123, s2m-123
+RE_RULE_S2M = re.compile(r'(s2mbd|s2m)(-|_)(\d{3})', re.I)
+# fc2系列: fc2-123456
+RE_RULE_FC2 = re.compile(r'fc2(-|_)(\d{5,7})', re.I)
+# 高清系列: carib-123456-123
+RE_RULE_HD = re.compile(r'(carib|caribpr|1pon|pondo|10mu)[-_](\d{6})[-_](\d{3})', re.I)
+# VR系列: h_1285vrkm-123
+RE_RULE_VR = re.compile(r'(h_\d+vrkm)[-_](\d{3,4})', re.I)
+# T28系列: t28-123
+RE_RULE_T28 = re.compile(r't-?28[-_](\d{3})', re.I)
+# 通用规则: 2-6个字母+3-4个数字 如: ABP-123
+RE_RULE_GENERAL = re.compile(r'([A-Za-z]{2,6})\-?(\d{3,4})', re.I)
+
 rules = [
-    # 6位数字-2~3位数字 如: 123456-123
-    lambda x: re.search(r'\d{6}(-|_)\d{2,3}', x, re.I).group(),
-    # x-art.日期格式 如: x-art.22.01.01
-    lambda x: re.search(r'x-art\.\d{2}\.\d{2}\.\d{2}', x, re.I).group(),
-    # xxx-av系列 如: xxx-av-12345
-    lambda x: ''.join(['xxx-av-', re.findall(r'xxx-av[^\d]*(\d{3,5})[^\d]*', x, re.I)[0]]),
-    # heydouga系列 如: heydouga-1234-123
-    lambda x: 'heydouga-' + '-'.join(re.findall(r'(\d{4})[\-_](\d{3,4})[^\d]*', x, re.I)[0]),
-    # HEYZO系列 如: HEYZO-1234
-    lambda x: 'HEYZO-' + re.findall(r'heyzo[^\d]*(\d{4})', x, re.I)[0],
-    # mdbk系列 如: mdbk-123
-    lambda x: re.search(r'mdbk(-|_)(\d{4})', x, re.I).group(),
-    # mdtm系列 如: mdtm-123
-    lambda x: re.search(r'mdtm(-|_)(\d{4})', x, re.I).group(),
-    # s2mbd系列 如: s2mbd-123
-    lambda x: re.search(r's2mbd(-|_)(\d{3})', x, re.I).group(),
-    # s2m系列 如: s2m-123
-    lambda x: re.search(r's2m(-|_)(\d{3})', x, re.I).group(),
-    # fc2系列 如: fc2-123456
-    lambda x: re.search(r'fc2(-|_)(\d{5,7})', x, re.I).group(),
-    # 通用规则: 2-6个字母+3-4个数字 如: ABP-123
-    lambda x: re.search(r'([A-Za-z]{2,6}\-?\d{3,4})', x, re.I).group(),
+    lambda x: RE_RULE_NUMERIC.search(x).group(),
+    lambda x: RE_RULE_XART.search(x).group(),
+    lambda x: ''.join(['xxx-av-', RE_RULE_XXXAV.findall(x)[0]]),
+    lambda x: 'heydouga-' + '-'.join(RE_RULE_HEYDOUGA.findall(x)[0]),
+    lambda x: 'HEYZO-' + RE_RULE_HEYZO.findall(x)[0],
+    lambda x: RE_RULE_MDX.search(x).group(),
+    lambda x: RE_RULE_S2M.search(x).group(),
+    lambda x: RE_RULE_FC2.search(x).group(),
+    lambda x: RE_RULE_HD.search(x).group(),
+    lambda x: RE_RULE_VR.search(x).group(),
+    lambda x: 'T28-' + RE_RULE_T28.search(x).group(1),
+    lambda x: '-'.join(RE_RULE_GENERAL.search(x).groups()),
 ]
 
 
@@ -205,17 +249,24 @@ def rules_parser(filename: str):
     Returns:
         str: 提取的番号,未找到返回None
     """
+    if not filename:
+        return None
+
     filename = filename.upper()
+
+    # 特殊处理FC2系列
+    if 'FC2' in filename:
+        filename = filename.replace('PPV', '').replace('--', '-').replace('_', '-').replace(' ', '')
+
     for rule in rules:
         try:
-            # 特殊处理FC2系列
-            if 'FC2' in filename:
-                filename = filename.replace('PPV', '').replace('--', '-').replace('_', '-').replace(' ', '')
             file_number = rule(filename)
             if file_number:
                 return file_number
-        except:
+        except Exception as e:
+            # 静默失败，尝试下一个规则
             continue
+
     return None
 
 
@@ -244,11 +295,7 @@ G_cache_uncensored_conf = Cache_uncensored_conf()
 
 
 def is_uncensored(number):
-    if re.match(
-        r'[\d-]{4,}|\d{6}_\d{2,3}|(cz|gedo|k|n|red-|se)\d{2,4}|heyzo.+|xxx-av-.+|heydouga-.+|x-art\.\d{2}\.\d{2}\.\d{2}',
-        number,
-        re.I
-    ):
+    if RE_UNCENSORED_CHECK.match(number):
         return True
     uncensored_prefix = "S2M,BT,LAF,SMD,SMBD,SM3D2DBD,SKY-,SKYHD,CWP,CWDV,CWBD,CW3D2DBD,MKD,MKBD,MXBD,MK3D2DBD,MCB3DBD,MCBD,RHJ,MMDV"
     if G_cache_uncensored_conf.is_empty():
@@ -278,6 +325,7 @@ if __name__ == "__main__":
         "/media/dv-1234-C.mkv",
         "/media/pred-1234-C.mkv",
     ]
+
     def convert_emoji(bool_tag):
         if bool_tag:
             return "✅"
