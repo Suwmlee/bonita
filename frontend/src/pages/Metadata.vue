@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MetadataPublic } from "@/client"
+import { OpenAPI } from "@/client"
 import MetadataDetailDialog from "@/components/metadata/MetadataDetailDialog.vue"
 import { useMetadataStore } from "@/stores/metadata.store"
 
@@ -15,6 +16,10 @@ function showEditDialog(item: MetadataPublic) {
 
 // Fetch metadata when component is mounted
 metadataStore.fetchMetadata()
+// Function to get image URL using ResourceService
+function getImageUrl(path: string) {
+  return `${OpenAPI.BASE}/api/v1/resource/image?path=${encodeURIComponent(path)}`
+}
 </script>
 
 <template>
@@ -44,7 +49,7 @@ metadataStore.fetchMetadata()
           </VCardText>
 
           <VCardText v-if="item.cover" class="d-flex justify-center" style="max-height: 200px;">
-            <VImg :src="item.cover" height="180" contain />
+            <VImg :src="getImageUrl(item.cover)" height="180" contain />
           </VCardText>
         </VCard>
       </VCol>
