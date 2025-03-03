@@ -18,7 +18,7 @@ const { updateSetting } = props as {
 const currentSetting = ref<any>()
 
 if (updateSetting) {
-  currentSetting.value = updateSetting
+  currentSetting.value = { ...updateSetting }
 } else {
   const createSetting: ScrapingSettingCreate = {
     name: "name",
