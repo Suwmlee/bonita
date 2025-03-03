@@ -18,7 +18,10 @@ async def get_records(session: SessionDep, skip: int = 0, limit: int = 100) -> A
     record_list = []
     for trans_record, extra_info in joined_query:
         transfer_record_public = schemas.TransferRecordPublic.model_validate(trans_record)
-        extra_info_public = schemas.ExtraInfoPublic.model_validate(extra_info) if extra_info else None
+        # 处理 extra_info 为空的情况
+        extra_info_public = None
+        if extra_info:
+            extra_info_public = schemas.ExtraInfoPublic.model_validate(extra_info)
         record_list.append(schemas.RecordPublic(transfer_record=transfer_record_public, extra_info=extra_info_public))
 
     count = session.query(TransRecords).count()

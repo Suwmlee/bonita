@@ -433,11 +433,18 @@ export const $RecordPublic = {
             '$ref': '#/components/schemas/TransferRecordPublic'
         },
         extra_info: {
-            '$ref': '#/components/schemas/ExtraInfoPublic'
+            anyOf: [
+                {
+                    '$ref': '#/components/schemas/ExtraInfoPublic'
+                },
+                {
+                    type: 'null'
+                }
+            ]
         }
     },
     type: 'object',
-    required: ['transfer_record', 'extra_info'],
+    required: ['transfer_record'],
     title: 'RecordPublic'
 } as const;
 
@@ -1064,7 +1071,11 @@ export const $TransferTaskPublic = {
             default: 1
         },
         operation: {
-            '$ref': '#/components/schemas/OperationMethod',
+            allOf: [
+                {
+                    '$ref': '#/components/schemas/OperationMethod'
+                }
+            ],
             default: 1
         },
         auto_watch: {

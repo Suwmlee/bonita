@@ -50,7 +50,7 @@ class TransferRecordsPublic(BaseModel):
 
 class RecordPublic(BaseModel):
     transfer_record: TransferRecordPublic
-    extra_info: ExtraInfoPublic
+    extra_info: Optional[ExtraInfoPublic] = None
 
     class Config:
         from_attributes = True

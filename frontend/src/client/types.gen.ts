@@ -65,7 +65,7 @@ export type OperationMethod = 1 | 2 | 3 | 4;
 
 export type RecordPublic = {
     transfer_record: TransferRecordPublic;
-    extra_info: ExtraInfoPublic;
+    extra_info?: ExtraInfoPublic | null;
 };
 
 export type RecordsPublic = {
