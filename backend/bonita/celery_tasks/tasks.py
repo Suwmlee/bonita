@@ -1,4 +1,3 @@
-
 import os
 import logging
 import re
@@ -176,15 +175,16 @@ def celery_scrapping(self, file_path, scraping_dict):
             metadata_mixed = schemas.MetadataMixed(**metadata_record.to_dict())
         else:
             # scraping
-            metadata_mixed = scraping(extrainfo.number,
+            metadata_base = scraping(extrainfo.number,
                                      scraping_conf.scraping_sites,
                                      extrainfo.specifiedsource,
                                      extrainfo.specifiedurl)
             # 保存 metadata 到数据库
+            filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
+            metadata_record = Metadata(**filter_dict)
             if scraping_conf.save_metadata:
-                filter_dict = Metadata.filter_dict(Metadata, metadata_mixed.__dict__)
-                metadata_record = Metadata(**filter_dict)
                 session.add(metadata_record)
+            metadata_mixed = schemas.MetadataMixed(**metadata_record.to_dict())
 
         # 根据规则生成文件夹和文件名
         maxlen = scraping_conf.max_title_len
