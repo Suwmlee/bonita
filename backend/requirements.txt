@@ -1,0 +1,14 @@
+fastapi==0.112.2
+uvicorn[standard]==0.30.6
+pydantic-settings==2.4.0
+pydantic[email]==2.8.2
+python-jose==3.3.0
+sqlalchemy==2.0.32
+bcrypt==4.2.0
+python-multipart==0.0.9
+alembic==1.13.2
+celery==5.4.0
+redis==5.0.8
+watchdog==6.0.0
+scrapinglib==0.6.1
+pillow==11.1.0
