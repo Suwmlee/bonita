@@ -151,77 +151,142 @@ def transfer(src_folder, dest_folder,
 
 
 def naming(currentfile: FileInfo, movie_list: list, simplify_tag, fixseries_tag):
-    # 处理 midfolder 内特殊内容
-    # CMCT组视频文件命名比文件夹命名更好
-    if 'CMCT' in currentfile.topfolder and not currentfile.locked:
-        matches = [x for x in movie_list if x.topfolder == currentfile.topfolder]
-        # 检测是否有剧集标记
-        epfiles = [x for x in matches if x.isepisode]
-        if len(matches) > 0 and len(epfiles) == 0:
-            namingfiles = [x for x in matches if 'CMCT' in x.name]
-            if len(namingfiles) == 1:
-                # 非剧集
-                for m in matches:
-                    m.topfolder = namingfiles[0].name
-            logger.debug("[-] handling cmct midfolder [{}] ".format(currentfile.midfolder))
-    # topfolder
-    if simplify_tag and not currentfile.locked:
-        minlen = 20
-        tempmid = currentfile.topfolder
-        tempmid = replaceCJK(tempmid)
-        tempmid = replaceRegex(tempmid, "^s(\\d{2})-s(\\d{2})")
-        # TODO 可增加过滤词
-        grouptags = ['cmct', 'wiki', 'frds', '1080p', 'x264', 'x265']
-        for gt in grouptags:
-            if gt in tempmid.lower():
-                minlen += len(gt)
-        if len(tempmid) > minlen:
-            logger.debug("[-] replace CJK [{}] ".format(tempmid))
-            currentfile.topfolder = tempmid
-    # 修正剧集命名
-    if fixseries_tag:
-        if currentfile.isepisode:
-            logger.debug("[-] fix series name")
-            # 检测是否有修正记录
-            if isinstance(currentfile.season, int) and isinstance(currentfile.epnum, int) \
-                    and currentfile.season > -1 and currentfile.epnum > -1:
-                logger.debug("[-] directly use record")
-                if currentfile.season == 0:
-                    currentfile.secondfolder = "Specials"
-                else:
-                    currentfile.secondfolder = "Season " + str(currentfile.season)
-                try:
-                    currentfile.fixEpName(currentfile.season)
-                except:
-                    currentfile.name = "S%02dE%02d" % (currentfile.season, currentfile.epnum)
-            else:
-                if isinstance(currentfile.season, int) and currentfile.season > -1:
-                    seasonnum = currentfile.season
-                else:
-                    # 检测视频上级目录是否有 season 标记
-                    dirfolder = currentfile.folders[len(currentfile.folders)-1]
-                    # 根据 season 标记 更新 secondfolder
-                    seasonnum = matchSeason(dirfolder)
-                if seasonnum:
-                    currentfile.season = seasonnum
-                    currentfile.secondfolder = "Season " + str(seasonnum)
-                    currentfile.fixEpName(seasonnum)
-                else:
-                    # 如果检测不到 seasonnum 可能是多季？默认第一季
-                    if currentfile.secondfolder == '':
-                        currentfile.season = 1
-                        currentfile.secondfolder = "Season " + str(1)
-                        currentfile.fixEpName(1)
-                    # TODO 更多关于花絮的规则
-                    else:
-                        try:
-                            dirfolder = currentfile.folders[len(currentfile.folders)-1]
-                            if '花絮' in dirfolder and currentfile.topfolder != '.':
-                                currentfile.secondfolder = "Specials"
-                                currentfile.season = 0
-                                currentfile.fixEpName(0)
-                        except Exception as ex:
-                            logger.error(ex)
+    """处理文件命名优化
+    Args:
+        currentfile (FileInfo): 当前处理的文件信息
+        movie_list (list): 所有待处理的文件列表
+        simplify_tag (bool): 是否简化文件夹名称
+        fixseries_tag (bool): 是否修正剧集命名
+    """
+    if not currentfile.locked:
+        _handle_group_naming(currentfile, movie_list)
+        if simplify_tag:
+            _simplify_folder_name(currentfile)
+
+    if fixseries_tag and currentfile.isepisode:
+        _fix_series_naming(currentfile)
+
+
+def _handle_group_naming(currentfile: FileInfo, movie_list: list):
+    """处理特殊组的视频文件命名
+    """
+    # CMCT组视频文件命名通常比文件夹命名更规范
+    if 'CMCT' not in currentfile.topfolder:
+        return
+
+    matches = [x for x in movie_list if x.topfolder == currentfile.topfolder]
+    if not matches:
+        return
+
+    # 检测是否有剧集标记
+    epfiles = [x for x in matches if x.isepisode]
+    if epfiles:
+        return
+
+    namingfiles = [x for x in matches if 'CMCT' in x.name]
+    if len(namingfiles) == 1:
+        # 非剧集情况下使用文件名作为文件夹名
+        for m in matches:
+            m.topfolder = namingfiles[0].name
+        logger.debug("[-] handling cmct midfolder [{}]".format(currentfile.midfolder))
+
+
+def _simplify_folder_name(currentfile: FileInfo):
+    """简化文件夹名称
+    1. 替换CJK字符
+    2. 处理特殊模式
+    3. 移除常见标签词
+    """
+    minlen = 20
+    tempmid = currentfile.topfolder
+    tempmid = replaceCJK(tempmid)
+    tempmid = replaceRegex(tempmid, "^s(\\d{2})-s(\\d{2})")
+
+    # 处理常见标签词
+    grouptags = ['cmct', 'wiki', 'frds', '1080p', 'x264', 'x265']
+    for gt in grouptags:
+        if gt in tempmid.lower():
+            minlen += len(gt)
+
+    if len(tempmid) > minlen:
+        logger.debug("[-] replace CJK [{}]".format(tempmid))
+        currentfile.topfolder = tempmid
+
+
+def _fix_series_naming(currentfile: FileInfo):
+    """修正剧集命名
+    处理季数和集数的命名规范化
+    """
+    logger.debug("[-] fix series name")
+
+    # 如果已有有效的季数和集数记录，直接使用
+    if _has_valid_season_episode(currentfile):
+        _apply_season_folder(currentfile)
+        return
+
+    # 尝试从现有信息获取季数
+    seasonnum = _get_season_number(currentfile)
+    if seasonnum:
+        _apply_season_number(currentfile, seasonnum)
+    else:
+        _handle_default_season(currentfile)
+
+
+def _has_valid_season_episode(currentfile: FileInfo):
+    """检查是否有有效的季数和集数记录"""
+    return (isinstance(currentfile.season, int) and isinstance(currentfile.epnum, int)
+            and currentfile.season > -1 and currentfile.epnum > -1)
+
+
+def _apply_season_folder(currentfile: FileInfo):
+    """应用季文件夹命名"""
+    if currentfile.season == 0:
+        currentfile.secondfolder = "Specials"
+    else:
+        currentfile.secondfolder = "Season " + str(currentfile.season)
+    try:
+        currentfile.fixEpName(currentfile.season)
+    except:
+        currentfile.name = "S%02dE%02d" % (currentfile.season, currentfile.epnum)
+
+
+def _get_season_number(currentfile: FileInfo):
+    """获取季数
+    1. 优先使用已有season
+    2. 尝试从目录名解析
+    """
+    if isinstance(currentfile.season, int) and currentfile.season > -1:
+        return currentfile.season
+
+    # 检测视频上级目录是否有season标记
+    dirfolder = currentfile.folders[len(currentfile.folders)-1]
+    return matchSeason(dirfolder)
+
+
+def _apply_season_number(currentfile: FileInfo, seasonnum: int):
+    """应用季数信息"""
+    currentfile.season = seasonnum
+    currentfile.secondfolder = "Season " + str(seasonnum)
+    currentfile.fixEpName(seasonnum)
+
+
+def _handle_default_season(currentfile: FileInfo):
+    """处理默认季数情况"""
+    if currentfile.secondfolder == '':
+        # 如果检测不到seasonnum可能是多季，默认第一季
+        currentfile.season = 1
+        currentfile.secondfolder = "Season " + str(1)
+        currentfile.fixEpName(1)
+    else:
+        try:
+            # 处理特典/花絮
+            dirfolder = currentfile.folders[len(currentfile.folders)-1]
+            if '花絮' in dirfolder and currentfile.topfolder != '.':
+                currentfile.secondfolder = "Specials"
+                currentfile.season = 0
+                currentfile.fixEpName(0)
+        except Exception as ex:
+            logger.error(ex)
 
 
 def transferfile(currentfile: FileInfo, src_folder, simplify_tag, fixseries_tag, dest_folder,
