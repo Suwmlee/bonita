@@ -9,6 +9,10 @@ export type Body_login_login_access_token = {
     client_secret?: string | null;
 };
 
+export type Body_resource_upload_image = {
+    file: (Blob | File);
+};
+
 export type ExtraInfoPublic = {
     filepath: string;
     number: string;
@@ -21,6 +25,34 @@ export type ExtraInfoPublic = {
 
 export type HTTPValidationError = {
     detail?: Array<ValidationError>;
+};
+
+export type MetadataBase = {
+    number: string;
+    title: string;
+    studio?: string | null;
+    release?: string | null;
+    year?: number | null;
+    runtime?: string | null;
+    genre?: string | null;
+    rating?: string | null;
+    language?: string | null;
+    country?: string | null;
+    outline?: string | null;
+    director?: string | null;
+    actor?: string | null;
+    actor_photo?: string | null;
+    cover?: string | null;
+    cover_small?: string | null;
+    extrafanart?: string | null;
+    trailer?: string | null;
+    tag?: string | null;
+    label?: string | null;
+    series?: string | null;
+    userrating?: number | null;
+    uservotes?: number | null;
+    detailurl?: string | null;
+    site?: string | null;
 };
 
 export type MetadataCollection = {
@@ -422,6 +454,31 @@ export type GetMetadataData = {
 
 export type GetMetadataResponse = MetadataCollection;
 
+export type UpdateMetadataData = {
+    id: number;
+    requestBody: MetadataBase;
+};
+
+export type UpdateMetadataResponse = MetadataPublic;
+
+export type DeleteMetadataData = {
+    id: number;
+};
+
+export type DeleteMetadataResponse = Response;
+
+export type GetImageByQueryData = {
+    path: string;
+};
+
+export type GetImageByQueryResponse = unknown;
+
+export type UploadImageData = {
+    formData: Body_resource_upload_image;
+};
+
+export type UploadImageResponse = unknown;
+
 export type $OpenApiTs = {
     '/api/v1/login/access-token': {
         post: {
@@ -767,6 +824,64 @@ export type $OpenApiTs = {
                  * Successful Response
                  */
                 200: MetadataCollection;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/metadata/{id}': {
+        put: {
+            req: UpdateMetadataData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: MetadataPublic;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+        delete: {
+            req: DeleteMetadataData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/resource/image': {
+        get: {
+            req: GetImageByQueryData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: unknown;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/resource/upload/image': {
+        post: {
+            req: UploadImageData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: unknown;
                 /**
                  * Validation Error
                  */

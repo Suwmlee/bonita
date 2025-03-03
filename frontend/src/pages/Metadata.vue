@@ -5,31 +5,37 @@ import MetadataDetailDialog from "@/components/metadata/MetadataDetailDialog.vue
 import { useMetadataStore } from "@/stores/metadata.store"
 
 const metadataStore = useMetadataStore()
-const { metadata } = storeToRefs(metadataStore)
-const showDialog = ref(false)
-const selectedItem = ref<MetadataPublic | null>(null)
 
 function showEditDialog(item: MetadataPublic) {
-  selectedItem.value = item
-  showDialog.value = true
+  metadataStore.showUpdateMetadata(item)
 }
 
-// Fetch metadata when component is mounted
-metadataStore.fetchMetadata()
 // Function to get image URL using ResourceService
 function getImageUrl(path: string) {
   return `${OpenAPI.BASE}/api/v1/resource/image?path=${encodeURIComponent(path)}`
 }
+
+onMounted(() => {
+  metadataStore.getAllMetadata()
+})
 </script>
 
 <template>
   <div>
+    <p class="text-xl mb-6">
+      Metadata
+    </p>
     <VRow>
-      <VCol v-for="item in metadata" :key="item.id" cols="12" md="6" lg="4">
-        <VCard height="400" class="d-flex flex-column" @click="showEditDialog(item)">
+      <VCol v-for="item in metadataStore.allMetadata" :key="item.id" cols="12" sm="6" md="4" lg="3" xl="2">
+        <VCard height="400" max-width="320px" class="d-flex flex-column" @click="showEditDialog(item)">
           <VCardItem>
-            <VCardTitle>
-              {{ item.number }}
+            <VCardTitle class="d-flex justify-space-between align-center">
+              <span>{{ item.number }}</span>
+              <div class="d-flex justify-end">
+                <VBtn variant="text" @click.stop="metadataStore.confirmDeleteMetadata(item.id)">
+                  <VIcon style="color: firebrick;" icon="bx-trash" size="22" />
+                </VBtn>
+              </div>
             </VCardTitle>
           </VCardItem>
 
@@ -54,8 +60,9 @@ function getImageUrl(path: string) {
         </VCard>
       </VCol>
     </VRow>
-
-    <MetadataDetailDialog v-model="showDialog" :metadata="selectedItem" />
+    
+    <!-- Metadata edit dialog -->
+    <MetadataDetailDialog />
   </div>
 </template>
 

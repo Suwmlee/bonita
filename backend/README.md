@@ -4,10 +4,9 @@
 ### 部署
 
 ```sh
-poetry install
 
-# 进入虚拟环境
-poetry shell
+# 安装依赖
+pip install -r requirements.txt
 
 # 启动
 uvicorn bonita.main:app --host 0.0.0.0 --port 8000  --reload

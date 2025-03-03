@@ -1,6 +1,7 @@
 import { TaskService, TransferTaskService } from "@/client"
 import type { TransferTaskCreate, TransferTaskPublic } from "@/client/types.gen"
 import { defineStore } from "pinia"
+import { useConfirmationStore } from './confirmation.store'
 
 export const useTaskStore = defineStore("task-store", {
   state: () => ({
@@ -53,12 +54,26 @@ export const useTaskStore = defineStore("task-store", {
         console.error(`Task with id ${id} not found.`)
       }
     },
-    async deleteTaskById(idToRemove: number) {
-      const response = await TransferTaskService.deleteTask({
-        id: idToRemove,
-      })
-      if (response.success) {
-        this.allTasks = this.allTasks.filter((task) => task.id !== idToRemove)
+    async deleteTaskById(id: number) {
+      const confirmationStore = useConfirmationStore()
+      
+      try {
+        const confirmed = await confirmationStore.confirmDelete(
+          'Delete Task',
+          'Are you sure you want to delete this task? This action cannot be undone.'
+        )
+        
+        if (confirmed) {
+          const response = await TransferTaskService.deleteTask({
+            id: id,
+          })
+          if (response.success) {
+            this.allTasks = this.allTasks.filter((task) => task.id !== id)
+          }
+          return response
+        }
+      } catch (error) {
+        console.error('Error deleting task:', error)
       }
     },
     runTaskById(id: number) {

@@ -1,79 +1,26 @@
 <!-- MetadataDetailDialog.vue -->
 <script setup lang="ts">
-import { MetadataPublic } from '@/client'
-import { computed } from 'vue'
+import { useMetadataStore } from "@/stores/metadata.store"
 
-const props = defineProps<{
-  modelValue: boolean
-  metadata: MetadataPublic | null
-}>()
-
-const emit = defineEmits<{
-  'update:modelValue': [value: boolean]
-}>()
-
-const dialogModel = computed({
-  get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value)
-})
-
-function closeDialog() {
-  emit('update:modelValue', false)
-}
+const dialog = useMetadataStore()
 </script>
 
 <template>
-  <VDialog v-model="dialogModel" max-width="600px">
-    <VCard>
+  <VDialog v-model="dialog.showDialog" max-width="600" scrollable>
+    <VCard class="dialog-metadata-content">
       <VCardTitle>
-        Edit Metadata
-        <VSpacer></VSpacer>
-        <VBtn icon @click="closeDialog">
-          <VIcon>mdi-close</VIcon>
-        </VBtn>
+        <span v-if="dialog.editMetadata" class="ms-2">Edit Metadata</span>
+        <span v-else class="ms-2">Add Metadata</span>
       </VCardTitle>
-      
-      <VCardText v-if="metadata">
-        <VForm @submit.prevent>
-          <VTextField
-            v-model="metadata.number"
-            label="Number"
-            class="mb-4"
-          />
-          <VTextField
-            v-model="metadata.title"
-            label="Title"
-            class="mb-4"
-          />
-          <VTextField
-            v-model="metadata.actor"
-            label="Actor"
-            class="mb-4"
-          />
-          <VTextField
-            v-model="metadata.site"
-            label="Site"
-            class="mb-4"
-          />
-          <VTextField
-            v-model="metadata.detailurl"
-            label="URL"
-            class="mb-4"
-          />
-          <VTextField
-            v-model="metadata.cover"
-            label="Cover URL"
-            class="mb-4"
-          />
-        </VForm>
-      </VCardText>
-
-      <VCardActions>
-        <VSpacer />
-        <VBtn color="primary" @click="closeDialog">
-          Close
-        </VBtn>
-      </VCardActions>
+      <VCardItem>
+        <MetadataDetailForm :updateMetadata="dialog.editMetadata" />
+      </VCardItem>
     </VCard>
   </VDialog>
 </template>
+
+<style lang="scss">
+.dialog-metadata-content {
+  padding: 1rem;
+}
+</style>

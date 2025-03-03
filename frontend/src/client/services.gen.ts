@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetTaskStatusData, GetTaskStatusResponse, GetAllTasksData, GetAllTasksResponse, CreateTaskData, CreateTaskResponse, UpdateTaskData, UpdateTaskResponse, DeleteTaskData, DeleteTaskResponse, GetAllSettingsData, GetAllSettingsResponse, CreateSettingData, CreateSettingResponse, UpdateSettingData, UpdateSettingResponse, DeleteSettingData, DeleteSettingResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, GetTransRecordsData, GetTransRecordsResponse, GetMetadataData, GetMetadataResponse } from './types.gen';
+import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetTaskStatusData, GetTaskStatusResponse, GetAllTasksData, GetAllTasksResponse, CreateTaskData, CreateTaskResponse, UpdateTaskData, UpdateTaskResponse, DeleteTaskData, DeleteTaskResponse, GetAllSettingsData, GetAllSettingsResponse, CreateSettingData, CreateSettingResponse, UpdateSettingData, UpdateSettingResponse, DeleteSettingData, DeleteSettingResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, GetTransRecordsData, GetTransRecordsResponse, GetMetadataData, GetMetadataResponse, UpdateMetadataData, UpdateMetadataResponse, DeleteMetadataData, DeleteMetadataResponse, GetImageByQueryData, GetImageByQueryResponse, UploadImageData, UploadImageResponse } from './types.gen';
 
 export class LoginService {
     /**
@@ -539,6 +539,121 @@ export class MetadataService {
                 skip: data.skip,
                 limit: data.limit
             },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Metadata
+     * 更新元数据
+     *
+     * Args:
+     * session: 数据库会话
+     * id: 元数据ID
+     * metadata: 更新的元数据内容
+     *
+     * Returns:
+     * 更新后的元数据
+     * @param data The data for the request.
+     * @param data.id
+     * @param data.requestBody
+     * @returns MetadataPublic Successful Response
+     * @throws ApiError
+     */
+    public static updateMetadata(data: UpdateMetadataData): CancelablePromise<UpdateMetadataResponse> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/v1/metadata/{id}',
+            path: {
+                id: data.id
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Delete Metadata
+     * 删除元数据
+     *
+     * Args:
+     * session: 数据库会话
+     * id: 元数据ID
+     * @param data The data for the request.
+     * @param data.id
+     * @returns Response Successful Response
+     * @throws ApiError
+     */
+    public static deleteMetadata(data: DeleteMetadataData): CancelablePromise<DeleteMetadataResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/metadata/{id}',
+            path: {
+                id: data.id
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+}
+
+export class ResourceService {
+    /**
+     * Get Image By Query
+     * Get image from local cache or download it using query parameter
+     *
+     * Args:
+     * path: The image URL (can be non-encoded) or file hash
+     * session: Database session
+     *
+     * Returns:
+     * FileResponse: The image file
+     * @param data The data for the request.
+     * @param data.path
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static getImageByQuery(data: GetImageByQueryData): CancelablePromise<GetImageByQueryResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/resource/image',
+            query: {
+                path: data.path
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Upload Image
+     * Upload an image file
+     *
+     * Args:
+     * file: The image file to upload
+     * session: Database session
+     *
+     * Returns:
+     * dict: Information about the uploaded file
+     * @param data The data for the request.
+     * @param data.formData
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static uploadImage(data: UploadImageData): CancelablePromise<UploadImageResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/resource/upload/image',
+            formData: data.formData,
+            mediaType: 'multipart/form-data',
             errors: {
                 422: 'Validation Error'
             }
