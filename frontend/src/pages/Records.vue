@@ -42,14 +42,12 @@ const headers = [
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.srcpath",
     width: 200,
-    fixed: true,
   },
   {
     title: "destpath",
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.destpath",
     width: 200,
-    fixed: true,
   },
   {
     title: "season",
