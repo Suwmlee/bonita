@@ -101,6 +101,17 @@ def celery_transfer_group(self, task_json, full_path):
                     record.srcpath = currentfile.realpath
                     session.add(record)
                     session.commit()
+                if record.ignored:
+                    logger.debug(f"[-] ignore {currentfile.realpath}")
+                    continue
+                # 如果 record 中定义了剧集信息，则使用 record 中的信息
+                if record.isepisode:
+                    currentfile.isepisode = True
+                    if record.season > -1:
+                        currentfile.season = record.season
+                    if record.episode > -1:
+                        currentfile.epnum = record.episode
+
                 if task_info.sc_enabled:
                     logger.debug(f"[-] need scraping")
                     scraping_conf = session.query(ScrapingSetting).filter(ScrapingSetting.id == task_info.sc_id).first()
@@ -125,10 +136,12 @@ def celery_transfer_group(self, task_json, full_path):
                     if scraping_conf.watermark_enabled:
                         add_mark(pics, metamixed.tag, scraping_conf.watermark_location, scraping_conf.watermark_size)
                     # 移动
-                    destpath = transSingleFile(currentfile, output_folder, metamixed.extra_filename, task_info.operation)
+                    destpath = transSingleFile(currentfile, output_folder,
+                                               metamixed.extra_filename, task_info.operation)
                     done_list.append(destpath)
                     # 更新
                     record.destpath = destpath
+                    record.deleted = False
                     record.updatetime = datetime.now()
                     logger.debug(f"[-] scraping transfer end")
                 else:
@@ -140,6 +153,7 @@ def celery_transfer_group(self, task_json, full_path):
                     done_list.append(destpath)
                     # 更新
                     record.destpath = destpath
+                    record.deleted = False
                     record.updatetime = datetime.now()
                     logger.debug(f"[-] transfer end")
         except Exception as e:

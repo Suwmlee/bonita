@@ -67,30 +67,40 @@ async function handleSubmit() {
 
         <VRow no-gutters class="mb-4">
           <VCol cols="12" md="3" class="row-label">
-            <label>Season</label>
+            <label>Is Episode</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField v-model="currentTransferRecord.season" type="number"
-              :rules="[v => v >= -1 || 'Season must be -1 or greater']" />
+            <VCheckbox v-model="currentTransferRecord.isepisode" label="Is Episode" />
           </VCol>
         </VRow>
 
-        <VRow no-gutters class="mb-4">
-          <VCol cols="12" md="3" class="row-label">
-            <label>Episode</label>
-          </VCol>
-          <VCol cols="12" md="9">
-            <VTextField v-model="currentTransferRecord.episode" type="number"
-              :rules="[v => v >= -1 || 'Episode must be -1 or greater']" />
-          </VCol>
-        </VRow>
+        <template v-if="currentTransferRecord.isepisode">
+          <VRow no-gutters class="mb-4">
+            <VCol cols="12" md="3" class="row-label">
+              <label>Season</label>
+            </VCol>
+            <VCol cols="12" md="9">
+              <VTextField v-model="currentTransferRecord.season" type="number"
+                :rules="[v => v >= -1 || 'Season must be -1 or greater']" />
+            </VCol>
+          </VRow>
+
+          <VRow no-gutters class="mb-4">
+            <VCol cols="12" md="3" class="row-label">
+              <label>Episode</label>
+            </VCol>
+            <VCol cols="12" md="9">
+              <VTextField v-model="currentTransferRecord.episode" type="number"
+                :rules="[v => v >= -1 || 'Episode must be -1 or greater']" />
+            </VCol>
+          </VRow>
+        </template>
 
         <VRow no-gutters class="mb-4">
           <VCol cols="12" md="3" class="row-label">
             <label>Status</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VCheckbox v-model="currentTransferRecord.locked" label="Locked" class="mb-2" />
             <VCheckbox v-model="currentTransferRecord.ignored" label="Ignored" />
           </VCol>
         </VRow>
