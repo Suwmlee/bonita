@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from bonita.core.config import settings
 from bonita.db.models.downloads import Downloads
 
-
 def get_cached_file(session: Session, url: str, folder) -> str:
     """ 获取缓存图片
     :param session: 数据库会话
@@ -17,10 +16,16 @@ def get_cached_file(session: Session, url: str, folder) -> str:
     """
     cache_downloads_cover = session.query(Downloads).filter(Downloads.url == url).first()
     # TODO 文件过期
-    if not cache_downloads_cover or not os.path.exists(cache_downloads_cover.filepath):
+    if not cache_downloads_cover:
+        # 数据库中没有记录，下载并添加记录
         cache_cover_path = download_file(url, folder, None)
         cache_downloads_cover = Downloads(url=url, filepath=cache_cover_path)
         session.add(cache_downloads_cover)
+        session.commit()
+    elif not os.path.exists(cache_downloads_cover.filepath):
+        # 数据库有记录但文件不存在，重新下载并更新记录
+        cache_cover_path = download_file(url, folder, None)
+        cache_downloads_cover.filepath = cache_cover_path
         session.commit()
     return cache_downloads_cover.filepath
 
