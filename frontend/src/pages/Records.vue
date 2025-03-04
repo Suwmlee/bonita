@@ -80,6 +80,7 @@ const headers = [
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.updatetime",
     width: 120,
+    sortable: true,
   },
   {
     title: "deadtime",
@@ -94,6 +95,14 @@ const headers = [
     width: 100,
   },
 ]
+
+// 默认排序设置
+const sortBy = ref([
+  {
+    key: 'transfer_record.updatetime',
+    order: 'desc' as const
+  }
+])
 
 async function initial() {
   recordStore.getRecords()
@@ -137,7 +146,7 @@ onMounted(() => {
     </div>
 
     <v-data-table v-model="selected" :headers="headers" :items="recordStore.records" item-value="transfer_record.id"
-      show-select show-select-all select-strategy="page">
+      show-select show-select-all select-strategy="page" :sort-by="sortBy">
       <template v-slot:item="{ item, columns, index }">
         <tr :class="{ 'deleted-row': item.transfer_record.deleted }">
           <td><v-checkbox v-model="selected" :value="item.transfer_record.id" multiple hide-details></v-checkbox></td>
