@@ -96,6 +96,10 @@ async def delete_records(
         else:
             # 记录删除状态
             record.deleted = True
+            # 删除关联的额外信息
+            extra_info = session.query(ExtraInfo).filter(ExtraInfo.filepath == record.destpath).first()
+            if extra_info:
+                session.delete(extra_info)
         deleted_count += 1
 
     session.commit()

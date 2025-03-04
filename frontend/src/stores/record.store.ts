@@ -27,12 +27,23 @@ export const useRecordStore = defineStore("record-store", {
         this.showDialog = false
       }
     },
-    async deleteRecords(ids: number[]) {
+    async deleteRecords(ids: number[], force: boolean = false) {
       const response = await TransRecordsService.deleteRecords({
         requestBody: ids,
+        force: force
       })
       if (response.success) {
-        this.records = this.records.filter((record) => !ids.includes(record.transfer_record.id))
+        if (force) {
+          // 如果force为true，直接从列表中移除这些记录
+          this.records = this.records.filter((record) => !ids.includes(record.transfer_record.id))
+        } else {
+          // 如果force为false，只将记录标记为已删除
+          this.records.forEach((record) => {
+            if (ids.includes(record.transfer_record.id)) {
+              record.transfer_record.deleted = true
+            }
+          })
+        }
       }
     },
     updateRecordById(id: number, newValue: Partial<RecordPublic>) {

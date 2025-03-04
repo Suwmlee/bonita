@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { RecordPublic } from "@/client"
 import { useRecordStore } from "@/stores/record.store"
 
 const recordStore = useRecordStore()
@@ -9,6 +8,10 @@ const tagColorMap = {
   中文字幕: "#FF0000",
   破解: "#FFA500",
 } as const
+
+// 删除确认对话框
+const deleteDialog = ref(false)
+const forceDelete = ref(false)
 
 const getTagColor = (tag: string) => {
   return tagColorMap[tag.trim() as keyof typeof tagColorMap] || "grey"
@@ -38,6 +41,13 @@ const headers = [
     title: "path",
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.srcpath",
+    width: 200,
+    fixed: true,
+  },
+  {
+    title: "destpath",
+    align: "center" as "start" | "center" | "end",
+    key: "transfer_record.destpath",
     width: 200,
     fixed: true,
   },
@@ -95,8 +105,15 @@ const showSelectedRecord = (item: any) => {
 
 const handleDelete = () => {
   if (selected.value.length === 0) return
-  // 提取有效的记录 ID 数组
-  recordStore.deleteRecords(selected.value)
+  deleteDialog.value = true
+}
+
+const confirmDelete = () => {
+  recordStore.deleteRecords(selected.value, forceDelete.value)
+  deleteDialog.value = false
+  forceDelete.value = false
+  // 清空选中项
+  selected.value = []
 }
 
 watch(searchQuery, (newValue) => {
@@ -121,53 +138,85 @@ onMounted(() => {
 
     <v-data-table v-model="selected" :headers="headers" :items="recordStore.records" item-value="transfer_record.id"
       show-select show-select-all select-strategy="page">
-      <template v-slot:item.transfer_record.srcname="{ item }">
-        <v-tooltip :text="item.transfer_record.srcname">
-          <template v-slot:activator="{ props }">
-            <span v-bind="props" class="text-truncate d-inline-block" style="max-width: 230px" :class="{ 'text-decoration-line-through': item.transfer_record.deleted }">
-              {{ item.transfer_record.srcname }}
-            </span>
-          </template>
-        </v-tooltip>
-      </template>
-      <template v-slot:item.transfer_record.srcpath="{ item }">
-        <v-tooltip :text="item.transfer_record.srcpath">
-          <template v-slot:activator="{ props }">
-            <span v-bind="props" class="text-truncate d-inline-block" style="max-width: 180px">
-              {{ item.transfer_record.srcpath }}
-            </span>
-          </template>
-        </v-tooltip>
-      </template>
-      <template v-slot:item.transfer_record.season="{ item }">
-        {{ item.transfer_record.season === -1 ? '' : item.transfer_record.season }}
-      </template>
-      <template v-slot:item.transfer_record.episode="{ item }">
-        {{ item.transfer_record.episode === -1 ? '' : item.transfer_record.episode }}
-      </template>
-      <template v-slot:item.extra_info.tag="{ item }">
-        <div v-if="item.extra_info?.tag" class="d-flex gap-1 flex-wrap">
-          <v-chip v-for="tag in item.extra_info.tag.split(',')" :key="tag" :color="getTagColor(tag)" variant="flat"
-            class="tag-chip" size="small">
-            {{ tag.trim() }}
-          </v-chip>
-        </div>
-      </template>
-      <template v-slot:item.transfer_record.updatetime="{ item }">
-        {{ formatDateTime(item.transfer_record.updatetime) }}
-      </template>
-      <template v-slot:item.transfer_record.deadtime="{ item }">
-        {{ formatDateTime(item.transfer_record.deadtime) }}
-      </template>
-      <template v-slot:item.actions="{ item }">
-        <VBtn type="submit" class="me-2" @click="showSelectedRecord(item)">
-          编辑
-        </VBtn>
+      <template v-slot:item="{ item, columns, index }">
+        <tr :class="{ 'deleted-row': item.transfer_record.deleted }">
+          <td><v-checkbox v-model="selected" :value="item.transfer_record.id" multiple hide-details></v-checkbox></td>
+          <td>
+            <v-tooltip :text="item.transfer_record.srcname">
+              <template v-slot:activator="{ props }">
+                <span v-bind="props" class="text-truncate d-inline-block" style="max-width: 230px">
+                  {{ item.transfer_record.srcname }}
+                </span>
+              </template>
+            </v-tooltip>
+          </td>
+          <td>
+            <v-tooltip :text="item.transfer_record.srcpath">
+              <template v-slot:activator="{ props }">
+                <span v-bind="props" class="text-truncate d-inline-block" style="max-width: 180px">
+                  {{ item.transfer_record.srcpath }}
+                </span>
+              </template>
+            </v-tooltip>
+          </td>
+          <td>
+            <v-tooltip :text="item.transfer_record.destpath || ''">
+              <template v-slot:activator="{ props }">
+                <span v-bind="props" class="text-truncate d-inline-block" style="max-width: 180px"
+                  :class="{ 'text-decoration-line-through': item.transfer_record.deleted }">
+                  {{ item.transfer_record.destpath || '' }}
+                </span>
+              </template>
+            </v-tooltip>
+          </td>
+          <td>{{ item.transfer_record.season === -1 ? '' : item.transfer_record.season }}</td>
+          <td>{{ item.transfer_record.episode === -1 ? '' : item.transfer_record.episode }}</td>
+          <td>{{ item.extra_info?.number || '' }}</td>
+          <td>
+            <div v-if="item.extra_info?.tag" class="d-flex gap-1 flex-wrap">
+              <v-chip v-for="tag in item.extra_info.tag.split(',')" :key="tag" :color="getTagColor(tag)" variant="flat"
+                class="tag-chip" size="small">
+                {{ tag.trim() }}
+              </v-chip>
+            </div>
+          </td>
+          <td>{{ formatDateTime(item.transfer_record.updatetime) }}</td>
+          <td>{{ formatDateTime(item.transfer_record.deadtime) }}</td>
+          <td>
+            <div class="d-flex align-center">
+              <VBtn type="submit" size="small" @click="showSelectedRecord(item)">
+                编辑
+              </VBtn>
+            </div>
+          </td>
+        </tr>
       </template>
     </v-data-table>
   </VCard>
 
   <RecordDetailDialog />
+
+  <!-- 删除确认对话框 -->
+  <VDialog v-model="deleteDialog" max-width="500">
+    <VCard>
+      <VCardTitle class="text-h5">
+        确认删除
+      </VCardTitle>
+      <VCardText>
+        您确定要删除选中的 {{ selected.length }} 条记录吗？此操作无法撤销。
+        <VCheckbox v-model="forceDelete" label="强制删除（忽略锁定状态）" class="mt-4" />
+      </VCardText>
+      <VCardActions>
+        <VSpacer />
+        <VBtn color="primary" variant="text" @click="deleteDialog = false">
+          取消
+        </VBtn>
+        <VBtn color="error" @click="confirmDelete">
+          删除
+        </VBtn>
+      </VCardActions>
+    </VCard>
+  </VDialog>
 </template>
 
 <style scoped>
@@ -192,5 +241,10 @@ onMounted(() => {
 
 .max-w-xs {
   max-width: 300px;
+}
+
+.deleted-row {
+  color: #9e9e9e;
+  opacity: 0.85;
 }
 </style>
