@@ -1,3 +1,5 @@
+
+import os
 from fastapi import APIRouter, HTTPException
 from typing import Any, List
 
@@ -5,6 +7,7 @@ from bonita import schemas
 from bonita.api.deps import SessionDep
 from bonita.db.models.record import TransRecords
 from bonita.db.models.extrainfo import ExtraInfo
+from bonita.utils.filehelper import cleanFilebyFilter
 
 router = APIRouter()
 
@@ -49,6 +52,64 @@ async def update_record(session: SessionDep, record: schemas.RecordPublic) -> An
     updated_transfer_record_public = schemas.TransferRecordPublic.model_validate(transfer_record)
     updated_extra_info_public = schemas.ExtraInfoPublic.model_validate(extra_info) if extra_info else None
     return schemas.RecordPublic(transfer_record=updated_transfer_record_public, extra_info=updated_extra_info_public)
+
+
+@router.delete("/records", response_model=schemas.Response)
+async def delete_records(
+    session: SessionDep,
+    record_ids: list[int],
+    force: bool = False
+) -> Any:
+    """删除记录信息
+
+    Args:
+        session: 数据库会话
+        record_ids: 要删除的记录ID列表
+        force: 是否强制删除，如果为True则同时删除关联的文件
+
+    Returns:
+        删除操作的结果
+    """
+
+    if not record_ids:
+        raise HTTPException(status_code=400, detail="No record IDs provided")
+
+    deleted_count = 0
+    failed_ids = []
+
+    for record_id in record_ids:
+        record = session.query(TransRecords).filter(TransRecords.id == record_id).first()
+        if not record:
+            failed_ids.append(record_id)
+            continue
+
+        # 默认删除目标路径的文件
+        cleanfolder = os.path.dirname(record.destpath)
+        namefilter = os.path.splitext(os.path.basename(record.destpath))[0]
+        cleanFilebyFilter(cleanfolder, namefilter)
+        if force:
+            # 如果强制删除，则也删除源文件和记录
+            cleanfolder = os.path.dirname(record.srcpath)
+            namefilter = os.path.splitext(os.path.basename(record.srcpath))[0]
+            cleanFilebyFilter(cleanfolder, namefilter)
+            session.delete(record)
+        else:
+            # 记录删除状态
+            record.deleted = True
+        deleted_count += 1
+
+    session.commit()
+
+    if failed_ids:
+        return schemas.Response(
+            success=True if deleted_count > 0 else False,
+            message=f"Deleted {deleted_count} records. Failed to delete records with IDs: {failed_ids}"
+        )
+
+    return schemas.Response(
+        success=True,
+        message=f"Successfully deleted {deleted_count} records"
+    )
 
 
 @router.get("/transrecords", response_model=schemas.TransferRecordsPublic)

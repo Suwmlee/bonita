@@ -27,7 +27,14 @@ export const useRecordStore = defineStore("record-store", {
         this.showDialog = false
       }
     },
-    async deleteRecord(idToRemove: number) {},
+    async deleteRecords(ids: number[]) {
+      const response = await TransRecordsService.deleteRecords({
+        requestBody: ids,
+      })
+      if (response.success) {
+        this.records = this.records.filter((record) => !ids.includes(record.transfer_record.id))
+      }
+    },
     updateRecordById(id: number, newValue: Partial<RecordPublic>) {
       const index = this.records.findIndex(
         (task) => task.transfer_record.id === id,

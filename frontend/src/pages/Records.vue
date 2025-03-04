@@ -4,7 +4,7 @@ import { useRecordStore } from "@/stores/record.store"
 
 const recordStore = useRecordStore()
 const searchQuery = ref("")
-const selected = ref<RecordPublic[]>([])
+const selected = ref<number[]>([])
 const tagColorMap = {
   中文字幕: "#FF0000",
   破解: "#FFA500",
@@ -95,8 +95,8 @@ const showSelectedRecord = (item: any) => {
 
 const handleDelete = () => {
   if (selected.value.length === 0) return
-  // TODO: Implement delete functionality
-  console.log("Delete items:", selected.value)
+  // 提取有效的记录 ID 数组
+  recordStore.deleteRecords(selected.value)
 }
 
 watch(searchQuery, (newValue) => {
@@ -124,7 +124,7 @@ onMounted(() => {
       <template v-slot:item.transfer_record.srcname="{ item }">
         <v-tooltip :text="item.transfer_record.srcname">
           <template v-slot:activator="{ props }">
-            <span v-bind="props" class="text-truncate d-inline-block" style="max-width: 230px">
+            <span v-bind="props" class="text-truncate d-inline-block" style="max-width: 230px" :class="{ 'text-decoration-line-through': item.transfer_record.deleted }">
               {{ item.transfer_record.srcname }}
             </span>
           </template>

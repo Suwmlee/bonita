@@ -18,7 +18,7 @@ class TransRecords(Base):
 
     ignored = Column(Boolean, default=False)
     locked = Column(Boolean, default=False)
-    deleted = Column(Boolean, default=False)
+    deleted = Column(Boolean, default=False, comment='实际目标路径文件已经删除')
 
     forced_name = Column(String, default='', comment='forced name')
     top_folder = Column(String, default='')
@@ -32,4 +32,5 @@ class TransRecords(Base):
     destpath = Column(String, default='')
 
     updatetime = Column(DateTime, default=datetime.now(), comment="更新时间")
+    # 完全删除时间，包括源文件和目标路径文件
     deadtime = Column(DateTime, default=None, comment='time to delete files')

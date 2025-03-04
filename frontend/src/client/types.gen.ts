@@ -440,6 +440,13 @@ export type UpdateRecordData = {
 
 export type UpdateRecordResponse = RecordPublic;
 
+export type DeleteRecordsData = {
+    force?: boolean;
+    requestBody: Array<(number)>;
+};
+
+export type DeleteRecordsResponse = Response;
+
 export type GetTransRecordsData = {
     limit?: number;
     skip?: number;
@@ -794,6 +801,21 @@ export type $OpenApiTs = {
                  * Successful Response
                  */
                 200: RecordPublic;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/records/records': {
+        delete: {
+            req: DeleteRecordsData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
                 /**
                  * Validation Error
                  */
