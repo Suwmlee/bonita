@@ -184,7 +184,7 @@ export type TransferConfigCreate = {
     clean_others?: boolean;
     optimize_name?: boolean;
     source_folder: string;
-    output_folder?: string | null;
+    output_folder: string;
     failed_folder?: string | null;
     escape_folder?: string | null;
     escape_literals?: string | null;
@@ -207,7 +207,7 @@ export type TransferConfigPublic = {
     clean_others?: boolean;
     optimize_name?: boolean;
     source_folder: string;
-    output_folder?: string | null;
+    output_folder: string;
     failed_folder?: string | null;
     escape_folder?: string | null;
     escape_literals?: string | null;

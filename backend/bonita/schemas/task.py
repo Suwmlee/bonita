@@ -29,7 +29,7 @@ class TransferConfigBase(BaseModel):
     clean_others: bool = False
     optimize_name: bool = False
     source_folder: str
-    output_folder: Optional[str] = None
+    output_folder: str
     failed_folder: Optional[str] = None
     escape_folder: Optional[str] = None
     escape_literals: Optional[str] = None

@@ -1300,14 +1300,7 @@ export const $TransferConfigCreate = {
             title: 'Source Folder'
         },
         output_folder: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
+            type: 'string',
             title: 'Output Folder'
         },
         failed_folder: {
@@ -1385,7 +1378,7 @@ export const $TransferConfigCreate = {
         }
     },
     type: 'object',
-    required: ['name', 'description', 'operation', 'source_folder'],
+    required: ['name', 'description', 'operation', 'source_folder', 'output_folder'],
     title: 'TransferConfigCreate'
 } as const;
 
@@ -1437,14 +1430,7 @@ export const $TransferConfigPublic = {
             title: 'Source Folder'
         },
         output_folder: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
+            type: 'string',
             title: 'Output Folder'
         },
         failed_folder: {
@@ -1526,7 +1512,7 @@ export const $TransferConfigPublic = {
         }
     },
     type: 'object',
-    required: ['name', 'description', 'source_folder', 'id'],
+    required: ['name', 'description', 'source_folder', 'output_folder', 'id'],
     title: 'TransferConfigPublic',
     description: 'Properties to return via API, id is always required'
 } as const;
