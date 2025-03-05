@@ -12,7 +12,7 @@ from bonita.db import SessionFactory
 from bonita.db.models.extrainfo import ExtraInfo
 from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
-from bonita.db.models.setting import ScrapingSetting
+from bonita.db.models.setting import ScrapingConfig
 from bonita.modules.scraping.number_parser import FileNumInfo
 from bonita.modules.scraping.scraping import add_mark, process_nfo_file, process_cover, scraping
 from bonita.modules.transfer.fileinfo import FileInfo
@@ -41,7 +41,7 @@ def celery_transfer_entry(self, task_json):
     """ 转移任务入口
     """
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "transfer task: start"})
-    task_info = schemas.TransferTaskPublic(**task_json)
+    task_info = schemas.TransferConfigPublic(**task_json)
     logger.info(f"transfer task {task_info.id}: start")
     # 获取 source 文件夹下所有顶层文件/文件夹
     dirs = os.listdir(task_info.source_folder)
@@ -65,7 +65,7 @@ def celery_transfer_group(self, task_json, full_path):
     with semaphore:
         self.update_state(state="PROGRESS", meta={"progress": 0, "step": "celery_transfer_pool: start"})
         logger.info(f"transfer group start {full_path}")
-        task_info = schemas.TransferTaskPublic(**task_json)
+        task_info = schemas.TransferConfigPublic(**task_json)
         fixseries = False
         if task_info.content_type == 2:
             fixseries = True
@@ -114,7 +114,7 @@ def celery_transfer_group(self, task_json, full_path):
 
                 if task_info.sc_enabled:
                     logger.debug(f"[-] need scraping")
-                    scraping_conf = session.query(ScrapingSetting).filter(ScrapingSetting.id == task_info.sc_id).first()
+                    scraping_conf = session.query(ScrapingConfig).filter(ScrapingConfig.id == task_info.sc_id).first()
                     if not scraping_conf:
                         logger.debug(f"[-] scraping config not found")
                         continue
@@ -173,7 +173,7 @@ def celery_scrapping(self, file_path, scraping_dict):
     logger.debug(f"[+] scraping task: start")
     try:
         session = SessionFactory()
-        scraping_conf = schemas.ScrapingSettingPublic(**scraping_dict)
+        scraping_conf = schemas.ScrapingConfigPublic(**scraping_dict)
         # 根据路径获取额外自定义信息
         fileNumInfo = FileNumInfo(file_path)
         extrainfo = session.query(ExtraInfo).filter(ExtraInfo.filepath == file_path).first()

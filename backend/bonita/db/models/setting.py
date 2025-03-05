@@ -1,12 +1,10 @@
-
-
 from sqlalchemy import Column, Integer, String, Boolean
 
 from bonita.db import Base
 
 
-class ScrapingSetting(Base):
-    """
+class ScrapingConfig(Base):
+    """ 刮削配置
     """
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, default='movie')

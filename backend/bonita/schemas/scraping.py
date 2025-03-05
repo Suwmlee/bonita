@@ -2,7 +2,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 
-class ScrapingSettingBase(BaseModel):
+class ScrapingConfigBase(BaseModel):
     """
     Shared properties
     """
@@ -24,7 +24,7 @@ class ScrapingSettingBase(BaseModel):
     transalte_values: Optional[str] = "title,outline"
 
 
-class ScrapingSettingPublic(ScrapingSettingBase):
+class ScrapingConfigPublic(ScrapingConfigBase):
     """
     Properties to return via API, id is always required
     """
@@ -34,10 +34,10 @@ class ScrapingSettingPublic(ScrapingSettingBase):
         from_attributes = True
 
 
-class ScrapingSettingsPublic(BaseModel):
-    data: List[ScrapingSettingPublic]
+class ScrapingConfigsPublic(BaseModel):
+    data: List[ScrapingConfigPublic]
     count: int
 
 
-class ScrapingSettingCreate(ScrapingSettingBase):
+class ScrapingConfigCreate(ScrapingConfigBase):
     name: str

@@ -1,14 +1,12 @@
-
-
 from sqlalchemy import Column, Enum, Integer, String, Boolean
 
 from bonita.db import Base
 from bonita.utils.filehelper import OperationMethod
 
 
-class TransferTask(Base):
+class TransferConfig(Base):
     """
-    转移任务
+    转移任务配置
     """
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, default='movie')

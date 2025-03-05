@@ -13,7 +13,7 @@ class TaskStatus(TaskBase):
     detail: Optional[str] = None
 
 
-class TransferTaskBase(BaseModel):
+class TransferConfigBase(BaseModel):
     """
     Shared properties
     """
@@ -36,7 +36,7 @@ class TransferTaskBase(BaseModel):
     sc_id: Optional[int] = None
 
 
-class TransferTaskPublic(TransferTaskBase):
+class TransferConfigPublic(TransferConfigBase):
     """
     Properties to return via API, id is always required
     """
@@ -46,11 +46,11 @@ class TransferTaskPublic(TransferTaskBase):
         from_attributes = True
 
 
-class TransferTasksPublic(BaseModel):
-    data: List[TransferTaskPublic]
+class TransferConfigsPublic(BaseModel):
+    data: List[TransferConfigPublic]
     count: int
 
 
-class TransferTaskCreate(TransferTaskBase):
+class TransferConfigCreate(TransferConfigBase):
     operation: OperationMethod
     source_folder: str
