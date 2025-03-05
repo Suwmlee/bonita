@@ -6,6 +6,9 @@ from bonita.utils.filehelper import OperationMethod
 
 class TaskBase(BaseModel):
     id: str
+    name: Optional[str] = None
+    transfer_config: Optional[int] = None
+    scraping_config: Optional[int] = None
 
 
 class TaskStatus(TaskBase):

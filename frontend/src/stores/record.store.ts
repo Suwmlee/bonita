@@ -1,4 +1,4 @@
-import { type RecordPublic, TransRecordsService } from "@/client"
+import { type RecordPublic, RecordService } from "@/client"
 
 import { defineStore } from "pinia"
 
@@ -10,7 +10,7 @@ export const useRecordStore = defineStore("record-store", {
   }),
   actions: {
     async getRecords() {
-      const all = await TransRecordsService.getRecords()
+      const all = await RecordService.getRecords()
       this.records = all.data
       return this.records
     },
@@ -19,7 +19,7 @@ export const useRecordStore = defineStore("record-store", {
       this.showDialog = true
     },
     async updateRecord(data: RecordPublic) {
-      const record = await TransRecordsService.updateRecord({
+      const record = await RecordService.updateRecord({
         requestBody: data,
       })
       if (this.showDialog) {
@@ -28,7 +28,7 @@ export const useRecordStore = defineStore("record-store", {
       }
     },
     async deleteRecords(ids: number[], force = false) {
-      const response = await TransRecordsService.deleteRecords({
+      const response = await RecordService.deleteRecords({
         requestBody: ids,
         force: force,
       })

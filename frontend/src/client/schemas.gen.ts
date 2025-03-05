@@ -1173,23 +1173,44 @@ export const $ScrapingConfigsPublic = {
     title: 'ScrapingConfigsPublic'
 } as const;
 
-export const $TaskBase = {
-    properties: {
-        id: {
-            type: 'string',
-            title: 'Id'
-        }
-    },
-    type: 'object',
-    required: ['id'],
-    title: 'TaskBase'
-} as const;
-
 export const $TaskStatus = {
     properties: {
         id: {
             type: 'string',
             title: 'Id'
+        },
+        name: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Name'
+        },
+        transfer_config: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Transfer Config'
+        },
+        scraping_config: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Scraping Config'
         },
         status: {
             anyOf: [

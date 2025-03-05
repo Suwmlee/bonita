@@ -160,12 +160,11 @@ export type ScrapingConfigsPublic = {
     count: number;
 };
 
-export type TaskBase = {
-    id: string;
-};
-
 export type TaskStatus = {
     id: string;
+    name?: string | null;
+    transfer_config?: number | null;
+    scraping_config?: number | null;
     status?: string | null;
     detail?: string | null;
 };
@@ -367,13 +366,15 @@ export type RunTransferTaskData = {
     id: number;
 };
 
-export type RunTransferTaskResponse = TaskBase;
+export type RunTransferTaskResponse = TaskStatus;
 
 export type GetTaskStatusData = {
     taskId: string;
 };
 
 export type GetTaskStatusResponse = TaskStatus;
+
+export type GetAllTasksStatusResponse = Array<TaskStatus>;
 
 export type GetAllTaskConfigsData = {
     limit?: number;
@@ -632,14 +633,14 @@ export type $OpenApiTs = {
             };
         };
     };
-    '/api/v1/task/run/{id}': {
+    '/api/v1/tasks/run/{id}': {
         post: {
             req: RunTransferTaskData;
             res: {
                 /**
                  * Successful Response
                  */
-                200: TaskBase;
+                200: TaskStatus;
                 /**
                  * Validation Error
                  */
@@ -647,7 +648,7 @@ export type $OpenApiTs = {
             };
         };
     };
-    '/api/v1/task/{task_id}': {
+    '/api/v1/tasks/status/{task_id}': {
         get: {
             req: GetTaskStatusData;
             res: {
@@ -659,6 +660,16 @@ export type $OpenApiTs = {
                  * Validation Error
                  */
                 422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/tasks/status': {
+        get: {
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Array<TaskStatus>;
             };
         };
     };
