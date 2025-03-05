@@ -97,9 +97,9 @@ const headers = [
 // 默认排序设置
 const sortBy = ref([
   {
-    key: 'transfer_record.updatetime',
-    order: 'desc' as const
-  }
+    key: "transfer_record.updatetime",
+    order: "desc" as const,
+  },
 ])
 
 async function initial() {

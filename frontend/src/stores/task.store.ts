@@ -1,5 +1,8 @@
-import { TaskService, TaskConfigService } from "@/client"
-import type { TransferConfigCreate, TransferConfigPublic } from "@/client/types.gen"
+import { TaskConfigService, TaskService } from "@/client"
+import type {
+  TransferConfigCreate,
+  TransferConfigPublic,
+} from "@/client/types.gen"
 import { defineStore } from "pinia"
 import { useConfirmationStore } from "./confirmation.store"
 

@@ -1,5 +1,8 @@
 <script lang="ts" setup>
-import type { TransferConfigCreate, TransferConfigPublic } from "@/client/types.gen"
+import type {
+  TransferConfigCreate,
+  TransferConfigPublic,
+} from "@/client/types.gen"
 import { useScrapingStore } from "@/stores/scraping.store"
 import { useTaskStore } from "@/stores/task.store"
 

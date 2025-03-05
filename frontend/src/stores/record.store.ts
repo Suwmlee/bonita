@@ -27,21 +27,31 @@ export const useRecordStore = defineStore("record-store", {
         this.showDialog = false
       }
     },
-    async deleteRecords(ids: number[], force: boolean = false) {
+    async deleteRecords(ids: number[], force = false) {
       const response = await TransRecordsService.deleteRecords({
         requestBody: ids,
-        force: force
+        force: force,
       })
       if (response.success) {
         if (force) {
           // 如果force为true，直接从列表中移除这些记录
-          this.records = this.records.filter((record) => !ids.includes(record.transfer_record.id))
+          this.records = this.records.filter(
+            (record) => !ids.includes(record.transfer_record.id),
+          )
         } else {
           // 如果force为false，只将记录标记为已删除
-          this.records.forEach((record) => {
+          // Use map instead of forEach for better performance with large arrays
+          this.records = this.records.map((record) => {
             if (ids.includes(record.transfer_record.id)) {
-              record.transfer_record.deleted = true
+              return {
+                ...record,
+                transfer_record: {
+                  ...record.transfer_record,
+                  deleted: true,
+                },
+              }
             }
+            return record
           })
         }
       }
