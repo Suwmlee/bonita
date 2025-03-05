@@ -1,4 +1,3 @@
-
 import logging
 import secrets
 from pydantic_settings import BaseSettings
@@ -15,8 +14,10 @@ class Settings(BaseSettings):
     # CACHE_LOCATION
     CACHE_LOCATION: str = "./data/cache"
     # CELERY
-    CELERY_BROKER_URL: str = f"sqla+sqlite:///{DATABASE_LOCATION}"
-    CELERY_RESULT_BACKEND: str = f"db+sqlite:///{DATABASE_LOCATION}"
+    # CELERY_BROKER_URL: str = f"sqla+sqlite:///{DATABASE_LOCATION}"
+    # CELERY_RESULT_BACKEND: str = f"db+sqlite:///{DATABASE_LOCATION}"
+    CELERY_BROKER_URL: str = "redis://localhost:6379/0"
+    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
     # 日志
     LOGGING_FORMAT: str = "[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
     LOGGING_LOCATION: str = "./data/bonita.log"

@@ -57,7 +57,9 @@ alembic downgrade -1
         "--loglevel",
         "DEBUG",
         "-P",
-        "solo"
+        "eventlet",
+        "--concurrency",
+        "5"
       ]
     }
   ],
