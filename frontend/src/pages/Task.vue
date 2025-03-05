@@ -37,7 +37,7 @@ onMounted(() => {
   <div>
 
     <p class="text-xl mb-6">
-      Transfer Task
+      Task
     </p>
 
     <VRow>
@@ -95,5 +95,5 @@ onMounted(() => {
     </VRow>
   </div>
 
-  <TransferTaskDetailDialog />
+  <TransferConfigDetailDialog />
 </template>

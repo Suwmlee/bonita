@@ -4,9 +4,9 @@ import DashboardPage from "@/pages/Dashboard.vue"
 import LoginPage from "@/pages/Login.vue"
 import MetadataPage from "@/pages/Metadata.vue"
 import RecordsPage from "@/pages/Records.vue"
-import ScrapingSettingsPage from "@/pages/ScrapingSettings.vue"
+import ScrapingConfigsPage from "@/pages/ScrapingConfigs.vue"
 import ServiceSettingsPage from "@/pages/ServiceSettings.vue"
-import TransferTaskPage from "@/pages/Task.vue"
+import TaskPage from "@/pages/Task.vue"
 import ToolsPage from "@/pages/Tools.vue"
 import UserSettingsPage from "@/pages/UserSettings.vue"
 import errorpage from "@/pages/[...error].vue"
@@ -47,7 +47,7 @@ export const routes = [
       {
         path: "transfer",
         meta: { requiresAuth: true },
-        component: TransferTaskPage,
+        component: TaskPage,
       },
     ],
   },
@@ -58,7 +58,7 @@ export const routes = [
       {
         path: "settings",
         meta: { requiresAuth: true },
-        component: ScrapingSettingsPage,
+        component: ScrapingConfigsPage,
       },
     ],
   },

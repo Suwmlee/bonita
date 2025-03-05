@@ -12,7 +12,7 @@ const dialog = useTaskStore()
         <span v-else class="ms-2">Add</span>
       </VCardTitle>
       <VCardItem>
-        <TransferTaskDetailForm :updateTask="dialog.editTask" />
+        <TransferConfigDetailForm :updateTask="dialog.editTask" />
       </VCardItem>
     </VCard>
   </VDialog>

@@ -12,7 +12,7 @@ const dialog = useScrapingStore()
         <span v-else class="ms-2">Add</span>
       </VCardTitle>
       <VCardItem>
-        <ScrapingSettingForm :updateSetting="dialog.editSetting" />
+        <ScrapingConfigForm :updateSetting="dialog.editSetting" />
       </VCardItem>
     </VCard>
   </VDialog>

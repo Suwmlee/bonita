@@ -29,7 +29,7 @@ onMounted(() => {
   <div>
 
     <p class="text-xl mb-6">
-      Scraping Settings
+      Scraping Configs
     </p>
 
     <VRow>
@@ -85,5 +85,5 @@ onMounted(() => {
     </VRow>
   </div>
 
-  <ScrapingSettingDialog />
+  <ScrapingConfigDialog />
 </template>
