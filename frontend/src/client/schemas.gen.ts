@@ -789,7 +789,7 @@ export const $Response = {
     title: 'Response'
 } as const;
 
-export const $ScrapingSettingCreate = {
+export const $ScrapingConfigCreate = {
     properties: {
         name: {
             type: 'string',
@@ -966,10 +966,10 @@ export const $ScrapingSettingCreate = {
     },
     type: 'object',
     required: ['name', 'description'],
-    title: 'ScrapingSettingCreate'
+    title: 'ScrapingConfigCreate'
 } as const;
 
-export const $ScrapingSettingPublic = {
+export const $ScrapingConfigPublic = {
     properties: {
         name: {
             type: 'string',
@@ -1150,15 +1150,15 @@ export const $ScrapingSettingPublic = {
     },
     type: 'object',
     required: ['name', 'description', 'id'],
-    title: 'ScrapingSettingPublic',
+    title: 'ScrapingConfigPublic',
     description: 'Properties to return via API, id is always required'
 } as const;
 
-export const $ScrapingSettingsPublic = {
+export const $ScrapingConfigsPublic = {
     properties: {
         data: {
             items: {
-                '$ref': '#/components/schemas/ScrapingSettingPublic'
+                '$ref': '#/components/schemas/ScrapingConfigPublic'
             },
             type: 'array',
             title: 'Data'
@@ -1170,7 +1170,7 @@ export const $ScrapingSettingsPublic = {
     },
     type: 'object',
     required: ['data', 'count'],
-    title: 'ScrapingSettingsPublic'
+    title: 'ScrapingConfigsPublic'
 } as const;
 
 export const $TaskBase = {
@@ -1234,6 +1234,299 @@ export const $Token = {
     type: 'object',
     required: ['access_token'],
     title: 'Token'
+} as const;
+
+export const $TransferConfigCreate = {
+    properties: {
+        name: {
+            type: 'string',
+            title: 'Name'
+        },
+        description: {
+            type: 'string',
+            title: 'Description'
+        },
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled',
+            default: true
+        },
+        content_type: {
+            type: 'integer',
+            title: 'Content Type',
+            default: 1
+        },
+        operation: {
+            '$ref': '#/components/schemas/OperationMethod'
+        },
+        auto_watch: {
+            type: 'boolean',
+            title: 'Auto Watch',
+            default: false
+        },
+        clean_others: {
+            type: 'boolean',
+            title: 'Clean Others',
+            default: false
+        },
+        optimize_name: {
+            type: 'boolean',
+            title: 'Optimize Name',
+            default: false
+        },
+        source_folder: {
+            type: 'string',
+            title: 'Source Folder'
+        },
+        output_folder: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Output Folder'
+        },
+        failed_folder: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Failed Folder'
+        },
+        escape_folder: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Escape Folder'
+        },
+        escape_literals: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Escape Literals'
+        },
+        escape_size: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Escape Size',
+            default: 1
+        },
+        threads_num: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Threads Num',
+            default: 1
+        },
+        sc_enabled: {
+            type: 'boolean',
+            title: 'Sc Enabled',
+            default: false
+        },
+        sc_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Sc Id'
+        }
+    },
+    type: 'object',
+    required: ['name', 'description', 'operation', 'source_folder'],
+    title: 'TransferConfigCreate'
+} as const;
+
+export const $TransferConfigPublic = {
+    properties: {
+        name: {
+            type: 'string',
+            title: 'Name'
+        },
+        description: {
+            type: 'string',
+            title: 'Description'
+        },
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled',
+            default: true
+        },
+        content_type: {
+            type: 'integer',
+            title: 'Content Type',
+            default: 1
+        },
+        operation: {
+            allOf: [
+                {
+                    '$ref': '#/components/schemas/OperationMethod'
+                }
+            ],
+            default: 1
+        },
+        auto_watch: {
+            type: 'boolean',
+            title: 'Auto Watch',
+            default: false
+        },
+        clean_others: {
+            type: 'boolean',
+            title: 'Clean Others',
+            default: false
+        },
+        optimize_name: {
+            type: 'boolean',
+            title: 'Optimize Name',
+            default: false
+        },
+        source_folder: {
+            type: 'string',
+            title: 'Source Folder'
+        },
+        output_folder: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Output Folder'
+        },
+        failed_folder: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Failed Folder'
+        },
+        escape_folder: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Escape Folder'
+        },
+        escape_literals: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Escape Literals'
+        },
+        escape_size: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Escape Size',
+            default: 1
+        },
+        threads_num: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Threads Num',
+            default: 1
+        },
+        sc_enabled: {
+            type: 'boolean',
+            title: 'Sc Enabled',
+            default: false
+        },
+        sc_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Sc Id'
+        },
+        id: {
+            type: 'integer',
+            title: 'Id'
+        }
+    },
+    type: 'object',
+    required: ['name', 'description', 'source_folder', 'id'],
+    title: 'TransferConfigPublic',
+    description: 'Properties to return via API, id is always required'
+} as const;
+
+export const $TransferConfigsPublic = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/TransferConfigPublic'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'TransferConfigsPublic'
 } as const;
 
 export const $TransferRecordPublic = {
@@ -1415,299 +1708,6 @@ export const $TransferRecordsPublic = {
     type: 'object',
     required: ['data', 'count'],
     title: 'TransferRecordsPublic'
-} as const;
-
-export const $TransferTaskCreate = {
-    properties: {
-        name: {
-            type: 'string',
-            title: 'Name'
-        },
-        description: {
-            type: 'string',
-            title: 'Description'
-        },
-        enabled: {
-            type: 'boolean',
-            title: 'Enabled',
-            default: true
-        },
-        content_type: {
-            type: 'integer',
-            title: 'Content Type',
-            default: 1
-        },
-        operation: {
-            '$ref': '#/components/schemas/OperationMethod'
-        },
-        auto_watch: {
-            type: 'boolean',
-            title: 'Auto Watch',
-            default: false
-        },
-        clean_others: {
-            type: 'boolean',
-            title: 'Clean Others',
-            default: false
-        },
-        optimize_name: {
-            type: 'boolean',
-            title: 'Optimize Name',
-            default: false
-        },
-        source_folder: {
-            type: 'string',
-            title: 'Source Folder'
-        },
-        output_folder: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Output Folder'
-        },
-        failed_folder: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Failed Folder'
-        },
-        escape_folder: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Escape Folder'
-        },
-        escape_literals: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Escape Literals'
-        },
-        escape_size: {
-            anyOf: [
-                {
-                    type: 'integer'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Escape Size',
-            default: 1
-        },
-        threads_num: {
-            anyOf: [
-                {
-                    type: 'integer'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Threads Num',
-            default: 1
-        },
-        sc_enabled: {
-            type: 'boolean',
-            title: 'Sc Enabled',
-            default: false
-        },
-        sc_id: {
-            anyOf: [
-                {
-                    type: 'integer'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Sc Id'
-        }
-    },
-    type: 'object',
-    required: ['name', 'description', 'operation', 'source_folder'],
-    title: 'TransferTaskCreate'
-} as const;
-
-export const $TransferTaskPublic = {
-    properties: {
-        name: {
-            type: 'string',
-            title: 'Name'
-        },
-        description: {
-            type: 'string',
-            title: 'Description'
-        },
-        enabled: {
-            type: 'boolean',
-            title: 'Enabled',
-            default: true
-        },
-        content_type: {
-            type: 'integer',
-            title: 'Content Type',
-            default: 1
-        },
-        operation: {
-            allOf: [
-                {
-                    '$ref': '#/components/schemas/OperationMethod'
-                }
-            ],
-            default: 1
-        },
-        auto_watch: {
-            type: 'boolean',
-            title: 'Auto Watch',
-            default: false
-        },
-        clean_others: {
-            type: 'boolean',
-            title: 'Clean Others',
-            default: false
-        },
-        optimize_name: {
-            type: 'boolean',
-            title: 'Optimize Name',
-            default: false
-        },
-        source_folder: {
-            type: 'string',
-            title: 'Source Folder'
-        },
-        output_folder: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Output Folder'
-        },
-        failed_folder: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Failed Folder'
-        },
-        escape_folder: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Escape Folder'
-        },
-        escape_literals: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Escape Literals'
-        },
-        escape_size: {
-            anyOf: [
-                {
-                    type: 'integer'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Escape Size',
-            default: 1
-        },
-        threads_num: {
-            anyOf: [
-                {
-                    type: 'integer'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Threads Num',
-            default: 1
-        },
-        sc_enabled: {
-            type: 'boolean',
-            title: 'Sc Enabled',
-            default: false
-        },
-        sc_id: {
-            anyOf: [
-                {
-                    type: 'integer'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Sc Id'
-        },
-        id: {
-            type: 'integer',
-            title: 'Id'
-        }
-    },
-    type: 'object',
-    required: ['name', 'description', 'source_folder', 'id'],
-    title: 'TransferTaskPublic',
-    description: 'Properties to return via API, id is always required'
-} as const;
-
-export const $TransferTasksPublic = {
-    properties: {
-        data: {
-            items: {
-                '$ref': '#/components/schemas/TransferTaskPublic'
-            },
-            type: 'array',
-            title: 'Data'
-        },
-        count: {
-            type: 'integer',
-            title: 'Count'
-        }
-    },
-    type: 'object',
-    required: ['data', 'count'],
-    title: 'TransferTasksPublic'
 } as const;
 
 export const $UpdatePassword = {

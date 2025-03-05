@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetTaskStatusData, GetTaskStatusResponse, GetAllTasksData, GetAllTasksResponse, CreateTaskData, CreateTaskResponse, UpdateTaskData, UpdateTaskResponse, DeleteTaskData, DeleteTaskResponse, GetAllSettingsData, GetAllSettingsResponse, CreateSettingData, CreateSettingResponse, UpdateSettingData, UpdateSettingResponse, DeleteSettingData, DeleteSettingResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, DeleteRecordsData, DeleteRecordsResponse, GetTransRecordsData, GetTransRecordsResponse, GetMetadataData, GetMetadataResponse, UpdateMetadataData, UpdateMetadataResponse, DeleteMetadataData, DeleteMetadataResponse, GetImageByQueryData, GetImageByQueryResponse, UploadImageData, UploadImageResponse } from './types.gen';
+import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetTaskStatusData, GetTaskStatusResponse, GetAllTaskConfigsData, GetAllTaskConfigsResponse, CreateTaskConfigData, CreateTaskConfigResponse, UpdateTaskConfigData, UpdateTaskConfigResponse, DeleteTaskConfigData, DeleteTaskConfigResponse, GetAllConfigsData, GetAllConfigsResponse, CreateConfigData, CreateConfigResponse, UpdateConfigData, UpdateConfigResponse, DeleteConfigData, DeleteConfigResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, DeleteRecordsData, DeleteRecordsResponse, GetTransRecordsData, GetTransRecordsResponse, GetMetadataData, GetMetadataResponse, UpdateMetadataData, UpdateMetadataResponse, DeleteMetadataData, DeleteMetadataResponse, GetImageByQueryData, GetImageByQueryResponse, UploadImageData, UploadImageResponse } from './types.gen';
 
 export class LoginService {
     /**
@@ -271,20 +271,20 @@ export class TaskService {
     
 }
 
-export class TransferTaskService {
+export class TaskConfigService {
     /**
-     * Get All Tasks
+     * Get All Task Configs
      * 获取所有任务配置
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
-     * @returns TransferTasksPublic Successful Response
+     * @returns TransferConfigsPublic Successful Response
      * @throws ApiError
      */
-    public static getAllTasks(data: GetAllTasksData = {}): CancelablePromise<GetAllTasksResponse> {
+    public static getAllTaskConfigs(data: GetAllTaskConfigsData = {}): CancelablePromise<GetAllTaskConfigsResponse> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/v1/tasks/transfer/all',
+            url: '/api/v1/tasks/config/all',
             query: {
                 skip: data.skip,
                 limit: data.limit
@@ -296,17 +296,17 @@ export class TransferTaskService {
     }
     
     /**
-     * Create Task
+     * Create Task Config
      * 创建新任务配置
      * @param data The data for the request.
      * @param data.requestBody
-     * @returns TransferTaskPublic Successful Response
+     * @returns TransferConfigPublic Successful Response
      * @throws ApiError
      */
-    public static createTask(data: CreateTaskData): CancelablePromise<CreateTaskResponse> {
+    public static createTaskConfig(data: CreateTaskConfigData): CancelablePromise<CreateTaskConfigResponse> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/v1/tasks/transfer/',
+            url: '/api/v1/tasks/config/',
             body: data.requestBody,
             mediaType: 'application/json',
             errors: {
@@ -316,18 +316,18 @@ export class TransferTaskService {
     }
     
     /**
-     * Update Task
+     * Update Task Config
      * 更新任务配置
      * @param data The data for the request.
      * @param data.id
      * @param data.requestBody
-     * @returns TransferTaskPublic Successful Response
+     * @returns TransferConfigPublic Successful Response
      * @throws ApiError
      */
-    public static updateTask(data: UpdateTaskData): CancelablePromise<UpdateTaskResponse> {
+    public static updateTaskConfig(data: UpdateTaskConfigData): CancelablePromise<UpdateTaskConfigResponse> {
         return __request(OpenAPI, {
             method: 'PUT',
-            url: '/api/v1/tasks/transfer/{id}',
+            url: '/api/v1/tasks/config/{id}',
             path: {
                 id: data.id
             },
@@ -340,17 +340,17 @@ export class TransferTaskService {
     }
     
     /**
-     * Delete Task
-     * Delete an task.
+     * Delete Task Config
+     * 删除任务配置
      * @param data The data for the request.
      * @param data.id
      * @returns Response Successful Response
      * @throws ApiError
      */
-    public static deleteTask(data: DeleteTaskData): CancelablePromise<DeleteTaskResponse> {
+    public static deleteTaskConfig(data: DeleteTaskConfigData): CancelablePromise<DeleteTaskConfigResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
-            url: '/api/v1/tasks/transfer/{id}',
+            url: '/api/v1/tasks/config/{id}',
             path: {
                 id: data.id
             },
@@ -362,20 +362,20 @@ export class TransferTaskService {
     
 }
 
-export class ScrapingSettingService {
+export class ScrapingConfigService {
     /**
-     * Get All Settings
+     * Get All Configs
      * 获取所有配置.
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
-     * @returns ScrapingSettingsPublic Successful Response
+     * @returns ScrapingConfigsPublic Successful Response
      * @throws ApiError
      */
-    public static getAllSettings(data: GetAllSettingsData = {}): CancelablePromise<GetAllSettingsResponse> {
+    public static getAllConfigs(data: GetAllConfigsData = {}): CancelablePromise<GetAllConfigsResponse> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/v1/scraping/settings/all',
+            url: '/api/v1/scraping/config/all',
             query: {
                 skip: data.skip,
                 limit: data.limit
@@ -387,17 +387,17 @@ export class ScrapingSettingService {
     }
     
     /**
-     * Create Setting
+     * Create Config
      * 创建新配置
      * @param data The data for the request.
      * @param data.requestBody
-     * @returns ScrapingSettingPublic Successful Response
+     * @returns ScrapingConfigPublic Successful Response
      * @throws ApiError
      */
-    public static createSetting(data: CreateSettingData): CancelablePromise<CreateSettingResponse> {
+    public static createConfig(data: CreateConfigData): CancelablePromise<CreateConfigResponse> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/v1/scraping/settings/',
+            url: '/api/v1/scraping/config/',
             body: data.requestBody,
             mediaType: 'application/json',
             errors: {
@@ -407,18 +407,18 @@ export class ScrapingSettingService {
     }
     
     /**
-     * Update Setting
-     * Update an setting.
+     * Update Config
+     * 更新配置
      * @param data The data for the request.
      * @param data.id
      * @param data.requestBody
-     * @returns ScrapingSettingPublic Successful Response
+     * @returns ScrapingConfigPublic Successful Response
      * @throws ApiError
      */
-    public static updateSetting(data: UpdateSettingData): CancelablePromise<UpdateSettingResponse> {
+    public static updateConfig(data: UpdateConfigData): CancelablePromise<UpdateConfigResponse> {
         return __request(OpenAPI, {
             method: 'PUT',
-            url: '/api/v1/scraping/settings/{id}',
+            url: '/api/v1/scraping/config/{id}',
             path: {
                 id: data.id
             },
@@ -431,17 +431,17 @@ export class ScrapingSettingService {
     }
     
     /**
-     * Delete Setting
-     * Delete an setting.
+     * Delete Config
+     * 删除配置
      * @param data The data for the request.
      * @param data.id
      * @returns Response Successful Response
      * @throws ApiError
      */
-    public static deleteSetting(data: DeleteSettingData): CancelablePromise<DeleteSettingResponse> {
+    public static deleteConfig(data: DeleteConfigData): CancelablePromise<DeleteConfigResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
-            url: '/api/v1/scraping/settings/{id}',
+            url: '/api/v1/scraping/config/{id}',
             path: {
                 id: data.id
             },

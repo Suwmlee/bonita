@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import type { TransferTaskCreate, TransferTaskPublic } from "@/client/types.gen"
+import type { TransferConfigCreate, TransferConfigPublic } from "@/client/types.gen"
 import { useScrapingStore } from "@/stores/scraping.store"
 import { useTaskStore } from "@/stores/task.store"
 
 interface Props {
-  updateTask?: TransferTaskPublic
+  updateTask?: TransferConfigPublic
 }
 const props = defineProps<Props>()
 
@@ -12,14 +12,14 @@ const taskStore = useTaskStore()
 const scrapingStore = useScrapingStore()
 
 const { updateTask } = props as {
-  updateTask: TransferTaskPublic
+  updateTask: TransferConfigPublic
 }
 const currentTask = ref<any>()
 
 if (updateTask) {
   currentTask.value = { ...updateTask }
 } else {
-  const createTask: TransferTaskCreate = {
+  const createTask: TransferConfigCreate = {
     name: "name",
     description: "descrip",
     operation: 1,

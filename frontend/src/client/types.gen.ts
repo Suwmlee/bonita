@@ -113,7 +113,7 @@ export type Response = {
 } | Array<unknown> | null;
 };
 
-export type ScrapingSettingCreate = {
+export type ScrapingConfigCreate = {
     name: string;
     description: string;
     save_metadata?: boolean | null;
@@ -135,7 +135,7 @@ export type ScrapingSettingCreate = {
 /**
  * Properties to return via API, id is always required
  */
-export type ScrapingSettingPublic = {
+export type ScrapingConfigPublic = {
     name: string;
     description: string;
     save_metadata?: boolean | null;
@@ -155,8 +155,8 @@ export type ScrapingSettingPublic = {
     id: number;
 };
 
-export type ScrapingSettingsPublic = {
-    data: Array<ScrapingSettingPublic>;
+export type ScrapingConfigsPublic = {
+    data: Array<ScrapingConfigPublic>;
     count: number;
 };
 
@@ -173,6 +173,55 @@ export type TaskStatus = {
 export type Token = {
     access_token: string;
     token_type?: string;
+};
+
+export type TransferConfigCreate = {
+    name: string;
+    description: string;
+    enabled?: boolean;
+    content_type?: number;
+    operation: OperationMethod;
+    auto_watch?: boolean;
+    clean_others?: boolean;
+    optimize_name?: boolean;
+    source_folder: string;
+    output_folder?: string | null;
+    failed_folder?: string | null;
+    escape_folder?: string | null;
+    escape_literals?: string | null;
+    escape_size?: number | null;
+    threads_num?: number | null;
+    sc_enabled?: boolean;
+    sc_id?: number | null;
+};
+
+/**
+ * Properties to return via API, id is always required
+ */
+export type TransferConfigPublic = {
+    name: string;
+    description: string;
+    enabled?: boolean;
+    content_type?: number;
+    operation?: OperationMethod;
+    auto_watch?: boolean;
+    clean_others?: boolean;
+    optimize_name?: boolean;
+    source_folder: string;
+    output_folder?: string | null;
+    failed_folder?: string | null;
+    escape_folder?: string | null;
+    escape_literals?: string | null;
+    escape_size?: number | null;
+    threads_num?: number | null;
+    sc_enabled?: boolean;
+    sc_id?: number | null;
+    id: number;
+};
+
+export type TransferConfigsPublic = {
+    data: Array<TransferConfigPublic>;
+    count: number;
 };
 
 /**
@@ -200,55 +249,6 @@ export type TransferRecordPublic = {
 
 export type TransferRecordsPublic = {
     data: Array<TransferRecordPublic>;
-    count: number;
-};
-
-export type TransferTaskCreate = {
-    name: string;
-    description: string;
-    enabled?: boolean;
-    content_type?: number;
-    operation: OperationMethod;
-    auto_watch?: boolean;
-    clean_others?: boolean;
-    optimize_name?: boolean;
-    source_folder: string;
-    output_folder?: string | null;
-    failed_folder?: string | null;
-    escape_folder?: string | null;
-    escape_literals?: string | null;
-    escape_size?: number | null;
-    threads_num?: number | null;
-    sc_enabled?: boolean;
-    sc_id?: number | null;
-};
-
-/**
- * Properties to return via API, id is always required
- */
-export type TransferTaskPublic = {
-    name: string;
-    description: string;
-    enabled?: boolean;
-    content_type?: number;
-    operation?: OperationMethod;
-    auto_watch?: boolean;
-    clean_others?: boolean;
-    optimize_name?: boolean;
-    source_folder: string;
-    output_folder?: string | null;
-    failed_folder?: string | null;
-    escape_folder?: string | null;
-    escape_literals?: string | null;
-    escape_size?: number | null;
-    threads_num?: number | null;
-    sc_enabled?: boolean;
-    sc_id?: number | null;
-    id: number;
-};
-
-export type TransferTasksPublic = {
-    data: Array<TransferTaskPublic>;
     count: number;
 };
 
@@ -375,57 +375,57 @@ export type GetTaskStatusData = {
 
 export type GetTaskStatusResponse = TaskStatus;
 
-export type GetAllTasksData = {
+export type GetAllTaskConfigsData = {
     limit?: number;
     skip?: number;
 };
 
-export type GetAllTasksResponse = TransferTasksPublic;
+export type GetAllTaskConfigsResponse = TransferConfigsPublic;
 
-export type CreateTaskData = {
-    requestBody: TransferTaskCreate;
+export type CreateTaskConfigData = {
+    requestBody: TransferConfigCreate;
 };
 
-export type CreateTaskResponse = TransferTaskPublic;
+export type CreateTaskConfigResponse = TransferConfigPublic;
 
-export type UpdateTaskData = {
+export type UpdateTaskConfigData = {
     id: number;
-    requestBody: TransferTaskPublic;
+    requestBody: TransferConfigPublic;
 };
 
-export type UpdateTaskResponse = TransferTaskPublic;
+export type UpdateTaskConfigResponse = TransferConfigPublic;
 
-export type DeleteTaskData = {
+export type DeleteTaskConfigData = {
     id: number;
 };
 
-export type DeleteTaskResponse = Response;
+export type DeleteTaskConfigResponse = Response;
 
-export type GetAllSettingsData = {
+export type GetAllConfigsData = {
     limit?: number;
     skip?: number;
 };
 
-export type GetAllSettingsResponse = ScrapingSettingsPublic;
+export type GetAllConfigsResponse = ScrapingConfigsPublic;
 
-export type CreateSettingData = {
-    requestBody: ScrapingSettingCreate;
+export type CreateConfigData = {
+    requestBody: ScrapingConfigCreate;
 };
 
-export type CreateSettingResponse = ScrapingSettingPublic;
+export type CreateConfigResponse = ScrapingConfigPublic;
 
-export type UpdateSettingData = {
+export type UpdateConfigData = {
     id: number;
-    requestBody: ScrapingSettingPublic;
+    requestBody: ScrapingConfigPublic;
 };
 
-export type UpdateSettingResponse = ScrapingSettingPublic;
+export type UpdateConfigResponse = ScrapingConfigPublic;
 
-export type DeleteSettingData = {
+export type DeleteConfigData = {
     id: number;
 };
 
-export type DeleteSettingResponse = Response;
+export type DeleteConfigResponse = Response;
 
 export type GetRecordsData = {
     limit?: number;
@@ -662,14 +662,14 @@ export type $OpenApiTs = {
             };
         };
     };
-    '/api/v1/tasks/transfer/all': {
+    '/api/v1/tasks/config/all': {
         get: {
-            req: GetAllTasksData;
+            req: GetAllTaskConfigsData;
             res: {
                 /**
                  * Successful Response
                  */
-                200: TransferTasksPublic;
+                200: TransferConfigsPublic;
                 /**
                  * Validation Error
                  */
@@ -677,14 +677,14 @@ export type $OpenApiTs = {
             };
         };
     };
-    '/api/v1/tasks/transfer/': {
+    '/api/v1/tasks/config/': {
         post: {
-            req: CreateTaskData;
+            req: CreateTaskConfigData;
             res: {
                 /**
                  * Successful Response
                  */
-                200: TransferTaskPublic;
+                200: TransferConfigPublic;
                 /**
                  * Validation Error
                  */
@@ -692,14 +692,14 @@ export type $OpenApiTs = {
             };
         };
     };
-    '/api/v1/tasks/transfer/{id}': {
+    '/api/v1/tasks/config/{id}': {
         put: {
-            req: UpdateTaskData;
+            req: UpdateTaskConfigData;
             res: {
                 /**
                  * Successful Response
                  */
-                200: TransferTaskPublic;
+                200: TransferConfigPublic;
                 /**
                  * Validation Error
                  */
@@ -707,7 +707,7 @@ export type $OpenApiTs = {
             };
         };
         delete: {
-            req: DeleteTaskData;
+            req: DeleteTaskConfigData;
             res: {
                 /**
                  * Successful Response
@@ -720,14 +720,14 @@ export type $OpenApiTs = {
             };
         };
     };
-    '/api/v1/scraping/settings/all': {
+    '/api/v1/scraping/config/all': {
         get: {
-            req: GetAllSettingsData;
+            req: GetAllConfigsData;
             res: {
                 /**
                  * Successful Response
                  */
-                200: ScrapingSettingsPublic;
+                200: ScrapingConfigsPublic;
                 /**
                  * Validation Error
                  */
@@ -735,14 +735,14 @@ export type $OpenApiTs = {
             };
         };
     };
-    '/api/v1/scraping/settings/': {
+    '/api/v1/scraping/config/': {
         post: {
-            req: CreateSettingData;
+            req: CreateConfigData;
             res: {
                 /**
                  * Successful Response
                  */
-                200: ScrapingSettingPublic;
+                200: ScrapingConfigPublic;
                 /**
                  * Validation Error
                  */
@@ -750,14 +750,14 @@ export type $OpenApiTs = {
             };
         };
     };
-    '/api/v1/scraping/settings/{id}': {
+    '/api/v1/scraping/config/{id}': {
         put: {
-            req: UpdateSettingData;
+            req: UpdateConfigData;
             res: {
                 /**
                  * Successful Response
                  */
-                200: ScrapingSettingPublic;
+                200: ScrapingConfigPublic;
                 /**
                  * Validation Error
                  */
@@ -765,7 +765,7 @@ export type $OpenApiTs = {
             };
         };
         delete: {
-            req: DeleteSettingData;
+            req: DeleteConfigData;
             res: {
                 /**
                  * Successful Response

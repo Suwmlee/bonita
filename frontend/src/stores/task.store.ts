@@ -1,17 +1,17 @@
-import { TaskService, TransferTaskService } from "@/client"
-import type { TransferTaskCreate, TransferTaskPublic } from "@/client/types.gen"
+import { TaskService, TaskConfigService } from "@/client"
+import type { TransferConfigCreate, TransferConfigPublic } from "@/client/types.gen"
 import { defineStore } from "pinia"
 import { useConfirmationStore } from "./confirmation.store"
 
 export const useTaskStore = defineStore("task-store", {
   state: () => ({
-    allTasks: [] as TransferTaskPublic[],
+    allTasks: [] as TransferConfigPublic[],
     showDialog: false,
-    editTask: undefined as TransferTaskPublic | undefined,
+    editTask: undefined as TransferConfigPublic | undefined,
   }),
   actions: {
     async getAllTasks() {
-      const all = await TransferTaskService.getAllTasks()
+      const all = await TaskConfigService.getAllTaskConfigs()
       this.allTasks = all.data
       return this.allTasks
     },
@@ -19,12 +19,12 @@ export const useTaskStore = defineStore("task-store", {
       this.editTask = undefined
       this.showDialog = true
     },
-    showUpdateTask(data: TransferTaskPublic) {
+    showUpdateTask(data: TransferConfigPublic) {
       this.editTask = data
       this.showDialog = true
     },
-    async createTask(data: TransferTaskCreate) {
-      const task = await TransferTaskService.createTask({
+    async createTask(data: TransferConfigCreate) {
+      const task = await TaskConfigService.createTaskConfig({
         requestBody: data,
       })
       if (this.showDialog) {
@@ -32,8 +32,8 @@ export const useTaskStore = defineStore("task-store", {
         this.showDialog = false
       }
     },
-    async updateTask(data: TransferTaskPublic) {
-      const task = await TransferTaskService.updateTask({
+    async updateTask(data: TransferConfigPublic) {
+      const task = await TaskConfigService.updateTaskConfig({
         id: data.id,
         requestBody: data,
       })
@@ -42,7 +42,7 @@ export const useTaskStore = defineStore("task-store", {
         this.showDialog = false
       }
     },
-    updateTaskById(id: number, newValue: Partial<TransferTaskPublic>) {
+    updateTaskById(id: number, newValue: Partial<TransferConfigPublic>) {
       const index = this.allTasks.findIndex((task) => task.id === id)
 
       if (index !== -1) {
@@ -64,7 +64,7 @@ export const useTaskStore = defineStore("task-store", {
         )
 
         if (confirmed) {
-          const response = await TransferTaskService.deleteTask({
+          const response = await TaskConfigService.deleteTaskConfig({
             id: id,
           })
           if (response.success) {

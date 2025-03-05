@@ -1,20 +1,20 @@
-import { ScrapingSettingService } from "@/client"
+import { ScrapingConfigService } from "@/client"
 import type {
-  ScrapingSettingCreate,
-  ScrapingSettingPublic,
+  ScrapingConfigCreate,
+  ScrapingConfigPublic,
 } from "@/client/types.gen"
 import { defineStore } from "pinia"
 import { useConfirmationStore } from "./confirmation.store"
 
 export const useScrapingStore = defineStore("scraping-store", {
   state: () => ({
-    allSettings: [] as ScrapingSettingPublic[],
+    allSettings: [] as ScrapingConfigPublic[],
     showDialog: false,
-    editSetting: undefined as ScrapingSettingPublic | undefined,
+    editSetting: undefined as ScrapingConfigPublic | undefined,
   }),
   actions: {
     async getAllSetting() {
-      const all = await ScrapingSettingService.getAllSettings()
+      const all = await ScrapingConfigService.getAllConfigs()
       this.allSettings = all.data
       return this.allSettings
     },
@@ -22,12 +22,12 @@ export const useScrapingStore = defineStore("scraping-store", {
       this.editSetting = undefined
       this.showDialog = true
     },
-    showUpdateSetting(data: ScrapingSettingPublic) {
+    showUpdateSetting(data: ScrapingConfigPublic) {
       this.editSetting = data
       this.showDialog = true
     },
-    async addSetting(data: ScrapingSettingCreate) {
-      const setting = await ScrapingSettingService.createSetting({
+    async addSetting(data: ScrapingConfigCreate) {
+      const setting = await ScrapingConfigService.createConfig({
         requestBody: data,
       })
       if (this.showDialog) {
@@ -35,8 +35,8 @@ export const useScrapingStore = defineStore("scraping-store", {
         this.showDialog = false
       }
     },
-    async updateSetting(data: ScrapingSettingPublic) {
-      const setting = await ScrapingSettingService.updateSetting({
+    async updateSetting(data: ScrapingConfigPublic) {
+      const setting = await ScrapingConfigService.updateConfig({
         id: data.id,
         requestBody: data,
       })
@@ -45,7 +45,7 @@ export const useScrapingStore = defineStore("scraping-store", {
         this.showDialog = false
       }
     },
-    updateSettingById(id: number, newValue: Partial<ScrapingSettingPublic>) {
+    updateSettingById(id: number, newValue: Partial<ScrapingConfigPublic>) {
       const index = this.allSettings.findIndex((setting) => setting.id === id)
 
       if (index !== -1) {
@@ -67,7 +67,7 @@ export const useScrapingStore = defineStore("scraping-store", {
         )
 
         if (confirmed) {
-          const response = await ScrapingSettingService.deleteSetting({
+          const response = await ScrapingConfigService.deleteConfig({
             id: id,
           })
           if (response.success) {

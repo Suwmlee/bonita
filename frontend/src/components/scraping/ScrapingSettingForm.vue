@@ -1,42 +1,28 @@
 <script lang="ts" setup>
 import type {
-  ScrapingSettingCreate,
-  ScrapingSettingPublic,
+  ScrapingConfigCreate,
+  ScrapingConfigPublic,
 } from "@/client/types.gen"
 import { useScrapingStore } from "@/stores/scraping.store"
 
 interface Props {
-  updateSetting?: ScrapingSettingPublic
+  updateSetting?: ScrapingConfigPublic
 }
 const props = defineProps<Props>()
 
 const scrapingStore = useScrapingStore()
 
 const { updateSetting } = props as {
-  updateSetting: ScrapingSettingPublic
+  updateSetting: ScrapingConfigPublic
 }
 const currentSetting = ref<any>()
 
 if (updateSetting) {
   currentSetting.value = { ...updateSetting }
 } else {
-  const createSetting: ScrapingSettingCreate = {
+  const createSetting: ScrapingConfigCreate = {
     name: "name",
     description: "descrip",
-    save_metadata: false,
-    scraping_sites: "",
-    location_rule: "",
-    naming_rule: "",
-    max_title_len: 100,
-    morestoryline: true,
-    extrafanart_enabled: false,
-    extrafanart_folder: "extrafanart",
-    watermark_enabled: true,
-    watermark_size: 9,
-    watermark_location: 2,
-    transalte_enabled: false,
-    transalte_to_sc: false,
-    transalte_values: "title,outline",
   }
   currentSetting.value = createSetting
 }
