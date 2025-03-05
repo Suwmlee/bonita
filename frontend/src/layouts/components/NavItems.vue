@@ -16,12 +16,12 @@ import VerticalNavLink from "@layouts/components/VerticalNavLink.vue"
   <VerticalNavLink :item="{
     title: 'Task',
     icon: 'bx-task',
-    to: '/tasks/transfer',
+    to: '/tasks/all',
   }" />
   <VerticalNavLink :item="{
     title: 'Scraping',
     icon: 'bx-detail',
-    to: '/scraping/settings',
+    to: '/scraping/configs',
   }" />
   <VerticalNavLink :item="{
     title: 'Metadata',

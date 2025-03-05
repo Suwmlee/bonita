@@ -41,11 +41,11 @@ export const routes = [
   },
   {
     path: "/tasks",
-    redirect: "/tasks/transfer",
+    redirect: "/tasks/all",
     component: defaultlayout,
     children: [
       {
-        path: "transfer",
+        path: "all",
         meta: { requiresAuth: true },
         component: TaskPage,
       },
@@ -56,7 +56,7 @@ export const routes = [
     component: defaultlayout,
     children: [
       {
-        path: "settings",
+        path: "configs",
         meta: { requiresAuth: true },
         component: ScrapingConfigsPage,
       },
