@@ -1,5 +1,6 @@
 import { TaskConfigService, TaskService } from "@/client"
 import type {
+  TaskStatus,
   TransferConfigCreate,
   TransferConfigPublic,
 } from "@/client/types.gen"
@@ -9,8 +10,11 @@ import { useConfirmationStore } from "./confirmation.store"
 export const useTaskStore = defineStore("task-store", {
   state: () => ({
     allTasks: [] as TransferConfigPublic[],
+    runningTasks: [] as TaskStatus[],
     showDialog: false,
     editTask: undefined as TransferConfigPublic | undefined,
+    pollingInterval: null as number | null,
+    pollingFrequency: 2000,
   }),
   actions: {
     async getAllTasks() {
@@ -83,6 +87,44 @@ export const useTaskStore = defineStore("task-store", {
       const task = TaskService.runTransferTask({
         id: id,
       })
+    },
+    async getRunningTasks() {
+      try {
+        const response = await TaskService.getAllTasksStatus()
+        if (response && Array.isArray(response)) {
+          // Filter to only include tasks where transfer_config is not 0
+          this.runningTasks = response.filter(
+            (task) => task.transfer_config !== 0,
+          )
+        }
+        return this.runningTasks
+      } catch (error) {
+        console.error("Error getting running tasks:", error)
+        return []
+      }
+    },
+    startPollingTasks(frequency?: number) {
+      // Clear any existing interval
+      this.stopPollingTasks()
+
+      // Set polling frequency if provided
+      if (frequency) {
+        this.pollingFrequency = frequency
+      }
+
+      // Start polling
+      this.pollingInterval = window.setInterval(async () => {
+        await this.getRunningTasks()
+      }, this.pollingFrequency)
+    },
+    stopPollingTasks() {
+      if (this.pollingInterval !== null) {
+        window.clearInterval(this.pollingInterval)
+        this.pollingInterval = null
+      }
+    },
+    isTaskRunning(taskId: number): boolean {
+      return this.runningTasks.some((task) => task.transfer_config === taskId)
     },
   },
 })

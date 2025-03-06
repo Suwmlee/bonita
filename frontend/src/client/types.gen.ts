@@ -368,12 +368,6 @@ export type RunTransferTaskData = {
 
 export type RunTransferTaskResponse = TaskStatus;
 
-export type GetTaskStatusData = {
-    taskId: string;
-};
-
-export type GetTaskStatusResponse = TaskStatus;
-
 export type GetAllTasksStatusResponse = Array<TaskStatus>;
 
 export type GetAllTaskConfigsData = {
@@ -636,21 +630,6 @@ export type $OpenApiTs = {
     '/api/v1/tasks/run/{id}': {
         post: {
             req: RunTransferTaskData;
-            res: {
-                /**
-                 * Successful Response
-                 */
-                200: TaskStatus;
-                /**
-                 * Validation Error
-                 */
-                422: HTTPValidationError;
-            };
-        };
-    };
-    '/api/v1/tasks/status/{task_id}': {
-        get: {
-            req: GetTaskStatusData;
             res: {
                 /**
                  * Successful Response

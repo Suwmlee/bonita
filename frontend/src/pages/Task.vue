@@ -6,9 +6,26 @@ import { VCardActions } from "vuetify/components"
 const taskStore = useTaskStore()
 const scrapingStore = useScrapingStore()
 
+// Create a computed map of running task statuses for reactivity
+const runningTasksMap = computed(() => {
+  const map = new Map()
+  for (const task of taskStore.runningTasks) {
+    if (task.transfer_config !== 0) {
+      map.set(task.transfer_config, true)
+    }
+  }
+  return map
+})
+
+// Reactive method to check if a task is running
+const isTaskRunning = computed(() => {
+  return (taskId: number) => runningTasksMap.value.has(taskId)
+})
+
 async function initial() {
-  taskStore.getAllTasks()
-  scrapingStore.getAllSetting()
+  await taskStore.getAllTasks()
+  await scrapingStore.getAllSetting()
+  taskStore.startPollingTasks(3000)
 }
 
 function addNewTask() {
@@ -61,8 +78,13 @@ onMounted(() => {
             </div>
           </VCardText>
           <VCardActions class="justify-space-between">
-            <VBtn type="submit" class="me-4" @click.stop="runTask(data.id)">
+            <VBtn v-if="!isTaskRunning(data.id)" type="submit" class="me-4" @click.stop="runTask(data.id)">
               立即执行
+            </VBtn>
+            <VBtn v-else color="primary" class="me-4" :loading="true" variant="tonal">
+              <template #loader>
+                <span>运行中</span>
+              </template>
             </VBtn>
             <VBtn type="submit" class="me-4" @click.stop="deleteTask(data.id)">
               <VIcon style="color: firebrick;" icon="bx-trash" size="22" />
