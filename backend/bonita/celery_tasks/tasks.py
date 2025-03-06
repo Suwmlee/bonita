@@ -8,6 +8,7 @@ from celery.result import allow_join_result
 from multiprocessing import Semaphore
 
 from bonita import schemas
+from bonita.core.config import settings
 from bonita.db import SessionFactory
 from bonita.db.models.extrainfo import ExtraInfo
 from bonita.db.models.metadata import Metadata
@@ -21,8 +22,8 @@ from bonita.utils.downloader import get_cached_file
 from bonita.utils.filehelper import video_type
 
 
-# 创建信号量，最多允许 5 个任务同时执行
-max_concurrent_tasks = 5
+# 创建信号量，最多允许X任务同时执行
+max_concurrent_tasks = settings.MAX_CONCURRENT_TASKS
 semaphore = Semaphore(max_concurrent_tasks)
 
 logger = logging.getLogger(__name__)

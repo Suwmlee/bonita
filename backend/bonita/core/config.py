@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     # CELERY_RESULT_BACKEND: str = f"db+sqlite:///{DATABASE_LOCATION}"
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
+    # 最大并发任务数, 受 worker 数量影响
+    MAX_CONCURRENT_TASKS: int = 5
     # 日志
     LOGGING_FORMAT: str = "[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
     LOGGING_LOCATION: str = "./data/bonita.log"
