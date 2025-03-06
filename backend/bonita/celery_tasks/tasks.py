@@ -2,6 +2,7 @@ import os
 import logging
 import re
 from datetime import datetime
+from urllib.parse import urlparse
 from celery import shared_task, group
 from celery.result import allow_join_result
 
@@ -18,7 +19,7 @@ from bonita.modules.scraping.number_parser import FileNumInfo
 from bonita.modules.scraping.scraping import add_mark, process_nfo_file, process_cover, scraping, load_all_NFO_from_folder
 from bonita.modules.transfer.fileinfo import FileInfo
 from bonita.modules.transfer.transfer import transSingleFile, transferfile, findAllVideos
-from bonita.utils.downloader import get_cached_file
+from bonita.utils.downloader import get_cached_file, update_cache_from_local
 from bonita.utils.filehelper import video_type
 
 
@@ -264,10 +265,29 @@ def celery_import_nfo(self, folder_path, option):
     try:
         session = SessionFactory()
         metadata_list = load_all_NFO_from_folder(folder_path)
-        for metadata_json in metadata_list:
+        for nfo_dict in metadata_list:
+            nfo_data = nfo_dict['nfo']
+            cover_path = nfo_dict['cover_path']
             # 数据转换
-            metadata_base = schemas.MetadataBase(**metadata_json)
+            metadata_base = schemas.MetadataBase(**nfo_data)
             metadata_base.title = metadata_base.title.replace(metadata_base.number, '').strip()
+            if metadata_base.site == "" and metadata_base.detailurl:
+                # 从detailurl中提取域名作为site
+                try:
+                    parsed_url = urlparse(metadata_base.detailurl)
+                    # 获取域名部分，去掉www.前缀
+                    domain = parsed_url.netloc
+                    if domain.startswith('www.'):
+                        domain = domain[4:]
+                    # 提取主域名部分
+                    parts = domain.split('.')
+                    if len(parts) >= 2:
+                        metadata_base.site = parts[-2]  # 取主域名部分
+                    else:
+                        metadata_base.site = domain
+                except:
+                    # 如果解析失败，直接使用完整URL
+                    metadata_base.site = metadata_base.detailurl
             metadata_record = session.query(Metadata).filter(
                 Metadata.number == metadata_base.number).order_by(Metadata.id.desc()).first()
             # 如果 metadata_record 存在，根据 option 决定是否更新
@@ -281,7 +301,9 @@ def celery_import_nfo(self, folder_path, option):
             filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
             metadata_db = Metadata(**filter_dict)
             session.add(metadata_db)
-        session.commit()
+            session.commit()
+            # 从本地更新缓存图片
+            update_cache_from_local(session, cover_path, metadata_base.number, metadata_base.cover)
     except Exception as e:
         logger.error(e)
     finally:

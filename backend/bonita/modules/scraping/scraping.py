@@ -117,8 +117,8 @@ def process_nfo_file(output_folder, prefilename, metadata_dict):
                 pass
             print("  <cover>" + cover + "</cover>", file=code)
             print("  <trailer>" + trailer + "</trailer>", file=code)
-            print("  <website>" + site + "</website>", file=code)
-            print("  <detailurl>" + detailurl + "</detailurl>", file=code)
+            print("  <website>" + detailurl + "</website>", file=code)
+            print("  <source>" + site + "</source>", file=code)
             print("</movie>", file=code)
             logger.info("[+]Wrote!            " + nfo_path)
             return True
@@ -246,7 +246,7 @@ def parse_NFO_from_file(nfo_path):
         root = tree.getroot()
 
         # 解析基本信息
-        NFOdata_dict['title'] = root.findtext('originaltitle')
+        NFOdata_dict['title'] = root.findtext('title')
         NFOdata_dict['studio'] = root.findtext('studio', '')
         NFOdata_dict['year'] = root.findtext('year', '')
 
@@ -267,8 +267,8 @@ def parse_NFO_from_file(nfo_path):
         NFOdata_dict['trailer'] = root.findtext('trailer', '')
         NFOdata_dict['series'] = root.findtext('set', '')
         NFOdata_dict['label'] = root.findtext('label', '')
-        NFOdata_dict['site'] = root.findtext('website', '')
-        NFOdata_dict['detailurl'] = root.findtext('detailurl', '')
+        NFOdata_dict['site'] = root.findtext('source', '')
+        NFOdata_dict['detailurl'] = root.findtext('website', '')
         # 解析演员信息
         actors = []
         actor_photo = {}
@@ -304,7 +304,7 @@ def parse_NFO_from_file(nfo_path):
 
         return NFOdata_dict
     except Exception as e:
-        print(f"解析NFO文件失败: {str(e)}")
+        logger.error(f"解析NFO文件失败: {str(e)}")
         return NFOdata_dict
 
 
@@ -317,7 +317,22 @@ def load_all_NFO_from_folder(folder_path):
         for file in files:
             if file.endswith('.nfo'):
                 nfo_path = os.path.join(root, file)
-                metadata = parse_NFO_from_file(nfo_path)
-                if metadata:  # 确保返回的元数据不为空
-                    NFOdata_list.append(metadata)
+                nfodata = parse_NFO_from_file(nfo_path)
+                if nfodata:  # 确保返回的元数据不为空
+                    cover_path = None
+                    # 检查常见的封面图片命名格式
+                    possible_cover_names = [
+                        file.replace('.nfo', '-fanart.jpg'),
+                        file.replace('.nfo', '-fanart.png'),
+                        file.replace('.nfo', '-fanart.jpeg')
+                    ]
+                    for cover_name in possible_cover_names:
+                        potential_cover_path = os.path.join(root, cover_name)
+                        if os.path.exists(potential_cover_path):
+                            cover_path = potential_cover_path
+                            break
+                    dict_data = {}
+                    dict_data['nfo'] = nfodata
+                    dict_data['cover_path'] = cover_path
+                    NFOdata_list.append(dict_data)
     return NFOdata_list

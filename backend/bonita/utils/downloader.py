@@ -1,4 +1,5 @@
 import os
+import shutil
 import requests
 import hashlib
 import mimetypes
@@ -6,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from bonita.core.config import settings
 from bonita.db.models.downloads import Downloads
+
 
 def get_cached_file(session: Session, url: str, folder) -> str:
     """ 获取缓存图片
@@ -28,6 +30,42 @@ def get_cached_file(session: Session, url: str, folder) -> str:
         cache_downloads_cover.filepath = cache_cover_path
         session.commit()
     return cache_downloads_cover.filepath
+
+
+def update_cache_from_local(session: Session, source_path: str, folder: str, url: str):
+    """ 根据本地文件更新缓存记录
+    :param session: 数据库会话
+    :param source_path: 源文件路径
+    :param folder: 文件保存的缓存目录
+    :param url: 文件链接或标识符
+    """
+    # 检查数据库中是否已有记录
+    cache_downloads = session.query(Downloads).filter(Downloads.url == url).first()
+    # 如果有记录，且文件存在，则跳过
+    if cache_downloads and os.path.exists(cache_downloads.filepath):
+        return cache_downloads.filepath
+    # 确保缓存目录存在
+    cache_folder = os.path.abspath(os.path.join(settings.CACHE_LOCATION, folder))
+    os.makedirs(cache_folder, exist_ok=True)
+    # 生成文件名
+    file_extension = os.path.splitext(source_path)[1]
+    if not file_extension:
+        file_extension = '.jpg'  # 默认扩展名
+    file_name = hashlib.md5(url.encode()).hexdigest() + file_extension
+    cache_path = os.path.join(cache_folder, file_name)
+    # 复制文件到缓存目录
+    if os.path.exists(source_path):
+        shutil.copy2(source_path, cache_path)
+
+    # 更新或创建数据库记录
+    if cache_downloads:
+        cache_downloads.filepath = cache_path
+    else:
+        cache_downloads = Downloads(url=url, filepath=cache_path)
+        session.add(cache_downloads)
+
+    session.commit()
+    return cache_path
 
 
 def get_file_extension(response):
