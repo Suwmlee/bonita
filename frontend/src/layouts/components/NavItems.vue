@@ -10,7 +10,7 @@ import VerticalNavLink from "@layouts/components/VerticalNavLink.vue"
   }" />
   <VerticalNavLink :item="{
     title: 'Records',
-    icon: 'bx-task',
+    icon: 'bx-objects-horizontal-left',
     to: '/records',
   }" />
   <VerticalNavLink :item="{
@@ -20,22 +20,22 @@ import VerticalNavLink from "@layouts/components/VerticalNavLink.vue"
   }" />
   <VerticalNavLink :item="{
     title: 'Scraping',
-    icon: 'bx-detail',
+    icon: 'bxs-magic-wand',
     to: '/scraping/configs',
   }" />
   <VerticalNavLink :item="{
     title: 'Metadata',
-    icon: 'bxs-user-detail',
+    icon: 'bxs-data',
     to: '/metadata',
   }" />
   <VerticalNavLink :item="{
     title: 'Tools',
-    icon: 'bxs-user-detail',
+    icon: 'bxs-wrench',
     to: '/tools',
   }" />
   <VerticalNavLink :item="{
     title: 'ServiceSettings',
-    icon: 'bxs-user-detail',
+    icon: 'bxs-server',
     to: '/settings/service',
   }" />
   <VerticalNavLink :item="{

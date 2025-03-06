@@ -145,6 +145,9 @@ onMounted(() => {
 </script>
 
 <template>
+  <p class="text-xl mb-6">
+    Records
+  </p>
   <VCard>
     <div class="d-flex align-center mb-4 gap-4">
       <v-text-field v-model="searchQuery" label="搜索" hide-details density="compact" class="max-w-xs"
@@ -201,7 +204,7 @@ onMounted(() => {
           <td>{{ formatDateTime(item.transfer_record.updatetime) }}</td>
           <td>{{ formatDateTime(item.transfer_record.deadtime) }}</td>
           <td>
-            <div class="d-flex align-center">
+            <div class="d-flex align-center gap-2">
               <VBtn type="submit" size="small" @click="showSelectedRecord(item)">
                 <VIcon icon="bx-edit-alt" />
               </VBtn>

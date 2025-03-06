@@ -3,8 +3,10 @@
 </script>
 
 <template>
-  <div>
+  <p class="text-xl mb-6">
     Tools
-    通知emby、wechat、telegram等，可以扩展小工具
+  </p>
+  <div>
+    导入NFO数据
   </div>
 </template>
