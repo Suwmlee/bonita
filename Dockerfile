@@ -10,11 +10,7 @@ FROM python:3.12
 WORKDIR /app/backend
 
 COPY backend/ /app/backend/
-
-# 安装 Poetry
-RUN pip install poetry
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi
+RUN pip install -r /app/backend/requirements.txt --no-cache-dir
 
 # 从前端构建阶段复制静态文件
 COPY --from=frontend-build /app/frontend/dist /app/frontend/dist
@@ -25,4 +21,4 @@ COPY nginx.conf /etc/nginx/nginx.conf
 EXPOSE 80
 
 # 启动 Nginx、FastAPI 和 Celery
-CMD ["sh", "-c", "nginx && uvicorn bonita.main:app --host 0.0.0.0 --port 8000 & celery -A bonita.worker.celery worker --loglevel=info"]
+CMD ["sh", "-c", "nginx && uvicorn bonita.main:app --host 0.0.0.0 --port 8000 & celery -A bonita.worker.celery worker --pool threads --concurrency 5 --events --loglevel DEBUG"]

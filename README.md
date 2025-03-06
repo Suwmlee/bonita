@@ -4,6 +4,9 @@
 
 #### Docker
 
+注意:
+访问路径： host.docker.internal
+
 ```sh
 docker build -t suwmlee/bonita:latest -f Dockerfile  .
 
