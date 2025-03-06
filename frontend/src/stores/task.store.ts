@@ -83,10 +83,47 @@ export const useTaskStore = defineStore("task-store", {
         console.error("Error deleting task:", error)
       }
     },
-    runTaskById(id: number) {
-      const task = TaskService.runTransferTask({
+    addOrUpdateRunningTask(task: TaskStatus) {
+      if (!task) return
+
+      // Check if the task is already in the runningTasks array
+      const existingTaskIndex = this.runningTasks.findIndex(
+        (runningTask) => runningTask.transfer_config === task.transfer_config,
+      )
+
+      if (existingTaskIndex !== -1) {
+        // Update existing task if it's already in the array
+        this.runningTasks[existingTaskIndex] = task
+      } else {
+        // Add new task to the array
+        this.runningTasks.push(task)
+      }
+
+      console.log("Task added to running tasks:", task)
+    },
+    async runTaskById(id: number) {
+      const task = await TaskService.runTransferTask({
         id: id,
+        requestBody: {},
       })
+      // Add the newly run task to the runningTasks array
+      if (task) {
+        this.addOrUpdateRunningTask(task)
+      }
+      return task
+    },
+    async runTaskByIdWithPath(id: number, path: string) {
+      const task = await TaskService.runTransferTask({
+        id: id,
+        requestBody: {
+          path: path,
+        },
+      })
+      // Add the newly run task to the runningTasks array
+      if (task) {
+        this.addOrUpdateRunningTask(task)
+      }
+      return task
     },
     async getRunningTasks() {
       try {

@@ -137,6 +137,7 @@ def celery_transfer_group(self, task_json, full_path):
                                                metamixed.extra_filename, task_info.operation)
                     done_list.append(destpath)
                     # 更新
+                    record.task_id = task_info.id
                     record.destpath = destpath
                     record.deleted = False
                     record.updatetime = datetime.now()
@@ -149,6 +150,7 @@ def celery_transfer_group(self, task_json, full_path):
                                             movie_list=waiting_list, linktype=task_info.operation)
                     done_list.append(destpath)
                     # 更新
+                    record.task_id = task_info.id
                     record.destpath = destpath
                     record.deleted = False
                     record.updatetime = datetime.now()

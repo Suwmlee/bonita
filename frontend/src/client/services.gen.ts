@@ -232,6 +232,7 @@ export class TaskService {
      * 立即执行任务
      * @param data The data for the request.
      * @param data.id
+     * @param data.requestBody
      * @returns TaskStatus Successful Response
      * @throws ApiError
      */
@@ -242,6 +243,8 @@ export class TaskService {
             path: {
                 id: data.id
             },
+            body: data.requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: 'Validation Error'
             }

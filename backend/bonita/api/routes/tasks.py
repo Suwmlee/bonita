@@ -1,12 +1,12 @@
 import json
 import logging
 from typing import Any
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from bonita import schemas, main
 from bonita.api.deps import SessionDep
 from bonita.db.models.task import TransferConfig
-from bonita.celery_tasks.tasks import celery_transfer_entry
+from bonita.celery_tasks.tasks import celery_transfer_entry, celery_transfer_group
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -15,15 +15,26 @@ logger = logging.getLogger(__name__)
 @router.post("/run/{id}", response_model=schemas.TaskStatus)
 async def run_transfer_task(
         session: SessionDep,
-        id: int) -> Any:
-    """
-    立即执行任务
+        id: int,
+        path_param: schemas.TaskPathParam) -> Any:
+    """ 立即执行任务
     """
     logger.info(f"run transfer task: {id}")
     task_conf = session.get(TransferConfig, id)
+    if not task_conf:
+        raise HTTPException(status_code=404, detail="Task not found")
     task_dict = task_conf.to_dict()
-    task = celery_transfer_entry.delay(task_dict)
-    return schemas.TaskStatus(id=task.id, name=task_conf.name, transfer_config=task_conf.id)
+
+    if path_param.path:
+        # 如果提供了path参数，针对指定路径运行任务
+        task = celery_transfer_group.delay(task_dict, path_param.path)
+    else:
+        task = celery_transfer_entry.delay(task_dict)
+    return schemas.TaskStatus(id=task.id,
+                              name=task_conf.name,
+                              transfer_config=task_conf.id,
+                              scraping_config=task_conf.sc_id if task_conf.sc_enabled else 0,
+                              status='ACTIVE')
 
 
 @router.get("/status", response_model=list[schemas.TaskStatus])
@@ -47,7 +58,8 @@ def get_all_tasks_status() -> Any:
                     if isinstance(first_arg, dict):
                         if 'id' in first_arg and 'sc_id' in first_arg:
                             task_id = first_arg['id']
-                            task_scid = first_arg['sc_id']
+                            if first_arg['sc_enabled']:
+                                task_scid = first_arg['sc_id']
             except Exception as e:
                 print(f"Error extracting task info: {str(e)}")
 

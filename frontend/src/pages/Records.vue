@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { useRecordStore } from "@/stores/record.store"
+import { useTaskStore } from "@/stores/task.store"
+import { VIcon } from "vuetify/components"
 
 const recordStore = useRecordStore()
+const taskStore = useTaskStore()
+
 const searchQuery = ref("")
 const selected = ref<number[]>([])
 const tagColorMap = {
@@ -110,6 +114,13 @@ const showSelectedRecord = (item: any) => {
   recordStore.showUpdateRecord(item)
 }
 
+const rerunThisRecord = (item: any) => {
+  taskStore.runTaskByIdWithPath(
+    item.transfer_record.task_id,
+    item.transfer_record.srcpath,
+  )
+}
+
 const handleDelete = () => {
   if (selected.value.length === 0) return
   deleteDialog.value = true
@@ -192,7 +203,10 @@ onMounted(() => {
           <td>
             <div class="d-flex align-center">
               <VBtn type="submit" size="small" @click="showSelectedRecord(item)">
-                编辑
+                <VIcon icon="bx-edit-alt" />
+              </VBtn>
+              <VBtn type="submit" size="small" @click="rerunThisRecord(item)">
+                <VIcon icon="bx-refresh" />
               </VBtn>
             </div>
           </td>

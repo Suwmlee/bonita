@@ -15,6 +15,7 @@ class TransRecords(Base):
     srcname = Column(String, default='')
     srcpath = Column(String, default='')
     srcfolder = Column(String, default='')
+    task_id = Column(Integer, default=0, server_default='0', comment='任务ID')
 
     ignored = Column(Boolean, default=False)
     locked = Column(Boolean, default=False)

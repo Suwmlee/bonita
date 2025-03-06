@@ -160,6 +160,10 @@ export type ScrapingConfigsPublic = {
     count: number;
 };
 
+export type TaskPathParam = {
+    path?: string | null;
+};
+
 export type TaskStatus = {
     id: string;
     name?: string | null;
@@ -229,7 +233,8 @@ export type TransferConfigsPublic = {
 export type TransferRecordPublic = {
     srcname: string;
     srcpath: string;
-    srcfolder?: string | null;
+    srcfolder: string;
+    task_id: number;
     ignored?: boolean;
     locked?: boolean;
     deleted?: boolean;
@@ -364,6 +369,7 @@ export type DeleteUserResponse = Response;
 
 export type RunTransferTaskData = {
     id: number;
+    requestBody: TaskPathParam;
 };
 
 export type RunTransferTaskResponse = TaskStatus;

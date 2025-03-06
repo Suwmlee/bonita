@@ -57,3 +57,6 @@ class TransferConfigsPublic(BaseModel):
 class TransferConfigCreate(TransferConfigBase):
     operation: OperationMethod
     source_folder: str
+
+class TaskPathParam(BaseModel):
+    path: Optional[str] = None

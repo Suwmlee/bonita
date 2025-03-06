@@ -1173,6 +1173,24 @@ export const $ScrapingConfigsPublic = {
     title: 'ScrapingConfigsPublic'
 } as const;
 
+export const $TaskPathParam = {
+    properties: {
+        path: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Path'
+        }
+    },
+    type: 'object',
+    title: 'TaskPathParam'
+} as const;
+
 export const $TaskStatus = {
     properties: {
         id: {
@@ -1547,15 +1565,12 @@ export const $TransferRecordPublic = {
             title: 'Srcpath'
         },
         srcfolder: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
+            type: 'string',
             title: 'Srcfolder'
+        },
+        task_id: {
+            type: 'integer',
+            title: 'Task Id'
         },
         ignored: {
             type: 'boolean',
@@ -1693,7 +1708,7 @@ export const $TransferRecordPublic = {
         }
     },
     type: 'object',
-    required: ['srcname', 'srcpath', 'id'],
+    required: ['srcname', 'srcpath', 'srcfolder', 'task_id', 'id'],
     title: 'TransferRecordPublic',
     description: 'Properties to return via API, id is always required'
 } as const;
