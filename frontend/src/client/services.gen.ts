@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetAllTasksStatusResponse, GetAllTaskConfigsData, GetAllTaskConfigsResponse, CreateTaskConfigData, CreateTaskConfigResponse, UpdateTaskConfigData, UpdateTaskConfigResponse, DeleteTaskConfigData, DeleteTaskConfigResponse, GetAllConfigsData, GetAllConfigsResponse, CreateConfigData, CreateConfigResponse, UpdateConfigData, UpdateConfigResponse, DeleteConfigData, DeleteConfigResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, DeleteRecordsData, DeleteRecordsResponse, GetTransRecordsData, GetTransRecordsResponse, GetMetadataData, GetMetadataResponse, UpdateMetadataData, UpdateMetadataResponse, DeleteMetadataData, DeleteMetadataResponse, GetImageByQueryData, GetImageByQueryResponse, UploadImageData, UploadImageResponse } from './types.gen';
+import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetAllTasksStatusResponse, GetAllTaskConfigsData, GetAllTaskConfigsResponse, CreateTaskConfigData, CreateTaskConfigResponse, UpdateTaskConfigData, UpdateTaskConfigResponse, DeleteTaskConfigData, DeleteTaskConfigResponse, GetAllConfigsData, GetAllConfigsResponse, CreateConfigData, CreateConfigResponse, UpdateConfigData, UpdateConfigResponse, DeleteConfigData, DeleteConfigResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, DeleteRecordsData, DeleteRecordsResponse, GetTransRecordsData, GetTransRecordsResponse, GetMetadataData, GetMetadataResponse, UpdateMetadataData, UpdateMetadataResponse, DeleteMetadataData, DeleteMetadataResponse, RunImportNfoData, RunImportNfoResponse, RunEmbyScanData, RunEmbyScanResponse, GetImageByQueryData, GetImageByQueryResponse, UploadImageData, UploadImageResponse } from './types.gen';
 
 export class LoginService {
     /**
@@ -623,6 +623,49 @@ export class MetadataService {
             path: {
                 id: data.id
             },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+}
+
+export class ToolsService {
+    /**
+     * Run Import Nfo
+     * 导入NFO信息
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns TaskStatus Successful Response
+     * @throws ApiError
+     */
+    public static runImportNfo(data: RunImportNfoData): CancelablePromise<RunImportNfoResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/tools/importnfo',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Run Emby Scan
+     * 扫描emby
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns TaskStatus Successful Response
+     * @throws ApiError
+     */
+    public static runEmbyScan(data: RunEmbyScanData): CancelablePromise<RunEmbyScanResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/tools/embyscan',
+            body: data.requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: 'Validation Error'
             }

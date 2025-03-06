@@ -1275,6 +1275,47 @@ export const $Token = {
     title: 'Token'
 } as const;
 
+export const $ToolArgsParam = {
+    properties: {
+        arg1: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Arg1'
+        },
+        arg2: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Arg2'
+        },
+        arg3: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Arg3'
+        }
+    },
+    type: 'object',
+    title: 'ToolArgsParam',
+    description: '工具参数请求'
+} as const;
+
 export const $TransferConfigCreate = {
     properties: {
         name: {

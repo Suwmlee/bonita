@@ -9,21 +9,33 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.post("/importnfo")
+@router.post("/importnfo", response_model=schemas.TaskStatus)
 async def run_import_nfo(
         session: SessionDep,
-        folder_path: str):
+        folder_args: schemas.ToolArgsParam):
     """ 导入NFO信息
     """
-    logger.info(f"run import nfo: {folder_path}")
-    task = celery_import_nfo.delay(folder_path)
-    return schemas.TaskStatus(id=task.id,
-                              name="import nfo",
-                              status='ACTIVE')
+    if folder_args.arg1 and folder_args.arg2:
+        folder_path = folder_args.arg1
+        option = folder_args.arg2
+        logger.info(f"run import nfo: {folder_path}")
+        task = celery_import_nfo.delay(folder_path, option)
+        return schemas.TaskStatus(id=task.id,
+                                  name="import nfo",
+                                  status='ACTIVE')
+    else:
+        return schemas.TaskStatus(id=None,
+                                  name="import nfo",
+                                  status='FAILED')
 
 
-@router.get("/embyscan")
-async def get_emby_scan(session: SessionDep):
+@router.get("/embyscan", response_model=schemas.TaskStatus)
+async def run_emby_scan(
+        session: SessionDep,
+        folder_args: schemas.ToolArgsParam):
     """ 扫描emby
     """
     logger.info("run emby scan")
+    return schemas.TaskStatus(id=None,
+                              name="emby scan",
+                              status='FAILED')

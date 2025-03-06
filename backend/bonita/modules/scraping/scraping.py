@@ -6,23 +6,18 @@ import shutil
 from scrapinglib import search
 from PIL import Image
 
-from bonita import schemas
-
 
 logger = logging.getLogger(__name__)
 
 
-def scraping(number, sources=None, specifiedsource="", specifiedurl="") -> schemas.MetadataBase:
+def scraping(number, sources=None, specifiedsource="", specifiedurl=""):
     """ 开始刮削
     """
     json_data = search(number,
                        sources=sources,
                        specifiedSource=specifiedsource,
                        specifiedUrl=specifiedurl)
-    # 将 metadata_json 转换为 MetadataBase
-    metadata_base = schemas.MetadataBase(**json_data)
-
-    return metadata_base
+    return json_data
 
 
 def process_nfo_file(output_folder, prefilename, metadata_dict):

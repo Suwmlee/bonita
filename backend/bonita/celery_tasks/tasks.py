@@ -184,16 +184,18 @@ def celery_scrapping(self, file_path, scraping_dict):
             session.add(extrainfo)
         # TODO 处理指定源/强制从网站更新
         # 默认获取最新的一条 metadata 记录
-        metadata_record = session.query(Metadata).filter(Metadata.number == extrainfo.number).order_by(Metadata.id.desc()).first()
+        metadata_record = session.query(Metadata).filter(
+            Metadata.number == extrainfo.number).order_by(Metadata.id.desc()).first()
         if metadata_record:
             metadata_mixed = schemas.MetadataMixed(**metadata_record.to_dict())
         else:
             # scraping
-            metadata_base = scraping(extrainfo.number,
+            json_data = scraping(extrainfo.number,
                                      scraping_conf.scraping_sites,
                                      extrainfo.specifiedsource,
                                      extrainfo.specifiedurl)
-            # 保存 metadata 到数据库
+            # 数据转换
+            metadata_base = schemas.MetadataBase(**json_data)
             filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
             metadata_record = Metadata(**filter_dict)
             if scraping_conf.save_metadata:
@@ -254,9 +256,8 @@ def celery_emby_scan(self, task_json):
     logger.debug(f"[+] emby scan: start")
 
 
-
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='import:nfo')
-def celery_import_nfo(self, folder_path):
+def celery_import_nfo(self, folder_path, option):
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "import nfo: start"})
     logger.debug(f"[+] import nfo: start")

@@ -178,6 +178,15 @@ export type Token = {
     token_type?: string;
 };
 
+/**
+ * 工具参数请求
+ */
+export type ToolArgsParam = {
+    arg1?: string | null;
+    arg2?: string | null;
+    arg3?: string | null;
+};
+
 export type TransferConfigCreate = {
     name: string;
     description: string;
@@ -474,6 +483,18 @@ export type DeleteMetadataData = {
 };
 
 export type DeleteMetadataResponse = Response;
+
+export type RunImportNfoData = {
+    requestBody: ToolArgsParam;
+};
+
+export type RunImportNfoResponse = TaskStatus;
+
+export type RunEmbyScanData = {
+    requestBody: ToolArgsParam;
+};
+
+export type RunEmbyScanResponse = TaskStatus;
 
 export type GetImageByQueryData = {
     path: string;
@@ -870,6 +891,36 @@ export type $OpenApiTs = {
                  * Successful Response
                  */
                 200: Response;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/tools/importnfo': {
+        post: {
+            req: RunImportNfoData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: TaskStatus;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/tools/embyscan': {
+        get: {
+            req: RunEmbyScanData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: TaskStatus;
                 /**
                  * Validation Error
                  */

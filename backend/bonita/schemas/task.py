@@ -58,5 +58,15 @@ class TransferConfigCreate(TransferConfigBase):
     operation: OperationMethod
     source_folder: str
 
+
 class TaskPathParam(BaseModel):
     path: Optional[str] = None
+
+
+class ToolArgsParam(BaseModel):
+    """
+    工具参数请求
+    """
+    arg1: Optional[str] = None
+    arg2: Optional[str] = None
+    arg3: Optional[str] = None

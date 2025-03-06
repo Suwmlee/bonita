@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { useToolStore } from '@/stores/tool.store';
+
+const toolStore = useToolStore();
 
 const nfoFolder = ref('');
 const isLoading = ref(false);
@@ -10,20 +12,12 @@ const importNfoData = async () => {
     alert('请输入文件夹路径');
     return;
   }
-
   isLoading.value = true;
   try {
-    // TODO: Implement actual NFO import logic here
-    console.log('Importing NFO data from:', nfoFolder.value);
-    console.log('Update option:', updateOption.value);
-
-    setTimeout(() => {
-      alert('导入成功！');
-      isLoading.value = false;
-    }, 1000);
-  } catch (error) {
-    console.error('Import failed:', error);
-    alert('导入失败，请检查控制台日志');
+    await toolStore.runImportNfo({
+      arg1: nfoFolder.value,
+      arg2: updateOption.value
+    });
   } finally {
     isLoading.value = false;
   }
