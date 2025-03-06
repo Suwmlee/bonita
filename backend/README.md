@@ -6,13 +6,14 @@
 ```sh
 
 # 安装依赖
+python -m venv .venv
 pip install -r requirements.txt
 
 # 启动
 uvicorn bonita.main:app --host 0.0.0.0 --port 8000  --reload
 
-# 启动 worker
-celery --app bonita.worker.celery worker
+# 启动 worker，采用 eventlet 并发模型，设置并发数为 5，同时启用事件机制
+celery --app bonita.worker.celery worker --pool eventlet --concurrency 5 --events --loglevel DEBUG
 
 # 注册的任务列表
 celery --app bonita.worker.celery inspect registered
@@ -56,10 +57,11 @@ alembic downgrade -1
         "worker",
         "--loglevel",
         "DEBUG",
-        "-P",
+        "--pool",
         "eventlet",
         "--concurrency",
-        "5"
+        "5",
+        "--events"
       ]
     }
   ],
