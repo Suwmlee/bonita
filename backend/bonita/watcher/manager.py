@@ -5,8 +5,8 @@ from typing import Dict, List
 from watchdog.observers import Observer, ObserverType
 
 # 监控管理类，负责管理多个监控目录
-from bonita.celery_tasks.tasks import process_watcher_task
 from bonita.watcher.handler import WatcherHandler
+from bonita.celery_tasks.tasks import celery_transfer_group
 
 
 class WatcherManager:
@@ -22,7 +22,7 @@ class WatcherManager:
         if task_id in self._watchers[folder_path]:
             return  # 已经有相同的 id 监控该目录
 
-        event_handler = WatcherHandler(task_func=process_watcher_task, task_id=task_id)
+        event_handler = WatcherHandler(task_func=celery_transfer_group, task_id=task_id)
         observer = Observer()
         observer.schedule(event_handler, folder_path, recursive=True)
         observer.start()

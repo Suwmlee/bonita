@@ -29,13 +29,6 @@ semaphore = Semaphore(max_concurrent_tasks)
 logger = logging.getLogger(__name__)
 
 
-def process_watcher_task(task_conf_id: int):
-    """
-    执行任务
-    """
-    logger.info(f"process watcher task: {task_conf_id}")
-
-
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='transfer:all')
 def celery_transfer_entry(self, task_json):
@@ -66,6 +59,9 @@ def celery_transfer_group(self, task_json, full_path):
     with semaphore:
         self.update_state(state="PROGRESS", meta={"progress": 0, "step": "celery_transfer_pool: start"})
         logger.info(f"transfer group start {full_path}")
+        if not os.path.exists(full_path):
+            logger.debug(f"[!] Transfer not found {full_path}")
+            return []
         task_info = schemas.TransferConfigPublic(**task_json)
         fixseries = False
         if task_info.content_type == 2:

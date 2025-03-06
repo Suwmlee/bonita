@@ -5,7 +5,6 @@ from fastapi import APIRouter
 
 from bonita import schemas, main
 from bonita.api.deps import SessionDep
-from bonita.db import SessionFactory
 from bonita.db.models.task import TransferConfig
 from bonita.celery_tasks.tasks import celery_transfer_entry
 
