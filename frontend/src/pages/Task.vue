@@ -48,6 +48,10 @@ function deleteTask(id: number) {
 onMounted(() => {
   initial()
 })
+
+onBeforeUnmount(() => {
+  taskStore.stopPollingTasks()
+})
 </script>
 
 <template>

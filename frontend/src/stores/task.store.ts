@@ -93,10 +93,26 @@ export const useTaskStore = defineStore("task-store", {
         const response = await TaskService.getAllTasksStatus()
         if (response && Array.isArray(response)) {
           // Filter to only include tasks where transfer_config is not 0
-          this.runningTasks = response.filter(
+          // Then remove duplicates by keeping only the first occurrence of each transfer_config
+          const filteredTasks = response.filter(
             (task) => task.transfer_config !== 0,
           )
+
+          // Use a Map to track unique transfer_config values and keep only the first occurrence
+          const uniqueTasks = Array.from(
+            filteredTasks
+              .reduce((map, task) => {
+                if (task.transfer_config && !map.has(task.transfer_config)) {
+                  map.set(task.transfer_config, task)
+                }
+                return map
+              }, new Map())
+              .values(),
+          )
+
+          this.runningTasks = uniqueTasks
         }
+        console.log("Current running tasks:", this.runningTasks)
         return this.runningTasks
       } catch (error) {
         console.error("Error getting running tasks:", error)
