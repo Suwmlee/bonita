@@ -36,6 +36,8 @@ def create_task_config(
 
     if task_config.auto_watch:
         watcher_manager.add_directory(task_config.source_folder, task_config.id)
+    else:
+        watcher_manager.remove_directory(task_config.source_folder, task_config.id)
     return task_config
 
 
