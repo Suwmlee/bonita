@@ -303,7 +303,8 @@ def celery_import_nfo(self, folder_path, option):
             session.add(metadata_db)
             session.commit()
             # 从本地更新缓存图片
-            update_cache_from_local(session, cover_path, metadata_base.number, metadata_base.cover)
+            if cover_path and os.path.exists(cover_path):
+                update_cache_from_local(session, cover_path, metadata_base.number, metadata_base.cover)
     except Exception as e:
         logger.error(e)
     finally:
