@@ -10,7 +10,7 @@ def create_celery():
     """
     配置 https://docs.celeryq.dev/en/stable/userguide/configuration.html#general-settings
     """
-    celery = Celery(__name__)
+    celery = Celery("bonita")
     celery.conf.broker_url = os.environ.get("CELERY_BROKER_URL", settings.CELERY_BROKER_URL)
     celery.conf.result_backend = os.environ.get("CELERY_RESULT_BACKEND", settings.CELERY_RESULT_BACKEND)
 
