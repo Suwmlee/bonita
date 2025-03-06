@@ -1,10 +1,10 @@
-
 import ast
 import os
 import logging
 import shutil
 from scrapinglib import search
 from PIL import Image
+import xml.etree.ElementTree as ET
 
 
 logger = logging.getLogger(__name__)
@@ -33,9 +33,10 @@ def process_nfo_file(output_folder, prefilename, metadata_dict):
     number = metadata_dict.get('number', '')
     cover = metadata_dict.get('cover', '')
     trailer = metadata_dict.get('trailer', '')
-    site = metadata_dict.get('site', '')
     series = metadata_dict.get('series', '')
     label = metadata_dict.get('label', '')
+    site = metadata_dict.get('site', '')
+    detailurl = metadata_dict.get('detailurl', '')
 
     filename = metadata_dict.get('extra_filename', '')
     actor_list = [word.strip() for word in metadata_dict.get('actor').split(',')]
@@ -51,7 +52,7 @@ def process_nfo_file(output_folder, prefilename, metadata_dict):
             print('<?xml version="1.0" encoding="UTF-8" ?>', file=code)
             print("<movie>", file=code)
             print("  <title><![CDATA[" + filename + "]]></title>", file=code)
-            print("  <originaltitle><![CDATA[" + filename + "]]></originaltitle>", file=code)
+            print("  <originaltitle><![CDATA[" + title + "]]></originaltitle>", file=code)
             print("  <sorttitle><![CDATA[" + filename + "]]></sorttitle>", file=code)
             print("  <customrating>JP-18+</customrating>", file=code)
             print("  <mpaa>JP-18+</mpaa>", file=code)
@@ -117,6 +118,7 @@ def process_nfo_file(output_folder, prefilename, metadata_dict):
             print("  <cover>" + cover + "</cover>", file=code)
             print("  <trailer>" + trailer + "</trailer>", file=code)
             print("  <website>" + site + "</website>", file=code)
+            print("  <detailurl>" + detailurl + "</detailurl>", file=code)
             print("</movie>", file=code)
             logger.info("[+]Wrote!            " + nfo_path)
             return True
@@ -232,3 +234,90 @@ def add_to_pic(pic_path, img_pic, size, count, mode):
     ]
     img_pic.paste(img_subt, (pos[count]['x'], pos[count]['y']), mask=a)
     img_pic.save(pic_path, quality=95)
+
+
+def parse_NFO_from_file(nfo_path):
+    """ 从文件中解析 NFO 数据
+    """
+    NFOdata_dict = {}
+
+    try:
+        tree = ET.parse(nfo_path)
+        root = tree.getroot()
+
+        # 解析基本信息
+        NFOdata_dict['title'] = root.findtext('originaltitle')
+        NFOdata_dict['studio'] = root.findtext('studio', '')
+        NFOdata_dict['year'] = root.findtext('year', '')
+
+        # 解析outline - 处理number分离
+        outline = root.findtext('outline', '')
+        if outline and '#' in outline:
+            parts = outline.split('#', 1)
+            NFOdata_dict['number'] = parts[0]
+            NFOdata_dict['outline'] = parts[1] if len(parts) > 1 else ''
+        else:
+            NFOdata_dict['outline'] = outline
+            NFOdata_dict['number'] = root.findtext('num', '')
+
+        NFOdata_dict['runtime'] = root.findtext('runtime', '')
+        NFOdata_dict['director'] = root.findtext('director', '')
+        NFOdata_dict['release'] = root.findtext('release', '') or root.findtext('premiered', '')
+        NFOdata_dict['cover'] = root.findtext('cover', '')
+        NFOdata_dict['trailer'] = root.findtext('trailer', '')
+        NFOdata_dict['series'] = root.findtext('set', '')
+        NFOdata_dict['label'] = root.findtext('label', '')
+        NFOdata_dict['site'] = root.findtext('website', '')
+        NFOdata_dict['detailurl'] = root.findtext('detailurl', '')
+        # 解析演员信息
+        actors = []
+        actor_photo = {}
+        for actor in root.findall('.//actor'):
+            actor_name = actor.findtext('n', '')
+            if actor_name:
+                actors.append(actor_name)
+                thumb = actor.findtext('thumb', '')
+                if thumb:
+                    actor_photo[actor_name] = thumb
+
+        NFOdata_dict['actor'] = ', '.join(actors)
+        NFOdata_dict['actor_photo'] = str(actor_photo)
+
+        # 解析标签
+        tags = [tag.text for tag in root.findall('tag') if tag.text]
+        NFOdata_dict['tag'] = ', '.join(tags)
+
+        # 解析评分信息
+        try:
+            ratings = root.find('ratings')
+            if ratings is not None:
+                rating_elem = ratings.find('rating')
+                if rating_elem is not None:
+                    value = rating_elem.findtext('value')
+                    votes = rating_elem.findtext('votes')
+                    if value:
+                        NFOdata_dict['userrating'] = float(value)
+                    if votes:
+                        NFOdata_dict['uservotes'] = int(votes)
+        except:
+            pass
+
+        return NFOdata_dict
+    except Exception as e:
+        print(f"解析NFO文件失败: {str(e)}")
+        return NFOdata_dict
+
+
+def load_all_NFO_from_folder(folder_path):
+    """ 从文件夹中加载所有 NFO
+    """
+    NFOdata_list = []
+    # 遍历目录及其子目录下的所有文件
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            if file.endswith('.nfo'):
+                nfo_path = os.path.join(root, file)
+                metadata = parse_NFO_from_file(nfo_path)
+                if metadata:  # 确保返回的元数据不为空
+                    NFOdata_list.append(metadata)
+    return NFOdata_list

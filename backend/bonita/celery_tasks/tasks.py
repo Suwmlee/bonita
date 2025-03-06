@@ -15,7 +15,7 @@ from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
 from bonita.db.models.setting import ScrapingConfig
 from bonita.modules.scraping.number_parser import FileNumInfo
-from bonita.modules.scraping.scraping import add_mark, process_nfo_file, process_cover, scraping
+from bonita.modules.scraping.scraping import add_mark, process_nfo_file, process_cover, scraping, load_all_NFO_from_folder
 from bonita.modules.transfer.fileinfo import FileInfo
 from bonita.modules.transfer.transfer import transSingleFile, transferfile, findAllVideos
 from bonita.utils.downloader import get_cached_file
@@ -191,9 +191,9 @@ def celery_scrapping(self, file_path, scraping_dict):
         else:
             # scraping
             json_data = scraping(extrainfo.number,
-                                     scraping_conf.scraping_sites,
-                                     extrainfo.specifiedsource,
-                                     extrainfo.specifiedurl)
+                                 scraping_conf.scraping_sites,
+                                 extrainfo.specifiedsource,
+                                 extrainfo.specifiedurl)
             # 数据转换
             metadata_base = schemas.MetadataBase(**json_data)
             filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
@@ -261,3 +261,29 @@ def celery_emby_scan(self, task_json):
 def celery_import_nfo(self, folder_path, option):
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "import nfo: start"})
     logger.debug(f"[+] import nfo: start")
+    try:
+        session = SessionFactory()
+        metadata_list = load_all_NFO_from_folder(folder_path)
+        for metadata_json in metadata_list:
+            # 数据转换
+            metadata_base = schemas.MetadataBase(**metadata_json)
+            metadata_base.title = metadata_base.title.replace(metadata_base.number, '').strip()
+            metadata_record = session.query(Metadata).filter(
+                Metadata.number == metadata_base.number).order_by(Metadata.id.desc()).first()
+            # 如果 metadata_record 存在，根据 option 决定是否更新
+            if metadata_record:
+                if option == 'ignore':
+                    # 忽略重复
+                    continue
+                else:
+                    # 强制更新
+                    session.delete(metadata_record)
+            filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
+            metadata_db = Metadata(**filter_dict)
+            session.add(metadata_db)
+        session.commit()
+    except Exception as e:
+        logger.error(e)
+    finally:
+        session.close()
+    return True
