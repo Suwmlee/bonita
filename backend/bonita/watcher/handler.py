@@ -31,7 +31,7 @@ class WatcherHandler(FileSystemEventHandler):
             try:
                 session = SessionFactory()
                 task_info = session.query(TransferConfig).filter(TransferConfig.id == self.task_id).first()
-                self.task_func(task_info.to_dict(), event.src_path)
+                self.task_func(task_info.to_dict(), event.src_path, True)
             except Exception as e:
                 logger.error(f"[!] Watcher created error: {e}")
             finally:

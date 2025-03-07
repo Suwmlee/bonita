@@ -21,7 +21,7 @@ from bonita.modules.scraping.scraping import add_mark, process_nfo_file, process
 from bonita.modules.transfer.fileinfo import FileInfo
 from bonita.modules.transfer.transfer import transSingleFile, transferfile, findAllVideos
 from bonita.utils.downloader import get_cached_file, update_cache_from_local
-from bonita.utils.filehelper import video_type
+from bonita.utils.filehelper import cleanExtraMedia, cleanFolderWithoutSuffix, video_type
 from bonita.utils.http import get_active_proxy
 from bonita.modules.media_service.emby_service import EmbyService
 
@@ -44,20 +44,41 @@ def celery_transfer_entry(self, task_json):
     # 获取 source 文件夹下所有顶层文件/文件夹
     dirs = os.listdir(task_info.source_folder)
 
-    task_group = group(celery_transfer_group.s(task_json, os.path.join(
+    # 创建转移任务组
+    transfer_group = group(celery_transfer_group.s(task_json, os.path.join(
         task_info.source_folder, single_folder)) for single_folder in dirs)
 
-    if task_info.clean_others:
-        task_group.tasks.append(celery_clean_others.s(task_json))
+    # 先执行所有转移任务
+    transfer_result = transfer_group.apply_async()
 
-    result = task_group.apply_async()
+    # 使用 allow_join_result 上下文管理器等待转移任务完成
+    with allow_join_result():
+        done_list = transfer_result.get()
+        if isinstance(done_list, list):
+            flat_done_list = []
+            for sublist in done_list:
+                if isinstance(sublist, list):
+                    flat_done_list.extend(sublist)
+                else:
+                    flat_done_list.append(sublist)
+            done_list = flat_done_list
+        # 剔除 done_list 中的重复项
+        if done_list:
+            done_list = list(set(done_list))
+        logger.info(f"Transfer task {task_info.id} completed with {len(done_list)} files transferred")
 
-    return result
+        # 转移完成后，判断是否执行清理任务或扫描任务
+        if task_info.clean_others:
+            celery_clean_others.apply_async(args=[task_info.output_folder, done_list])
+        if task_info.auto_watch:
+            celery_emby_scan.apply_async(args=[task_json])
+
+    return True
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='transfer:group')
-def celery_transfer_group(self, task_json, full_path):
+def celery_transfer_group(self, task_json, full_path, isEntry=False):
     """ 对 group/folder 内所有关联文件进行转移
     """
     with semaphore:
@@ -165,6 +186,9 @@ def celery_transfer_group(self, task_json, full_path):
             session.commit()
             session.close()
 
+        if isEntry and task_info.auto_watch:
+            celery_emby_scan.apply_async(args=[task_json])
+
         logger.info(f"transfer group end {full_path}")
         return done_list
 
@@ -250,19 +274,23 @@ def celery_scrapping(self, file_path, scraping_dict):
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='clean:clean_others')
-def celery_clean_others(self, task_json):
+def celery_clean_others(self, folder_path, done_list):
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "clean others: start"})
-    logger.debug(f"[+] clean others: start")
+    logger.info(f"[+] clean others task for {folder_path}: start")
 
-    # if task_info.clean_others:
-    #     for donefile in done_list:
-    #         if donefile in old_list:
-    #             old_list.remove(donefile)
-    #         else:
-    #             os.remove(donefile)
-    #     if os.path.isdir(full_path):
-    #         cleanExtraMedia(full_path)
-    #         cleanFolderWithoutSuffix(full_path, video_type)
+    cleaned_files = []
+    dest_list = findAllVideos(folder_path, '', [], 2)
+    for dest in dest_list:
+        if dest not in done_list:
+            cleaned_files.append(dest)
+    for torm in cleaned_files:
+        logger.info(f"[!] remove other file: [{torm}]")
+        os.remove(torm)
+        cleanExtraMedia(folder_path)
+        cleanFolderWithoutSuffix(folder_path, video_type)
+
+    logger.info(f"Clean others completed. Removed {len(cleaned_files)} files")
+    return cleaned_files
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},

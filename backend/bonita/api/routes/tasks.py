@@ -27,7 +27,7 @@ async def run_transfer_task(
 
     if path_param.path:
         # 如果提供了path参数，针对指定路径运行任务
-        task = celery_transfer_group.delay(task_dict, path_param.path)
+        task = celery_transfer_group.delay(task_dict, path_param.path, True)
     else:
         task = celery_transfer_entry.delay(task_dict)
     return schemas.TaskStatus(id=task.id,
