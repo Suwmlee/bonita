@@ -1628,6 +1628,11 @@ export const $TransferRecordPublic = {
             title: 'Deleted',
             default: false
         },
+        srcdeleted: {
+            type: 'boolean',
+            title: 'Srcdeleted',
+            default: false
+        },
         forced_name: {
             anyOf: [
                 {

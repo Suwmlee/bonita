@@ -160,7 +160,7 @@ onMounted(() => {
     <v-data-table v-model="selected" :headers="headers" :items="recordStore.records" item-value="transfer_record.id"
       show-select show-select-all select-strategy="page" :sort-by="sortBy">
       <template v-slot:item="{ item, columns, index }">
-        <tr :class="{ 'deleted-row': item.transfer_record.deleted }">
+        <tr :class="{ 'deleted-row': item.transfer_record.deleted || item.transfer_record.srcdeleted }">
           <td><v-checkbox v-model="selected" :value="item.transfer_record.id" multiple hide-details></v-checkbox></td>
           <td>
             <v-tooltip :text="item.transfer_record.srcname">
@@ -174,7 +174,8 @@ onMounted(() => {
           <td>
             <v-tooltip :text="item.transfer_record.srcpath">
               <template v-slot:activator="{ props }">
-                <span v-bind="props" class="text-truncate d-inline-block" style="max-width: 180px">
+                <span v-bind="props" class="text-truncate d-inline-block" style="max-width: 180px"
+                  :class="{ 'text-decoration-line-through': item.transfer_record.srcdeleted }">
                   {{ item.transfer_record.srcpath }}
                 </span>
               </template>

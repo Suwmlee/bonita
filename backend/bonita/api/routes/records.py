@@ -1,7 +1,8 @@
 
 import os
+from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException
-from typing import Any, List
+from typing import Any
 
 from bonita import schemas
 from bonita.api.deps import SessionDep
@@ -96,6 +97,7 @@ async def delete_records(
         else:
             # 记录删除状态
             record.deleted = True
+            record.deadtime = datetime.now() + timedelta(days=7)
         # 删除关联的额外信息
         extra_info = session.query(ExtraInfo).filter(ExtraInfo.filepath == record.srcpath).first()
         if extra_info:

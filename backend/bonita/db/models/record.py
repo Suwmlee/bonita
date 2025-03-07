@@ -20,6 +20,7 @@ class TransRecords(Base):
     ignored = Column(Boolean, default=False)
     locked = Column(Boolean, default=False)
     deleted = Column(Boolean, default=False, comment='实际目标路径文件已经删除')
+    srcdeleted = Column(Boolean, default=False, server_default='0', comment='实际源文件已经删除')
 
     forced_name = Column(String, default='', comment='forced name')
     top_folder = Column(String, default='')

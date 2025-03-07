@@ -247,6 +247,7 @@ export type TransferRecordPublic = {
     ignored?: boolean;
     locked?: boolean;
     deleted?: boolean;
+    srcdeleted?: boolean;
     forced_name?: string | null;
     top_folder?: string | null;
     second_folder?: string | null;

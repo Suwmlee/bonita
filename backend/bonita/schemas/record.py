@@ -17,6 +17,7 @@ class TransferRecordBase(BaseModel):
     ignored: bool = False
     locked: bool = False
     deleted: bool = False
+    srcdeleted: bool = False
 
     forced_name: Optional[str] = None
     top_folder: Optional[str] = None
