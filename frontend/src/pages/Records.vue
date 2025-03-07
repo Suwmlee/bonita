@@ -7,6 +7,8 @@ const recordStore = useRecordStore()
 const taskStore = useTaskStore()
 
 const searchQuery = ref("")
+const taskIdQuery = ref("")
+const searchTimeout = ref<number | null>(null)
 const selected = ref<number[]>([])
 const tagColorMap = {
   中文字幕: "#FF0000",
@@ -124,14 +126,39 @@ const handleItemsPerPageChange = async (newItemsPerPage: number) => {
 }
 
 // 加载数据函数
-const loadData = async (page = recordStore.currentPage, itemsPerPage = recordStore.itemsPerPage) => {
-  console.log(`Loading page ${page} with ${itemsPerPage} items per page`)
-  await recordStore.getRecords({
+const loadData = async (
+  page = recordStore.currentPage,
+  itemsPerPage = recordStore.itemsPerPage,
+) => {
+  // 构建搜索参数
+  const searchParams: {
+    page: number
+    itemsPerPage: number
+    search?: string
+    taskId?: number
+  } = {
     page,
     itemsPerPage,
-  })
+  }
+
+  // 如果有任务ID输入，则添加到搜索参数
+  if (taskIdQuery.value.trim()) {
+    const taskId = Number.parseInt(taskIdQuery.value.trim())
+    if (!Number.isNaN(taskId)) {
+      searchParams.taskId = taskId
+    }
+  }
+
+  // 如果有搜索内容，则添加到搜索参数
+  if (searchQuery.value.trim()) {
+    searchParams.search = searchQuery.value.trim()
+  }
+
+  await recordStore.getRecords(searchParams)
   // 添加日志，查看实际获取到的记录数量
-  console.log(`Received ${recordStore.records.length} records out of ${recordStore.totalRecords} total`)
+  console.log(
+    `Received ${recordStore.records.length} records out of ${recordStore.totalRecords} total`,
+  )
 }
 
 async function initial() {
@@ -162,10 +189,26 @@ const confirmDelete = async () => {
   selected.value = []
 }
 
-watch(searchQuery, (newValue) => {
-  // TODO: Implement search functionality
-  // recordStore.getRecords({ search: newValue })
+// 更新 watch 函数以实现搜索功能，添加防抖
+watch([searchQuery, taskIdQuery], () => {
+  // 清除之前的定时器
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value)
+  }
+
+  // 设置新的定时器，300ms 后执行搜索
+  searchTimeout.value = setTimeout(() => {
+    selected.value = [] // 清空选中项
+    loadData(1, recordStore.itemsPerPage) // 回到第一页，保持当前每页数量
+  }, 300) as unknown as number
 })
+
+// 清除搜索并重新加载数据
+const handleClearSearch = () => {
+  searchQuery.value = ""
+  taskIdQuery.value = ""
+  loadData(1, recordStore.itemsPerPage)
+}
 
 onMounted(() => {
   initial()
@@ -178,8 +221,32 @@ onMounted(() => {
   </p>
   <VCard>
     <div class="d-flex align-center mb-4 gap-4">
-      <v-text-field v-model="searchQuery" label="搜索" hide-details density="compact" class="max-w-xs"
-        prepend-inner-icon="mdi-magnify" clearable />
+      <v-text-field v-model="searchQuery" label="文件名搜索" placeholder="输入文件名进行模糊搜索" hide-details density="compact" class="max-w-xs"
+        prepend-inner-icon="mdi-magnify" clearable @click:clear="searchQuery = ''; loadData(1, recordStore.itemsPerPage)" />
+      <v-text-field v-model="taskIdQuery" label="任务ID" placeholder="输入任务ID" hide-details density="compact" 
+        prepend-inner-icon="mdi-pound" clearable type="number" class="max-w-xs max-w-taskid"
+        @click:clear="taskIdQuery = ''; loadData(1, recordStore.itemsPerPage)" />
+      
+      <div v-if="searchQuery || taskIdQuery" class="d-flex align-center gap-2">
+        <v-chip v-if="searchQuery" color="primary" size="small">
+          搜索: {{ searchQuery }}
+          <template v-slot:append>
+            <v-icon size="small" @click="searchQuery = ''; loadData(1, recordStore.itemsPerPage)">mdi-close</v-icon>
+          </template>
+        </v-chip>
+        <v-chip v-if="taskIdQuery" color="info" size="small">
+          任务ID: {{ taskIdQuery }}
+          <template v-slot:append>
+            <v-icon size="small" @click="taskIdQuery = ''; loadData(1, recordStore.itemsPerPage)">mdi-close</v-icon>
+          </template>
+        </v-chip>
+        <v-btn v-if="searchQuery || taskIdQuery" icon="mdi-close-circle" size="small" color="error" variant="text" 
+          @click="handleClearSearch" class="ml-1">
+          <v-tooltip activator="parent" location="top">清除所有筛选条件</v-tooltip>
+        </v-btn>
+      </div>
+      
+      <v-spacer></v-spacer>
       <v-btn color="error" :disabled="selected.length === 0" prepend-icon="mdi-delete" @click="handleDelete">
         删除选中项 ({{ selected.length }})
       </v-btn>
@@ -329,5 +396,9 @@ onMounted(() => {
 
 :deep(.v-data-table__wrapper) {
   overflow-y: auto;
+}
+
+.max-w-taskid {
+  max-width: 150px;
 }
 </style>

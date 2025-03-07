@@ -449,7 +449,9 @@ export type DeleteConfigResponse = Response;
 
 export type GetRecordsData = {
     limit?: number;
+    search?: string;
     skip?: number;
+    taskId?: number;
 };
 
 export type GetRecordsResponse = RecordsPublic;

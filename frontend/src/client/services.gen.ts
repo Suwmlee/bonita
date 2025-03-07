@@ -452,9 +452,13 @@ export class RecordService {
     /**
      * Get Records
      * 获取记录信息 包含 ExtraInfo
+     * 可以根据task_id进行精确过滤
+     * search参数可同时模糊匹配srcname和srcpath
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
+     * @param data.taskId
+     * @param data.search
      * @returns RecordsPublic Successful Response
      * @throws ApiError
      */
@@ -464,7 +468,9 @@ export class RecordService {
             url: '/api/v1/records/all',
             query: {
                 skip: data.skip,
-                limit: data.limit
+                limit: data.limit,
+                task_id: data.taskId,
+                search: data.search
             },
             errors: {
                 422: 'Validation Error'

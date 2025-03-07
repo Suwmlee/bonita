@@ -1,8 +1,8 @@
-
 import os
 from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException
 from typing import Any
+from sqlalchemy import or_
 
 from bonita import schemas
 from bonita.api.deps import SessionDep
@@ -14,11 +14,34 @@ router = APIRouter()
 
 
 @router.get("/all", response_model=schemas.RecordsPublic)
-async def get_records(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
+async def get_records(
+    session: SessionDep,
+    skip: int = 0,
+    limit: int = 100,
+    task_id: int = None,
+    search: str = None
+) -> Any:
     """ 获取记录信息 包含 ExtraInfo
+    可以根据task_id进行精确过滤
+    search参数可同时模糊匹配srcname和srcpath
     """
-    joined_query = session.query(TransRecords, ExtraInfo).outerjoin(
-        ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath).offset(skip).limit(limit).all()
+    query = session.query(TransRecords, ExtraInfo).outerjoin(
+        ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath)
+
+    # 添加过滤条件
+    if task_id is not None:
+        query = query.filter(TransRecords.task_id == task_id)
+    if search is not None:
+        query = query.filter(
+            or_(
+                TransRecords.srcname.like(f"%{search}%"),
+                TransRecords.srcpath.like(f"%{search}%")
+            )
+        )
+
+    # 应用分页
+    joined_query = query.offset(skip).limit(limit).all()
+
     record_list = []
     for trans_record, extra_info in joined_query:
         transfer_record_public = schemas.TransferRecordPublic.model_validate(trans_record)
@@ -28,7 +51,19 @@ async def get_records(session: SessionDep, skip: int = 0, limit: int = 100) -> A
             extra_info_public = schemas.ExtraInfoPublic.model_validate(extra_info)
         record_list.append(schemas.RecordPublic(transfer_record=transfer_record_public, extra_info=extra_info_public))
 
-    count = session.query(TransRecords).count()
+    # 获取总记录数时也要应用过滤条件
+    count_query = session.query(TransRecords)
+    if task_id is not None:
+        count_query = count_query.filter(TransRecords.task_id == task_id)
+    if search is not None:
+        count_query = count_query.filter(
+            or_(
+                TransRecords.srcname.like(f"%{search}%"),
+                TransRecords.srcpath.like(f"%{search}%")
+            )
+        )
+
+    count = count_query.count()
     return schemas.RecordsPublic(data=record_list, count=count)
 
 
