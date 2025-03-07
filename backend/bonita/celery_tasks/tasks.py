@@ -15,6 +15,7 @@ from bonita.db.models.extrainfo import ExtraInfo
 from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
 from bonita.db.models.scraping import ScrapingConfig
+from bonita.db.models.setting import SystemSetting
 from bonita.modules.scraping.number_parser import FileNumInfo
 from bonita.modules.scraping.scraping import add_mark, process_nfo_file, process_cover, scraping, load_all_NFO_from_folder
 from bonita.modules.transfer.fileinfo import FileInfo
@@ -22,6 +23,7 @@ from bonita.modules.transfer.transfer import transSingleFile, transferfile, find
 from bonita.utils.downloader import get_cached_file, update_cache_from_local
 from bonita.utils.filehelper import video_type
 from bonita.utils.http import get_active_proxy
+from bonita.modules.media_service.emby_service import EmbyService
 
 
 # 创建信号量，最多允许X任务同时执行
@@ -207,7 +209,7 @@ def celery_scrapping(self, file_path, scraping_dict):
                                  extrainfo.specifiedsource,
                                  extrainfo.specifiedurl,
                                  proxy
-                                )
+                                 )
             # 数据转换
             metadata_base = schemas.MetadataBase(**json_data)
             filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
@@ -268,6 +270,32 @@ def celery_clean_others(self, task_json):
 def celery_emby_scan(self, task_json):
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "emby scan: start"})
     logger.debug(f"[+] emby scan: start")
+    try:
+        # Get Emby configuration from the database
+        session = SessionFactory()
+        try:
+            emby_host = session.query(SystemSetting).filter(SystemSetting.key == "emby_host").first()
+            emby_apikey = session.query(SystemSetting).filter(SystemSetting.key == "emby_apikey").first()
+
+            if not emby_host or not emby_apikey:
+                raise Exception("Emby host or API key not configured")
+
+            # Extract the actual values from the SystemSetting objects
+            emby_host_value = emby_host.value
+            emby_apikey_value = emby_apikey.value
+        finally:
+            session.close()
+
+        self.update_state(state="PROGRESS", meta={"progress": 50, "step": "emby scan: sending request"})
+
+        # Use the EmbyService to trigger a library scan, passing the configuration
+        EmbyService.trigger_library_scan(emby_host_value, emby_apikey_value)
+
+        self.update_state(state="PROGRESS", meta={"progress": 100, "step": "emby scan: complete"})
+
+    except Exception as e:
+        logger.error(f"Error during Emby library scan: {str(e)}")
+        raise e
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
