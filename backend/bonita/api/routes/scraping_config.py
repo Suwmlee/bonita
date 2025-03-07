@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException
 
 from bonita import schemas
 from bonita.api.deps import CurrentUser, SessionDep
-from bonita.db.models.setting import ScrapingConfig
+from bonita.db.models.scraping import ScrapingConfig
 
 
 router = APIRouter()

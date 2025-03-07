@@ -95,6 +95,15 @@ export type MetadataPublic = {
  */
 export type OperationMethod = 1 | 2 | 3 | 4;
 
+/**
+ * Proxy settings schema
+ */
+export type ProxySettings = {
+    http?: string | null;
+    https?: string | null;
+    enabled?: boolean | null;
+};
+
 export type RecordPublic = {
     transfer_record: TransferRecordPublic;
     extra_info?: ExtraInfoPublic | null;
@@ -496,6 +505,14 @@ export type RunEmbyScanData = {
 };
 
 export type RunEmbyScanResponse = TaskStatus;
+
+export type GetProxySettingsResponse = ProxySettings;
+
+export type UpdateProxySettingsData = {
+    requestBody: ProxySettings;
+};
+
+export type UpdateProxySettingsResponse = Response;
 
 export type GetImageByQueryData = {
     path: string;
@@ -922,6 +939,29 @@ export type $OpenApiTs = {
                  * Successful Response
                  */
                 200: TaskStatus;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/settings/proxy': {
+        get: {
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: ProxySettings;
+            };
+        };
+        post: {
+            req: UpdateProxySettingsData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
                 /**
                  * Validation Error
                  */

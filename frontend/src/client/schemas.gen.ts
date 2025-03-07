@@ -710,6 +710,48 @@ export const $OperationMethod = {
     `
 } as const;
 
+export const $ProxySettings = {
+    properties: {
+        http: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Http'
+        },
+        https: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Https'
+        },
+        enabled: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Enabled',
+            default: false
+        }
+    },
+    type: 'object',
+    title: 'ProxySettings',
+    description: 'Proxy settings schema'
+} as const;
+
 export const $RecordPublic = {
     properties: {
         transfer_record: {

@@ -1,27 +1,58 @@
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, DateTime
+from datetime import datetime
 
 from bonita.db import Base
 
 
-class ScrapingConfig(Base):
-    """ 刮削配置
+class SystemSetting(Base):
+    """ 系统设置
     """
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, default='movie')
-    description = Column(String, default='')
-    save_metadata = Column(Boolean, default=True)
+    key = Column(String, unique=True, index=True, nullable=False)
+    value = Column(String, nullable=True, default="")
+    description = Column(String, default="")
+    updatetime = Column(DateTime, default=datetime.now(), onupdate=datetime.now())
 
-    scraping_sites = Column(String, default="")
-    location_rule = Column(String, default="actor+'/'+number+' '+title")
-    naming_rule = Column(String, default="number+' '+title")
-    max_title_len = Column(Integer, default=50)
+    @classmethod
+    def get_setting(cls, session, key, default=None):
+        """获取系统设置值
 
-    morestoryline = Column(Boolean, default=True)
-    extrafanart_enabled = Column(Boolean, default=False)
-    extrafanart_folder = Column(String, default='extrafanart')
-    watermark_enabled = Column(Boolean, default=True)
-    watermark_size = Column(Integer, default=9)
-    watermark_location = Column(Integer, default=2)
-    transalte_enabled = Column(Boolean, default=False)
-    transalte_to_sc = Column(Boolean, default=False)
-    transalte_values = Column(String, default="title,outline")
+        Args:
+            session: 数据库会话
+            key: 设置键名
+            default: 默认值，如果设置不存在
+
+        Returns:
+            str: 设置值
+        """
+        setting = session.query(cls).filter(cls.key == key).first()
+        if not setting:
+            return default
+        return setting.value
+
+    @classmethod
+    def set_setting(cls, session, key, value, description=None):
+        """设置系统设置值
+
+        Args:
+            session: 数据库会话
+            key: 设置键名
+            value: 设置值
+            description: 设置描述
+
+        Returns:
+            SystemSetting: 设置对象
+        """
+        setting = session.query(cls).filter(cls.key == key).first()
+        if not setting:
+            setting = cls(key=key, value=value)
+            if description:
+                setting.description = description
+            session.add(setting)
+        else:
+            setting.value = value
+            if description:
+                setting.description = description
+
+        session.commit()
+        return setting

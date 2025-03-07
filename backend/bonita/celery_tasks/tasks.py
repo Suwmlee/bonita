@@ -14,7 +14,7 @@ from bonita.db import SessionFactory
 from bonita.db.models.extrainfo import ExtraInfo
 from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
-from bonita.db.models.setting import ScrapingConfig
+from bonita.db.models.scraping import ScrapingConfig
 from bonita.modules.scraping.number_parser import FileNumInfo
 from bonita.modules.scraping.scraping import add_mark, process_nfo_file, process_cover, scraping, load_all_NFO_from_folder
 from bonita.modules.transfer.fileinfo import FileInfo

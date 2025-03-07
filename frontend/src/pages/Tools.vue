@@ -1,27 +1,27 @@
 <script setup lang="ts">
-import { useToolStore } from '@/stores/tool.store';
+import { useToolStore } from "@/stores/tool.store"
 
-const toolStore = useToolStore();
+const toolStore = useToolStore()
 
-const nfoFolder = ref('');
-const isLoading = ref(false);
-const updateOption = ref('ignore');
+const nfoFolder = ref("")
+const isLoading = ref(false)
+const updateOption = ref("ignore")
 
 const importNfoData = async () => {
   if (!nfoFolder.value) {
-    alert('请输入文件夹路径');
-    return;
+    alert("请输入文件夹路径")
+    return
   }
-  isLoading.value = true;
+  isLoading.value = true
   try {
     await toolStore.runImportNfo({
       arg1: nfoFolder.value,
-      arg2: updateOption.value
-    });
+      arg2: updateOption.value,
+    })
   } finally {
-    isLoading.value = false;
+    isLoading.value = false
   }
-};
+}
 </script>
 
 <template>
