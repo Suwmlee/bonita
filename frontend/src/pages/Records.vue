@@ -17,6 +17,9 @@ const tagColorMap = {
 const deleteDialog = ref(false)
 const forceDelete = ref(false)
 
+// 分页选项
+const pageSizeOptions = [10, 25, 50, 100]
+
 const getTagColor = (tag: string) => {
   return tagColorMap[tag.trim() as keyof typeof tagColorMap] || "grey"
 }
@@ -106,8 +109,33 @@ const sortBy = ref([
   },
 ])
 
+// 处理分页变化
+const handlePageChange = async (newPage: number) => {
+  selected.value = [] // 页面切换时清空选中项
+  await loadData(newPage, recordStore.itemsPerPage)
+}
+
+// 处理每页数量变化
+const handleItemsPerPageChange = async (newItemsPerPage: number) => {
+  // 这里不使用v-model双向绑定，而是手动更新并重新加载数据
+  selected.value = [] // 清空选中项
+  // 调用loadData，传递当前页和新的每页数量
+  await loadData(1, newItemsPerPage)
+}
+
+// 加载数据函数
+const loadData = async (page = recordStore.currentPage, itemsPerPage = recordStore.itemsPerPage) => {
+  console.log(`Loading page ${page} with ${itemsPerPage} items per page`)
+  await recordStore.getRecords({
+    page,
+    itemsPerPage,
+  })
+  // 添加日志，查看实际获取到的记录数量
+  console.log(`Received ${recordStore.records.length} records out of ${recordStore.totalRecords} total`)
+}
+
 async function initial() {
-  recordStore.getRecords()
+  await loadData()
 }
 
 const showSelectedRecord = (item: any) => {
@@ -126,8 +154,8 @@ const handleDelete = () => {
   deleteDialog.value = true
 }
 
-const confirmDelete = () => {
-  recordStore.deleteRecords(selected.value, forceDelete.value)
+const confirmDelete = async () => {
+  await recordStore.deleteRecords(selected.value, forceDelete.value)
   deleteDialog.value = false
   forceDelete.value = false
   // 清空选中项
@@ -158,7 +186,8 @@ onMounted(() => {
     </div>
 
     <v-data-table v-model="selected" :headers="headers" :items="recordStore.records" item-value="transfer_record.id"
-      show-select show-select-all select-strategy="page" :sort-by="sortBy">
+      show-select :loading="recordStore.loading" :sort-by="sortBy" height="auto" :items-per-page="-1">
+      <!-- 自定义表格行 -->
       <template v-slot:item="{ item, columns, index }">
         <tr :class="{ 'deleted-row': item.transfer_record.deleted || item.transfer_record.srcdeleted }">
           <td><v-checkbox v-model="selected" :value="item.transfer_record.id" multiple hide-details></v-checkbox></td>
@@ -216,6 +245,25 @@ onMounted(() => {
           </td>
         </tr>
       </template>
+
+      <!-- 自定义底部分页 -->
+      <template v-slot:bottom>
+        <div class="d-flex align-center justify-end px-4 py-3 w-100">
+          <div class="d-flex align-center me-4">
+            <span class="text-caption text-grey me-2">每页显示</span>
+            <v-select :model-value="recordStore.itemsPerPage" :items="pageSizeOptions" density="compact"
+              style="width: 80px" hide-details variant="plain" @update:model-value="handleItemsPerPageChange" />
+          </div>
+
+          <v-pagination v-model="recordStore.currentPage"
+            :length="Math.ceil(recordStore.totalRecords / recordStore.itemsPerPage)"
+            @update:model-value="handlePageChange" :total-visible="1" :show-first-last-page="false" />
+
+          <div class="ms-4 text-caption text-grey">
+            总计 {{ recordStore.totalRecords }} 条记录
+          </div>
+        </div>
+      </template>
     </v-data-table>
   </VCard>
 
@@ -271,5 +319,15 @@ onMounted(() => {
 .deleted-row {
   color: #9e9e9e;
   opacity: 0.85;
+}
+
+/* 确保表格可以显示更多行 */
+:deep(.v-data-table) {
+  min-height: calc(100vh - 250px);
+  max-height: none !important;
+}
+
+:deep(.v-data-table__wrapper) {
+  overflow-y: auto;
 }
 </style>

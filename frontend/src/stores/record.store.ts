@@ -7,12 +7,39 @@ export const useRecordStore = defineStore("record-store", {
     records: [] as RecordPublic[],
     showDialog: false,
     editRecord: undefined as RecordPublic | undefined,
+    totalRecords: 0,
+    currentPage: 1,
+    itemsPerPage: 10,
+    loading: false,
   }),
   actions: {
-    async getRecords() {
-      const all = await RecordService.getRecords()
-      this.records = all.data
-      return this.records
+    async getRecords(options = { page: 1, itemsPerPage: 10 }) {
+      this.loading = true
+      try {
+        const skip = (options.page - 1) * options.itemsPerPage
+        const limit = options.itemsPerPage
+        
+        console.log(`Requesting records with skip=${skip}, limit=${limit}`)
+
+        const response = await RecordService.getRecords({
+          skip,
+          limit,
+        })
+        
+        console.log(`API response: ${response.data.length} records, total: ${response.count}`)
+        
+        this.records = response.data
+        this.totalRecords = response.count
+        this.currentPage = options.page
+        this.itemsPerPage = options.itemsPerPage
+        
+        return this.records
+      } catch (error) {
+        console.error("获取记录失败:", error)
+        return []
+      } finally {
+        this.loading = false
+      }
     },
     showUpdateRecord(data: RecordPublic) {
       this.editRecord = data
@@ -54,6 +81,9 @@ export const useRecordStore = defineStore("record-store", {
             return record
           })
         }
+        
+        // 删除记录后刷新当前页，以保持页面数据完整
+        await this.getRecords({ page: this.currentPage, itemsPerPage: this.itemsPerPage })
       }
     },
     updateRecordById(id: number, newValue: Partial<RecordPublic>) {
