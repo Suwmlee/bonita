@@ -1,15 +1,25 @@
 import { SettingsService } from "@/client/services.gen"
-import type { ProxySettings, UpdateProxySettingsData } from "@/client/types.gen"
+import type {
+  EmbySettings,
+  ProxySettings,
+  TestEmbyConnectionData,
+  UpdateEmbySettingsData,
+  UpdateProxySettingsData,
+} from "@/client/types.gen"
 import { defineStore } from "pinia"
 import { useToastStore } from "./toast.store"
 
 interface SettingState {
   /** 代理设置 */
   proxySettings: ProxySettings
+  /** Emby API设置 */
+  embyApiSettings: EmbySettings
   /** 加载状态 */
   loading: boolean
   /** 保存状态 */
   saving: boolean
+  /** Emby测试状态 */
+  testingEmby: boolean
 }
 
 export const useSettingStore = defineStore("setting-store", {
@@ -20,8 +30,13 @@ export const useSettingStore = defineStore("setting-store", {
         https: null,
         enabled: false,
       },
+      embyApiSettings: {
+        emby_host: "",
+        emby_apikey: "",
+      },
       loading: false,
       saving: false,
+      testingEmby: false,
     }
   },
   actions: {
@@ -66,6 +81,72 @@ export const useSettingStore = defineStore("setting-store", {
         throw error
       } finally {
         this.saving = false
+      }
+    },
+
+    /**
+     * 获取Emby设置
+     */
+    async fetchEmbySettings() {
+      const toast = useToastStore()
+      this.loading = true
+
+      try {
+        const response = await SettingsService.getEmbySettings()
+        this.embyApiSettings = response
+        return response
+      } catch (error) {
+        console.error("Error fetching Emby settings:", error)
+        toast.error("获取Emby设置失败")
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
+     * 更新Emby设置
+     */
+    async saveEmbyApiSettings() {
+      this.saving = true
+
+      try {
+        const data: UpdateEmbySettingsData = {
+          requestBody: this.embyApiSettings,
+        }
+
+        const response = await SettingsService.updateEmbySettings(data)
+        return response
+      } catch (error) {
+        console.error("Error updating Emby settings:", error)
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    /**
+     * 测试Emby连接
+     * @param apiKey 用于测试的API Key
+     */
+    async testEmbyConnection(apiKey: string) {
+      this.testingEmby = true
+
+      try {
+        const data: TestEmbyConnectionData = {
+          requestBody: {
+            emby_host: this.embyApiSettings.emby_host,
+            emby_apikey: apiKey,
+          },
+        }
+
+        const response = await SettingsService.testEmbyConnection(data)
+        return response
+      } catch (error) {
+        console.error("Error testing Emby connection:", error)
+        throw error
+      } finally {
+        this.testingEmby = false
       }
     },
   },

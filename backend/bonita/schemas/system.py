@@ -45,3 +45,11 @@ class ProxySettings(BaseModel):
     http: Optional[str] = None
     https: Optional[str] = None
     enabled: Optional[bool] = False
+
+
+class EmbySettings(BaseModel):
+    """
+    Emby settings schema
+    """
+    emby_host: str
+    emby_apikey: str

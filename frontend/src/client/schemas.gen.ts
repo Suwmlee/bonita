@@ -68,6 +68,23 @@ export const $Body_resource_upload_image = {
     title: 'Body_resource-upload_image'
 } as const;
 
+export const $EmbySettings = {
+    properties: {
+        emby_host: {
+            type: 'string',
+            title: 'Emby Host'
+        },
+        emby_apikey: {
+            type: 'string',
+            title: 'Emby Apikey'
+        }
+    },
+    type: 'object',
+    required: ['emby_host', 'emby_apikey'],
+    title: 'EmbySettings',
+    description: 'Emby settings schema'
+} as const;
+
 export const $ExtraInfoPublic = {
     properties: {
         filepath: {

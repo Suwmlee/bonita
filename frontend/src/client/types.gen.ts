@@ -13,6 +13,14 @@ export type Body_resource_upload_image = {
     file: (Blob | File);
 };
 
+/**
+ * Emby settings schema
+ */
+export type EmbySettings = {
+    emby_host: string;
+    emby_apikey: string;
+};
+
 export type ExtraInfoPublic = {
     filepath: string;
     number: string;
@@ -517,6 +525,20 @@ export type UpdateProxySettingsData = {
 
 export type UpdateProxySettingsResponse = Response;
 
+export type GetEmbySettingsResponse = EmbySettings;
+
+export type UpdateEmbySettingsData = {
+    requestBody: EmbySettings;
+};
+
+export type UpdateEmbySettingsResponse = Response;
+
+export type TestEmbyConnectionData = {
+    requestBody: EmbySettings;
+};
+
+export type TestEmbyConnectionResponse = Response;
+
 export type GetImageByQueryData = {
     path: string;
 };
@@ -960,6 +982,44 @@ export type $OpenApiTs = {
         };
         post: {
             req: UpdateProxySettingsData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/settings/emby': {
+        get: {
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: EmbySettings;
+            };
+        };
+        post: {
+            req: UpdateEmbySettingsData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/settings/emby/test': {
+        post: {
+            req: TestEmbyConnectionData;
             res: {
                 /**
                  * Successful Response

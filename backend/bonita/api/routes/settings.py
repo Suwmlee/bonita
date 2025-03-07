@@ -1,10 +1,11 @@
-import json
+import requests
+from urllib.parse import urljoin
 from typing import Any
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 import traceback
 
 from bonita import schemas
-from bonita.api.deps import CurrentUser, SessionDep
+from bonita.api.deps import SessionDep
 from bonita.db.models.setting import SystemSetting
 
 router = APIRouter()
@@ -36,8 +37,7 @@ def get_proxy_settings(session: SessionDep) -> Any:
 def update_proxy_settings(
     *,
     session: SessionDep,
-    settings_in: schemas.ProxySettings,
-    current_user: CurrentUser
+    settings_in: schemas.ProxySettings
 ) -> Any:
     """
     更新代理设置.
@@ -74,3 +74,104 @@ def update_proxy_settings(
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/emby", response_model=schemas.EmbySettings)
+def get_emby_settings(session: SessionDep) -> Any:
+    """
+    获取Emby设置.
+    """
+    try:
+        emby_setting_db = session.query(SystemSetting).filter(
+            SystemSetting.key.in_(["emby_host", "emby_apikey"])
+        ).all()
+        emby_dict = {setting.key: setting.value for setting in emby_setting_db}
+        emby_settings = {
+            "emby_host": emby_dict.get("emby_host", ""),
+            "emby_apikey": emby_dict.get("emby_apikey", "")
+        }
+
+        return emby_settings
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/emby", response_model=schemas.Response)
+def update_emby_settings(
+    *,
+    session: SessionDep,
+    settings_in: schemas.EmbySettings
+) -> Any:
+    """
+    更新Emby设置.
+    """
+    try:
+        # 保存Emby设置
+        SystemSetting.set_setting(
+            session,
+            "emby_host",
+            settings_in.emby_host,
+            "Emby服务器地址"
+        )
+
+        SystemSetting.set_setting(
+            session,
+            "emby_apikey",
+            settings_in.emby_apikey,
+            "Emby API密钥"
+        )
+
+        return schemas.Response(
+            success=True,
+            message="Emby设置已更新"
+        )
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/emby/test", response_model=schemas.Response)
+def test_emby_connection(
+    *,
+    test_data: schemas.EmbySettings
+) -> Any:
+    """
+    测试Emby连接和API Key是否有效.
+    """
+
+    try:
+        # 构建Emby API URL
+        base_url = test_data.emby_host.rstrip('/')
+        api_url = urljoin(f"{base_url}/", "emby/System/Info")
+
+        # 添加API Key到请求头
+        headers = {
+            "X-Emby-Token": test_data.emby_apikey
+        }
+
+        # 发送请求测试连接
+        response = requests.get(api_url, headers=headers, timeout=10)
+
+        # 检查响应
+        if response.status_code == 200:
+            return schemas.Response(
+                success=True,
+                message="Emby连接成功，API Key有效"
+            )
+        else:
+            return schemas.Response(
+                success=False,
+                message=f"Emby连接失败，状态码: {response.status_code}"
+            )
+    except requests.RequestException as e:
+        return schemas.Response(
+            success=False,
+            message=f"Emby连接失败: {str(e)}"
+        )
+    except Exception as e:
+        traceback.print_exc()
+        return schemas.Response(
+            success=False,
+            message=f"测试Emby连接时出错: {str(e)}"
+        )
