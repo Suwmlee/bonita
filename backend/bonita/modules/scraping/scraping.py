@@ -17,7 +17,7 @@ def scraping(number, sources=None, specifiedsource="", specifiedurl="", proxy=No
                        sources=sources,
                        specifiedSource=specifiedsource,
                        specifiedUrl=specifiedurl,
-                       proxy=proxy)
+                       proxies=proxy)
     return json_data
 
 
