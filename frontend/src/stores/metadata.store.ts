@@ -9,9 +9,12 @@ export const useMetadataStore = defineStore("metadata-store", {
     editMetadata: undefined as MetadataPublic | undefined,
   }),
   actions: {
-    async getAllMetadata() {
-      const all = await MetadataService.getMetadata()
-      this.allMetadata = all.data
+    // Combined method for getting all metadata and searching with filter
+    async getMetadata(filter?: string) {
+      const response = await MetadataService.getMetadata({
+        filter: filter,
+      })
+      this.allMetadata = response.data
       return this.allMetadata
     },
     showUpdateMetadata(data: MetadataPublic) {

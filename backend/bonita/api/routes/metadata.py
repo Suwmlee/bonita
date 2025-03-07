@@ -9,11 +9,29 @@ router = APIRouter()
 
 
 @router.get("/all", response_model=schemas.MetadataCollection)
-async def get_metadata(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
+async def get_metadata(
+    session: SessionDep,
+    skip: int = 0,
+    limit: int = 100,
+    filter: str = None
+) -> Any:
     """ 获取元数据
+    支持使用 filter 参数对 number 和 actor 同时进行模糊搜索
     """
-    data = session.query(Metadata).offset(skip).limit(limit).all()
-    count = session.query(Metadata).count()
+    query = session.query(Metadata)
+
+    # Apply fuzzy search filter if provided
+    if filter:
+        query = query.filter(
+            Metadata.number.ilike(f"%{filter}%") |
+            Metadata.actor.ilike(f"%{filter}%")
+        )
+
+    # Get total count after applying filters
+    count = query.count()
+
+    # Get paginated data
+    data = query.offset(skip).limit(limit).all()
 
     data_list = [schemas.MetadataPublic.model_validate(meta.to_dict()) for meta in data]
     return schemas.MetadataCollection(data=data_list, count=count)

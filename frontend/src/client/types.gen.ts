@@ -477,6 +477,7 @@ export type GetTransRecordsData = {
 export type GetTransRecordsResponse = TransferRecordsPublic;
 
 export type GetMetadataData = {
+    filter?: string;
     limit?: number;
     skip?: number;
 };

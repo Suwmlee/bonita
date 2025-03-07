@@ -558,9 +558,11 @@ export class MetadataService {
     /**
      * Get Metadata
      * 获取元数据
+     * 支持使用 filter 参数对 number 和 actor 同时进行模糊搜索
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
+     * @param data.filter
      * @returns MetadataCollection Successful Response
      * @throws ApiError
      */
@@ -570,7 +572,8 @@ export class MetadataService {
             url: '/api/v1/metadata/all',
             query: {
                 skip: data.skip,
-                limit: data.limit
+                limit: data.limit,
+                filter: data.filter
             },
             errors: {
                 422: 'Validation Error'
