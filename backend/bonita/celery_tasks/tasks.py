@@ -183,14 +183,23 @@ def celery_scrapping(self, file_path, scraping_dict):
             extrainfo.partNumber = int(fileNumInfo.part.replace("-CD", "")) if fileNumInfo.part else 0
             extrainfo.tag = ', '.join(map(str, fileNumInfo.tags()))
             session.add(extrainfo)
-        # TODO 处理指定源/强制从网站更新
-        # 默认获取最新的一条 metadata 记录
-        metadata_record = session.query(Metadata).filter(
-            Metadata.number == extrainfo.number).order_by(Metadata.id.desc()).first()
+        # 处理指定源/强制从网站更新
+        metadata_record = None
+        if extrainfo.specifiedurl:
+            metadata_record = session.query(Metadata).filter(
+                Metadata.number == extrainfo.number,
+                Metadata.detailurl == extrainfo.specifiedurl).order_by(Metadata.id.desc()).first()
+        elif extrainfo.specifiedsource:
+            metadata_record = session.query(Metadata).filter(
+                Metadata.number == extrainfo.number,
+                Metadata.site == extrainfo.specifiedsource).order_by(Metadata.id.desc()).first()
+        if not metadata_record:
+            metadata_record = session.query(Metadata).filter(
+                Metadata.number == extrainfo.number).order_by(Metadata.id.desc()).first()
         if metadata_record:
             metadata_mixed = schemas.MetadataMixed(**metadata_record.to_dict())
         else:
-            # scraping
+            # 如果没有找到任何记录，则从网络抓取
             json_data = scraping(extrainfo.number,
                                  scraping_conf.scraping_sites,
                                  extrainfo.specifiedsource,
