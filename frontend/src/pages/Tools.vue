@@ -29,28 +29,47 @@ const importNfoData = async () => {
     Tools
   </p>
   <VRow>
-    <VCol cols="12" md="6" lg="4">
-      <VCard style="height: 320px;">
-        <VCardItem>
-          <VCardTitle>
-            从NFO导入元数据
-          </VCardTitle>
-        </VCardItem>
-
+    <VCol cols="12" md="7" lg="5">
+      <VCard class="mb-6">
+        <VCardTitle>从NFO导入元数据</VCardTitle>
+        <VCardSubtitle>
+          在此导入NFO文件中的电影元数据信息
+        </VCardSubtitle>
         <VCardText>
-          <VTextField v-model="nfoFolder" placeholder="例如: D:\Movies\NFO" variant="outlined" class="mb-4" />
+          <VForm :loading="isLoading">
+            <VRow>
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="nfoFolder">NFO文件夹</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField v-model="nfoFolder" placeholder="例如: D:\Movies\NFO" variant="outlined" />
+                  </VCol>
+                </VRow>
+              </VCol>
+              
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="updateOption">导入方式</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VRadioGroup v-model="updateOption" inline hide-details>
+                      <VRadio value="ignore" label="忽略已有数据" />
+                      <VRadio value="force" label="强制更新" />
+                    </VRadioGroup>
+                  </VCol>
+                </VRow>
+              </VCol>
 
-          <div class="mb-4">
-            <p class="text-body-2 mb-1">导入方式:</p>
-            <VRadioGroup v-model="updateOption" inline hide-details>
-              <VRadio value="ignore" label="忽略已有数据" />
-              <VRadio value="force" label="强制更新" />
-            </VRadioGroup>
-          </div>
-
-          <VBtn color="primary" block :loading="isLoading" @click="importNfoData">
-            开始导入
-          </VBtn>
+              <VCol cols="12">
+                <VBtn color="primary" block :loading="isLoading" @click="importNfoData">
+                  开始导入
+                </VBtn>
+              </VCol>
+            </VRow>
+          </VForm>
         </VCardText>
       </VCard>
     </VCol>

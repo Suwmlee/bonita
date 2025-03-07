@@ -25,61 +25,50 @@ onMounted(() => {
   <p class="text-xl mb-6">
     服务配置
   </p>
-  <div class="proxy-settings-container">
-    <VCard class="mb-6">
-      <VCardTitle>代理设置</VCardTitle>
-      <VCardText>
-        <VForm :loading="loading">
-          <VRow>
-            <VCol cols="12">
-              <VTextField 
-                v-model="proxySettings.http" 
-                label="HTTP 代理"
-                placeholder="例如: http://127.0.0.1:7890"
-              />
-            </VCol>
-            
-            <VCol cols="12">
-              <VTextField 
-                v-model="proxySettings.https" 
-                label="HTTPS 代理"
-                placeholder="例如: http://127.0.0.1:7890"
-              />
-            </VCol>
-            
-            <VCol cols="12">
-              <VSwitch
-                v-model="proxySettings.enabled"
-                label="启用代理"
-                color="primary"
-                inset
-              />
-            </VCol>
-            
-            <VCol cols="12">
-              <VBtn 
-                color="primary" 
-                :loading="saving" 
-                @click="saveProxySettings"
-              >
-                保存设置
-              </VBtn>
-            </VCol>
-          </VRow>
-        </VForm>
-      </VCardText>
-    </VCard>
-    
-    <div class="mt-4">
-      <p class="text-gray-700">
-        提示: 此处配置的代理将用于应用程序的网络请求，包括爬虫和API调用。
-      </p>
-    </div>
-  </div>
-</template>
+  <VRow>
+    <VCol cols="12" md="7" lg="5">
+      <VCard class="mb-6">
+        <VCardTitle>代理设置</VCardTitle>
+        <VCardSubtitle>
+          此处配置的代理将用于应用程序的网络请求
+        </VCardSubtitle>
+        <VCardText>
+          <VForm :loading="loading">
+            <VRow>
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="http">HTTP 代理</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField v-model="proxySettings.http" />
+                  </VCol>
+                </VRow>
+              </VCol>
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="https">HTTPS 代理</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField v-model="proxySettings.https" placeholder="例如: http://127.0.0.1:7890" />
+                  </VCol>
+                </VRow>
+              </VCol>
 
-<style scoped>
-.proxy-settings-container {
-  max-width: 600px;
-}
-</style>
+              <VCol cols="12">
+                <VSwitch v-model="proxySettings.enabled" label="启用代理" color="primary" inset />
+              </VCol>
+
+              <VCol cols="12">
+                <VBtn color="primary" :loading="saving" @click="saveProxySettings">
+                  保存设置
+                </VBtn>
+              </VCol>
+            </VRow>
+          </VForm>
+        </VCardText>
+      </VCard>
+    </VCol>
+  </VRow>
+</template>
