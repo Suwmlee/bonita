@@ -21,6 +21,7 @@ from bonita.modules.transfer.fileinfo import FileInfo
 from bonita.modules.transfer.transfer import transSingleFile, transferfile, findAllVideos
 from bonita.utils.downloader import get_cached_file, update_cache_from_local
 from bonita.utils.filehelper import video_type
+from bonita.utils.http import get_active_proxy
 
 
 # 创建信号量，最多允许X任务同时执行
@@ -200,10 +201,13 @@ def celery_scrapping(self, file_path, scraping_dict):
             metadata_mixed = schemas.MetadataMixed(**metadata_record.to_dict())
         else:
             # 如果没有找到任何记录，则从网络抓取
+            proxy = get_active_proxy(session)
             json_data = scraping(extrainfo.number,
                                  scraping_conf.scraping_sites,
                                  extrainfo.specifiedsource,
-                                 extrainfo.specifiedurl)
+                                 extrainfo.specifiedurl,
+                                 proxy
+                                )
             # 数据转换
             metadata_base = schemas.MetadataBase(**json_data)
             filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)

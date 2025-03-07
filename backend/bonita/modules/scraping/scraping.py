@@ -10,13 +10,14 @@ import xml.etree.ElementTree as ET
 logger = logging.getLogger(__name__)
 
 
-def scraping(number, sources=None, specifiedsource="", specifiedurl=""):
+def scraping(number, sources=None, specifiedsource="", specifiedurl="", proxy=None):
     """ 开始刮削
     """
     json_data = search(number,
                        sources=sources,
                        specifiedSource=specifiedsource,
-                       specifiedUrl=specifiedurl)
+                       specifiedUrl=specifiedurl,
+                       proxy=proxy)
     return json_data
 
 

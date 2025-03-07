@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from bonita.core.config import settings
 from bonita.db.models.downloads import Downloads
-from bonita.db.models.setting import SystemSetting
+from bonita.utils.http import get_active_proxy
 
 
 def get_cached_file(session: Session, url: str, folder) -> str:
@@ -22,31 +22,15 @@ def get_cached_file(session: Session, url: str, folder) -> str:
     if not cache_downloads_cover:
         # 数据库中没有记录，下载并添加记录
         # 获取代理设置
-        proxy = None
-        proxy_settings = session.query(SystemSetting).filter(
-            SystemSetting.key.in_(["proxy_enabled", "proxy_http", "proxy_https"])
-        ).all()
-
-        proxy_dict = {setting.key: setting.value for setting in proxy_settings}
-        proxy_enabled = proxy_dict.get("proxy_enabled", "false").lower() == "true"
-
-        if proxy_enabled:
-            proxy = {}
-            proxy_http = proxy_dict.get("proxy_http")
-            proxy_https = proxy_dict.get("proxy_https")
-
-            if proxy_http:
-                proxy["http"] = proxy_http
-            if proxy_https:
-                proxy["https"] = proxy_https
-
+        proxy = get_active_proxy(session)
         cache_cover_path = download_file(url, folder, proxy)
         cache_downloads_cover = Downloads(url=url, filepath=cache_cover_path)
         session.add(cache_downloads_cover)
         session.commit()
     elif not os.path.exists(cache_downloads_cover.filepath):
         # 数据库有记录但文件不存在，重新下载并更新记录
-        cache_cover_path = download_file(url, folder, None)
+        proxy = get_active_proxy(session)
+        cache_cover_path = download_file(url, folder, proxy)
         cache_downloads_cover.filepath = cache_cover_path
         session.commit()
     return cache_downloads_cover.filepath
