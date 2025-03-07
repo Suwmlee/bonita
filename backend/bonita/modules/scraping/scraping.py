@@ -274,12 +274,14 @@ def parse_NFO_from_file(nfo_path):
         actor_photo = {}
         for actor in root.findall('.//actor'):
             actor_name = actor.findtext('n', '')
+            if not actor_name:
+                actor_name = actor.findtext('name', '')
             if actor_name:
-                actors.append(actor_name)
+                if actor_name not in actors:
+                    actors.append(actor_name)
                 thumb = actor.findtext('thumb', '')
                 if thumb:
                     actor_photo[actor_name] = thumb
-
         NFOdata_dict['actor'] = ', '.join(actors)
         NFOdata_dict['actor_photo'] = str(actor_photo)
 
