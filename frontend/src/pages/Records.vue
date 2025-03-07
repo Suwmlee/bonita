@@ -220,36 +220,46 @@ onMounted(() => {
     Records
   </p>
   <VCard>
-    <div class="d-flex align-center mb-4 gap-4">
-      <v-text-field v-model="searchQuery" label="文件名搜索" placeholder="输入文件名进行模糊搜索" hide-details density="compact" class="max-w-xs"
-        prepend-inner-icon="mdi-magnify" clearable @click:clear="searchQuery = ''; loadData(1, recordStore.itemsPerPage)" />
-      <v-text-field v-model="taskIdQuery" label="任务ID" placeholder="输入任务ID" hide-details density="compact" 
-        prepend-inner-icon="mdi-pound" clearable type="number" class="max-w-xs max-w-taskid"
-        @click:clear="taskIdQuery = ''; loadData(1, recordStore.itemsPerPage)" />
-      
-      <div v-if="searchQuery || taskIdQuery" class="d-flex align-center gap-2">
-        <v-chip v-if="searchQuery" color="primary" size="small">
-          搜索: {{ searchQuery }}
+    <div class="search-toolbar px-4 py-4">
+      <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+        <div class="search-fields d-flex gap-4 align-center flex-grow-1 flex-wrap">
+          <v-text-field v-model="searchQuery" placeholder="文件名搜索" hide-details density="comfortable"
+            class="search-input" prepend-inner-icon="mdi-magnify" clearable
+            @click:clear="searchQuery = ''; loadData(1, recordStore.itemsPerPage)" />
+
+          <v-text-field v-model="taskIdQuery" placeholder="过滤任务ID" hide-details density="comfortable"
+            class="task-id-input" prepend-inner-icon="mdi-pound" clearable type="number"
+            @click:clear="taskIdQuery = ''; loadData(1, recordStore.itemsPerPage)" />
+        </div>
+        
+        <v-btn color="error" :disabled="selected.length === 0" prepend-icon="mdi-delete" @click="handleDelete"
+          size="default" class="delete-btn">
+          删除选中项 ({{ selected.length }})
+        </v-btn>
+      </div>
+
+      <div class="search-filters mt-2 mb-1 d-flex flex-wrap align-center gap-2" v-if="searchQuery || taskIdQuery">
+        <v-chip v-if="searchQuery" color="primary" size="default" variant="elevated" class="search-chip">
+          <v-icon start size="small" class="mr-1">mdi-magnify</v-icon>
+          文件名: {{ searchQuery }}
           <template v-slot:append>
             <v-icon size="small" @click="searchQuery = ''; loadData(1, recordStore.itemsPerPage)">mdi-close</v-icon>
           </template>
         </v-chip>
-        <v-chip v-if="taskIdQuery" color="info" size="small">
+
+        <v-chip v-if="taskIdQuery" color="info" size="default" variant="elevated" class="search-chip">
+          <v-icon start size="small" class="mr-1">mdi-pound</v-icon>
           任务ID: {{ taskIdQuery }}
           <template v-slot:append>
             <v-icon size="small" @click="taskIdQuery = ''; loadData(1, recordStore.itemsPerPage)">mdi-close</v-icon>
           </template>
         </v-chip>
-        <v-btn v-if="searchQuery || taskIdQuery" icon="mdi-close-circle" size="small" color="error" variant="text" 
-          @click="handleClearSearch" class="ml-1">
+
+        <v-btn v-if="searchQuery || taskIdQuery" icon="mdi-close-circle" size="small" color="error" variant="text"
+          @click="handleClearSearch" class="ml-1 clear-all-btn">
           <v-tooltip activator="parent" location="top">清除所有筛选条件</v-tooltip>
         </v-btn>
       </div>
-      
-      <v-spacer></v-spacer>
-      <v-btn color="error" :disabled="selected.length === 0" prepend-icon="mdi-delete" @click="handleDelete">
-        删除选中项 ({{ selected.length }})
-      </v-btn>
     </div>
 
     <v-data-table v-model="selected" :headers="headers" :items="recordStore.records" item-value="transfer_record.id"
@@ -401,4 +411,54 @@ onMounted(() => {
 .max-w-taskid {
   max-width: 150px;
 }
+
+.search-toolbar {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.search-fields {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.search-input {
+  max-width: 350px;
+  min-width: 250px;
+}
+
+.task-id-input {
+  max-width: 180px;
+  min-width: 150px;
+}
+
+.delete-btn {
+  white-space: nowrap;
+}
+
+.search-filters {
+  min-height: 36px;
+}
+
+.search-chip {
+  height: 32px;
+  font-size: 14px;
+}
+
+.clear-all-btn {
+  margin-left: 4px;
+}
+
+@media (max-width: 768px) {
+  .search-input, .task-id-input {
+    min-width: 0;
+    width: 100%;
+  }
+  
+  .delete-btn {
+    margin-top: 8px;
+    width: 100%;
+  }
+}
+
+/* ... existing responsive adjustments ... */
 </style>
