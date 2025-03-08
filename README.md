@@ -13,7 +13,9 @@ docker pull suwmlee/bonita:latest
 # 默认使用SQLite作为broker
 docker run -d \
     --name bonita \
-    -p 12346:80 \
+    -e FIRST_SUPERUSER_EMAIL="admin@example.com" \
+    -e FIRST_SUPERUSER_PASSWORD="12345678" \
+    -p 12346:12346 \
     -v <path/to/media>:/media \
     -V <path/to/data>:/app/backend/data \
     suwmlee/bonita:latest

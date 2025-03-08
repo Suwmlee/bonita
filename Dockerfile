@@ -23,7 +23,7 @@ COPY --from=frontend-build /app/frontend/dist /app/frontend/dist
 RUN apt-get update && apt-get install -y nginx
 COPY nginx.conf /etc/nginx/nginx.conf
 
-EXPOSE 80
+EXPOSE 12346
 
 # 启动 Nginx、FastAPI 和 Celery
 CMD ["sh", "-c", "nginx && uvicorn bonita.main:app --host 0.0.0.0 --port 8000 & celery -A bonita.worker.celery worker --pool threads --concurrency $MAX_CONCURRENCY --events --loglevel DEBUG"]
