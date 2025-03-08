@@ -330,7 +330,13 @@ def load_all_NFO_from_folder(folder_path):
                     possible_cover_names = [
                         file.replace('.nfo', '-fanart.jpg'),
                         file.replace('.nfo', '-fanart.png'),
-                        file.replace('.nfo', '-fanart.jpeg')
+                        file.replace('.nfo', '-fanart.jpeg'),
+                        file.replace('.nfo', '-thumb.jpg'),
+                        file.replace('.nfo', '-thumb.png'),
+                        file.replace('.nfo', '-thumb.jpeg'),
+                        file.replace('.nfo', '.jpg'),
+                        file.replace('.nfo', '.png'),
+                        file.replace('.nfo', '.jpeg'),
                     ]
                     for cover_name in possible_cover_names:
                         potential_cover_path = os.path.join(root, cover_name)

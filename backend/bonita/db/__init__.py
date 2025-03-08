@@ -9,7 +9,7 @@ from bonita.utils.filehelper import OperationMethod
 engine = create_engine(settings.SQLALCHEMY_DATABASE_URI,
                        connect_args={"check_same_thread": False})
 
-SessionFactory = sessionmaker(bind=engine)
+SessionFactory = sessionmaker(bind=engine, autoflush=False)
 
 
 def get_db() -> Generator:

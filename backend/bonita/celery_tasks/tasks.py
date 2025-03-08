@@ -1,6 +1,7 @@
 import os
 import logging
 import re
+import uuid
 from datetime import datetime
 from urllib.parse import urlparse
 from celery import shared_task, group
@@ -111,7 +112,6 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
         # 创建一个新的数据库会话
         try:
             session = SessionFactory()
-            session.autoflush = False
             done_list = []
             for currentfile in waiting_list:
                 if not isinstance(currentfile, FileInfo):
@@ -335,8 +335,8 @@ def celery_import_nfo(self, folder_path, option):
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "import nfo: start"})
     logger.debug(f"[+] import nfo: start")
     try:
-        session = SessionFactory()
         metadata_list = load_all_NFO_from_folder(folder_path)
+        session = SessionFactory()
         for nfo_dict in metadata_list:
             nfo_data = nfo_dict['nfo']
             cover_path = nfo_dict['cover_path']
@@ -374,12 +374,14 @@ def celery_import_nfo(self, folder_path, option):
                 else:
                     # 强制更新
                     session.delete(metadata_record)
+            # 从本地更新缓存图片
+            if cover_path and os.path.exists(cover_path):
+                if not metadata_base.cover or metadata_base.cover == '':
+                    metadata_base.cover = str(uuid.uuid4()).replace('-', '')
+                update_cache_from_local(session, cover_path, metadata_base.number, metadata_base.cover)
             filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
             metadata_db = Metadata(**filter_dict)
             metadata_db.create(session)
-            # 从本地更新缓存图片
-            if cover_path and os.path.exists(cover_path):
-                update_cache_from_local(session, cover_path, metadata_base.number, metadata_base.cover)
     except Exception as e:
         logger.error(e)
     finally:
