@@ -3,10 +3,17 @@ FROM node:20 AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/ .
 RUN npm install
+RUN npm run build:icons
 RUN npm run build
 
 # 构建 Bonita
 FROM python:3.12
+
+ENV TZ=Asia/Shanghai
+ENV CELERY_BROKER_URL=redis://host.docker.internal:6379/0
+ENV CELERY_RESULT_BACKEND=redis://host.docker.internal:6379/0
+ENV MAX_CONCURRENCY=5
+
 WORKDIR /app/backend
 
 COPY backend/ /app/backend/
@@ -21,4 +28,4 @@ COPY nginx.conf /etc/nginx/nginx.conf
 EXPOSE 80
 
 # 启动 Nginx、FastAPI 和 Celery
-CMD ["sh", "-c", "nginx && uvicorn bonita.main:app --host 0.0.0.0 --port 8000 & celery -A bonita.worker.celery worker --pool threads --concurrency 5 --events --loglevel DEBUG"]
+CMD ["sh", "-c", "nginx && uvicorn bonita.main:app --host 0.0.0.0 --port 8000 & celery -A bonita.worker.celery worker --pool threads --concurrency $MAX_CONCURRENCY --events --loglevel DEBUG"]
