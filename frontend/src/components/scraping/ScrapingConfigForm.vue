@@ -192,7 +192,7 @@ async function handleSubmit() {
         </VRow>
       </VCol>
 
-      <VCol cols="12">
+      <!-- <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
             <label for="transalte_enabled">Translate Enabled</label>
@@ -223,7 +223,7 @@ async function handleSubmit() {
             <VTextField v-model="currentSetting.transalte_values" />
           </VCol>
         </VRow>
-      </VCol>
+      </VCol> -->
 
       <!-- 👉 submit and reset button -->
       <VCol cols="12">
