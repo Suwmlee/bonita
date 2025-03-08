@@ -42,7 +42,7 @@ alembic downgrade -1
       "type": "debugpy",
       "request": "launch",
       "module": "uvicorn",
-      "args": ["app.main:app", "--host=0.0.0.0", "--reload"],
+      "args": ["bonita.main:app", "--host=0.0.0.0", "--port=8000", "--reload"],
       "jinja": true
     },
     {

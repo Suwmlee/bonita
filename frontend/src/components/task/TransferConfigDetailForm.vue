@@ -26,8 +26,8 @@ if (updateTask) {
     name: "name",
     description: "descrip",
     operation: 1,
-    source_folder: "/volume/source",
-    output_folder: "/volume/output",
+    source_folder: "/media/source",
+    output_folder: "/media/output",
   }
   currentTask.value = createTask
 }

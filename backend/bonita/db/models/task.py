@@ -21,7 +21,7 @@ class TransferConfig(Base):
 
     # 内容类型: 1. 电影 2. 电视节目
     content_type = Column(Integer, default=1, comment="内容类型")
-    source_folder = Column(String, default='/media')
+    source_folder = Column(String, default='/media/source')
     output_folder = Column(String, default='/media/output')
     failed_folder = Column(String, default='/media/failed')
     escape_folder = Column(String, default='Sample,sample')
