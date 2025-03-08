@@ -144,7 +144,6 @@ export const useTaskStore = defineStore("task-store", {
 
           this.runningTasks = uniqueTasks
         }
-        console.log("Current running tasks:", this.runningTasks)
         return this.runningTasks
       } catch (error) {
         console.error("Error getting running tasks:", error)

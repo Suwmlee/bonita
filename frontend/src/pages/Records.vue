@@ -23,7 +23,7 @@ const forceDelete = ref(false)
 const pageSizeOptions = [10, 25, 50, 100]
 
 const getTagColor = (tag: string) => {
-  return tagColorMap[tag.trim() as keyof typeof tagColorMap] || "grey"
+  return tagColorMap[tag.trim() as keyof typeof tagColorMap] || "#9DA8B5"
 }
 
 const formatDateTime = (dateStr: string | null | undefined) => {
@@ -174,12 +174,7 @@ const loadData = async (
       searchParams.sortDesc = sortBy.value[0].order === "desc"
     }
   }
-
-  await recordStore.getRecords(searchParams)
-  // 添加日志，查看实际获取到的记录数量
-  console.log(
-    `Received ${recordStore.records.length} records out of ${recordStore.totalRecords} total`,
-  )
+  recordStore.getRecords(searchParams)
 }
 
 async function initial() {
