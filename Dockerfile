@@ -10,8 +10,6 @@ RUN npm run build
 FROM python:3.12
 
 ENV TZ=Asia/Shanghai
-ENV CELERY_BROKER_URL=redis://host.docker.internal:6379/0
-ENV CELERY_RESULT_BACKEND=redis://host.docker.internal:6379/0
 ENV MAX_CONCURRENCY=5
 
 WORKDIR /app/backend
