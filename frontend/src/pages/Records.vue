@@ -45,42 +45,49 @@ const headers = [
     align: "start" as "start" | "center" | "end",
     key: "transfer_record.srcname",
     width: 250,
+    sortable: true,
   },
   {
     title: "path",
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.srcpath",
     width: 200,
+    sortable: true,
   },
   {
     title: "destpath",
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.destpath",
     width: 200,
+    sortable: true,
   },
   {
     title: "season",
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.season",
     width: 100,
+    sortable: true,
   },
   {
     title: "episode",
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.episode",
     width: 100,
+    sortable: true,
   },
   {
     title: "number",
     align: "center" as "start" | "center" | "end",
     key: "extra_info.number",
     width: 100,
+    sortable: false,
   },
   {
     title: "tag",
     align: "center" as "start" | "center" | "end",
     key: "extra_info.tag",
     width: 100,
+    sortable: false,
   },
   {
     title: "updatetime",
@@ -94,6 +101,7 @@ const headers = [
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.deadtime",
     width: 120,
+    sortable: true,
   },
   {
     title: "Actions",
@@ -136,6 +144,8 @@ const loadData = async (
     itemsPerPage: number
     search?: string
     taskId?: number
+    sortBy?: string
+    sortDesc?: boolean
   } = {
     page,
     itemsPerPage,
@@ -152,6 +162,17 @@ const loadData = async (
   // 如果有搜索内容，则添加到搜索参数
   if (searchQuery.value.trim()) {
     searchParams.search = searchQuery.value.trim()
+  }
+
+  // 添加排序参数
+  if (sortBy.value.length > 0) {
+    const sortKey = sortBy.value[0].key
+    // 只有 transfer_record 前缀的字段才可以排序
+    if (sortKey.startsWith("transfer_record.")) {
+      // 去掉 "transfer_record." 前缀，只传入字段名
+      searchParams.sortBy = sortKey.replace("transfer_record.", "")
+      searchParams.sortDesc = sortBy.value[0].order === 'desc'
+    }
   }
 
   await recordStore.getRecords(searchParams)
@@ -210,6 +231,12 @@ const handleClearSearch = () => {
   loadData(1, recordStore.itemsPerPage)
 }
 
+// 处理排序变化
+const handleSortChange = (newSortBy: any) => {
+  sortBy.value = newSortBy
+  loadData(recordStore.currentPage, recordStore.itemsPerPage)
+}
+
 onMounted(() => {
   initial()
 })
@@ -263,7 +290,8 @@ onMounted(() => {
     </div>
 
     <v-data-table v-model="selected" :headers="headers" :items="recordStore.records" item-value="transfer_record.id"
-      show-select :loading="recordStore.loading" :sort-by="sortBy" height="auto" :items-per-page="-1">
+      show-select :loading="recordStore.loading" :sort-by="sortBy" height="auto" :items-per-page="-1"
+      @update:sort-by="handleSortChange">
       <!-- 自定义表格行 -->
       <template v-slot:item="{ item, columns, index }">
         <tr :class="{ 'deleted-row': item.transfer_record.deleted || item.transfer_record.srcdeleted }">

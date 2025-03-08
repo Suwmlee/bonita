@@ -454,11 +454,15 @@ export class RecordService {
      * 获取记录信息 包含 ExtraInfo
      * 可以根据task_id进行精确过滤
      * search参数可同时模糊匹配srcname和srcpath
+     * sort_by参数可以指定排序字段，默认按updatetime排序
+     * sort_desc参数可以指定是否降序排序，默认为True
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
      * @param data.taskId
      * @param data.search
+     * @param data.sortBy
+     * @param data.sortDesc
      * @returns RecordsPublic Successful Response
      * @throws ApiError
      */
@@ -470,7 +474,9 @@ export class RecordService {
                 skip: data.skip,
                 limit: data.limit,
                 task_id: data.taskId,
-                search: data.search
+                search: data.search,
+                sort_by: data.sortBy,
+                sort_desc: data.sortDesc
             },
             errors: {
                 422: 'Validation Error'

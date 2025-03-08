@@ -459,6 +459,8 @@ export type GetRecordsData = {
     limit?: number;
     search?: string;
     skip?: number;
+    sortBy?: string;
+    sortDesc?: boolean;
     taskId?: number;
 };
 
