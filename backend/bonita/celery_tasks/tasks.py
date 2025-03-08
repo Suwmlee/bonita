@@ -20,7 +20,7 @@ from bonita.modules.scraping.number_parser import FileNumInfo
 from bonita.modules.scraping.scraping import add_mark, process_nfo_file, process_cover, scraping, load_all_NFO_from_folder
 from bonita.modules.transfer.fileinfo import FileInfo
 from bonita.modules.transfer.transfer import transSingleFile, transferfile, findAllVideos
-from bonita.utils.downloader import get_cached_file, update_cache_from_local
+from bonita.utils.downloader import process_cached_file, update_cache_from_local
 from bonita.utils.filehelper import cleanExtraMedia, cleanFolderWithoutSuffix, video_type
 from bonita.utils.http import get_active_proxy
 from bonita.modules.media_service.emby_service import EmbyService
@@ -154,7 +154,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                         os.makedirs(output_folder)
                     # 写入NFO文件
                     process_nfo_file(output_folder, metamixed.extra_filename, metamixed.__dict__)
-                    cache_cover_filepath = get_cached_file(session, metamixed.cover, metamixed.number)
+                    cache_cover_filepath = process_cached_file(session, metamixed.cover, metamixed.number)
                     pics = process_cover(cache_cover_filepath, output_folder, metamixed.extra_filename)
                     if scraping_conf.watermark_enabled:
                         add_mark(pics, metamixed.tag, scraping_conf.watermark_location, scraping_conf.watermark_size)

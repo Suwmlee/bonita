@@ -171,7 +171,7 @@ const loadData = async (
     if (sortKey.startsWith("transfer_record.")) {
       // 去掉 "transfer_record." 前缀，只传入字段名
       searchParams.sortBy = sortKey.replace("transfer_record.", "")
-      searchParams.sortDesc = sortBy.value[0].order === 'desc'
+      searchParams.sortDesc = sortBy.value[0].order === "desc"
     }
   }
 

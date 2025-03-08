@@ -10,7 +10,7 @@ from bonita.db.models.downloads import Downloads
 from bonita.utils.http import get_active_proxy
 
 
-def get_cached_file(session: Session, url: str, folder) -> str:
+def process_cached_file(session: Session, url: str, folder) -> str:
     """ 获取缓存图片
     :param session: 数据库会话
     :param url: 下载链接

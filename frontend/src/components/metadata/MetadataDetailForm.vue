@@ -1,6 +1,8 @@
 <script lang="ts" setup>
+import { OpenAPI, ResourceService } from "@/client"
 import type { MetadataPublic } from "@/client/types.gen"
 import { useMetadataStore } from "@/stores/metadata.store"
+import { computed, ref } from "vue"
 
 interface Props {
   updateMetadata?: MetadataPublic
@@ -8,11 +10,29 @@ interface Props {
 const props = defineProps<Props>()
 
 const metadataStore = useMetadataStore()
+const isSubmitting = ref(false)
+const formValid = ref(true)
+const formErrors = ref<Record<string, string>>({})
+const isUploading = ref(false)
+const fileInput = ref<HTMLInputElement | null>(null)
 
 const { updateMetadata } = props as {
   updateMetadata: MetadataPublic
 }
 const currentMetadata = ref<any>()
+
+// Computed property for cover image URL with proper base path
+const coverImageUrl = computed(() => {
+  if (!currentMetadata.value?.cover) return null
+
+  // If it's already a full URL, return it as is
+  if (currentMetadata.value.cover.startsWith("http")) {
+    return currentMetadata.value.cover
+  }
+
+  // Otherwise, use the ResourceService to get the image URL
+  return `${OpenAPI.BASE}/api/v1/resource/image?path=${encodeURIComponent(currentMetadata.value.cover)}`
+})
 
 if (updateMetadata) {
   currentMetadata.value = { ...updateMetadata }
@@ -47,13 +67,98 @@ if (updateMetadata) {
   currentMetadata.value = createMetadata
 }
 
+function validateForm() {
+  formErrors.value = {}
+  formValid.value = true
+
+  // Validate required fields
+  if (!currentMetadata.value.number?.trim()) {
+    formErrors.value.number = "Number is required"
+    formValid.value = false
+  }
+
+  if (!currentMetadata.value.title?.trim()) {
+    formErrors.value.title = "Title is required"
+    formValid.value = false
+  }
+
+  return formValid.value
+}
+
 async function handleSubmit() {
-  console.log(currentMetadata)
-  if (updateMetadata) {
-    metadataStore.updateMetadata(currentMetadata.value)
-  } else {
-    // Assume there would be an addMetadata method in the store
-    // metadataStore.addMetadata(currentMetadata.value)
+  if (!validateForm()) {
+    return
+  }
+
+  isSubmitting.value = true
+  try {
+    if (updateMetadata) {
+      await metadataStore.updateMetadata(currentMetadata.value)
+    } else {
+      await metadataStore.addMetadata(currentMetadata.value)
+    }
+  } catch (error) {
+    console.error("Error submitting form:", error)
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+// Trigger file selection dialog
+function selectCoverImage() {
+  if (fileInput.value) {
+    fileInput.value.click()
+  }
+}
+
+// Handle file upload
+async function handleFileUpload(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (!target.files || target.files.length === 0) {
+    return
+  }
+  const file = target.files[0]
+  // Validate file type
+  if (!file.type.startsWith("image/")) {
+    alert("Please select an image file (JPEG, PNG, etc.).")
+    return
+  }
+
+  isUploading.value = true
+  try {
+    // Create form data for upload
+    const formData = {
+      file: file,
+    }
+
+    // Upload image
+    const response = await ResourceService.uploadImage({
+      formData: formData,
+    })
+
+    let path = ""
+    if (typeof response === "object" && response !== null) {
+      if ("message" in response) {
+        path = response.message as string
+      }
+    }
+
+    if (path) {
+      currentMetadata.value.cover = path
+    } else {
+      console.error("Could not determine path from upload response:", response)
+      alert(
+        "Image uploaded successfully, but could not determine path. Check the console for details.",
+      )
+    }
+  } catch (error) {
+    console.error("Image upload failed:", error)
+    alert("Failed to upload image. Please try again.")
+  } finally {
+    isUploading.value = false
+    if (fileInput.value) {
+      fileInput.value.value = ""
+    }
   }
 }
 </script>
@@ -64,10 +169,10 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="number">Number</label>
+            <label for="number">Number <span class="text-error">*</span></label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField v-model="currentMetadata.number" />
+            <VTextField v-model="currentMetadata.number" :error-messages="formErrors.number" required />
           </VCol>
         </VRow>
       </VCol>
@@ -75,10 +180,10 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="title">Title</label>
+            <label for="title">Title <span class="text-error">*</span></label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField v-model="currentMetadata.title" />
+            <VTextField v-model="currentMetadata.title" :error-messages="formErrors.title" required />
           </VCol>
         </VRow>
       </VCol>
@@ -221,7 +326,21 @@ async function handleSubmit() {
             <label for="cover">Cover URL</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField v-model="currentMetadata.cover" />
+            <div class="d-flex align-center">
+              <VTextField v-model="currentMetadata.cover" class="flex-grow-1 mr-2" />
+              <VBtn :loading="isUploading" :disabled="isUploading" color="primary" @click="selectCoverImage"
+                variant="outlined" size="small">
+                <VIcon icon="bx-upload" class="mr-1" />
+                Upload
+              </VBtn>
+              <!-- Hidden file input for upload -->
+              <input ref="fileInput" type="file" accept="image/*" class="d-none" @change="handleFileUpload" />
+            </div>
+
+            <!-- Image preview -->
+            <div v-if="coverImageUrl" class="mt-2">
+              <VImg :src="coverImageUrl" max-height="200" contain class="rounded" />
+            </div>
           </VCol>
         </VRow>
       </VCol>
@@ -341,7 +460,7 @@ async function handleSubmit() {
         <VRow no-gutters>
           <VCol cols="12" md="3" />
           <VCol cols="12" md="9">
-            <VBtn type="submit" class="me-4">
+            <VBtn type="submit" class="me-4" :loading="isSubmitting" :disabled="isSubmitting">
               Submit
             </VBtn>
           </VCol>
@@ -350,3 +469,9 @@ async function handleSubmit() {
     </VRow>
   </VForm>
 </template>
+
+<style>
+.text-error {
+  color: rgb(244, 67, 54);
+}
+</style>

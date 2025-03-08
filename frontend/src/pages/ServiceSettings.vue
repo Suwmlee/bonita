@@ -26,7 +26,7 @@ const saveProxySettings = async () => {
 const saveEmbyApiSettings = async () => {
   // 重置之前的保存结果
   saveResult.value = null
-  
+
   // 确保字段有正确的值类型
   embyApiSettings.value.emby_host = embyApiSettings.value.emby_host || ""
   embyApiSettings.value.emby_apikey = embyApiSettings.value.emby_apikey || ""
@@ -35,17 +35,17 @@ const saveEmbyApiSettings = async () => {
     const response = await settingStore.saveEmbyApiSettings()
     saveResult.value = {
       success: true,
-      message: "Emby设置已成功保存"
+      message: "Emby设置已成功保存",
     }
     return response
   } catch (error) {
     console.error("Error saving Emby settings:", error)
     saveResult.value = {
       success: false,
-      message: "保存Emby设置失败，请稍后重试"
+      message: "保存Emby设置失败，请稍后重试",
     }
   }
-  
+
   // 3秒后自动清除保存结果提示
   setTimeout(() => {
     saveResult.value = null

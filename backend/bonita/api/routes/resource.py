@@ -7,7 +7,7 @@ from datetime import datetime
 from bonita import schemas
 from bonita.api.deps import SessionDep
 from bonita.core.config import settings
-from bonita.utils.downloader import get_cached_file
+from bonita.utils.downloader import process_cached_file
 from bonita.db.models.downloads import Downloads
 
 router = APIRouter()
@@ -24,8 +24,10 @@ async def get_image_by_query(path: str, session: SessionDep):
     Returns:
         FileResponse: The image file
     """
-    image_path = get_cached_file(session, path, settings.CACHE_LOCATION)
-    return FileResponse(image_path)
+    cache_downloads_cover = session.query(Downloads).filter(Downloads.url == path).first()
+    if not cache_downloads_cover or not os.path.exists(cache_downloads_cover.filepath):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(cache_downloads_cover.filepath)
 
 
 @router.post("/upload/image")

@@ -68,6 +68,37 @@ export type MetadataCollection = {
     count: number;
 };
 
+/**
+ * 用于创建元数据的模型
+ */
+export type MetadataCreate = {
+    number: string;
+    title: string;
+    studio?: string | null;
+    release?: string | null;
+    year?: number | null;
+    runtime?: string | null;
+    genre?: string | null;
+    rating?: string | null;
+    language?: string | null;
+    country?: string | null;
+    outline?: string | null;
+    director?: string | null;
+    actor?: string | null;
+    actor_photo?: string | null;
+    cover?: string | null;
+    cover_small?: string | null;
+    extrafanart?: string | null;
+    trailer?: string | null;
+    tag?: string | null;
+    label?: string | null;
+    series?: string | null;
+    userrating?: number | null;
+    uservotes?: number | null;
+    detailurl?: string | null;
+    site?: string | null;
+};
+
 export type MetadataPublic = {
     number: string;
     title: string;
@@ -486,6 +517,12 @@ export type GetTransRecordsData = {
 
 export type GetTransRecordsResponse = TransferRecordsPublic;
 
+export type CreateMetadataData = {
+    requestBody: MetadataCreate;
+};
+
+export type CreateMetadataResponse = MetadataPublic;
+
 export type GetMetadataData = {
     filter?: string;
     limit?: number;
@@ -893,6 +930,21 @@ export type $OpenApiTs = {
                  * Successful Response
                  */
                 200: TransferRecordsPublic;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/metadata/': {
+        post: {
+            req: CreateMetadataData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: MetadataPublic;
                 /**
                  * Validation Error
                  */

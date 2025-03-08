@@ -8,6 +8,26 @@ from bonita.db.models.metadata import Metadata
 router = APIRouter()
 
 
+@router.post("/", response_model=schemas.MetadataPublic)
+async def create_metadata(
+    session: SessionDep,
+    metadata_in: schemas.MetadataCreate
+) -> Any:
+    """创建新元数据
+    
+    Args:
+        session: 数据库会话
+        metadata_in: 元数据内容
+        
+    Returns:
+        创建的元数据
+    """
+    metadata_dict = metadata_in.model_dump()
+    db_metadata = Metadata(**metadata_dict)
+    db_metadata.create(session)
+    return schemas.MetadataPublic.model_validate(db_metadata.to_dict())
+
+
 @router.get("/all", response_model=schemas.MetadataCollection)
 async def get_metadata(
     session: SessionDep,

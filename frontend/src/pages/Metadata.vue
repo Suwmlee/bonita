@@ -3,7 +3,7 @@ import type { MetadataPublic } from "@/client"
 import { OpenAPI } from "@/client"
 import MetadataDetailDialog from "@/components/metadata/MetadataDetailDialog.vue"
 import { useMetadataStore } from "@/stores/metadata.store"
-import { ref, watch } from "vue"
+import { onMounted, ref, watch } from "vue"
 
 const metadataStore = useMetadataStore()
 const searchQuery = ref("")
@@ -11,6 +11,11 @@ const isSearching = ref(false)
 
 function showEditDialog(item: MetadataPublic) {
   metadataStore.showUpdateMetadata(item)
+}
+
+// Function to show the add metadata dialog
+function showAddDialog() {
+  metadataStore.showAddMetadata()
 }
 
 // Function to get image URL using ResourceService
@@ -48,11 +53,14 @@ onMounted(() => {
       Metadata
     </p>
 
-    <!-- Search input -->
+    <!-- Search input and Add button -->
     <VRow class="mb-4">
-      <VCol cols="12" sm="10" md="8" lg="6" xl="4">
+      <VCol cols="12" sm="10" md="8" lg="6" xl="4" class="d-flex align-center">
         <VTextField v-model="searchQuery" placeholder="Search by number or actor..." clearable hide-details
-          prepend-inner-icon="bx-search" :loading="isSearching" variant="outlined" density="comfortable" />
+          prepend-inner-icon="bx-search" :loading="isSearching" variant="outlined" density="comfortable" class="mr-2" />
+        <VBtn color="primary" @click="showAddDialog" prepend-icon="bx-plus">
+          Add New
+        </VBtn>
       </VCol>
     </VRow>
 

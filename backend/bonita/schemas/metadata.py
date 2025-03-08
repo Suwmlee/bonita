@@ -51,6 +51,11 @@ class MetadataBase(BaseModel):
         return values
 
 
+class MetadataCreate(MetadataBase):
+    """用于创建元数据的模型"""
+    pass
+
+
 class MetadataMixed(MetadataBase):
     """ 额外自定义信息，不止元数据内容
     """

@@ -41,7 +41,10 @@ def process_nfo_file(output_folder, prefilename, metadata_dict):
 
     filename = metadata_dict.get('extra_filename', '')
     actor_list = [word.strip() for word in metadata_dict.get('actor').split(',')]
-    actor_photo = ast.literal_eval(metadata_dict.get('actor_photo'))
+    try:
+        actor_photo = ast.literal_eval(metadata_dict.get('actor_photo', '{}'))
+    except (ValueError, SyntaxError, TypeError):
+        actor_photo = {}
     tags = [word.strip() for word in metadata_dict.get('tag').split(',')]
     try:
         nfo_path = os.path.join(output_folder, prefilename + ".nfo")
