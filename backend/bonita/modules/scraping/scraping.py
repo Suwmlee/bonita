@@ -145,7 +145,7 @@ def process_cover(tmp_cover_path, output_folder, prefilename):
     shutil.copyfile(tmp_cover_path, fanartpath)
     shutil.copyfile(tmp_cover_path, thumbpath)
     crop_poster(tmp_cover_path, posterpath)
-    return [fanartpath, posterpath]
+    return [thumbpath, posterpath]
 
 
 def crop_poster(tmp_file, posterpath):
@@ -310,7 +310,7 @@ def parse_NFO_from_file(nfo_path):
 
         return NFOdata_dict
     except Exception as e:
-        logger.error(f"解析NFO文件失败: {str(e)}")
+        logger.error(f"[-] parse nfo failed: {nfo_path} {str(e)}")
         return NFOdata_dict
 
 

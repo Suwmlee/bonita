@@ -25,11 +25,6 @@ const currentMetadata = ref<any>()
 const coverImageUrl = computed(() => {
   if (!currentMetadata.value?.cover) return null
 
-  // If it's already a full URL, return it as is
-  if (currentMetadata.value.cover.startsWith("http")) {
-    return currentMetadata.value.cover
-  }
-
   // Otherwise, use the ResourceService to get the image URL
   return `${OpenAPI.BASE}/api/v1/resource/image?path=${encodeURIComponent(currentMetadata.value.cover)}`
 })

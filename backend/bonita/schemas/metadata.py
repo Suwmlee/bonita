@@ -37,6 +37,11 @@ class MetadataBase(BaseModel):
         if 'website' in values:
             values['detailurl'] = values['website']
 
+        # 处理空字符串和可能导致异常的字段
+        for field in ['release', 'year', 'userrating', 'uservotes', 'runtime']:
+            if field in values and (values[field] == '' or values[field] == '0'):
+                values[field] = None
+
         for field, value in values.items():
             if value is None:
                 continue

@@ -340,9 +340,13 @@ def celery_import_nfo(self, folder_path, option):
         for nfo_dict in metadata_list:
             nfo_data = nfo_dict['nfo']
             cover_path = nfo_dict['cover_path']
-            # 数据转换
-            metadata_base = schemas.MetadataBase(**nfo_data)
-            metadata_base.title = metadata_base.title.replace(metadata_base.number, '').strip()
+            try:
+                metadata_base = schemas.MetadataBase(**nfo_data)
+                metadata_base.title = metadata_base.title.replace(metadata_base.number, '').strip()
+            except Exception as e:
+                logger.info(f"[!] convert nfo failed: {nfo_data}")
+                logger.error(f"[!] convert nfo failed: {str(e)}")
+                continue
             if metadata_base.site == "" and metadata_base.detailurl:
                 # 从detailurl中提取域名作为site
                 try:
