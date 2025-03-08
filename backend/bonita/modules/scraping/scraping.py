@@ -343,6 +343,12 @@ def load_all_NFO_from_folder(folder_path):
                         if os.path.exists(potential_cover_path):
                             cover_path = potential_cover_path
                             break
+                    # 处理标签，剔除特定标签
+                    if 'tag' in nfodata and nfodata['tag']:
+                        tags = [tag.strip() for tag in nfodata['tag'].split(',')]
+                        tags_to_remove = ['中文字幕', '流出', '无码', '破解']
+                        filtered_tags = [tag for tag in tags if tag not in tags_to_remove]
+                        nfodata['tag'] = ','.join(filtered_tags) if filtered_tags else ''
                     dict_data = {}
                     dict_data['nfo'] = nfodata
                     dict_data['cover_path'] = cover_path

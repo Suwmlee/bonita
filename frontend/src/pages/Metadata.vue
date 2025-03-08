@@ -84,8 +84,8 @@ onMounted(() => {
     </VRow>
 
     <VRow>
-      <VCol v-for="item in metadataStore.allMetadata" :key="item.id" cols="12" sm="6" md="4" lg="3" xl="2">
-        <VCard height="400" max-width="320px" class="d-flex flex-column" @click="showEditDialog(item)">
+      <VCol v-for="item in metadataStore.allMetadata" :key="item.id" cols="12" sm="4" md="4" lg="3" xl="3">
+        <VCard class="d-flex flex-column" @click="showEditDialog(item)">
           <VCardItem>
             <VCardTitle class="d-flex justify-space-between align-center">
               <span>{{ item.number }}</span>
@@ -97,23 +97,23 @@ onMounted(() => {
             </VCardTitle>
           </VCardItem>
 
-          <VCardText class="flex-grow-1">
+          <VCardText class="flex-grow-1" style="padding-bottom: 10px;">
             <p class="mb-2 text-truncate">
-              <strong>Title:</strong> {{ item.title }}
+              {{ item.title }}
             </p>
-            <p class="mb-2">
+            <p class="mb-2 text-truncate">
               <strong>Actor:</strong> {{ item.actor }}
             </p>
-            <p class="mb-2">
-              <strong>Site:</strong> {{ item.site }}
+            <p class="mb-2 text-truncate">
+              <strong>Tag:</strong> {{ item.tag }}
             </p>
             <p class="mb-0 text-truncate">
-              <strong>URL:</strong> {{ item.detailurl }}
+              <strong>Site:</strong> {{ item.site }}
             </p>
           </VCardText>
 
-          <VCardText v-if="item.cover" class="d-flex justify-center" style="max-height: 200px;">
-            <VImg :src="getImageUrl(item.cover)" height="180" contain />
+          <VCardText v-if="item.cover" class="d-flex justify-center">
+            <VImg :src="getImageUrl(item.cover)" height="150" contain />
           </VCardText>
         </VCard>
       </VCol>
