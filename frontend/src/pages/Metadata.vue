@@ -3,11 +3,25 @@ import type { MetadataPublic } from "@/client"
 import { OpenAPI } from "@/client"
 import MetadataDetailDialog from "@/components/metadata/MetadataDetailDialog.vue"
 import { useMetadataStore } from "@/stores/metadata.store"
-import { onMounted, ref, watch } from "vue"
+import { computed, onMounted, ref, watch } from "vue"
 
 const metadataStore = useMetadataStore()
 const searchQuery = ref("")
 const isSearching = ref(false)
+
+// Pagination
+const currentPage = computed(() => metadataStore.currentPage)
+const totalItems = computed(() => metadataStore.totalCount)
+const itemsPerPage = computed({
+  get: () => metadataStore.itemsPerPage,
+  set: async (value) => {
+    await metadataStore.getMetadata(searchQuery.value, 1, value) // Reset to page 1 when changing items per page
+  },
+})
+const totalPages = computed(() =>
+  Math.ceil(totalItems.value / itemsPerPage.value),
+)
+const itemsPerPageOptions = [12, 24, 48, 96]
 
 function showEditDialog(item: MetadataPublic) {
   metadataStore.showUpdateMetadata(item)
@@ -31,6 +45,11 @@ async function searchMetadata() {
   } finally {
     isSearching.value = false
   }
+}
+
+// Change page function
+async function changePage(page: number) {
+  await metadataStore.getMetadata(searchQuery.value, page)
 }
 
 // Watch for changes in search query
@@ -100,6 +119,35 @@ onMounted(() => {
       </VCol>
     </VRow>
 
+    <!-- No results message -->
+    <VRow v-if="metadataStore.allMetadata.length === 0" class="mt-5">
+      <VCol class="text-center">
+        <p class="text-medium-emphasis">No metadata found. Try adjusting your search or add new metadata.</p>
+      </VCol>
+    </VRow>
+
+    <!-- Pagination -->
+    <VRow v-if="totalItems > 0" class="mt-5">
+      <VCol>
+        <div class="d-flex align-center justify-end px-4 py-3 w-100">
+          <div class="d-flex align-center me-4">
+            <span class="text-caption text-grey me-2">每页显示</span>
+            <v-select v-model="itemsPerPage" :items="itemsPerPageOptions" density="compact"
+              style="width: 80px" hide-details variant="plain" />
+            <div class="ms-4 text-caption text-grey">
+              总计 {{ totalItems }} 条记录
+            </div>
+          </div>
+
+          <v-pagination v-model="metadataStore.currentPage"
+            :length="totalPages"
+            @update:model-value="changePage" 
+            :total-visible="5" 
+            :show-first-last-page="false" />
+        </div>
+      </VCol>
+    </VRow>
+
     <!-- Metadata edit dialog -->
     <MetadataDetailDialog />
   </div>
@@ -110,5 +158,29 @@ onMounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 分页样式 */
+:deep(.v-pagination__list) {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+:deep(.v-pagination__item) {
+  min-width: 34px;
+}
+
+@media (max-width: 768px) {
+  .d-flex.align-center.justify-end {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 16px;
+  }
+  
+  .d-flex.align-center.me-4 {
+    margin-right: 0 !important;
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 </style>

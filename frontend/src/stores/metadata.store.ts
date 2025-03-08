@@ -11,14 +11,49 @@ export const useMetadataStore = defineStore("metadata-store", {
     allMetadata: [] as MetadataPublic[],
     showDialog: false,
     editMetadata: undefined as MetadataPublic | undefined,
+    totalCount: 0,
+    currentPage: 1,
+    itemsPerPage: 12,
   }),
   actions: {
     // Combined method for getting all metadata and searching with filter
-    async getMetadata(filter?: string) {
+    async getMetadata(
+      filter?: string,
+      page?: number,
+      itemsPerPage?: number,
+      sortBy?: string,
+      sortDesc?: boolean,
+    ) {
+      const skip =
+        page !== undefined
+          ? (page - 1) * (itemsPerPage || this.itemsPerPage)
+          : (this.currentPage - 1) * this.itemsPerPage
+      const limit =
+        itemsPerPage !== undefined ? itemsPerPage : this.itemsPerPage
+
       const response = await MetadataService.getMetadata({
         filter: filter,
+        skip: skip,
+        limit: limit,
+        sortBy: sortBy,
+        sortDesc: sortDesc,
       })
+
       this.allMetadata = response.data
+
+      // MetadataCollection has count property instead of meta.total
+      this.totalCount = response.count
+
+      // Update currentPage if page parameter was provided
+      if (page !== undefined) {
+        this.currentPage = page
+      }
+
+      // Update itemsPerPage if it was provided
+      if (itemsPerPage !== undefined) {
+        this.itemsPerPage = itemsPerPage
+      }
+
       return this.allMetadata
     },
     showUpdateMetadata(data: MetadataPublic) {

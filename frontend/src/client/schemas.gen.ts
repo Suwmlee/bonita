@@ -419,6 +419,18 @@ export const $MetadataBase = {
                 }
             ],
             title: 'Site'
+        },
+        updatetime: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Updatetime'
         }
     },
     type: 'object',
@@ -708,6 +720,18 @@ export const $MetadataCreate = {
                 }
             ],
             title: 'Site'
+        },
+        updatetime: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Updatetime'
         }
     },
     type: 'object',
@@ -979,6 +1003,18 @@ export const $MetadataPublic = {
                 }
             ],
             title: 'Site'
+        },
+        updatetime: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Updatetime'
         },
         id: {
             type: 'integer',

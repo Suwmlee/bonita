@@ -61,6 +61,7 @@ export type MetadataBase = {
     uservotes?: number | null;
     detailurl?: string | null;
     site?: string | null;
+    updatetime?: string | null;
 };
 
 export type MetadataCollection = {
@@ -97,6 +98,7 @@ export type MetadataCreate = {
     uservotes?: number | null;
     detailurl?: string | null;
     site?: string | null;
+    updatetime?: string | null;
 };
 
 export type MetadataPublic = {
@@ -125,6 +127,7 @@ export type MetadataPublic = {
     uservotes?: number | null;
     detailurl?: string | null;
     site?: string | null;
+    updatetime?: string | null;
     id: number;
 };
 
@@ -527,6 +530,8 @@ export type GetMetadataData = {
     filter?: string;
     limit?: number;
     skip?: number;
+    sortBy?: string;
+    sortDesc?: boolean;
 };
 
 export type GetMetadataResponse = MetadataCollection;

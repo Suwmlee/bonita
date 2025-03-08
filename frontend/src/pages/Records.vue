@@ -353,15 +353,14 @@ onMounted(() => {
             <span class="text-caption text-grey me-2">每页显示</span>
             <v-select :model-value="recordStore.itemsPerPage" :items="pageSizeOptions" density="compact"
               style="width: 80px" hide-details variant="plain" @update:model-value="handleItemsPerPageChange" />
+            <div class="ms-4 text-caption text-grey">
+              总计 {{ recordStore.totalRecords }} 条记录
+            </div>
           </div>
 
           <v-pagination v-model="recordStore.currentPage"
             :length="Math.ceil(recordStore.totalRecords / recordStore.itemsPerPage)"
-            @update:model-value="handlePageChange" :total-visible="1" :show-first-last-page="false" />
-
-          <div class="ms-4 text-caption text-grey">
-            总计 {{ recordStore.totalRecords }} 条记录
-          </div>
+            @update:model-value="handlePageChange" :total-visible="5" :show-first-last-page="false" />
         </div>
       </template>
     </v-data-table>

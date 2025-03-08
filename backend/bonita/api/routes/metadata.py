@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from typing import Any
+from datetime import datetime
 
 from bonita import schemas
 from bonita.api.deps import SessionDep
@@ -32,7 +33,7 @@ async def create_metadata(
 async def get_metadata(
     session: SessionDep,
     skip: int = 0,
-    limit: int = 9999,
+    limit: int = 100,
     filter: str = None,
     sort_by: str = "updatetime",
     sort_desc: bool = True
@@ -87,6 +88,7 @@ async def update_metadata(
 
     update_dict = metadata.model_dump(exclude_unset=True)
     db_metadata.update(session, update_dict)
+    db_metadata.updatetime = datetime.now()
     session.commit()
     session.refresh(db_metadata)
     return schemas.MetadataPublic.model_validate(db_metadata.to_dict())

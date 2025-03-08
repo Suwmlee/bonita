@@ -592,10 +592,14 @@ export class MetadataService {
      * Get Metadata
      * 获取元数据
      * 支持使用 filter 参数对 number 和 actor 同时进行模糊搜索
+     * sort_by参数可以指定排序字段，默认按updatetime排序
+     * sort_desc参数可以指定是否降序排序，默认为True
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
      * @param data.filter
+     * @param data.sortBy
+     * @param data.sortDesc
      * @returns MetadataCollection Successful Response
      * @throws ApiError
      */
@@ -606,7 +610,9 @@ export class MetadataService {
             query: {
                 skip: data.skip,
                 limit: data.limit,
-                filter: data.filter
+                filter: data.filter,
+                sort_by: data.sortBy,
+                sort_desc: data.sortDesc
             },
             errors: {
                 422: 'Validation Error'
