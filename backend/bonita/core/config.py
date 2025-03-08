@@ -32,9 +32,9 @@ class Settings(BaseSettings):
     # 跨域
     BACKEND_CORS_ORIGINS: list = ["*"]
     # 初始化管理员
-    FIRST_SUPERUSER: str = "admin"
-    FIRST_SUPERUSER_EMAIL: str = "admin@example.com"
-    FIRST_SUPERUSER_PASSWORD: str = "changepwd"
+    FIRST_SUPERUSER: str = os.getenv("FIRST_SUPERUSER", "admin")
+    FIRST_SUPERUSER_EMAIL: str = os.getenv("FIRST_SUPERUSER_EMAIL", "admin@example.com")
+    FIRST_SUPERUSER_PASSWORD: str = os.getenv("FIRST_SUPERUSER_PASSWORD", "changepwd")
     # 是否开放注册
     USERS_OPEN_REGISTRATION: bool = False
 
