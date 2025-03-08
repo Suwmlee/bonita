@@ -1,6 +1,6 @@
 from typing import List, Optional
 from pydantic import BaseModel, model_validator
-from datetime import date
+from datetime import date, datetime
 
 
 class MetadataBase(BaseModel):
@@ -29,6 +29,7 @@ class MetadataBase(BaseModel):
     uservotes: Optional[int] = None
     detailurl: Optional[str] = None
     site: Optional[str] = None
+    updatetime: Optional[datetime] = None
 
     @model_validator(mode='before')
     def process_fields(cls, values):

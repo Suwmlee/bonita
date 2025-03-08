@@ -14,11 +14,11 @@ async def create_metadata(
     metadata_in: schemas.MetadataCreate
 ) -> Any:
     """创建新元数据
-    
+
     Args:
         session: 数据库会话
         metadata_in: 元数据内容
-        
+
     Returns:
         创建的元数据
     """
@@ -32,11 +32,15 @@ async def create_metadata(
 async def get_metadata(
     session: SessionDep,
     skip: int = 0,
-    limit: int = 100,
-    filter: str = None
+    limit: int = 9999,
+    filter: str = None,
+    sort_by: str = "updatetime",
+    sort_desc: bool = True
 ) -> Any:
     """ 获取元数据
     支持使用 filter 参数对 number 和 actor 同时进行模糊搜索
+    sort_by参数可以指定排序字段，默认按updatetime排序
+    sort_desc参数可以指定是否降序排序，默认为True
     """
     query = session.query(Metadata)
 
@@ -46,6 +50,10 @@ async def get_metadata(
             Metadata.number.ilike(f"%{filter}%") |
             Metadata.actor.ilike(f"%{filter}%")
         )
+
+    # Apply sorting
+    sort_column = getattr(Metadata, sort_by, Metadata.updatetime)
+    query = query.order_by(sort_column.desc() if sort_desc else sort_column.asc())
 
     # Get total count after applying filters
     count = query.count()
