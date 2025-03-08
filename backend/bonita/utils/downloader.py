@@ -25,8 +25,7 @@ def get_cached_file(session: Session, url: str, folder) -> str:
         proxy = get_active_proxy(session)
         cache_cover_path = download_file(url, folder, proxy)
         cache_downloads_cover = Downloads(url=url, filepath=cache_cover_path)
-        session.add(cache_downloads_cover)
-        session.commit()
+        cache_downloads_cover.create(session)
     elif not os.path.exists(cache_downloads_cover.filepath):
         # 数据库有记录但文件不存在，重新下载并更新记录
         proxy = get_active_proxy(session)

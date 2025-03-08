@@ -30,9 +30,7 @@ def create_config(
     """
     config_info = config_in.__dict__
     config = ScrapingConfig(**config_info)
-    session.add(config)
-    session.commit()
-    session.refresh(config)
+    config.create(session)
     return config
 
 

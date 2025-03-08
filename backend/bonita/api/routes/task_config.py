@@ -30,9 +30,7 @@ def create_task_config(
     """
     config_info = config_in.__dict__
     task_config = TransferConfig(**config_info)
-    session.add(task_config)
-    session.commit()
-    session.refresh(task_config)
+    task_config.create(session)
 
     if task_config.auto_watch:
         watcher_manager.add_directory(task_config.source_folder, task_config.id)

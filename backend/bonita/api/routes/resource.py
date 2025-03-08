@@ -66,7 +66,6 @@ async def upload_image(
         filepath=file_path,
         updatetime=datetime.now()
     )
-    session.add(download)
-    session.commit()
+    download.create(session)
 
     return schemas.Response(success=True, message=file_hash)

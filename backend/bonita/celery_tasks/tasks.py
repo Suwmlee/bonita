@@ -111,7 +111,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
         # 创建一个新的数据库会话
         try:
             session = SessionFactory()
-
+            session.autoflush = False
             done_list = []
             for currentfile in waiting_list:
                 if not isinstance(currentfile, FileInfo):
@@ -121,11 +121,11 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     record = TransRecords()
                     record.srcname = currentfile.name
                     record.srcpath = currentfile.realpath
-                    session.add(record)
-                    session.commit()
+                    record.create(session)
                 if record.ignored:
                     logger.debug(f"[-] ignore {currentfile.realpath}")
                     continue
+                record.task_id = task_info.id
                 # 如果 record 中定义了剧集信息，则使用 record 中的信息
                 if record.isepisode:
                     currentfile.isepisode = True
@@ -144,7 +144,8 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     with allow_join_result():
                         metabase_json = scraping_task.get()
                     if not metabase_json:
-                        logger.debug(f"[-] scraping failed")
+                        record.updatetime = datetime.now()
+                        logger.error(f"[-] scraping failed {currentfile.realpath}")
                         continue
                     metamixed = schemas.MetadataMixed.model_validate(metabase_json)
 
@@ -162,7 +163,6 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                                                metamixed.extra_filename, task_info.operation)
                     done_list.append(destpath)
                     # 更新
-                    record.task_id = task_info.id
                     record.destpath = destpath
                     record.deleted = False
                     record.updatetime = datetime.now()
@@ -175,7 +175,6 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                                             movie_list=waiting_list, linktype=task_info.operation)
                     done_list.append(destpath)
                     # 更新
-                    record.task_id = task_info.id
                     record.destpath = destpath
                     record.deleted = False
                     record.updatetime = datetime.now()
@@ -209,7 +208,7 @@ def celery_scrapping(self, file_path, scraping_dict):
             extrainfo.number = fileNumInfo.num
             extrainfo.partNumber = int(fileNumInfo.part.replace("-CD", "")) if fileNumInfo.part else 0
             extrainfo.tag = ', '.join(map(str, fileNumInfo.tags()))
-            session.add(extrainfo)
+            extrainfo.create(session)
         # 处理指定源/强制从网站更新
         metadata_record = None
         if extrainfo.specifiedurl:
@@ -234,12 +233,16 @@ def celery_scrapping(self, file_path, scraping_dict):
                                  extrainfo.specifiedurl,
                                  proxy
                                  )
+            # Return if blank dict returned (data not found)
+            if not json_data or json_data.get('title') == '':
+                logger.error(f"[-] scraping failed {file_path}")
+                return None
             # 数据转换
             metadata_base = schemas.MetadataBase(**json_data)
             filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
             metadata_record = Metadata(**filter_dict)
             if scraping_conf.save_metadata:
-                session.add(metadata_record)
+                metadata_record.create(session)
             metadata_mixed = schemas.MetadataMixed(**metadata_record.to_dict())
 
         # 根据规则生成文件夹和文件名
@@ -369,8 +372,7 @@ def celery_import_nfo(self, folder_path, option):
                     session.delete(metadata_record)
             filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
             metadata_db = Metadata(**filter_dict)
-            session.add(metadata_db)
-            session.commit()
+            metadata_db.create(session)
             # 从本地更新缓存图片
             if cover_path and os.path.exists(cover_path):
                 update_cache_from_local(session, cover_path, metadata_base.number, metadata_base.cover)
