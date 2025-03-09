@@ -22,7 +22,7 @@ def extractEpNum(single: str):
     right = single[-1:]
     if left == right or (left == '[' and right == ']') or (left == '第' and right in '話话集'):
 
-        result = single.lstrip('第.EPep\[ ')
+        result = single.lstrip('第.EPep[ ')
         result = result.rstrip('話话集]. ')
 
         if bool(re.search(r'\d', result)):
@@ -59,21 +59,33 @@ def matchSeason(filename: str):
     >>> matchSeason("Series.2019.S01E02.1080p") 
     1
     """
-    # TODO 添加更多季度匹配模式
+    # Skip ranges like S01-S05
+    if re.search(r'S\d+-S\d+', filename, re.IGNORECASE):
+        return None
+
+    # Skip if it's a COMPLETE PACK or similar
+    if re.search(r'COMPLETE.PACK|COMPLETE.SERIES|COMPLETE.COLLECTION', filename, re.IGNORECASE):
+        return None
+
+    # Check if it's a movie (year followed by resolution without season info)
+    # But make sure it's not interfering with S01E02 type patterns
+    if not re.search(r'S\d+|Season|第.季', filename, re.IGNORECASE) and re.search(r'(?:19|20)\d{2}.*(?:1080p|720p|480p|2160p)', filename):
+        return None
+
     regexs = [
-        r"(?:s|season)[\s.]?(\d{1,2})",      # 匹配 S01 或 Season 1 格式
-        r"第(\d{1,2})季",                     # 匹配中文季度表示
-        r"第([一二三四五六七八九十])季",       # 匹配中文数字季度表示
-        r"season[\s.](\d{1,2})",             # 匹配 Season 1 格式
+        r"[Ss](\d{1,2})(?!\d)(?!\-[Ss]\d+)(?:[Ee]\d+)?",    # Match S01 or s01 but not if part of a range S01-S05
+        r"[Ss]eason[\s._]?(\d{1,2})(?!\d)",                 # Match Season 1 format
+        r"第(\d{1,2})季",                                    # Match Chinese numeric season
+        r"第([一二三四五六七八九十])季",                        # Match Chinese text numbers
     ]
-    
+
     for regex in regexs:
         nameresult = regexMatch(filename, regex)
         if nameresult and len(nameresult) == 1:
-            # 处理中文数字
+            # Handle Chinese text numbers
             if nameresult[0] in "一二三四五六七八九十":
-                chinese_nums = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, 
-                               "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+                chinese_nums = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
+                                "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
                 return chinese_nums.get(nameresult[0])
             return int(nameresult[0])
     return None
@@ -114,7 +126,8 @@ def matchEpPart(basename):
     ' 01 '
     >>> matchEpPart("[AI-Raws&ANK-Raws] Initial D First Stage [05] (BDRip 960x720 x264 DTS-HD Hi10P)[044D7040]")
     '[05]'
-
+    >>> matchEpPart("Evangelion.2021[E02(OA)]1080p.WEB-DL.H264.AAC-PTerWEB")
+    'E02'
     >>> matchEpPart("Shadow.2021.E11.WEB-DL.4k.H265.60fps.AAC.2Audio")
     '.E11.'
     >>> matchEpPart("Shadow 2021 E11 WEB-DL 4k H265 AAC 2Audio")
@@ -127,36 +140,42 @@ def matchEpPart(basename):
     '.E14(OA).'
     >>> matchEpPart("S03/Person.of.Interest.EP01.2013.1080p.Blu-ray.x265.10bit.AC3")
     '.EP01.'
-    >>> matchEpPart("Slam.Dunk.22.Ma10p.1080p.x265.flac")
-    '.22.'
     >>> matchEpPart("The.Office.S01E05.1080p.BluRay")
     'E05'
     >>> matchEpPart("TV 节目 第1期 嘉宾张三")
     '第1期'
-
-    >>> matchEpPart("Person.of.Interest.S03E01.2013.1080p.Blu-ray.x265.10bit.AC3") is None
-    False
+    >>> matchEpPart("Person.of.Interest.S03E01.2013.1080p.Blu-ray.x265.10bit.AC3")
+    'E01'
+    >>> matchEpPart("The.Final.Challenge.of.Evangelion.2021[E02(OA)]1080p.WEB-DL.H264.AAC")
+    'E02'
+    >>> matchEpPart("Slam.Dunk.22.Ma10p.1080p.x265.flac")
+    '.22.'
     """
+    # 先尝试匹配S01E05格式的E05部分
+    sxxexx_match = re.search(r'[Ss]\d{1,2}([Ee]\d{1,3})', basename)
+    if sxxexx_match:
+        return sxxexx_match.group(1)
+
+    # 特别处理方括号的模式，优先匹配含数字的方括号
+    bracket_match = re.search(
+        r'\[(\d{1,3}(?:\.\d+)?(?:v\d+)?(?:\(OA\)|\(Video\)|\(video\))?)\]', basename, re.IGNORECASE)
+    if bracket_match:
+        return f'[{bracket_match.group(1)}]'
+
     regexs = [
         r"第\d*[話话集期]",                                # 匹配中文集数标记
         r"[ ]ep?[0-9.\(\)videoa]*[ ]",                   # 匹配空格+E+数字+空格
         r"\.ep?[0-9\(\)videoa]*\.",                      # 匹配点+E+数字+点
         r"\.\d{1,3}(?:v\d)?[\(\)videoa]*\.",             # 匹配点+数字(可能带v2等版本)+点
         r"[ ]\d{1,3}(?:\.\d|v\d)?[\(\)videoa]*[ ]",      # 匹配空格+数字(可能带小数或v2等版本)+空格
-        r"\[(?:e|ep)?[0-9.v]*(?:\(oa\)|\(video\))?\]",   # 匹配[数字](可能带特殊标记)
-        r"[Ss]\d{1,2}[Ee]\d{1,3}",                       # 匹配 S01E05 格式
         r"(?<=[\.\s])[Ee]\d{1,3}(?=[\.\s])",             # 匹配独立的 E05 (前后有点或空格)
         r"(?<=[^a-zA-Z0-9])E\d{1,3}",                    # 匹配前面非字母数字的 E05
     ]
+
     for regex in regexs:
         results = regexMatch(basename, regex)
         if results and len(results) == 1:
             return results[0]
-
-    # 尝试匹配S01E05格式的E05部分
-    sxxexx_match = re.search(r'[Ss]\d{1,2}([Ee]\d{1,3})', basename)
-    if sxxexx_match:
-        return sxxexx_match.group(1)
 
     return None
 
@@ -173,7 +192,7 @@ def matchSeries(basename):
         r"[Ss]eason[\s.]?(\d{1,2})[\s.]?[Ee]p(?:isode)?[\s.]?(\d{1,4})",  # Season 1 Episode 1
         r"第(\d{1,2})季第(\d{1,4})[集话期]",        # 中文格式
     ]
-    
+
     for regstr in regexs:
         results = regexMatch(basename, regstr)
         if results and len(results) > 0:
@@ -185,7 +204,7 @@ def matchSeries(basename):
 
 def simpleMatchEp(basename: str):
     """ 针对已经强制season但未能正常解析出ep的名字
-    
+
     >>> simpleMatchEp("01 呵呵呵")
     1
     >>> simpleMatchEp("02_哈哈哈")
@@ -215,14 +234,14 @@ def simpleMatchEp(basename: str):
     """
     if basename.isdigit():
         return int(basename)
-    
+
     # 匹配常见的几种集数格式
     regexs = [
         r"^(\d{1,3}) ?(_|-|.)? ?([^\W\d]+)",  # 数字开头后面跟分隔符和非数字内容
         r"^[Ee][Pp]?(\d{1,3})",              # EP01 或 E01 格式
         r"^第(\d{1,3})[集话期]",               # 中文集数表示
     ]
-    
+
     for regstr in regexs:
         results = re.findall(regstr, basename)
         if results and len(results) >= 1:
@@ -232,7 +251,7 @@ def simpleMatchEp(basename: str):
             else:
                 epnum = int(results[0][0])
             return epnum
-    
+
     return None
 
 
