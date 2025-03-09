@@ -19,7 +19,7 @@ from bonita.db.models.scraping import ScrapingConfig
 from bonita.db.models.setting import SystemSetting
 from bonita.modules.scraping.number_parser import FileNumInfo
 from bonita.modules.scraping.scraping import add_mark, process_nfo_file, process_cover, scraping, load_all_NFO_from_folder
-from bonita.modules.transfer.fileinfo import FileInfo
+from bonita.utils.fileinfo import BasicFileInfo, TargetFileInfo
 from bonita.modules.transfer.transfer import transSingleFile, transferfile, findAllVideos
 from bonita.utils.downloader import process_cached_file, update_cache_from_local
 from bonita.utils.filehelper import cleanExtraMedia, cleanFolderWithoutSuffix, video_type
@@ -89,9 +89,9 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
             logger.debug(f"[!] Transfer not found {full_path}")
             return []
         task_info = schemas.TransferConfigPublic(**task_json)
-        fixseries = False
+        is_series = False
         if task_info.content_type == 2:
-            fixseries = True
+            is_series = True
 
         if os.path.isdir(full_path):
             waiting_list = findAllVideos(full_path, task_info.source_folder, re.split("[,，]", task_info.escape_folder))
@@ -100,51 +100,39 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                 logger.debug(f"[!] Transfer failed {full_path}")
                 return []
             waiting_list = []
-            tf = FileInfo(full_path)
-            # 最顶层是文件情况，midfolder 应为 ''
-            # midfolder = tf.realfolder.replace(task_info.source_folder, '').lstrip("\\").lstrip("/")
-            tf.updateMidFolder('')
-            if tf.topfolder != '.':
-                tf.parse()
+            tf = BasicFileInfo(full_path)
+            tf.set_root_folder(task_info.source_folder)
             waiting_list.append(tf)
 
         logger.debug(f"[+] Transfer check {full_path}")
         try:
             session = SessionFactory()
             done_list = []
-            for currentfile in waiting_list:
-                if not isinstance(currentfile, FileInfo):
+            for original_file in waiting_list:
+                if not isinstance(original_file, BasicFileInfo):
                     continue
-                record = session.query(TransRecords).filter(TransRecords.srcpath == currentfile.realpath).first()
+                record = session.query(TransRecords).filter(TransRecords.srcpath == original_file.full_path).first()
                 if not record:
                     record = TransRecords()
-                    record.srcname = currentfile.name
-                    record.srcpath = currentfile.realpath
+                    record.srcname = original_file.filename
+                    record.srcpath = original_file.full_path
                     record.create(session)
                 if record.ignored:
-                    logger.debug(f"[-] ignore {currentfile.realpath}")
+                    logger.debug(f"[-] ignore {original_file.full_path}")
                     continue
                 record.task_id = task_info.id
-                # 如果 record 中定义了剧集信息，则使用 record 中的信息
-                if record.isepisode:
-                    currentfile.isepisode = True
-                    if record.season > -1:
-                        currentfile.season = record.season
-                    if record.episode > -1:
-                        currentfile.epnum = record.episode
-
                 if task_info.sc_enabled:
                     logger.debug(f"[-] need scraping")
                     scraping_conf = session.query(ScrapingConfig).filter(ScrapingConfig.id == task_info.sc_id).first()
                     if not scraping_conf:
                         logger.debug(f"[-] scraping config not found")
                         continue
-                    scraping_task = celery_scrapping.apply(args=[currentfile.realpath, scraping_conf.to_dict()])
+                    scraping_task = celery_scrapping.apply(args=[original_file.full_path, scraping_conf.to_dict()])
                     with allow_join_result():
                         metabase_json = scraping_task.get()
                     if not metabase_json:
                         record.updatetime = datetime.now()
-                        logger.error(f"[-] scraping failed {currentfile.realpath}")
+                        logger.error(f"[-] scraping failed {original_file.full_path}")
                         continue
                     metamixed = schemas.MetadataMixed.model_validate(metabase_json)
 
@@ -158,7 +146,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     if scraping_conf.watermark_enabled:
                         add_mark(pics, metamixed.tag, scraping_conf.watermark_location, scraping_conf.watermark_size)
                     # 移动
-                    destpath = transSingleFile(currentfile, output_folder,
+                    destpath = transSingleFile(original_file, output_folder,
                                                metamixed.extra_filename, task_info.operation)
                     done_list.append(destpath)
                     # 更新
@@ -168,13 +156,22 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     logger.debug(f"[-] scraping transfer end")
                 else:
                     logger.debug(f"[-] start transfer")
+                    target_file = TargetFileInfo(task_info.output_folder)
+                    # 如果 record 中定义了剧集信息，则使用 record 中的信息
+                    if record.isepisode:
+                        target_file.ForcedUpdate(record.isepisode, record.season, record.episode)
                     # 开始转移
-                    destpath = transferfile(currentfile, task_info.source_folder, simplify_tag=task_info.optimize_name,
-                                            fixseries_tag=fixseries, dest_folder=task_info.output_folder,
-                                            movie_list=waiting_list, linktype=task_info.operation)
-                    done_list.append(destpath)
+                    target_file = transferfile(original_file, target_file,
+                                               optimize_name_tag=task_info.optimize_name, series_tag=is_series,
+                                               file_list=waiting_list, linktype=task_info.operation)
+                    done_list.append(target_file.full_path)
                     # 更新
-                    record.destpath = destpath
+                    record.top_folder = target_file.top_folder
+                    record.second_folder = target_file.second_folder
+                    record.isepisode = target_file.is_episode
+                    record.season = target_file.season_number
+                    record.episode = target_file.episode_number
+                    record.destpath = target_file.full_path
                     record.deleted = False
                     record.updatetime = datetime.now()
                     logger.debug(f"[-] transfer end")

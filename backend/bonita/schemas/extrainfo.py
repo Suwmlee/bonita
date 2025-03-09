@@ -6,7 +6,7 @@ class ExtraInfoBase(BaseModel):
     filepath: str
     number: str
     tag: Optional[str] = None
-    partNumber: int
+    partNumber: Optional[int] = None
     specifiedsource: Optional[str] = None
     specifiedurl: Optional[str] = None
 

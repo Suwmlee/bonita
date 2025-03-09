@@ -6,7 +6,7 @@ import re
 import time
 import logging
 
-from bonita.modules.transfer.fileinfo import FileInfo
+from bonita.utils.fileinfo import BasicFileInfo, TargetFileInfo
 from bonita.utils.regex import extractEpNum, matchSeason, matchEpPart, matchSeries, simpleMatchEp
 from bonita.utils.filehelper import OperationMethod, linkFile, video_type, ext_type, replaceRegex, cleanFolderWithoutSuffix, \
     replaceCJK, cleanbyNameSuffix, cleanExtraMedia, moveSubs
@@ -16,9 +16,10 @@ logger = logging.getLogger(__name__)
 
 def findAllVideos(root, src_folder, escape_folder, mode=1):
     """ find all videos
-    mode:
-    :1  返回 FileInfo 合集
-    :2  返回 realPath 合集
+    :param root: 递归的根目录
+    :param src_folder: 源目录
+    :param escape_folder: 跳过目录
+    :param mode: 1 返回 BasicFileInfo 合集 2 返回 realPath 合集
     """
     if os.path.basename(root) in escape_folder:
         return []
@@ -30,302 +31,177 @@ def findAllVideos(root, src_folder, escape_folder, mode=1):
             total += findAllVideos(f, src_folder, escape_folder, mode)
         elif os.path.splitext(f)[1].lower() in video_type:
             if mode == 1:
-                fi = FileInfo(f)
-                midfolder = fi.realfolder.replace(src_folder, '').lstrip("\\").lstrip("/")
-                fi.updateMidFolder(midfolder)
-                if fi.topfolder != '.':
-                    fi.parse()
+                fi = BasicFileInfo(f)
+                fi.set_root_folder(src_folder)
                 total.append(fi)
             elif mode == 2:
                 total.append(f)
     return total
 
 
-def transfer(src_folder, dest_folder,
-             linktype, prefix,
-             specified_files='',
-             escape_folders="",
-             clean_others_tag=True,
-             simplify_tag=False,
-             fixseries_tag=False
-             ):
-    """
-    如果 specified_files 有值，则使用 specified_files 过滤文件且不清理其他文件
-    """
-
-    try:
-        movie_list = []
-
-        if not specified_files or specified_files == '':
-            movie_list = findAllVideos(src_folder, src_folder, re.split("[,，]", escape_folders))
-        else:
-            if not os.path.exists(specified_files):
-                specified_files = os.path.join(src_folder, specified_files)
-                if not os.path.exists(specified_files):
-                    logger.error("[!] specified_files not exists")
-                    return False
-            clean_others_tag = False
-            if os.path.isdir(specified_files):
-                movie_list = findAllVideos(specified_files, src_folder, re.split("[,，]", escape_folders))
-            else:
-                tf = FileInfo(specified_files)
-                midfolder = tf.realfolder.replace(src_folder, '').lstrip("\\").lstrip("/")
-                tf.updateMidFolder(midfolder)
-                if tf.topfolder != '.':
-                    tf.parse()
-                movie_list.append(tf)
-        count = 0
-        total = str(len(movie_list))
-        logger.debug('[+] Find  ' + total+'  movies')
-
-        # 硬链接直接使用源目录
-        if linktype == 1:
-            prefix = src_folder
-        # 清理目标目录下的文件:视频 字幕
-        if not os.path.exists(dest_folder):
-            os.makedirs(dest_folder)
-
-        if clean_others_tag:
-            dest_list = findAllVideos(dest_folder, '', [], 2)
-        else:
-            dest_list = []
-
-        for currentfile in movie_list:
-            if not isinstance(currentfile, FileInfo):
-                continue
-            # task = taskService.getTask('transfer')
-            # task = dict()
-            # if task.status == 0:
-            #     return False
-            count += 1
-            logger.debug('[!] - ' + str(count) + '/' + total + ' -')
-            logger.debug("[+] start check [{}] ".format(currentfile.realpath))
-
-            # 修正后给链接使用的源地址
-            link_path = os.path.join(src_folder, currentfile.midfolder, currentfile.realname)
-
-            # currentrecord = transrecordService.add(currentfile.realpath)
-            # 根据历史记录进行预处理，标记、锁定、剧集
-
-            # 优化命名
-            naming(currentfile, movie_list, simplify_tag, fixseries_tag)
-
-            if currentfile.topfolder == '.':
-                newpath = os.path.join(dest_folder, currentfile.fixFinalName())
-            else:
-                newpath = os.path.join(dest_folder, currentfile.fixMidFolder(), currentfile.fixFinalName())
-            currentfile.updateFinalPath(newpath)
-            if linktype == 0:
-                linkFile(link_path, newpath, 1)
-            else:
-                linkFile(link_path, newpath, 2)
-
-            # 使用最终的文件名
-            cleanbyNameSuffix(currentfile.finalfolder, currentfile.name, ext_type)
-            oldname = os.path.splitext(currentfile.realname)[0]
-            moveSubs(currentfile.realfolder, currentfile.finalfolder, oldname, currentfile.name)
-
-            # if os.path.exists(currentrecord.destpath) and newpath != currentrecord.destpath:
-            #     # 清理之前转移的文件
-            #     transrecordService.deleteRecordFiles(currentrecord, False)
-
-            if newpath in dest_list:
-                dest_list.remove(newpath)
-
-            logger.info("[-] transfered [{}]".format(newpath))
-            # need rest 100ms
-            time.sleep(0.1)
-
-        if clean_others_tag:
-            for torm in dest_list:
-                logger.info("[!] remove other file: [{}]".format(torm))
-                os.remove(torm)
-            cleanExtraMedia(dest_folder)
-            cleanFolderWithoutSuffix(dest_folder, video_type)
-
-        logger.info("transfer finished")
-    except Exception as e:
-        logger.error(e)
-
-    return True
-
-
-def naming(currentfile: FileInfo, movie_list: list, simplify_tag, fixseries_tag):
-    """处理文件命名优化
-    Args:
-        currentfile (FileInfo): 当前处理的文件信息
-        movie_list (list): 所有待处理的文件列表
-        simplify_tag (bool): 是否简化文件夹名称
-        fixseries_tag (bool): 是否修正剧集命名
-    """
-    if not currentfile.locked:
-        _handle_group_naming(currentfile, movie_list)
-        if simplify_tag:
-            _simplify_folder_name(currentfile)
-
-    if fixseries_tag and currentfile.isepisode:
-        _fix_series_naming(currentfile)
-
-
-def _handle_group_naming(currentfile: FileInfo, movie_list: list):
+def _handle_group_naming(original_file: BasicFileInfo, target_file: TargetFileInfo, file_list: list):
     """处理特殊组的视频文件命名
+    :param original_file: 当前处理的文件信息
+    :param target_file: 输出文件信息
+    :param file_list: 所有待处理的文件列表
     """
     # CMCT组视频文件命名通常比文件夹命名更规范
-    if 'CMCT' not in currentfile.topfolder:
+    if 'CMCT' not in original_file.top_folder:
         return
-
-    matches = [x for x in movie_list if x.topfolder == currentfile.topfolder]
-    if not matches:
-        return
-
-    # 检测是否有剧集标记
-    epfiles = [x for x in matches if x.isepisode]
+    epfiles = [x for x in file_list if x.is_episode]
     if epfiles:
+        # 如果有剧集标记则返回
         return
-
-    namingfiles = [x for x in matches if 'CMCT' in x.name]
+    namingfiles = [x for x in file_list if 'CMCT' in x.filename]
     if len(namingfiles) == 1:
         # 非剧集情况下使用文件名作为文件夹名
-        for m in matches:
-            m.topfolder = namingfiles[0].name
-        logger.debug("[-] handling cmct midfolder [{}]".format(currentfile.midfolder))
+        target_file.top_folder = namingfiles[0].filename
+        logger.debug(f"[-] handling cmct midfolder [{target_file.top_folder}]")
 
 
-def _simplify_folder_name(currentfile: FileInfo):
+def _simplify_folder_name(original: str):
     """简化文件夹名称
     1. 替换CJK字符
     2. 处理特殊模式
     3. 移除常见标签词
     """
     minlen = 20
-    tempmid = currentfile.topfolder
-    tempmid = replaceCJK(tempmid)
+    tempmid = replaceCJK(original)
     tempmid = replaceRegex(tempmid, "^s(\\d{2})-s(\\d{2})")
-
-    # 处理常见标签词
+    # 处理常见标签词 TODO 可增加过滤词
     grouptags = ['cmct', 'wiki', 'frds', '1080p', 'x264', 'x265']
     for gt in grouptags:
         if gt in tempmid.lower():
             minlen += len(gt)
-
     if len(tempmid) > minlen:
-        logger.debug("[-] replace CJK [{}]".format(tempmid))
-        currentfile.topfolder = tempmid
+        logger.debug(f"[-] replace CJK [{tempmid}]")
+        return tempmid
+    return original
 
 
-def _fix_series_naming(currentfile: FileInfo):
-    """修正剧集命名
+def _fix_series_naming(original_file: BasicFileInfo, target_file: TargetFileInfo):
+    """ 修正剧集命名
     处理季数和集数的命名规范化
+    :param original_file: 原始文件信息
+    :param target_file: 目标文件信息
     """
     logger.debug("[-] fix series name")
-
+    tmp_season = target_file.season_number if target_file.forced_season else original_file.season_number
+    tmp_episode = target_file.episode_number if target_file.forced_episode else original_file.episode_number
+    tmp_secondfolder = original_file.second_folder
+    tmp_filename = original_file.base_name
+    tmp_original_marker = original_file.original_episode_marker
     # 如果已有有效的季数和集数记录，直接使用
-    if _has_valid_season_episode(currentfile):
-        _apply_season_folder(currentfile)
-        return
-
-    # 尝试从现有信息获取季数
-    seasonnum = _get_season_number(currentfile)
-    if seasonnum:
-        _apply_season_number(currentfile, seasonnum)
+    if tmp_season > -1 and tmp_episode > -1:
+        marker = f"S{tmp_season:02d}E{tmp_episode:02d}"
+        if marker not in tmp_filename:
+            tmp_filename = fix_episode_name(tmp_filename, tmp_season, tmp_episode, tmp_original_marker) or marker
+    # 没有完整的季数和集数
+    # 季数最重要，季数涉及到中间的文件夹，集数可以使用自身的名称
+    elif tmp_season > -1 and tmp_episode == -1:
+        tmp_filename, tmp_episode = fix_episode_name(tmp_filename, tmp_season, tmp_episode, tmp_original_marker)
     else:
-        _handle_default_season(currentfile)
+        find_season = matchSeason(original_file.parent_folder)
+        if find_season:
+            tmp_season = find_season
+            tmp_filename, tmp_episode = fix_episode_name(tmp_filename, find_season, tmp_episode, tmp_original_marker)
+        else:
+            # 父级目录检测不到后，查看二级目录，为空则表示资源可能为单季，默认第一季
+            if tmp_secondfolder == '':
+                tmp_season = 1
+                tmp_filename, tmp_episode = fix_episode_name(tmp_filename, tmp_season, tmp_episode, tmp_original_marker)
+            else:
+                # 二级目录检测到花絮，则表示资源为多季，且为花絮
+                if '花絮' in tmp_secondfolder and original_file.top_folder != '':
+                    tmp_season = 0
+                    tmp_filename, tmp_episode = fix_episode_name(
+                        tmp_filename, tmp_season, tmp_episode, tmp_original_marker)
+
+    target_file.season_number = tmp_season
+    target_file.episode_number = tmp_episode
+    target_file.second_folder = "Specials" if tmp_season == 0 else f"Season {tmp_season}"
+    target_file.base_name = tmp_filename
+    return
 
 
-def _has_valid_season_episode(currentfile: FileInfo):
-    """检查是否有有效的季数和集数记录"""
-    return (isinstance(currentfile.season, int) and isinstance(currentfile.epnum, int)
-            and currentfile.season > -1 and currentfile.epnum > -1)
+def fix_episode_name(name: str, season: int, episode: int, original_marker: str):
+    """ 修正单集命名
 
+    Args:
+        name: 文件名
+        season: 季数(必须 > -1)
+        episode: 集数(可能为-1)
+        original_marker: 匹配时的原始字符串
 
-def _apply_season_folder(currentfile: FileInfo):
-    """应用季文件夹命名"""
-    if currentfile.season == 0:
-        currentfile.secondfolder = "Specials"
-    else:
-        currentfile.secondfolder = "Season " + str(currentfile.season)
-    try:
-        currentfile.fixEpName(currentfile.season)
-    except:
-        currentfile.name = "S%02dE%02d" % (currentfile.season, currentfile.epnum)
-
-
-def _get_season_number(currentfile: FileInfo):
-    """获取季数
-    1. 优先使用已有season
-    2. 尝试从目录名解析
+    Returns:
+        str: 修正后的文件名
     """
-    if isinstance(currentfile.season, int) and currentfile.season > -1:
-        return currentfile.season
+    if episode == -1:
+        logger.debug("没有`episode`，尝试获取")
+        sep = simpleMatchEp(name)
+        if sep:
+            episode = sep
+            original_marker = "Pass"
+        else:
+            return name, episode
 
-    # 检测视频上级目录是否有season标记
-    dirfolder = currentfile.folders[len(currentfile.folders)-1]
-    return matchSeason(dirfolder)
-
-
-def _apply_season_number(currentfile: FileInfo, seasonnum: int):
-    """应用季数信息"""
-    currentfile.season = seasonnum
-    currentfile.secondfolder = "Season " + str(seasonnum)
-    currentfile.fixEpName(seasonnum)
-
-
-def _handle_default_season(currentfile: FileInfo):
-    """处理默认季数情况"""
-    if currentfile.secondfolder == '':
-        # 如果检测不到seasonnum可能是多季，默认第一季
-        currentfile.season = 1
-        currentfile.secondfolder = "Season " + str(1)
-        currentfile.fixEpName(1)
+    # 此时 episode 肯定有值
+    marker = f"S{season:02d}E{episode:02d}"
+    if original_marker == "Pass":
+        if marker in name:
+            return name, episode
+        else:
+            return marker, episode
     else:
-        try:
-            # 处理特典/花絮
-            dirfolder = currentfile.folders[len(currentfile.folders)-1]
-            if '花絮' in dirfolder and currentfile.topfolder != '.':
-                currentfile.secondfolder = "Specials"
-                currentfile.season = 0
-                currentfile.fixEpName(0)
-        except Exception as ex:
-            logger.error(ex)
+        # 原始匹配的 marker 是 [S01E01] 这种格式
+        # 修正替换
+        if original_marker[0] == ".":
+            renum = "." + marker + "."
+        elif original_marker[0] == "[":
+            renum = " " + marker + " "
+        else:
+            renum = " " + marker + " "
+        logger.debug("替换内容:" + renum)
+        newname = name.replace(original_marker, renum)
+        logger.info("替换后:   {}".format(newname))
+        return newname, episode
 
 
-def transferfile(currentfile: FileInfo, src_folder, simplify_tag, fixseries_tag, dest_folder,
-                 movie_list, linktype):
+def transferfile(original_file: BasicFileInfo,
+                 target_file: TargetFileInfo,
+                 optimize_name_tag: bool, series_tag: bool,
+                 file_list: list, linktype: OperationMethod):
     """
     转移文件
     """
-    destpath = ""
+    target_file.top_folder = original_file.top_folder
+    target_file.file_extension = original_file.file_extension
 
-    # 修正后给链接使用的源地址
-    link_path = os.path.join(src_folder, currentfile.midfolder, currentfile.realname)
+    _handle_group_naming(original_file, target_file, file_list)
+    if optimize_name_tag:
+        target_file.top_folder = _simplify_folder_name(original_file.top_folder)
 
-    # currentrecord = transrecordService.add(currentfile.realpath)
-    # 根据历史记录进行预处理，标记、锁定、剧集
+    # 配置设置为剧集 or 手动设置为剧集
+    if series_tag or target_file.is_episode:
+        _fix_series_naming(original_file, target_file)
 
-    # 优化命名
-    naming(currentfile, movie_list, simplify_tag, fixseries_tag)
+    target_file.filename = target_file.base_name + target_file.file_extension
 
-    if currentfile.topfolder == '.':
-        destpath = os.path.join(dest_folder, currentfile.fixFinalName())
-    else:
-        destpath = os.path.join(dest_folder, currentfile.fixMidFolder(), currentfile.fixFinalName())
-    currentfile.updateFinalPath(destpath)
-    linkFile(link_path, destpath, linktype)
+    folder_path = os.path.join(target_file.root_folder, target_file.top_folder, target_file.second_folder)
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
 
-    # 使用最终的文件名
-    cleanbyNameSuffix(currentfile.finalfolder, currentfile.name, ext_type)
-    oldname = os.path.splitext(currentfile.realname)[0]
-    moveSubs(currentfile.realfolder, currentfile.finalfolder, oldname, currentfile.name)
+    cleanbyNameSuffix(folder_path, target_file.base_name, ext_type)
+    target_file.full_path = transSingleFile(original_file, folder_path, target_file.base_name, linktype)
 
-    return destpath
+    return target_file
 
 
-def transSingleFile(currentfile: FileInfo, output_folder, prefilename, linktype: OperationMethod):
+def transSingleFile(original_file: BasicFileInfo, output_folder, target_filename, linktype: OperationMethod):
     """ 转移单个文件
     """
-    dest_path = os.path.join(output_folder, prefilename + currentfile.ext)
-    linkFile(currentfile.realpath, dest_path, linktype)
-    oldname = os.path.splitext(currentfile.realname)[0]
-    moveSubs(currentfile.realfolder, output_folder, oldname, prefilename)
+    dest_path = os.path.join(output_folder, target_filename + original_file.file_extension)
+    linkFile(original_file.full_path, dest_path, linktype)
+    moveSubs(original_file.parent_folder, output_folder, original_file.base_name, target_filename)
 
     return dest_path

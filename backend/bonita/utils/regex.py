@@ -53,7 +53,7 @@ def matchSeason(filename: str):
     >>> matchSeason("Breaking.Bad.Season.5.1080p.BluRay")
     5
     """
-    # 添加更多季度匹配模式
+    # TODO 添加更多季度匹配模式
     regexs = [
         r"(?:s|season)[\s.]?(\d{1,2})",      # 匹配 S01 或 Season 1 格式
         r"第(\d{1,2})季",                     # 匹配中文季度表示
