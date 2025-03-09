@@ -66,7 +66,7 @@ onBeforeUnmount(() => {
         <VCard>
           <VCardItem>
             <VCardTitle>
-              {{ data.name }}
+              {{ data.name }} <span class="text-caption text-grey">#{{ data.id }}</span>
             </VCardTitle>
           </VCardItem>
 
