@@ -109,7 +109,6 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
             waiting_list.append(tf)
 
         logger.debug(f"[+] Transfer check {full_path}")
-        # 创建一个新的数据库会话
         try:
             session = SessionFactory()
             done_list = []
@@ -336,13 +335,38 @@ def celery_import_nfo(self, folder_path, option):
     logger.debug(f"[+] import nfo: start")
     try:
         metadata_list = load_all_NFO_from_folder(folder_path)
-        session = SessionFactory()
+        # 过滤有效的nfo信息
+        title_to_metadata = {}
+        for nfo_dict in metadata_list:
+            title = nfo_dict['nfo'].get('title', '')
+            if title:
+                if title not in title_to_metadata:
+                    title_to_metadata[title] = []
+                title_to_metadata[title].append(nfo_dict)
+        # 处理重复的title，保留一个有cover_path的
+        filtered_metadata_list = []
+        for title, nfo_dicts in title_to_metadata.items():
+            if len(nfo_dicts) == 1:
+                filtered_metadata_list.append(nfo_dicts[0])
+            else:
+                has_cover = [nfo_dict for nfo_dict in nfo_dicts if nfo_dict['cover_path']]
+                if has_cover:
+                    filtered_metadata_list.append(has_cover[0])
+                else:
+                    filtered_metadata_list.append(nfo_dicts[0])
+
+        # 用过滤后的列表替换原始列表
+        metadata_list = filtered_metadata_list
+        logger.info(
+            f"[+] import nfo: filtered {len(title_to_metadata)} titles from {len(filtered_metadata_list)} NFO files")
         for nfo_dict in metadata_list:
             nfo_data = nfo_dict['nfo']
             cover_path = nfo_dict['cover_path']
             try:
                 metadata_base = schemas.MetadataBase(**nfo_data)
-                metadata_base.title = metadata_base.title.replace(metadata_base.number, '').strip()
+                # 如果 title 中包含 number，则删除 number
+                if metadata_base.number in metadata_base.title:
+                    metadata_base.title = metadata_base.title.replace(metadata_base.number, '').strip(' -')
             except Exception as e:
                 logger.info(f"[!] convert nfo failed: {nfo_data}")
                 logger.error(f"[!] convert nfo failed: {str(e)}")
@@ -364,26 +388,31 @@ def celery_import_nfo(self, folder_path, option):
                 except:
                     # 如果解析失败，直接使用完整URL
                     metadata_base.site = metadata_base.detailurl
-            metadata_record = session.query(Metadata).filter(
-                Metadata.number == metadata_base.number).order_by(Metadata.id.desc()).first()
-            # 如果 metadata_record 存在，根据 option 决定是否更新
-            if metadata_record:
-                if option == 'ignore':
-                    # 忽略重复
-                    continue
-                else:
-                    # 强制更新
-                    session.delete(metadata_record)
-            # 从本地更新缓存图片
-            if cover_path and os.path.exists(cover_path):
-                if not metadata_base.cover or metadata_base.cover == '':
-                    metadata_base.cover = str(uuid.uuid4()).replace('-', '')
-                update_cache_from_local(session, cover_path, metadata_base.number, metadata_base.cover)
-            filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
-            metadata_db = Metadata(**filter_dict)
-            metadata_db.create(session)
+            try:
+                session = SessionFactory()
+                metadata_record = session.query(Metadata).filter(
+                    Metadata.number == metadata_base.number).order_by(Metadata.id.desc()).first()
+                # 如果 metadata_record 存在，根据 option 决定是否更新
+                if metadata_record:
+                    if option == 'ignore':
+                        # 忽略重复
+                        continue
+                    else:
+                        # 强制更新
+                        session.delete(metadata_record)
+                # 从本地更新缓存图片
+                if cover_path and os.path.exists(cover_path):
+                    if not metadata_base.cover or metadata_base.cover == '':
+                        metadata_base.cover = str(uuid.uuid4()).replace('-', '')
+                    update_cache_from_local(session, cover_path, metadata_base.number, metadata_base.cover)
+                filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
+                metadata_db = Metadata(**filter_dict)
+                metadata_db.create(session)
+            except Exception as e:
+                logger.error(f"[!] import nfo {nfo_dict['nfo_path']} failed: {str(e)}")
+                continue
+            finally:
+                session.close()
     except Exception as e:
-        logger.error(e)
-    finally:
-        session.close()
+        logger.error(f"[!] import nfo failed: {str(e)}")
     return True

@@ -350,6 +350,8 @@ def load_all_NFO_from_folder(folder_path):
                         filtered_tags = [tag for tag in tags if tag not in tags_to_remove]
                         nfodata['tag'] = ','.join(filtered_tags) if filtered_tags else ''
                     dict_data = {}
+                    dict_data['title'] = nfodata['title']
+                    dict_data['nfo_path'] = nfo_path
                     dict_data['nfo'] = nfodata
                     dict_data['cover_path'] = cover_path
                     NFOdata_list.append(dict_data)
