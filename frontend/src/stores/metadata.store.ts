@@ -13,7 +13,7 @@ export const useMetadataStore = defineStore("metadata-store", {
     editMetadata: undefined as MetadataPublic | undefined,
     totalCount: 0,
     currentPage: 1,
-    itemsPerPage: 12,
+    itemsPerPage: 24,
   }),
   actions: {
     // Combined method for getting all metadata and searching with filter

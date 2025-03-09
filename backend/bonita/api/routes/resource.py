@@ -33,12 +33,14 @@ async def get_image_by_query(path: str, session: SessionDep):
 @router.post("/upload/image")
 async def upload_image(
     file: UploadFile = File(...),
+    custom_url: str = None,
     session: SessionDep = None
 ):
     """Upload an image file
 
     Args:
         file: The image file to upload
+        custom_url: Optional custom URL to use instead of file hash
         session: Database session
 
     Returns:
@@ -62,12 +64,25 @@ async def upload_image(
     with open(file_path, "wb") as f:
         f.write(content)
 
-    # Save to downloads table
-    download = Downloads(
-        url=file_hash,
-        filepath=file_path,
-        updatetime=datetime.now()
-    )
-    download.create(session)
+    # Use custom_url if provided, otherwise use file_hash
+    url_value = custom_url if custom_url is not None else file_hash
+    
+    # Check if a record with this URL already exists
+    existing_download = session.query(Downloads).filter(Downloads.url == url_value).first()
+    
+    if existing_download:
+        # Update existing record
+        existing_download.filepath = file_path
+        existing_download.updatetime = datetime.now()
+        session.commit()
+        download = existing_download
+    else:
+        # Save to downloads table
+        download = Downloads(
+            url=url_value,
+            filepath=file_path,
+            updatetime=datetime.now()
+        )
+        download.create(session)
 
-    return schemas.Response(success=True, message=file_hash)
+    return schemas.Response(success=True, message=url_value)

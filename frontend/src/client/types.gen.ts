@@ -590,6 +590,7 @@ export type GetImageByQueryData = {
 export type GetImageByQueryResponse = unknown;
 
 export type UploadImageData = {
+    customUrl?: string;
     formData: Body_resource_upload_image;
 };
 

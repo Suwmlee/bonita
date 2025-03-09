@@ -25,8 +25,9 @@ const currentMetadata = ref<any>()
 const coverImageUrl = computed(() => {
   if (!currentMetadata.value?.cover) return null
 
-  // Otherwise, use the ResourceService to get the image URL
-  return `${OpenAPI.BASE}/api/v1/resource/image?path=${encodeURIComponent(currentMetadata.value.cover)}`
+  // Add a timestamp query parameter to prevent browser caching
+  const timestamp = new Date().getTime()
+  return `${OpenAPI.BASE}/api/v1/resource/image?path=${encodeURIComponent(currentMetadata.value.cover)}&t=${timestamp}`
 })
 
 if (updateMetadata) {
@@ -126,9 +127,10 @@ async function handleFileUpload(event: Event) {
       file: file,
     }
 
-    // Upload image
+    // Upload image with existing path as custom URL if available
     const response = await ResourceService.uploadImage({
       formData: formData,
+      customUrl: currentMetadata.value.cover || undefined,
     })
 
     let path = ""
@@ -140,6 +142,8 @@ async function handleFileUpload(event: Event) {
 
     if (path) {
       currentMetadata.value.cover = path
+      // Force the coverImageUrl computed property to update by creating a new reactive dependency
+      currentMetadata.value = { ...currentMetadata.value }
     } else {
       console.error("Could not determine path from upload response:", response)
       alert(
@@ -335,6 +339,12 @@ async function handleFileUpload(event: Event) {
             <!-- Image preview -->
             <div v-if="coverImageUrl" class="mt-2">
               <VImg :src="coverImageUrl" max-height="200" contain class="rounded" />
+            </div>
+            
+            <!-- Hint text about cover value behavior -->
+            <div v-if="currentMetadata.cover" class="text-caption text-grey mt-1">
+              <VIcon icon="bx-info-circle" size="small" class="mr-1" />
+              Note: Uploading a new image will update the image content while keeping the same URL.
             </div>
           </VCol>
         </VRow>

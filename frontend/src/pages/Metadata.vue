@@ -21,7 +21,7 @@ const itemsPerPage = computed({
 const totalPages = computed(() =>
   Math.ceil(totalItems.value / itemsPerPage.value),
 )
-const itemsPerPageOptions = [12, 24, 48, 96]
+const itemsPerPageOptions = [24, 48, 96]
 
 function showEditDialog(item: MetadataPublic) {
   metadataStore.showUpdateMetadata(item)
@@ -34,7 +34,9 @@ function showAddDialog() {
 
 // Function to get image URL using ResourceService
 function getImageUrl(path: string) {
-  return `${OpenAPI.BASE}/api/v1/resource/image?path=${encodeURIComponent(path)}`
+  // Add timestamp parameter to prevent browser caching
+  const timestamp = new Date().getTime()
+  return `${OpenAPI.BASE}/api/v1/resource/image?path=${encodeURIComponent(path)}&t=${timestamp}`
 }
 
 // Function to search metadata with filter
@@ -50,6 +52,19 @@ async function searchMetadata() {
 // Change page function
 async function changePage(page: number) {
   await metadataStore.getMetadata(searchQuery.value, page)
+}
+
+const formatDateTime = (dateStr: string | null | undefined) => {
+  if (!dateStr) return ""
+  return new Date(dateStr).toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  })
 }
 
 // Watch for changes in search query
@@ -108,7 +123,7 @@ onMounted(() => {
               <strong>Tag:</strong> {{ item.tag }}
             </p>
             <p class="mb-0 text-truncate">
-              <strong>Site:</strong> {{ item.site }}
+              <strong>Update:</strong> {{ formatDateTime(item.updatetime) }}
             </p>
           </VCardText>
 

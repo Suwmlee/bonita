@@ -846,12 +846,14 @@ export class ResourceService {
      *
      * Args:
      * file: The image file to upload
+     * custom_url: Optional custom URL to use instead of file hash
      * session: Database session
      *
      * Returns:
      * dict: Information about the uploaded file
      * @param data The data for the request.
      * @param data.formData
+     * @param data.customUrl
      * @returns unknown Successful Response
      * @throws ApiError
      */
@@ -859,6 +861,9 @@ export class ResourceService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/resource/upload/image',
+            query: {
+                custom_url: data.customUrl
+            },
             formData: data.formData,
             mediaType: 'multipart/form-data',
             errors: {
