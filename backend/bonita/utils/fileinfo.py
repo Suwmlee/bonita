@@ -1,7 +1,6 @@
-
-
 import os
 import logging
+import re
 
 from bonita.utils.regex import extractEpNum, matchEpPart, matchSeries, simpleMatchEp
 
@@ -27,7 +26,6 @@ class BasicFileInfo():
 
         # 文件路径相关属性
         self.root_folder = ''
-        self.folder_segments = []
         self.top_folder = ''
         self.second_folder = ''
 
@@ -48,9 +46,10 @@ class BasicFileInfo():
         self.root_folder = root_folder
         tmp_parent = os.path.dirname(self.full_path)
         relative_path = tmp_parent.replace(root_folder, '').lstrip('\\/')
-        self.folder_segments = os.path.normpath(relative_path).split(os.path.sep)
-        self.top_folder = self.folder_segments[0] if self.folder_segments else ''
-        self.second_folder = self.folder_segments[1] if len(self.folder_segments) > 1 else ''
+        segments = os.path.normpath(relative_path).split(os.path.sep)
+        # 确保文件夹名不是 '.'
+        self.top_folder = segments[0] if segments and segments[0] != '.' else ''
+        self.second_folder = segments[1] if len(segments) > 1 and segments[1] != '.' else ''
 
     def parse_episode_info(self):
         """解析文件名中的剧集信息"""
@@ -66,11 +65,15 @@ class BasicFileInfo():
         # 尝试匹配非标准剧集格式
         episode_marker = matchEpPart(self.basename)
         if episode_marker:
-            episode_num = extractEpNum(episode_marker)
-            if episode_num:
+            episode_mark = extractEpNum(episode_marker)
+            if episode_mark:
+                # episode_mark 可能的值 01、01(video)、01v2
                 self.is_episode = True
                 self.original_episode_marker = episode_marker
-                self.episode_number = episode_num
+                try:
+                    self.episode_number = simpleMatchEp(episode_mark)
+                except ValueError:
+                    self.episode_number = -1
 
 
 class TargetFileInfo():

@@ -52,6 +52,12 @@ def matchSeason(filename: str):
     2
     >>> matchSeason("Breaking.Bad.Season.5.1080p.BluRay")
     5
+    >>> matchSeason("Band.of.Brothers.2001.1080p.BluRay.x265.10bit.AC3") is None
+    True
+    >>> matchSeason("Friends.2019.1080p") is None
+    True
+    >>> matchSeason("Series.2019.S01E02.1080p") 
+    1
     """
     # TODO 添加更多季度匹配模式
     regexs = [
@@ -200,6 +206,12 @@ def simpleMatchEp(basename: str):
     9
     >>> simpleMatchEp("第10话")
     10
+    >>> simpleMatchEp("01")
+    1
+    >>> simpleMatchEp("01(video)")
+    1
+    >>> simpleMatchEp("01v2")
+    1
     """
     if basename.isdigit():
         return int(basename)
