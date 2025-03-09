@@ -166,11 +166,12 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                                                file_list=waiting_list, linktype=task_info.operation)
                     done_list.append(target_file.full_path)
                     # 更新
-                    record.top_folder = target_file.top_folder
-                    record.second_folder = target_file.second_folder
                     record.isepisode = target_file.is_episode
                     record.season = target_file.season_number
                     record.episode = target_file.episode_number
+                    
+                    record.top_folder = target_file.top_folder
+                    record.second_folder = target_file.second_folder
                     record.destpath = target_file.full_path
                     record.deleted = False
                     record.updatetime = datetime.now()

@@ -22,13 +22,13 @@ export type EmbySettings = {
 };
 
 export type ExtraInfoPublic = {
-    filepath: string;
-    number: string;
+    filepath?: string | null;
+    number?: string | null;
     tag?: string | null;
-    partNumber: number;
+    partNumber?: number | null;
     specifiedsource?: string | null;
     specifiedurl?: string | null;
-    id: number;
+    id?: number | null;
 };
 
 export type HTTPValidationError = {

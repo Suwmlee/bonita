@@ -88,11 +88,25 @@ export const $EmbySettings = {
 export const $ExtraInfoPublic = {
     properties: {
         filepath: {
-            type: 'string',
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
             title: 'Filepath'
         },
         number: {
-            type: 'string',
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
             title: 'Number'
         },
         tag: {
@@ -107,7 +121,14 @@ export const $ExtraInfoPublic = {
             title: 'Tag'
         },
         partNumber: {
-            type: 'integer',
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
             title: 'Partnumber'
         },
         specifiedsource: {
@@ -133,12 +154,18 @@ export const $ExtraInfoPublic = {
             title: 'Specifiedurl'
         },
         id: {
-            type: 'integer',
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
             title: 'Id'
         }
     },
     type: 'object',
-    required: ['filepath', 'number', 'partNumber', 'id'],
     title: 'ExtraInfoPublic'
 } as const;
 

@@ -141,7 +141,7 @@ def cleanFolderWithoutSuffix(folder, suffix):
 
 def cleanFolderbyFilter(folder, filter):
     """ 根据过滤名删除文件
-    
+
     如果目录下所有文件都被删除，将删除文件夹
     """
     cleanAll = True
@@ -166,19 +166,23 @@ def cleanFilebyFilter(folder, filter):
     只当前目录,不递归删除
     未含分集标识的filter不能删除带有分集标识的文件
     """
-    dirs = os.listdir(folder)
-    for file in dirs:
-        f = os.path.join(folder, file)
-        if not os.path.isdir(f):
-            if file.startswith(filter):
-                # 未分集到分集 重复删除分集内容
-                if '-CD' in file.upper():
-                    if '-CD' in filter.upper():
+    try:
+        dirs = os.listdir(folder)
+        for file in dirs:
+            f = os.path.join(folder, file)
+            if not os.path.isdir(f):
+                if file.startswith(filter):
+                    # 未分集到分集 重复删除分集内容
+                    if '-CD' in file.upper():
+                        if '-CD' in filter.upper():
+                            logger.info("clean file [{}]".format(f))
+                            os.remove(f)
+                    else:
                         logger.info("clean file [{}]".format(f))
                         os.remove(f)
-                else:
-                    logger.info("clean file [{}]".format(f))
-                    os.remove(f)
+    except Exception as e:
+        logger.error(f"[-] cleanFilebyFilter failed {folder} {filter}")
+        logger.error(e)
 
 
 def moveSubs(srcfolder, destfolder, basename, newname, saved=True):
@@ -280,7 +284,7 @@ def linkFile(srcpath, dstpath, operation: OperationMethod):
 def replaceCJK(base: str):
     """ 尝试替换 CJK 字符
     https://stackoverflow.com/questions/1366068/whats-the-complete-range-for-chinese-characters-in-unicode
-    
+
     https://www.unicode.org/charts/charindex.html
 
     eg: 你好  [4k修复] (实例1)

@@ -2,14 +2,11 @@
 '''
 '''
 import os
-import re
-import time
 import logging
 
 from bonita.utils.fileinfo import BasicFileInfo, TargetFileInfo
-from bonita.utils.regex import extractEpNum, matchSeason, matchEpPart, matchSeries, simpleMatchEp
-from bonita.utils.filehelper import OperationMethod, linkFile, video_type, ext_type, replaceRegex, cleanFolderWithoutSuffix, \
-    replaceCJK, cleanbyNameSuffix, cleanExtraMedia, moveSubs
+from bonita.utils.regex import matchSeason, simpleMatchEp
+from bonita.utils.filehelper import OperationMethod, linkFile, video_type, ext_type, replaceRegex, replaceCJK, cleanbyNameSuffix, moveSubs
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +49,10 @@ def _handle_group_naming(original_file: BasicFileInfo, target_file: TargetFileIn
     if epfiles:
         # 如果有剧集标记则返回
         return
-    namingfiles = [x for x in file_list if 'CMCT' in x.filename]
+    namingfiles = [x for x in file_list if 'CMCT' in x.basename]
     if len(namingfiles) == 1:
         # 非剧集情况下使用文件名作为文件夹名
-        target_file.top_folder = namingfiles[0].filename
+        target_file.top_folder = namingfiles[0].basename
         logger.debug(f"[-] handling cmct midfolder [{target_file.top_folder}]")
 
 
@@ -89,30 +86,31 @@ def _fix_series_naming(original_file: BasicFileInfo, target_file: TargetFileInfo
     tmp_season = target_file.season_number if target_file.forced_season else original_file.season_number
     tmp_episode = target_file.episode_number if target_file.forced_episode else original_file.episode_number
     tmp_secondfolder = original_file.second_folder
-    tmp_filename = original_file.base_name
+    tmp_filename = original_file.basename
     tmp_original_marker = original_file.original_episode_marker
     # 如果已有有效的季数和集数记录，直接使用
     if tmp_season > -1 and tmp_episode > -1:
         marker = f"S{tmp_season:02d}E{tmp_episode:02d}"
         if marker not in tmp_filename:
-            tmp_filename = fix_episode_name(tmp_filename, tmp_season, tmp_episode, tmp_original_marker) or marker
+            tmp_filename = marker
     # 没有完整的季数和集数
     # 季数最重要，季数涉及到中间的文件夹，集数可以使用自身的名称
     elif tmp_season > -1 and tmp_episode == -1:
         tmp_filename, tmp_episode = fix_episode_name(tmp_filename, tmp_season, tmp_episode, tmp_original_marker)
     else:
-        find_season = matchSeason(original_file.parent_folder)
+        find_season = matchSeason(original_file.basefolder)
         if find_season:
             tmp_season = find_season
             tmp_filename, tmp_episode = fix_episode_name(tmp_filename, find_season, tmp_episode, tmp_original_marker)
         else:
-            # 父级目录检测不到后，查看二级目录，为空则表示资源可能为单季，默认第一季
+            # 父级未发现season标记，二级目录为空则可能为单季，默认第一季
             if tmp_secondfolder == '':
                 tmp_season = 1
                 tmp_filename, tmp_episode = fix_episode_name(tmp_filename, tmp_season, tmp_episode, tmp_original_marker)
             else:
-                # 二级目录检测到花絮，则表示资源为多季，且为花絮
-                if '花絮' in tmp_secondfolder and original_file.top_folder != '':
+                # 存在一些特殊标记，可能为特典
+                special_tags = ['花絮', '特典', '特辑', '特典', 'extra', 'special', '[sp]']
+                if any(x in tmp_secondfolder for x in special_tags):
                     tmp_season = 0
                     tmp_filename, tmp_episode = fix_episode_name(
                         tmp_filename, tmp_season, tmp_episode, tmp_original_marker)
@@ -120,7 +118,7 @@ def _fix_series_naming(original_file: BasicFileInfo, target_file: TargetFileInfo
     target_file.season_number = tmp_season
     target_file.episode_number = tmp_episode
     target_file.second_folder = "Specials" if tmp_season == 0 else f"Season {tmp_season}"
-    target_file.base_name = tmp_filename
+    target_file.basename = tmp_filename
     return
 
 
@@ -175,24 +173,26 @@ def transferfile(original_file: BasicFileInfo,
     转移文件
     """
     target_file.top_folder = original_file.top_folder
+    target_file.second_folder = original_file.second_folder
+    target_file.basename = original_file.basename
     target_file.file_extension = original_file.file_extension
 
     _handle_group_naming(original_file, target_file, file_list)
     if optimize_name_tag:
         target_file.top_folder = _simplify_folder_name(original_file.top_folder)
 
-    # 配置设置为剧集 or 手动设置为剧集
-    if series_tag or target_file.is_episode:
+    # 当前设置类型是剧集
+    if series_tag and (target_file.is_episode or original_file.is_episode):
         _fix_series_naming(original_file, target_file)
 
-    target_file.filename = target_file.base_name + target_file.file_extension
+    target_file.filename = target_file.basename + target_file.file_extension
 
     folder_path = os.path.join(target_file.root_folder, target_file.top_folder, target_file.second_folder)
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
 
-    cleanbyNameSuffix(folder_path, target_file.base_name, ext_type)
-    target_file.full_path = transSingleFile(original_file, folder_path, target_file.base_name, linktype)
+    cleanbyNameSuffix(folder_path, target_file.basename, ext_type)
+    target_file.full_path = transSingleFile(original_file, folder_path, target_file.basename, linktype)
 
     return target_file
 
@@ -202,6 +202,6 @@ def transSingleFile(original_file: BasicFileInfo, output_folder, target_filename
     """
     dest_path = os.path.join(output_folder, target_filename + original_file.file_extension)
     linkFile(original_file.full_path, dest_path, linktype)
-    moveSubs(original_file.parent_folder, output_folder, original_file.base_name, target_filename)
+    moveSubs(original_file.parent_folder, output_folder, original_file.basename, target_filename)
 
     return dest_path
