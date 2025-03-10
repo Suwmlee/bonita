@@ -96,7 +96,6 @@ export default defineComponent({
     flex-direction: column;
     flex-grow: 1;
     min-block-size: 100dvh;
-    max-width: 1600px;
     margin: auto;
     transition: padding-inline-start 0.2s ease-in-out;
     will-change: padding-inline-start;
