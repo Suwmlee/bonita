@@ -88,7 +88,7 @@ export const useTaskStore = defineStore("task-store", {
 
       // Check if the task is already in the runningTasks array
       const existingTaskIndex = this.runningTasks.findIndex(
-        (runningTask) => runningTask.transfer_config === task.transfer_config,
+        (runningTask) => runningTask.id === task.id,
       )
 
       if (existingTaskIndex !== -1) {

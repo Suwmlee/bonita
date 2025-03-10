@@ -19,12 +19,27 @@ const { updateTask } = props as {
 }
 const currentTask = ref<any>()
 
+// Define content type options
+const contentTypeOptions = [
+  { title: '电影', value: 1 },
+  { title: '剧集', value: 2 },
+]
+
+// Define operation method options
+const operationOptions = [
+  { title: '硬链接', value: 1 },
+  { title: '软链接', value: 2 },
+  { title: '移动', value: 3 },
+  { title: '复制', value: 4 },
+]
+
 if (updateTask) {
   currentTask.value = { ...updateTask }
 } else {
   const createTask: TransferConfigCreate = {
     name: "name",
     description: "descrip",
+    content_type: 1,
     operation: 1,
     source_folder: "/media/source",
     output_folder: "/media/output",
@@ -83,7 +98,18 @@ async function handleSubmit() {
             <label for="content_type">content type</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField id="content_type" type="number" v-model.number="currentTask.content_type" />
+            <VRadioGroup
+              id="content_type"
+              v-model="currentTask.content_type"
+              inline
+            >
+              <VRadio
+                v-for="option in contentTypeOptions"
+                :key="option.value"
+                :label="option.title"
+                :value="option.value"
+              />
+            </VRadioGroup>
           </VCol>
         </VRow>
       </VCol>
@@ -116,7 +142,18 @@ async function handleSubmit() {
             <label for="operation">Operation</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField id="operation" type="number" v-model.number="currentTask.operation" />
+            <VRadioGroup
+              id="operation"
+              v-model="currentTask.operation"
+              inline
+            >
+              <VRadio
+                v-for="option in operationOptions"
+                :key="option.value"
+                :label="option.title"
+                :value="option.value"
+              />
+            </VRadioGroup>
           </VCol>
         </VRow>
       </VCol>
@@ -235,7 +272,7 @@ async function handleSubmit() {
         </VRow>
       </VCol>
 
-      <VCol cols="12">
+      <!-- <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
             <label for="threads_num">Threads Number</label>
@@ -244,7 +281,7 @@ async function handleSubmit() {
             <VTextField id="threads_num" type="number" v-model.number="currentTask.threads_num" />
           </VCol>
         </VRow>
-      </VCol>
+      </VCol> -->
 
       <!-- 👉 submit and reset button -->
       <VCol cols="12">
