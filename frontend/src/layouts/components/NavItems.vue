@@ -1,45 +1,48 @@
 <script lang="ts" setup>
 import VerticalNavLink from "@layouts/components/VerticalNavLink.vue"
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 </script>
 
 <template>
   <VerticalNavLink :item="{
-    title: 'Dashboard',
+    title: t('navitems.dashboard'),
     icon: 'bx-home',
     to: '/dashboard',
   }" />
   <VerticalNavLink :item="{
-    title: 'Records',
+    title: t('navitems.records'),
     icon: 'bx-objects-horizontal-left',
     to: '/records',
   }" />
   <VerticalNavLink :item="{
-    title: 'Task',
+    title: t('navitems.tasks'),
     icon: 'bx-task',
     to: '/tasks/all',
   }" />
   <VerticalNavLink :item="{
-    title: 'Scraping',
+    title: t('navitems.scraping'),
     icon: 'bxs-magic-wand',
     to: '/scraping/configs',
   }" />
   <VerticalNavLink :item="{
-    title: 'Metadata',
+    title: t('navitems.metadata'),
     icon: 'bxs-data',
     to: '/metadata',
   }" />
   <VerticalNavLink :item="{
-    title: 'Tools',
+    title: t('navitems.tools'),
     icon: 'bxs-wrench',
     to: '/tools',
   }" />
   <VerticalNavLink :item="{
-    title: 'ServiceSettings',
+    title: t('navitems.serviceSettings'),
     icon: 'bxs-server',
     to: '/settings/service',
   }" />
   <VerticalNavLink :item="{
-    title: 'UserSettings',
+    title: t('navitems.userSettings'),
     icon: 'bxs-user-detail',
     to: '/settings/user',
   }" />

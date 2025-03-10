@@ -2,6 +2,7 @@
 import NavItems from "@/layouts/components/NavItems.vue"
 import logo from "@images/logo.png"
 import VerticalNavLayout from "./VerticalNavLayout.vue"
+import LanguageSwitcher from "./LanguageSwitcher.vue"
 
 // Components
 import NavbarThemeSwitcher from "@/layouts/components/NavbarThemeSwitcher.vue"
@@ -20,6 +21,7 @@ import UserProfile from "@/layouts/components/UserProfile.vue"
 
         <VSpacer />
 
+        <LanguageSwitcher class="me-1" />
         <NavbarThemeSwitcher class="me-1" />
 
         <UserProfile />
