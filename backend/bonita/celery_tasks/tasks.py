@@ -117,6 +117,8 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     record.srcname = original_file.filename
                     record.srcpath = original_file.full_path
                     record.create(session)
+                if record.srcdeleted:
+                    record.srcdeleted = False
                 if record.ignored:
                     logger.debug(f"[-] ignore {original_file.full_path}")
                     continue
@@ -183,7 +185,12 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
             session.close()
 
         if isEntry and task_info.auto_watch:
-            celery_emby_scan.apply_async(args=[task_json])
+            try:
+                logger.info(f"[+] group task: start emby scan")
+                celery_emby_scan.apply(args=[task_json])
+            except Exception as e:
+                logger.error(f"[!] group task: emby scan failed")
+                logger.error(e)
 
         logger.info(f"transfer group end {full_path}")
         return done_list
@@ -306,7 +313,8 @@ def celery_emby_scan(self, task_json):
             emby_apikey = session.query(SystemSetting).filter(SystemSetting.key == "emby_apikey").first()
 
             if not emby_host or not emby_apikey:
-                raise Exception("Emby host or API key not configured")
+                logger.error("Emby host or API key not configured")
+                return
 
             # Extract the actual values from the SystemSetting objects
             emby_host_value = emby_host.value
@@ -323,7 +331,7 @@ def celery_emby_scan(self, task_json):
 
     except Exception as e:
         logger.error(f"Error during Emby library scan: {str(e)}")
-        raise e
+        return
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},

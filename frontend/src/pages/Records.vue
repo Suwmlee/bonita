@@ -420,16 +420,6 @@ onMounted(() => {
   opacity: 0.85;
 }
 
-/* 确保表格可以显示更多行 */
-:deep(.v-data-table) {
-  min-height: calc(100vh - 250px);
-  max-height: none !important;
-}
-
-:deep(.v-data-table__wrapper) {
-  overflow-y: auto;
-}
-
 .max-w-taskid {
   max-width: 150px;
 }

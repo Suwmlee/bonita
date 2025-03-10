@@ -136,3 +136,4 @@ pyvenv.cfg
 # Custom
 *.lock
 cache/
+*.log.*
