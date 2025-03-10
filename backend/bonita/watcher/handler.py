@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from datetime import datetime
 from typing import Callable
 from watchdog.events import FileSystemEventHandler
@@ -39,8 +40,40 @@ class WatcherHandler(FileSystemEventHandler):
         """创建并返回数据库会话"""
         return SessionFactory()
 
+    def _wait_for_file_stable(self, filepath: str, interval: int = 6) -> bool:
+        """
+        等待文件稳定（写入完成）
+
+        Args:
+            filepath: 文件路径
+            interval: 检查间隔（秒）
+        Returns:
+            bool: 是否成功等到文件稳定
+        """
+        last_size = -1
+        keep_checking = True
+        logger.info(f"[!] Waiting for file {filepath} to stabilize")
+        while keep_checking:
+            try:
+                current_size = os.path.getsize(filepath)
+                if current_size == last_size:
+                    # 文件大小连续两次相同，假设写入完成
+                    logger.info(f"[!] File {filepath} is stable")
+                    return True
+                last_size = current_size
+                time.sleep(interval)
+            except OSError as e:
+                logger.error(f"[!] Error checking file size: {e}")
+                return False
+
+        logger.warning(f"[!] Timeout waiting for file {filepath} to stabilize")
+        return False
+
     def _execute_task(self, filepath: str) -> None:
         """执行任务的主要逻辑"""
+        # 等待文件稳定才可以移动，如果是硬链接，不需要等待
+        # if not self._wait_for_file_stable(filepath):
+        #     return
         session = self._get_session()
         try:
             task_info = session.query(TransferConfig).filter(TransferConfig.id == self.task_id).first()
