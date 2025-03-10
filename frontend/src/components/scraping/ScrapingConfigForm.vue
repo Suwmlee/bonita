@@ -4,6 +4,7 @@ import type {
   ScrapingConfigPublic,
 } from "@/client/types.gen"
 import { useScrapingStore } from "@/stores/scraping.store"
+import { useI18n } from "vue-i18n"
 
 interface Props {
   updateSetting?: ScrapingConfigPublic
@@ -11,6 +12,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const scrapingStore = useScrapingStore()
+const { t } = useI18n()
 
 const { updateSetting } = props as {
   updateSetting: ScrapingConfigPublic
@@ -43,7 +45,7 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="name">Name</label>
+            <label for="name">{{ t('components.scraping.form.name') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentSetting.name" />
@@ -54,7 +56,7 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="mobile">description</label>
+            <label for="mobile">{{ t('components.scraping.form.description') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentSetting.description" />
@@ -65,7 +67,7 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="mobile">save metadata</label>
+            <label for="mobile">{{ t('components.scraping.form.saveMetadata') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VCheckbox v-model="currentSetting.save_metadata" />
@@ -76,7 +78,7 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="mobile">naming_rule</label>
+            <label for="mobile">{{ t('components.scraping.form.namingRule') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentSetting.naming_rule" />
@@ -87,7 +89,7 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="scraping_sites">Scraping Sites</label>
+            <label for="scraping_sites">{{ t('components.scraping.form.scrapingSites') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentSetting.scraping_sites" />
@@ -98,7 +100,7 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="location_rule">Location Rule</label>
+            <label for="location_rule">{{ t('components.scraping.form.locationRule') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentSetting.location_rule" />
@@ -109,7 +111,7 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="max_title_len">Max Title Length</label>
+            <label for="max_title_len">{{ t('components.scraping.form.maxTitleLength') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField 
@@ -123,7 +125,7 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="morestoryline">More Storyline</label>
+            <label for="morestoryline">{{ t('components.scraping.form.moreStoryline') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VCheckbox v-model="currentSetting.morestoryline" />
@@ -134,7 +136,7 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="extrafanart_enabled">Extra Fanart Enabled</label>
+            <label for="extrafanart_enabled">{{ t('components.scraping.form.extraFanartEnabled') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VCheckbox v-model="currentSetting.extrafanart_enabled" />
@@ -145,7 +147,7 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="extrafanart_folder">Extra Fanart Folder</label>
+            <label for="extrafanart_folder">{{ t('components.scraping.form.extraFanartFolder') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentSetting.extrafanart_folder" />
@@ -156,7 +158,7 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="watermark_enabled">Watermark Enabled</label>
+            <label for="watermark_enabled">{{ t('components.scraping.form.watermarkEnabled') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VCheckbox v-model="currentSetting.watermark_enabled" />
@@ -167,7 +169,7 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="watermark_size">Watermark Size</label>
+            <label for="watermark_size">{{ t('components.scraping.form.watermarkSize') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField 
@@ -181,7 +183,7 @@ async function handleSubmit() {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="watermark_location">Watermark Location</label>
+            <label for="watermark_location">{{ t('components.scraping.form.watermarkLocation') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField 
@@ -231,10 +233,10 @@ async function handleSubmit() {
           <VCol cols="12" md="3" />
           <VCol cols="12" md="9">
             <VBtn type="submit" class="me-4">
-              Submit
+              {{ t('components.scraping.form.submit') }}
             </VBtn>
             <VBtn color="secondary" variant="tonal" type="reset">
-              Reset
+              {{ t('components.scraping.form.reset') }}
             </VBtn>
           </VCol>
         </VRow>

@@ -2,9 +2,11 @@
 import { useRecordStore } from "@/stores/record.store"
 import { useTaskStore } from "@/stores/task.store"
 import { VIcon } from "vuetify/components"
+import { useI18n } from "vue-i18n"
 
 const recordStore = useRecordStore()
 const taskStore = useTaskStore()
+const { t } = useI18n() // 导入国际化工具函数
 
 const searchQuery = ref("")
 const taskIdQuery = ref("")
@@ -41,70 +43,70 @@ const formatDateTime = (dateStr: string | null | undefined) => {
 
 const headers = [
   {
-    title: "name",
+    title: t('pages.records.name'),
     align: "start" as "start" | "center" | "end",
     key: "transfer_record.srcname",
     width: 250,
     sortable: true,
   },
   {
-    title: "path",
+    title: t('pages.records.path'),
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.srcpath",
     width: 200,
     sortable: true,
   },
   {
-    title: "destpath",
+    title: t('pages.records.destPath'),
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.destpath",
     width: 200,
     sortable: true,
   },
   {
-    title: "season",
+    title: t('pages.records.season'),
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.season",
     width: 100,
     sortable: true,
   },
   {
-    title: "episode",
+    title: t('pages.records.episode'),
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.episode",
     width: 100,
     sortable: true,
   },
   {
-    title: "number",
+    title: t('pages.records.number'),
     align: "center" as "start" | "center" | "end",
     key: "extra_info.number",
     width: 100,
     sortable: false,
   },
   {
-    title: "tag",
+    title: t('pages.records.tag'),
     align: "center" as "start" | "center" | "end",
     key: "extra_info.tag",
     width: 100,
     sortable: false,
   },
   {
-    title: "updatetime",
+    title: t('pages.records.updateTime'),
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.updatetime",
     width: 120,
     sortable: true,
   },
   {
-    title: "deadtime",
+    title: t('pages.records.deadTime'),
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.deadtime",
     width: 120,
     sortable: true,
   },
   {
-    title: "Actions",
+    title: t('common.actions'),
     key: "actions",
     sortable: false,
     width: 100,
@@ -239,31 +241,31 @@ onMounted(() => {
 
 <template>
   <p class="text-xl mb-6">
-    Records
+    {{ t('pages.records.title') }}
   </p>
   <VCard>
     <div class="search-toolbar px-4 py-4">
       <div class="d-flex align-center justify-space-between flex-wrap gap-4">
         <div class="search-fields d-flex gap-4 align-center flex-grow-1 flex-wrap">
-          <v-text-field v-model="searchQuery" placeholder="文件名搜索" hide-details density="comfortable"
+          <v-text-field v-model="searchQuery" :placeholder="t('pages.records.search')" hide-details density="comfortable"
             class="search-input" prepend-inner-icon="mdi-magnify" clearable
             @click:clear="searchQuery = ''; loadData(1, recordStore.itemsPerPage)" />
 
-          <v-text-field v-model="taskIdQuery" placeholder="过滤任务ID" hide-details density="comfortable"
+          <v-text-field v-model="taskIdQuery" :placeholder="t('pages.records.filterTaskId')" hide-details density="comfortable"
             class="task-id-input" prepend-inner-icon="mdi-pound" clearable type="number"
             @click:clear="taskIdQuery = ''; loadData(1, recordStore.itemsPerPage)" />
         </div>
         
         <v-btn color="error" :disabled="selected.length === 0" prepend-icon="mdi-delete" @click="handleDelete"
           size="default" class="delete-btn">
-          删除选中项 ({{ selected.length }})
+          {{ t('pages.records.deleteSelected', { count: selected.length }) }}
         </v-btn>
       </div>
 
       <div class="search-filters mt-2 mb-1 d-flex flex-wrap align-center gap-2" v-if="searchQuery || taskIdQuery">
         <v-chip v-if="searchQuery" color="primary" size="default" variant="elevated" class="search-chip">
           <v-icon start size="small" class="mr-1">mdi-magnify</v-icon>
-          文件名: {{ searchQuery }}
+          {{ t('pages.records.nameFilter') }}: {{ searchQuery }}
           <template v-slot:append>
             <v-icon size="small" @click="searchQuery = ''; loadData(1, recordStore.itemsPerPage)">mdi-close</v-icon>
           </template>
@@ -271,7 +273,7 @@ onMounted(() => {
 
         <v-chip v-if="taskIdQuery" color="info" size="default" variant="elevated" class="search-chip">
           <v-icon start size="small" class="mr-1">mdi-pound</v-icon>
-          任务ID: {{ taskIdQuery }}
+          {{ t('pages.records.taskIdFilter') }}: {{ taskIdQuery }}
           <template v-slot:append>
             <v-icon size="small" @click="taskIdQuery = ''; loadData(1, recordStore.itemsPerPage)">mdi-close</v-icon>
           </template>
@@ -279,7 +281,7 @@ onMounted(() => {
 
         <v-btn v-if="searchQuery || taskIdQuery" icon="mdi-close-circle" size="small" color="error" variant="text"
           @click="handleClearSearch" class="ml-1 clear-all-btn">
-          <v-tooltip activator="parent" location="top">清除所有筛选条件</v-tooltip>
+          <v-tooltip activator="parent" location="top">{{ t('pages.records.clearFilters') }}</v-tooltip>
         </v-btn>
       </div>
     </div>
@@ -350,11 +352,11 @@ onMounted(() => {
       <template v-slot:bottom>
         <div class="d-flex align-center justify-end px-4 py-3 w-100">
           <div class="d-flex align-center me-4">
-            <span class="text-caption text-grey me-2">每页显示</span>
+            <span class="text-caption text-grey me-2">{{ t('pages.records.itemsPerPage') }}</span>
             <v-select :model-value="recordStore.itemsPerPage" :items="pageSizeOptions" density="compact"
               style="width: 80px" hide-details variant="plain" @update:model-value="handleItemsPerPageChange" />
             <div class="ms-4 text-caption text-grey">
-              总计 {{ recordStore.totalRecords }} 条记录
+              {{ t('pages.records.totalRecords', { count: recordStore.totalRecords }) }}
             </div>
           </div>
 
@@ -372,19 +374,19 @@ onMounted(() => {
   <VDialog v-model="deleteDialog" max-width="500">
     <VCard>
       <VCardTitle class="text-h5">
-        确认删除
+        {{ t('pages.records.deleteDialog.title') }}
       </VCardTitle>
       <VCardText>
-        您确定要删除选中的 {{ selected.length }} 条记录吗？此操作无法撤销。
-        <VCheckbox v-model="forceDelete" label="强制删除（忽略锁定状态）" class="mt-4" />
+        {{ t('pages.records.deleteDialog.message', { count: selected.length }) }}
+        <VCheckbox v-model="forceDelete" :label="t('pages.records.deleteDialog.forceDelete')" class="mt-4" />
       </VCardText>
       <VCardActions>
         <VSpacer />
         <VBtn color="primary" variant="text" @click="deleteDialog = false">
-          取消
+          {{ t('pages.records.deleteDialog.cancel') }}
         </VBtn>
         <VBtn color="error" @click="confirmDelete">
-          删除
+          {{ t('pages.records.deleteDialog.confirm') }}
         </VBtn>
       </VCardActions>
     </VCard>

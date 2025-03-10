@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { useConfirmationStore } from "@/stores/confirmation.store"
+import { useI18n } from "vue-i18n"
 
 const confirmationStore = useConfirmationStore()
+const { t } = useI18n() // 导入国际化工具函数
 </script>
 
 <template>
@@ -12,7 +14,7 @@ const confirmationStore = useConfirmationStore()
   >
     <VCard>
       <VCardTitle class="text-h5">
-        {{ confirmationStore.options.title }}
+        {{ confirmationStore.options.title || t('components.common.confirmation.title') }}
       </VCardTitle>
 
       <VCardText>
@@ -25,14 +27,14 @@ const confirmationStore = useConfirmationStore()
           variant="text"
           @click="confirmationStore.cancel()"
         >
-          {{ confirmationStore.options.cancelText }}
+          {{ confirmationStore.options.cancelText || t('components.common.confirmation.cancelText') }}
         </VBtn>
         <VBtn
           :color="confirmationStore.options.confirmColor"
           variant="elevated"
           @click="confirmationStore.confirm()"
         >
-          {{ confirmationStore.options.confirmText }}
+          {{ confirmationStore.options.confirmText || t('components.common.confirmation.confirmText') }}
         </VBtn>
       </VCardActions>
     </VCard>

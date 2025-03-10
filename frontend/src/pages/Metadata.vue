@@ -4,10 +4,12 @@ import { OpenAPI } from "@/client"
 import MetadataDetailDialog from "@/components/metadata/MetadataDetailDialog.vue"
 import { useMetadataStore } from "@/stores/metadata.store"
 import { computed, onMounted, ref, watch } from "vue"
+import { useI18n } from "vue-i18n"
 
 const metadataStore = useMetadataStore()
 const searchQuery = ref("")
 const isSearching = ref(false)
+const { t } = useI18n() // 导入国际化工具函数
 
 // Pagination
 const currentPage = computed(() => metadataStore.currentPage)
@@ -84,16 +86,16 @@ onMounted(() => {
 <template>
   <div>
     <p class="text-xl mb-6">
-      Metadata
+      {{ t('pages.metadata.title') }}
     </p>
 
     <!-- Search input and Add button -->
     <VRow class="mb-4">
       <VCol cols="12" sm="10" md="8" lg="6" xl="4" class="d-flex align-center">
-        <VTextField v-model="searchQuery" placeholder="Search by number or actor..." clearable hide-details
+        <VTextField v-model="searchQuery" :placeholder="t('pages.metadata.search')" clearable hide-details
           prepend-inner-icon="bx-search" :loading="isSearching" variant="outlined" density="comfortable" class="mr-2" />
         <VBtn color="primary" @click="showAddDialog" prepend-icon="bx-plus">
-          Add New
+          {{ t('pages.metadata.addNew') }}
         </VBtn>
       </VCol>
     </VRow>
@@ -117,13 +119,13 @@ onMounted(() => {
               {{ item.title }}
             </p>
             <p class="mb-2 text-truncate">
-              <strong>Actor:</strong> {{ item.actor }}
+              <strong>{{ t('pages.metadata.actor') }}:</strong> {{ item.actor }}
             </p>
             <p class="mb-2 text-truncate">
-              <strong>Tag:</strong> {{ item.tag }}
+              <strong>{{ t('pages.metadata.tag') }}:</strong> {{ item.tag }}
             </p>
             <p class="mb-0 text-truncate">
-              <strong>Update:</strong> {{ formatDateTime(item.updatetime) }}
+              <strong>{{ t('pages.metadata.update') }}:</strong> {{ formatDateTime(item.updatetime) }}
             </p>
           </VCardText>
 
@@ -137,7 +139,7 @@ onMounted(() => {
     <!-- No results message -->
     <VRow v-if="metadataStore.allMetadata.length === 0" class="mt-5">
       <VCol class="text-center">
-        <p class="text-medium-emphasis">No metadata found. Try adjusting your search or add new metadata.</p>
+        <p class="text-medium-emphasis">{{ t('pages.metadata.noResults') }}</p>
       </VCol>
     </VRow>
 
@@ -146,11 +148,11 @@ onMounted(() => {
       <VCol>
         <div class="d-flex align-center justify-end px-4 py-3 w-100">
           <div class="d-flex align-center me-4">
-            <span class="text-caption text-grey me-2">每页显示</span>
+            <span class="text-caption text-grey me-2">{{ t('pages.metadata.itemsPerPage') }}</span>
             <v-select v-model="itemsPerPage" :items="itemsPerPageOptions" density="compact"
               style="width: 80px" hide-details variant="plain" />
             <div class="ms-4 text-caption text-grey">
-              总计 {{ totalItems }} 条记录
+              {{ t('pages.metadata.totalItems', { count: totalItems }) }}
             </div>
           </div>
 

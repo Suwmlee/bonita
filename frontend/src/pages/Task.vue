@@ -2,9 +2,11 @@
 import { useScrapingStore } from "@/stores/scraping.store"
 import { useTaskStore } from "@/stores/task.store"
 import { VCardActions } from "vuetify/components"
+import { useI18n } from "vue-i18n"
 
 const taskStore = useTaskStore()
 const scrapingStore = useScrapingStore()
+const { t } = useI18n() // 导入国际化工具函数
 
 // Create a computed map of running task statuses for reactivity
 const runningTasksMap = computed(() => {
@@ -58,7 +60,7 @@ onBeforeUnmount(() => {
   <div>
 
     <p class="text-xl mb-6">
-      Task
+      {{ t('pages.task.title') }}
     </p>
 
     <VRow>
@@ -83,11 +85,11 @@ onBeforeUnmount(() => {
           </VCardText>
           <VCardActions class="justify-space-between">
             <VBtn v-if="!isTaskRunning(data.id)" type="submit" class="me-4" @click.stop="runTask(data.id)">
-              立即执行
+              {{ t('pages.task.runNow') }}
             </VBtn>
             <VBtn v-else color="primary" class="me-4" :loading="true" variant="tonal">
               <template #loader>
-                <span>运行中</span>
+                <span>{{ t('pages.task.running') }}</span>
               </template>
             </VBtn>
             <VBtn type="submit" class="me-4" @click.stop="deleteTask(data.id)">
@@ -101,13 +103,13 @@ onBeforeUnmount(() => {
         <VCard style="height: 100%;">
           <VCardItem>
             <VCardTitle>
-              Add Task
+              {{ t('pages.task.addTask') }}
             </VCardTitle>
           </VCardItem>
 
           <VCardText>
             <p class="clamp-text mb-0">
-              Add Task
+              {{ t('pages.task.addTask') }}
             </p>
           </VCardText>
 

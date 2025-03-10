@@ -3,6 +3,7 @@ import { OpenAPI, ResourceService } from "@/client"
 import type { MetadataPublic } from "@/client/types.gen"
 import { useMetadataStore } from "@/stores/metadata.store"
 import { computed, ref } from "vue"
+import { useI18n } from "vue-i18n"
 
 interface Props {
   updateMetadata?: MetadataPublic
@@ -10,6 +11,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const metadataStore = useMetadataStore()
+const { t } = useI18n() // 导入国际化工具函数
 const isSubmitting = ref(false)
 const formValid = ref(true)
 const formErrors = ref<Record<string, string>>({})
@@ -69,12 +71,12 @@ function validateForm() {
 
   // Validate required fields
   if (!currentMetadata.value.number?.trim()) {
-    formErrors.value.number = "Number is required"
+    formErrors.value.number = t('components.metadata.form.validation.numberRequired')
     formValid.value = false
   }
 
   if (!currentMetadata.value.title?.trim()) {
-    formErrors.value.title = "Title is required"
+    formErrors.value.title = t('components.metadata.form.validation.titleRequired')
     formValid.value = false
   }
 
@@ -116,7 +118,7 @@ async function handleFileUpload(event: Event) {
   const file = target.files[0]
   // Validate file type
   if (!file.type.startsWith("image/")) {
-    alert("Please select an image file (JPEG, PNG, etc.).")
+    alert(t('components.metadata.form.imageTypeError'))
     return
   }
 
@@ -146,13 +148,11 @@ async function handleFileUpload(event: Event) {
       currentMetadata.value = { ...currentMetadata.value }
     } else {
       console.error("Could not determine path from upload response:", response)
-      alert(
-        "Image uploaded successfully, but could not determine path. Check the console for details.",
-      )
+      alert(t('components.metadata.form.uploadSuccess'))
     }
   } catch (error) {
     console.error("Image upload failed:", error)
-    alert("Failed to upload image. Please try again.")
+    alert(t('components.metadata.form.uploadError'))
   } finally {
     isUploading.value = false
     if (fileInput.value) {
@@ -168,7 +168,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="number">Number <span class="text-error">*</span></label>
+            <label for="number">{{ t('components.metadata.form.number') }} <span class="text-error">*</span></label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.number" :error-messages="formErrors.number" required />
@@ -179,7 +179,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="title">Title <span class="text-error">*</span></label>
+            <label for="title">{{ t('components.metadata.form.title') }} <span class="text-error">*</span></label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.title" :error-messages="formErrors.title" required />
@@ -190,7 +190,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="studio">Studio</label>
+            <label for="studio">{{ t('components.metadata.form.studio') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.studio" />
@@ -201,7 +201,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="release">Release Date</label>
+            <label for="release">{{ t('components.metadata.form.release') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.release" type="date" />
@@ -212,7 +212,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="year">Year</label>
+            <label for="year">{{ t('components.metadata.form.year') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.year" type="number" />
@@ -223,7 +223,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="runtime">Runtime</label>
+            <label for="runtime">{{ t('components.metadata.form.runtime') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.runtime" />
@@ -234,7 +234,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="genre">Genre</label>
+            <label for="genre">{{ t('components.metadata.form.genre') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.genre" />
@@ -245,7 +245,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="rating">Rating</label>
+            <label for="rating">{{ t('components.metadata.form.rating') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.rating" />
@@ -256,7 +256,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="language">Language</label>
+            <label for="language">{{ t('components.metadata.form.language') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.language" />
@@ -267,7 +267,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="country">Country</label>
+            <label for="country">{{ t('components.metadata.form.country') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.country" />
@@ -278,7 +278,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="outline">Outline</label>
+            <label for="outline">{{ t('components.metadata.form.outline') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextarea v-model="currentMetadata.outline" rows="3" />
@@ -289,7 +289,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="director">Director</label>
+            <label for="director">{{ t('components.metadata.form.director') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.director" />
@@ -300,7 +300,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="actor">Actor</label>
+            <label for="actor">{{ t('components.metadata.form.actor') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.actor" />
@@ -311,7 +311,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="actor_photo">Actor Photo URL</label>
+            <label for="actor_photo">{{ t('components.metadata.form.actorPhoto') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.actor_photo" />
@@ -322,7 +322,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="cover">Cover URL</label>
+            <label for="cover">{{ t('components.metadata.form.cover') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <div class="d-flex align-center">
@@ -330,7 +330,7 @@ async function handleFileUpload(event: Event) {
               <VBtn :loading="isUploading" :disabled="isUploading" color="primary" @click="selectCoverImage"
                 variant="outlined" size="small">
                 <VIcon icon="bx-upload" class="mr-1" />
-                Upload
+                {{ t('components.metadata.form.uploadCover') }}
               </VBtn>
               <!-- Hidden file input for upload -->
               <input ref="fileInput" type="file" accept="image/*" class="d-none" @change="handleFileUpload" />
@@ -353,7 +353,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="cover_small">Cover Small URL</label>
+            <label for="cover_small">{{ t('components.metadata.form.coverSmall') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.cover_small" />
@@ -364,7 +364,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="extrafanart">Extra FanArt</label>
+            <label for="extrafanart">{{ t('components.metadata.form.extraFanart') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.extrafanart" />
@@ -375,7 +375,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="trailer">Trailer URL</label>
+            <label for="trailer">{{ t('components.metadata.form.trailer') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.trailer" />
@@ -386,7 +386,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="tag">Tags</label>
+            <label for="tag">{{ t('components.metadata.form.tag') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.tag" />
@@ -397,7 +397,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="label">Label</label>
+            <label for="label">{{ t('components.metadata.form.label') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.label" />
@@ -408,7 +408,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="series">Series</label>
+            <label for="series">{{ t('components.metadata.form.series') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.series" />
@@ -419,7 +419,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="userrating">User Rating</label>
+            <label for="userrating">{{ t('components.metadata.form.userRating') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.userrating" type="number" min="0" max="10" step="0.1" />
@@ -430,7 +430,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="uservotes">User Votes</label>
+            <label for="uservotes">{{ t('components.metadata.form.userVotes') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.uservotes" type="number" min="0" />
@@ -441,7 +441,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="detailurl">Detail URL</label>
+            <label for="detailurl">{{ t('components.metadata.form.detailUrl') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.detailurl" />
@@ -452,7 +452,7 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="site">Site</label>
+            <label for="site">{{ t('components.metadata.form.site') }}</label>
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.site" />
@@ -466,7 +466,10 @@ async function handleFileUpload(event: Event) {
           <VCol cols="12" md="3" />
           <VCol cols="12" md="9">
             <VBtn type="submit" class="me-4" :loading="isSubmitting" :disabled="isSubmitting">
-              Submit
+              {{ t('components.metadata.form.save') }}
+            </VBtn>
+            <VBtn type="button" color="secondary" variant="tonal" @click="metadataStore.showDialog = false">
+              {{ t('components.metadata.form.cancel') }}
             </VBtn>
           </VCol>
         </VRow>

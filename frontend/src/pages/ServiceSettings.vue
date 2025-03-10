@@ -2,9 +2,12 @@
 import { useSettingStore } from "@/stores/setting.store"
 import { storeToRefs } from "pinia"
 import { onMounted, ref } from "vue"
+import { useI18n } from "vue-i18n"
 
 // 使用 setting store
 const settingStore = useSettingStore()
+const { t } = useI18n() // 导入国际化工具函数
+
 // 通过 storeToRefs 保持响应性
 const { proxySettings, embyApiSettings, loading, saving, testingEmby } =
   storeToRefs(settingStore)
@@ -35,14 +38,14 @@ const saveEmbyApiSettings = async () => {
     const response = await settingStore.saveEmbyApiSettings()
     saveResult.value = {
       success: true,
-      message: "Emby设置已成功保存",
+      message: t('pages.serviceSettings.emby.saveSuccess'),
     }
     return response
   } catch (error) {
     console.error("Error saving Emby settings:", error)
     saveResult.value = {
       success: false,
-      message: "保存Emby设置失败，请稍后重试",
+      message: t('pages.serviceSettings.emby.saveError'),
     }
   }
 
@@ -68,7 +71,7 @@ const testEmbyConnection = async () => {
     console.error("Error testing Emby connection:", error)
     testResult.value = {
       success: false,
-      message: "测试连接失败，请检查您的设置和网络",
+      message: t('pages.serviceSettings.emby.testError'),
     }
   }
 }
@@ -81,14 +84,14 @@ onMounted(() => {
 
 <template>
   <p class="text-xl mb-6">
-    服务配置
+    {{ t('pages.serviceSettings.title') }}
   </p>
   <VRow>
     <VCol cols="12" md="7" lg="5">
       <VCard class="mb-6">
-        <VCardTitle>代理设置</VCardTitle>
+        <VCardTitle>{{ t('pages.serviceSettings.proxy.title') }}</VCardTitle>
         <VCardSubtitle>
-          此处配置的代理将用于应用程序的网络请求
+          {{ t('pages.serviceSettings.proxy.subtitle') }}
         </VCardSubtitle>
         <VCardText>
           <VForm :loading="loading">
@@ -96,7 +99,7 @@ onMounted(() => {
               <VCol cols="12">
                 <VRow no-gutters>
                   <VCol cols="12" md="3" class="row-label">
-                    <label for="http">HTTP 代理</label>
+                    <label for="http">{{ t('pages.serviceSettings.proxy.http') }}</label>
                   </VCol>
                   <VCol cols="12" md="9">
                     <VTextField v-model="proxySettings.http" />
@@ -106,21 +109,21 @@ onMounted(() => {
               <VCol cols="12">
                 <VRow no-gutters>
                   <VCol cols="12" md="3" class="row-label">
-                    <label for="https">HTTPS 代理</label>
+                    <label for="https">{{ t('pages.serviceSettings.proxy.https') }}</label>
                   </VCol>
                   <VCol cols="12" md="9">
-                    <VTextField v-model="proxySettings.https" placeholder="例如: http://127.0.0.1:7890" />
+                    <VTextField v-model="proxySettings.https" :placeholder="t('pages.serviceSettings.proxy.httpsPlaceholder')" />
                   </VCol>
                 </VRow>
               </VCol>
 
               <VCol cols="12">
-                <VSwitch v-model="proxySettings.enabled" label="启用代理" color="primary" inset />
+                <VSwitch v-model="proxySettings.enabled" :label="t('pages.serviceSettings.proxy.enable')" color="primary" inset />
               </VCol>
 
               <VCol cols="12">
                 <VBtn color="primary" :loading="saving" @click="saveProxySettings">
-                  保存设置
+                  {{ t('pages.serviceSettings.proxy.save') }}
                 </VBtn>
               </VCol>
             </VRow>
@@ -129,9 +132,9 @@ onMounted(() => {
       </VCard>
 
       <VCard>
-        <VCardTitle>Emby API 设置</VCardTitle>
+        <VCardTitle>{{ t('pages.serviceSettings.emby.title') }}</VCardTitle>
         <VCardSubtitle>
-          配置Emby服务器API连接参数
+          {{ t('pages.serviceSettings.emby.subtitle') }}
         </VCardSubtitle>
         <VCardText>
           <VForm :loading="loading">
@@ -139,10 +142,10 @@ onMounted(() => {
               <VCol cols="12">
                 <VRow no-gutters>
                   <VCol cols="12" md="3" class="row-label">
-                    <label for="embyUrl">Emby 服务器</label>
+                    <label for="embyUrl">{{ t('pages.serviceSettings.emby.server') }}</label>
                   </VCol>
                   <VCol cols="12" md="9">
-                    <VTextField v-model="embyApiSettings.emby_host" placeholder="例如: http://emby.example.com:8096" />
+                    <VTextField v-model="embyApiSettings.emby_host" :placeholder="t('pages.serviceSettings.emby.serverPlaceholder')" />
                   </VCol>
                 </VRow>
               </VCol>
@@ -150,10 +153,10 @@ onMounted(() => {
               <VCol cols="12">
                 <VRow no-gutters>
                   <VCol cols="12" md="3" class="row-label">
-                    <label for="embyApiKey">API Key</label>
+                    <label for="embyApiKey">{{ t('pages.serviceSettings.emby.apiKey') }}</label>
                   </VCol>
                   <VCol cols="12" md="9">
-                    <VTextField v-model="embyApiSettings.emby_apikey" type="password" placeholder="Emby API Key" />
+                    <VTextField v-model="embyApiSettings.emby_apikey" type="password" :placeholder="t('pages.serviceSettings.emby.apiKeyPlaceholder')" />
                   </VCol>
                 </VRow>
               </VCol>
@@ -162,10 +165,10 @@ onMounted(() => {
                 <VRow>
                   <VCol>
                     <VBtn color="primary" :loading="saving" @click="saveEmbyApiSettings" class="mr-2">
-                      保存设置
+                      {{ t('pages.serviceSettings.emby.save') }}
                     </VBtn>
                     <VBtn color="secondary" :loading="testingEmby" @click="testEmbyConnection">
-                      测试连接
+                      {{ t('pages.serviceSettings.emby.test') }}
                     </VBtn>
                   </VCol>
                 </VRow>
@@ -179,7 +182,7 @@ onMounted(() => {
               
               <VCol cols="12" v-if="testResult">
                 <VAlert :type="testResult.success ? 'success' : 'error'" variant="tonal" density="compact">
-                  {{ testResult.message || (testResult.success ? '连接成功！' : '连接失败！') }}
+                  {{ testResult.message || (testResult.success ? t('pages.serviceSettings.emby.connectionSuccess') : t('pages.serviceSettings.emby.connectionError')) }}
                 </VAlert>
               </VCol>
             </VRow>

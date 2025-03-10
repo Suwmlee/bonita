@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { useAuthStore } from "@/stores/auth.store"
 import logo from "@images/logo.png"
+import { useI18n } from "vue-i18n"
 
 const form = ref({
   email: "",
   password: "",
   remember: false,
 })
+
+const { t } = useI18n() // 导入国际化工具函数
 
 const isPasswordVisible = ref(false)
 
@@ -30,7 +33,7 @@ const login = () => {
         </template>
 
         <VCardTitle class="text-2xl font-weight-bold">
-          Bonita
+          {{ t('app.title') }}
         </VCardTitle>
       </VCardItem>
 
@@ -39,7 +42,7 @@ const login = () => {
           Welcome to Bonita! 👋🏻
         </h5> -->
         <p class="mb-0">
-          请登录您的账户，开始冒险之旅
+          {{ t('auth.welcomeMessage') }}
         </p>
       </VCardText>
 
@@ -48,23 +51,23 @@ const login = () => {
           <VRow>
             <!-- email -->
             <VCol cols="12">
-              <VTextField v-model="form.email" autofocus placeholder="请输入邮箱" type="email" />
+              <VTextField v-model="form.email" autofocus :placeholder="t('auth.enterEmail')" type="email" />
             </VCol>
 
             <!-- password -->
             <VCol cols="12">
-              <VTextField v-model="form.password" placeholder="请输入密码" :type="isPasswordVisible ? 'text' : 'password'"
+              <VTextField v-model="form.password" :placeholder="t('auth.enterPassword')" :type="isPasswordVisible ? 'text' : 'password'"
                 :append-inner-icon="isPasswordVisible ? 'bx-hide' : 'bx-show'"
                 @click:append-inner="isPasswordVisible = !isPasswordVisible" />
 
               <!-- remember me checkbox -->
               <div class="d-flex align-center justify-space-between flex-wrap mt-1 mb-4">
-                <VCheckbox v-model="form.remember" label="记住我" />
+                <VCheckbox v-model="form.remember" :label="t('auth.rememberMe')" />
               </div>
 
               <!-- login button -->
               <VBtn block type="submit">
-                登录
+                {{ t('auth.login') }}
               </VBtn>
             </VCol>
 
