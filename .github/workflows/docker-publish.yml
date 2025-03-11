@@ -27,6 +27,6 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v3
         with:
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: suwmlee/bonita:${{ github.event.inputs.publish_tag }}
