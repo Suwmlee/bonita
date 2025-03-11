@@ -55,7 +55,7 @@ def update_task_config(
     task_config.update(session, update_dict)
     session.commit()
     session.refresh(task_config)
-    
+
     if task_config.auto_watch:
         watcher_manager.add_directory(task_config.source_folder, task_config.id)
     return task_config
@@ -70,6 +70,9 @@ def delete_task_config(
     删除任务配置
     """
     config = session.get(TransferConfig, id)
+    if config.auto_watch:
+        watcher_manager.remove_directory(config.source_folder, config.id)
     session.delete(config)
     session.commit()
-    return schemas.Response(success=True, message="任务配置删除成功") 
+
+    return schemas.Response(success=True, message="任务配置删除成功")
