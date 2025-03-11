@@ -86,7 +86,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
         self.update_state(state="PROGRESS", meta={"progress": 0, "step": "celery_transfer_pool: start"})
         logger.info(f"transfer group start {full_path}")
         if not os.path.exists(full_path):
-            logger.debug(f"[!] Transfer not found {full_path}")
+            logger.info(f"[!] Transfer not found {full_path}")
             return []
         task_info = schemas.TransferConfigPublic(**task_json)
         is_series = False
@@ -97,14 +97,14 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
             waiting_list = findAllVideos(full_path, task_info.source_folder, re.split("[,，]", task_info.escape_folder))
         else:
             if not os.path.splitext(full_path)[1].lower() in video_type:
-                logger.debug(f"[!] Transfer failed {full_path}")
+                logger.info(f"[!] Transfer failed {full_path}")
                 return []
             waiting_list = []
             tf = BasicFileInfo(full_path)
             tf.set_root_folder(task_info.source_folder)
             waiting_list.append(tf)
 
-        logger.debug(f"[+] Transfer check {full_path}")
+        logger.info(f"[+] Transfer check {full_path}")
         try:
             session = SessionFactory()
             done_list = []
@@ -120,14 +120,14 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                 if record.srcdeleted:
                     record.srcdeleted = False
                 if record.ignored:
-                    logger.debug(f"[-] ignore {original_file.full_path}")
+                    logger.info(f"[-] ignore {original_file.full_path}")
                     continue
                 record.task_id = task_info.id
                 if task_info.sc_enabled:
-                    logger.debug(f"[-] need scraping")
+                    logger.info(f"[-] need scraping")
                     scraping_conf = session.query(ScrapingConfig).filter(ScrapingConfig.id == task_info.sc_id).first()
                     if not scraping_conf:
-                        logger.debug(f"[-] scraping config not found")
+                        logger.info(f"[-] scraping config not found")
                         continue
                     scraping_task = celery_scrapping.apply(args=[original_file.full_path, scraping_conf.to_dict()])
                     with allow_join_result():
@@ -155,9 +155,9 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     record.destpath = destpath
                     record.deleted = False
                     record.updatetime = datetime.now()
-                    logger.debug(f"[-] scraping transfer end")
+                    logger.info(f"[-] scraping transfer end")
                 else:
-                    logger.debug(f"[-] start transfer")
+                    logger.info(f"[-] start transfer")
                     target_file = TargetFileInfo(task_info.output_folder)
                     # 如果 record 中定义了剧集信息，则使用 record 中的信息
                     if record.isepisode:
@@ -177,7 +177,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     record.destpath = target_file.full_path
                     record.deleted = False
                     record.updatetime = datetime.now()
-                    logger.debug(f"[-] transfer end")
+                    logger.info(f"[-] transfer end")
         except Exception as e:
             logger.error(e)
         finally:
@@ -200,7 +200,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
              name='scraping:single')
 def celery_scrapping(self, file_path, scraping_dict):
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "scraping task: start"})
-    logger.debug(f"[+] scraping task: start")
+    logger.info(f"[+] scraping task: start")
     try:
         session = SessionFactory()
         scraping_conf = schemas.ScrapingConfigPublic(**scraping_dict)
@@ -304,7 +304,7 @@ def celery_clean_others(self, folder_path, done_list):
              name='emby:scan')
 def celery_emby_scan(self, task_json):
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "emby scan: start"})
-    logger.debug(f"[+] emby scan: start")
+    logger.info(f"[+] emby scan: start")
     try:
         # Get Emby configuration from the database
         session = SessionFactory()
@@ -338,7 +338,7 @@ def celery_emby_scan(self, task_json):
              name='import:nfo')
 def celery_import_nfo(self, folder_path, option):
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "import nfo: start"})
-    logger.debug(f"[+] import nfo: start")
+    logger.info(f"[+] import nfo: start")
     try:
         metadata_list = load_all_NFO_from_folder(folder_path)
         # 过滤有效的nfo信息

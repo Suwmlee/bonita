@@ -28,12 +28,12 @@ class EmbyService:
         # Construct the URL for the Emby library scan endpoint
         scan_url = f"{emby_host}/Library/Refresh?api_key={emby_apikey}"
 
-        logger.debug(f"[+] emby scan: sending request to {emby_host}")
+        logger.info(f"[+] emby scan: sending request to {emby_host}")
 
         response = requests.post(scan_url)
 
         if response.status_code == 204 or response.status_code == 200:
-            logger.debug(f"[+] emby scan: library scan triggered successfully")
+            logger.info(f"[+] emby scan: library scan triggered successfully")
             return True
         else:
             logger.error(f"Failed to trigger Emby library scan. Status code: {response.status_code}")

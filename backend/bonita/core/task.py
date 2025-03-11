@@ -14,7 +14,7 @@ def init_watcher():
     """
     try:
         session = SessionFactory()
-        logger.debug("watchdog initial")
+        logger.info("watchdog initial")
         task_configs = session.query(TransferConfig).all()
         # 为每个启用了自动监控的任务添加目录监控
         for task_config in task_configs:

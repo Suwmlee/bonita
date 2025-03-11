@@ -33,7 +33,7 @@ class WatcherHandler(FileSystemEventHandler):
         ext = os.path.splitext(filepath)[1].lower()
         is_video = ext in video_type
         if not is_video:
-            logger.debug(f"[!] {filepath} is not a video file")
+            logger.info(f"[!] watcher: {filepath} is not a video file")
         return is_video
 
     def _get_session(self):
