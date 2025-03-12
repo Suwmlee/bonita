@@ -3,10 +3,24 @@ import { useScrapingStore } from "@/stores/scraping.store"
 import { useTaskStore } from "@/stores/task.store"
 import { VCardActions } from "vuetify/components"
 import { useI18n } from "vue-i18n"
+import { ref, computed, onMounted, onBeforeUnmount } from "vue"
 
 const taskStore = useTaskStore()
 const scrapingStore = useScrapingStore()
 const { t } = useI18n() // 导入国际化工具函数
+
+// Store directory inputs for each task
+const directoryInputs = ref(new Map<number, string>())
+
+// Get directory input for a task
+function getDirectoryInput(taskId: number): string {
+  return directoryInputs.value.get(taskId) || ''
+}
+
+// Set directory input for a task
+function setDirectoryInput(taskId: number, value: string): void {
+  directoryInputs.value.set(taskId, value)
+}
 
 // Create a computed map of running task statuses for reactivity
 const runningTasksMap = computed(() => {
@@ -36,7 +50,15 @@ function addNewTask() {
 }
 
 function runTask(id: number) {
-  taskStore.runTaskById(id)
+  // Get the directory input for this task
+  const directory = getDirectoryInput(id)
+  
+  // Use the appropriate method based on whether a directory is specified
+  if (directory.trim()) {
+    taskStore.runTaskByIdWithPath(id, directory)
+  } else {
+    taskStore.runTaskById(id)
+  }
 }
 
 const showSelectedTask = (item: any) => {
@@ -45,6 +67,11 @@ const showSelectedTask = (item: any) => {
 
 function deleteTask(id: number) {
   taskStore.deleteTaskById(id)
+}
+
+// Prevent event propagation for input field
+function handleInputClick(event: Event) {
+  event.stopPropagation()
 }
 
 onMounted(() => {
@@ -83,6 +110,20 @@ onBeforeUnmount(() => {
               <span class="ms-2">{{ data.source_folder }}</span>
             </div>
           </VCardText>
+
+          <!-- Add directory input field -->
+          <VCardText>
+            <VTextField
+              :model-value="getDirectoryInput(data.id)"
+              @update:model-value="setDirectoryInput(data.id, $event)"
+              @click="handleInputClick"
+              :placeholder="t('pages.task.directoryHint')"
+              persistent-hint
+              density="compact"
+              variant="outlined"
+            ></VTextField>
+          </VCardText>
+
           <VCardActions class="justify-space-between">
             <VBtn v-if="!isTaskRunning(data.id)" type="submit" class="me-4" @click.stop="runTask(data.id)">
               {{ t('pages.task.runNow') }}
