@@ -7,6 +7,7 @@ from typing import Dict
 from watchdog.events import FileSystemEvent
 from watchdog.observers import Observer, ObserverType
 
+from bonita.core.config import settings
 from bonita.db import SessionFactory
 from bonita.db.models.record import TransRecords
 from bonita.db.models.task import TransferConfig
@@ -126,7 +127,11 @@ class MonitorService(metaclass=Singleton):
             with SessionFactory() as session:
                 task_info = session.query(TransferConfig).filter(TransferConfig.id == task_id).first()
                 if task_info:
-                    celery_transfer_group(task_info.to_dict(), filepath, True)
+                    # TODO: 环境不同可能存在丢失情况...
+                    if not celery_transfer_group.app.conf.broker_url:
+                        celery_transfer_group.app.conf.broker_url = settings.CELERY_BROKER_URL
+                        logger.info(f"Set broker_url to: {celery_transfer_group.app.conf.broker_url}")
+                    celery_transfer_group.delay(task_info.to_dict(), filepath, True)
                 else:
                     logger.warning(f"No task config found for task_id: {task_id}")
         except Exception as e:

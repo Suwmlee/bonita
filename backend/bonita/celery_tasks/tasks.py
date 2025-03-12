@@ -227,6 +227,7 @@ def celery_scrapping(self, file_path, scraping_dict):
             metadata_record = session.query(Metadata).filter(
                 Metadata.number == extrainfo.number).order_by(Metadata.id.desc()).first()
         if metadata_record:
+            logger.info(f"[-] find existing metadata: {metadata_record.number}")
             metadata_mixed = schemas.MetadataMixed(**metadata_record.to_dict())
         else:
             # 如果没有找到任何记录，则从网络抓取
