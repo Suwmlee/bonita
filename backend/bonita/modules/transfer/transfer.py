@@ -172,12 +172,12 @@ def transferfile(original_file: BasicFileInfo,
     """
     转移文件
     """
-    target_file.top_folder = original_file.top_folder
     target_file.second_folder = original_file.second_folder
     target_file.basename = original_file.basename
     target_file.file_extension = original_file.file_extension
 
     if not target_file.forced_top_folder:
+        target_file.top_folder = original_file.top_folder
         _handle_group_naming(original_file, target_file, file_list)
         if optimize_name_tag:
             target_file.top_folder = _simplify_folder_name(original_file.top_folder)

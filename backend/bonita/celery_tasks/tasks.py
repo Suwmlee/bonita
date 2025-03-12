@@ -165,10 +165,10 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     logger.info(f"[-] start transfer")
                     target_file = TargetFileInfo(task_info.output_folder)
                     if record.top_folder:
-                        target_file.update_top_folder(record.top_folder)
+                        target_file.force_update_top_folder(record.top_folder)
                     # 如果 record 中定义了剧集信息，则使用 record 中的信息
                     if record.isepisode:
-                        target_file.ForcedUpdate(record.isepisode, record.season, record.episode)
+                        target_file.force_update_episode(record.isepisode, record.season, record.episode)
                     # 开始转移
                     target_file = transferfile(original_file, target_file,
                                                optimize_name_tag=task_info.optimize_name, series_tag=is_series,

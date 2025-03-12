@@ -3,9 +3,11 @@ import {
   ExtraInfoPublic,
   type RecordPublic,
   TransferRecordPublic,
+  RecordService
 } from "@/client"
 import { useRecordStore } from "@/stores/record.store"
 import { useI18n } from "vue-i18n"
+import { useToastStore } from "@/stores/toast.store"
 
 interface Props {
   updateRecord?: RecordPublic
@@ -14,6 +16,7 @@ const props = defineProps<Props>()
 
 const recordStore = useRecordStore()
 const { t } = useI18n()
+const toastStore = useToastStore()
 
 const { updateRecord } = props as {
   updateRecord: RecordPublic
@@ -21,8 +24,10 @@ const { updateRecord } = props as {
 
 const currentTransferRecord = ref<any>()
 const currentExtraInfo = ref<any>()
+const originalTopFolder = ref<string | null | undefined>("")
 currentTransferRecord.value = { ...updateRecord.transfer_record }
 currentExtraInfo.value = { ...updateRecord.extra_info }
+originalTopFolder.value = currentTransferRecord.value.top_folder
 
 async function handleSubmit() {
   const data: RecordPublic = {
@@ -30,6 +35,31 @@ async function handleSubmit() {
     extra_info: currentExtraInfo.value,
   }
   recordStore.updateRecord(data)
+}
+
+async function applyTopFolderToAll() {
+  try {
+    if (currentTransferRecord.value.srcfolder !== undefined && currentTransferRecord.value.top_folder !== undefined) {
+      const response = await RecordService.updateTopFolder({
+        srcfolder: currentTransferRecord.value.srcfolder,
+        oldTopFolder: originalTopFolder.value || "",
+        newTopFolder: currentTransferRecord.value.top_folder || "",
+      })
+      
+      if (response && response.success) {
+        toastStore.success(t('components.record.form.topFolderUpdateSuccess'))
+        originalTopFolder.value = currentTransferRecord.value.top_folder
+      } else {
+        const errorMessage = response?.message || t('components.record.form.topFolderUpdateError')
+        toastStore.error(errorMessage)
+      }
+    } else {
+      toastStore.error(t('components.record.form.topFolderMissingData'))
+    }
+  } catch (error) {
+    console.error("Top folder update failed:", error)
+    toastStore.error(t('components.record.form.topFolderUpdateError'))
+  }
 }
 </script>
 
@@ -104,6 +134,18 @@ async function handleSubmit() {
           </VCol>
           <VCol cols="12" md="9">
             <VCheckbox v-model="currentTransferRecord.ignored" :label="t('components.record.form.ignored')" />
+          </VCol>
+        </VRow>
+
+        <VRow no-gutters class="mb-4">
+          <VCol cols="12" md="3" class="row-label">
+            <label>{{ t('components.record.form.topFolder') }}</label>
+          </VCol>
+          <VCol cols="12" md="9" class="d-flex align-center gap-2">
+            <VTextField v-model="currentTransferRecord.top_folder" class="flex-grow-1" />
+            <VBtn color="primary" size="small" @click="applyTopFolderToAll">
+              {{ t('components.record.form.applyAll') }}
+            </VBtn>
           </VCol>
         </VRow>
       </VCol>

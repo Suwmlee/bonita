@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetAllTasksStatusResponse, GetAllTaskConfigsData, GetAllTaskConfigsResponse, CreateTaskConfigData, CreateTaskConfigResponse, UpdateTaskConfigData, UpdateTaskConfigResponse, DeleteTaskConfigData, DeleteTaskConfigResponse, GetAllConfigsData, GetAllConfigsResponse, CreateConfigData, CreateConfigResponse, UpdateConfigData, UpdateConfigResponse, DeleteConfigData, DeleteConfigResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, DeleteRecordsData, DeleteRecordsResponse, GetTransRecordsData, GetTransRecordsResponse, CreateMetadataData, CreateMetadataResponse, GetMetadataData, GetMetadataResponse, UpdateMetadataData, UpdateMetadataResponse, DeleteMetadataData, DeleteMetadataResponse, RunImportNfoData, RunImportNfoResponse, RunEmbyScanData, RunEmbyScanResponse, GetProxySettingsResponse, UpdateProxySettingsData, UpdateProxySettingsResponse, GetEmbySettingsResponse, UpdateEmbySettingsData, UpdateEmbySettingsResponse, TestEmbyConnectionData, TestEmbyConnectionResponse, GetImageByQueryData, GetImageByQueryResponse, UploadImageData, UploadImageResponse } from './types.gen';
+import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetAllTasksStatusResponse, GetAllTaskConfigsData, GetAllTaskConfigsResponse, CreateTaskConfigData, CreateTaskConfigResponse, UpdateTaskConfigData, UpdateTaskConfigResponse, DeleteTaskConfigData, DeleteTaskConfigResponse, GetAllConfigsData, GetAllConfigsResponse, CreateConfigData, CreateConfigResponse, UpdateConfigData, UpdateConfigResponse, DeleteConfigData, DeleteConfigResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, UpdateTopFolderData, UpdateTopFolderResponse, DeleteRecordsData, DeleteRecordsResponse, GetTransRecordsData, GetTransRecordsResponse, CreateMetadataData, CreateMetadataResponse, GetMetadataData, GetMetadataResponse, UpdateMetadataData, UpdateMetadataResponse, DeleteMetadataData, DeleteMetadataResponse, RunImportNfoData, RunImportNfoResponse, RunEmbyScanData, RunEmbyScanResponse, GetProxySettingsResponse, UpdateProxySettingsData, UpdateProxySettingsResponse, GetEmbySettingsResponse, UpdateEmbySettingsData, UpdateEmbySettingsResponse, TestEmbyConnectionData, TestEmbyConnectionResponse, GetImageByQueryData, GetImageByQueryResponse, UploadImageData, UploadImageResponse } from './types.gen';
 
 export class LoginService {
     /**
@@ -498,6 +498,42 @@ export class RecordService {
             url: '/api/v1/records/record',
             body: data.requestBody,
             mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Top Folder
+     * 更新 top_folder
+     *
+     * 更新指定 srcfolder 和 top_folder 相同的所有记录的 top_folder 字段
+     *
+     * Args:
+     * session: 数据库会话
+     * srcfolder: 源文件夹路径
+     * old_top_folder: 原来的 top_folder 值
+     * new_top_folder: 新的 top_folder 值
+     *
+     * Returns:
+     * 更新操作的结果
+     * @param data The data for the request.
+     * @param data.srcfolder
+     * @param data.oldTopFolder
+     * @param data.newTopFolder
+     * @returns Response Successful Response
+     * @throws ApiError
+     */
+    public static updateTopFolder(data: UpdateTopFolderData): CancelablePromise<UpdateTopFolderResponse> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/v1/records/update-top-folder',
+            query: {
+                srcfolder: data.srcfolder,
+                old_top_folder: data.oldTopFolder,
+                new_top_folder: data.newTopFolder
+            },
             errors: {
                 422: 'Validation Error'
             }

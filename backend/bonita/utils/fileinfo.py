@@ -97,8 +97,8 @@ class TargetFileInfo():
         # 最终文件路径
         self.full_path: str = ''
 
-    def ForcedUpdate(self, is_episode: bool, season_number: int, episode_number: int):
-        """ 强制更新 """
+    def force_update_episode(self, is_episode: bool, season_number: int, episode_number: int):
+        """ 强制更新剧集信息 """
         # 如果 record 中定义了剧集信息，则使用 record 中的信息
         if is_episode:
             self.is_episode = True
@@ -109,7 +109,7 @@ class TargetFileInfo():
                 self.forced_episode = True
                 self.episode_number = episode_number
 
-    def update_top_folder(self, top_folder: str):
-        """ 更新 top_folder """
+    def force_update_top_folder(self, top_folder: str):
+        """ 强制更新 top_folder """
         self.forced_top_folder = True
         self.top_folder = top_folder

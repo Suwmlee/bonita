@@ -128,6 +128,7 @@ export default {
       runNow: '立即执行',
       running: '运行中',
       delete: '删除',
+      directoryHint: '输入要针对运行的目录，留空则运行整个任务',
     },
     metadata: {
       title: '元数据',
@@ -307,6 +308,11 @@ export default {
         seasonRule: '季数必须大于等于-1',
         episodeRule: '集数必须大于等于-1',
         partNumberRule: '部分编号必须大于等于0',
+        topFolder: '顶层文件夹',
+        applyAll: '应用全部',
+        topFolderUpdateSuccess: '成功更新所有匹配记录的顶层文件夹',
+        topFolderUpdateError: '更新顶层文件夹失败，请重试',
+        topFolderMissingData: '源文件夹或顶层文件夹值缺失',
       }
     },
     task: {

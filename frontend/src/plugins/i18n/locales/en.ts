@@ -128,6 +128,7 @@ export default {
       runNow: 'Run Now',
       running: 'Running',
       delete: 'Delete',
+      directoryHint: 'Enter specific directory to run, or leave empty to run entire task',
     },
     metadata: {
       title: 'Metadata',
@@ -307,6 +308,11 @@ export default {
         seasonRule: 'Season must be -1 or greater',
         episodeRule: 'Episode must be -1 or greater',
         partNumberRule: 'Part number must be 0 or greater',
+        topFolder: 'Top Folder',
+        applyAll: 'Apply All',
+        topFolderUpdateSuccess: 'Top folder updated successfully for all matching records',
+        topFolderUpdateError: 'Failed to update top folder, please try again',
+        topFolderMissingData: 'Source folder or top folder value is missing',
       }
     },
     task: {

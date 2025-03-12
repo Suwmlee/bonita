@@ -506,6 +506,14 @@ export type UpdateRecordData = {
 
 export type UpdateRecordResponse = RecordPublic;
 
+export type UpdateTopFolderData = {
+    newTopFolder: string;
+    oldTopFolder: string;
+    srcfolder: string;
+};
+
+export type UpdateTopFolderResponse = Response;
+
 export type DeleteRecordsData = {
     force?: boolean;
     requestBody: Array<(number)>;
@@ -906,6 +914,21 @@ export type $OpenApiTs = {
                  * Successful Response
                  */
                 200: RecordPublic;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/records/update-top-folder': {
+        put: {
+            req: UpdateTopFolderData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
                 /**
                  * Validation Error
                  */
