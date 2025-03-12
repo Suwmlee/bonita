@@ -152,6 +152,10 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     destpath = transSingleFile(original_file, output_folder,
                                                metamixed.extra_filename, task_info.operation)
                     done_list.append(destpath)
+                    if record.destpath != destpath:
+                        # 如果新的路径和之前不同，则删除之前的文件
+                        if os.path.exists(record.destpath):
+                            os.remove(record.destpath)
                     # 更新
                     record.destpath = destpath
                     record.deleted = False
@@ -170,11 +174,14 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                                                optimize_name_tag=task_info.optimize_name, series_tag=is_series,
                                                file_list=waiting_list, linktype=task_info.operation)
                     done_list.append(target_file.full_path)
+                    if record.destpath != target_file.full_path:
+                        # 如果新的路径和之前不同，则删除之前的文件
+                        if os.path.exists(record.destpath):
+                            os.remove(record.destpath)
                     # 更新
                     record.isepisode = target_file.is_episode
                     record.season = target_file.season_number
                     record.episode = target_file.episode_number
-                    
                     record.top_folder = target_file.top_folder
                     record.second_folder = target_file.second_folder
                     record.destpath = target_file.full_path

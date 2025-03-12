@@ -191,7 +191,7 @@ async def delete_records(
             cleanFilebyFilter(cleanfolder, namefilter)
             session.delete(record)
         else:
-            # 更新状态
+            # 清除状态，可以重新转移
             record.top_folder = ''
             record.second_folder = ''
             record.isepisode = False
