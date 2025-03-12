@@ -46,7 +46,8 @@ def log_config():
     max_log_size = 5 * 1024 * 1024  # 5 MB
     backup_count = 5
     formatter = logging.Formatter(settings.LOGGING_FORMAT)
-    handler = RotatingFileHandler(settings.LOGGING_LOCATION, maxBytes=max_log_size, backupCount=backup_count)
+    handler = RotatingFileHandler(settings.LOGGING_LOCATION, maxBytes=max_log_size,
+                                  backupCount=backup_count, encoding='utf-8')
     handler.setFormatter(formatter)
     logging.basicConfig(
         level=settings.LOGGING_LEVEL,
