@@ -318,3 +318,12 @@ def replaceRegex(base: str, regex: str):
     base = cop.sub('', base)
     base = re.sub(r'(\W)\1+', r'\1', base).lstrip(' !?@#$.:：]）)').rstrip(' !?@#$.:：[(（')
     return base
+
+
+def is_video_file(filepath: str) -> bool:
+    """Check if the file is a video file"""
+    ext = os.path.splitext(filepath)[1].lower()
+    is_video = ext in video_type
+    if not is_video:
+        logger.debug(f"File {filepath} is not a video file")
+    return is_video

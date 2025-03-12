@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from bonita import schemas
 from bonita.api.deps import CurrentUser, SessionDep
 from bonita.db.models.task import TransferConfig
-from bonita.watcher.manager import watcher_manager
+from bonita.modules.monitor.monitor import MonitorService
 
 router = APIRouter()
 
@@ -33,9 +33,9 @@ def create_task_config(
     task_config.create(session)
 
     if task_config.auto_watch:
-        watcher_manager.add_directory(task_config.source_folder, task_config.id)
+        MonitorService().start_monitoring_directory(task_config.source_folder, task_config.id)
     else:
-        watcher_manager.remove_directory(task_config.source_folder, task_config.id)
+        MonitorService().stop_monitoring_directory(task_config.source_folder, task_config.id)
     return task_config
 
 
@@ -57,7 +57,9 @@ def update_task_config(
     session.refresh(task_config)
 
     if task_config.auto_watch:
-        watcher_manager.add_directory(task_config.source_folder, task_config.id)
+        MonitorService().start_monitoring_directory(task_config.source_folder, task_config.id)
+    else:
+        MonitorService().stop_monitoring_directory(task_config.source_folder, task_config.id)
     return task_config
 
 
@@ -71,7 +73,7 @@ def delete_task_config(
     """
     config = session.get(TransferConfig, id)
     if config.auto_watch:
-        watcher_manager.remove_directory(config.source_folder, config.id)
+        MonitorService().stop_monitoring_directory(config.source_folder, config.id)
     session.delete(config)
     session.commit()
 

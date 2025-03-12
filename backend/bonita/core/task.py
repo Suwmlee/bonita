@@ -3,32 +3,30 @@
 import logging
 from bonita.db import SessionFactory
 from bonita.db.models.task import TransferConfig
-from bonita.watcher.manager import watcher_manager
+from bonita.modules.monitor.monitor import MonitorService
 
 logger = logging.getLogger(__name__)
 
 
-def init_watcher():
+def init_monitor():
     """
-    initial watchdog
+    initial MonitorService
     """
     try:
-        session = SessionFactory()
-        logger.info("watchdog initial")
-        task_configs = session.query(TransferConfig).all()
-        # 为每个启用了自动监控的任务添加目录监控
-        for task_config in task_configs:
-            if task_config.auto_watch:
-                logger.info(f"add watcher for task config: {task_config.id}")
-                watcher_manager.add_directory(task_config.source_folder, task_config.id)
+        logger.info("MonitorService initial")
+        MonitorService().start()
+        with SessionFactory() as session:
+            task_configs = session.query(TransferConfig).all()
+            # 为每个启用了自动监控的任务添加目录监控
+            for task_config in task_configs:
+                if task_config.auto_watch:
+                    MonitorService().start_monitoring_directory(task_config.source_folder, task_config.id)
     except Exception as e:
         logger.error(e)
-    finally:
-        session.close()
 
 
-def stop_watcher():
+def stop_monitor():
     """
-    stop watchdog
+    stop MonitorService
     """
-    watcher_manager.stop()
+    MonitorService().stop()
