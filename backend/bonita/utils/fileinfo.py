@@ -91,6 +91,7 @@ class TargetFileInfo():
         self.forced_episode: bool = False
         self.episode_number: int = -1
 
+        self.forced_top_folder: bool = False
         self.top_folder: str = ''
         self.second_folder: str = ''
         # 最终文件路径
@@ -107,3 +108,8 @@ class TargetFileInfo():
             if episode_number > -1:
                 self.forced_episode = True
                 self.episode_number = episode_number
+
+    def update_top_folder(self, top_folder: str):
+        """ 更新 top_folder """
+        self.forced_top_folder = True
+        self.top_folder = top_folder

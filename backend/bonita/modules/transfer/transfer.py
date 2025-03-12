@@ -177,9 +177,10 @@ def transferfile(original_file: BasicFileInfo,
     target_file.basename = original_file.basename
     target_file.file_extension = original_file.file_extension
 
-    _handle_group_naming(original_file, target_file, file_list)
-    if optimize_name_tag:
-        target_file.top_folder = _simplify_folder_name(original_file.top_folder)
+    if not target_file.forced_top_folder:
+        _handle_group_naming(original_file, target_file, file_list)
+        if optimize_name_tag:
+            target_file.top_folder = _simplify_folder_name(original_file.top_folder)
 
     # 当前设置类型是剧集
     if series_tag and (target_file.is_episode or original_file.is_episode):

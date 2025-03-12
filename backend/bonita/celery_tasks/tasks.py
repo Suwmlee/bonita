@@ -116,6 +116,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     record = TransRecords()
                     record.srcname = original_file.filename
                     record.srcpath = original_file.full_path
+                    record.srcfolder = original_file.parent_folder
                     record.create(session)
                 if record.srcdeleted:
                     record.srcdeleted = False
@@ -159,6 +160,8 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                 else:
                     logger.info(f"[-] start transfer")
                     target_file = TargetFileInfo(task_info.output_folder)
+                    if record.top_folder:
+                        target_file.update_top_folder(record.top_folder)
                     # 如果 record 中定义了剧集信息，则使用 record 中的信息
                     if record.isepisode:
                         target_file.ForcedUpdate(record.isepisode, record.season, record.episode)

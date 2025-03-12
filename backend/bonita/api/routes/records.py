@@ -102,6 +102,51 @@ async def update_record(session: SessionDep, record: schemas.RecordPublic) -> An
     return schemas.RecordPublic(transfer_record=updated_transfer_record_public, extra_info=updated_extra_info_public)
 
 
+@router.put("/update-top-folder", response_model=schemas.Response)
+async def update_top_folder(
+    session: SessionDep,
+    srcfolder: str,
+    old_top_folder: str,
+    new_top_folder: str
+) -> Any:
+    """更新 top_folder
+
+    更新指定 srcfolder 和 top_folder 相同的所有记录的 top_folder 字段
+
+    Args:
+        session: 数据库会话
+        srcfolder: 源文件夹路径
+        old_top_folder: 原来的 top_folder 值
+        new_top_folder: 新的 top_folder 值
+
+    Returns:
+        更新操作的结果
+    """
+    # 找到所有匹配的记录
+    query = session.query(TransRecords).filter(
+        TransRecords.srcfolder == srcfolder,
+        TransRecords.top_folder == old_top_folder
+    )
+
+    # 获取匹配的记录数
+    records_count = query.count()
+
+    if records_count == 0:
+        return schemas.Response(
+            success=False,
+            message=f"没有找到匹配的记录: srcfolder={srcfolder}, top_folder={old_top_folder}"
+        )
+
+    # 批量更新记录
+    query.update({"top_folder": new_top_folder, "updatetime": datetime.now()})
+    session.commit()
+
+    return schemas.Response(
+        success=True,
+        message=f"成功更新 {records_count} 条记录的 top_folder 从 '{old_top_folder}' 到 '{new_top_folder}'"
+    )
+
+
 @router.delete("/records", response_model=schemas.Response)
 async def delete_records(
     session: SessionDep,
@@ -135,22 +180,26 @@ async def delete_records(
         cleanfolder = os.path.dirname(record.destpath)
         namefilter = os.path.splitext(os.path.basename(record.destpath))[0]
         cleanFilebyFilter(cleanfolder, namefilter)
+        # 删除关联的额外信息
+        extra_info = session.query(ExtraInfo).filter(ExtraInfo.filepath == record.srcpath).first()
+        if extra_info:
+            session.delete(extra_info)
         if force:
-            # 如果强制删除，则也删除源文件和记录
+            # 如果强制删除，那么也删除源文件和记录
             cleanfolder = os.path.dirname(record.srcpath)
             namefilter = os.path.splitext(os.path.basename(record.srcpath))[0]
             cleanFilebyFilter(cleanfolder, namefilter)
             session.delete(record)
         else:
-            # 记录删除状态
+            # 更新状态
+            record.top_folder = ''
+            record.second_folder = ''
+            record.isepisode = False
+            record.season = -1
+            record.episode = -1
             record.deleted = True
             record.deadtime = datetime.now() + timedelta(days=7)
-        # 删除关联的额外信息
-        extra_info = session.query(ExtraInfo).filter(ExtraInfo.filepath == record.srcpath).first()
-        if extra_info:
-            session.delete(extra_info)
         deleted_count += 1
-
     session.commit()
 
     if failed_ids:
