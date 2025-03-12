@@ -24,7 +24,9 @@ const i18n = createI18n({
   messages: {
     zh,
     en
-  }
+  },
+  globalInjection: true, // 全局注入 $t 函数
+  allowComposition: true // 允许组合式 API
 })
 
 // 导出 i18n 实例供组件内使用
@@ -33,4 +35,5 @@ export { i18n }
 // 默认导出插件安装函数
 export default function (app: App) {
   app.use(i18n)
+  return i18n
 } 
