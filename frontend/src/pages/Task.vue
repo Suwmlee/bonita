@@ -143,18 +143,12 @@ onBeforeUnmount(() => {
           <!-- File path display with file browser button -->
           <VCardText>
             <div class="d-flex align-center">
-              <VTextField
-                :model-value="getSourceFolderDisplay(data.id, data.source_folder)"
-                readonly
-                density="compact"
-                variant="outlined"
-                hide-details="auto"
-                class="flex-grow-1"
+              <div 
+                class="file-path-display d-flex align-center flex-grow-1 pa-2 rounded border"
+                v-tooltip="getSourceFolderDisplay(data.id, data.source_folder)"
               >
-                <template v-slot:prepend-inner>
-                  <VIcon size="small" icon="bx-folder" />
-                </template>
-              </VTextField>
+                <span class="text-truncate">{{ getSourceFolderDisplay(data.id, data.source_folder) }}</span>
+              </div>
               <VBtn
                 icon
                 variant="text"
@@ -204,3 +198,31 @@ onBeforeUnmount(() => {
 
   <TransferConfigDetailDialog />
 </template>
+
+<style scoped>
+.file-path-display {
+  min-height: 40px;
+  background-color: var(--v-theme-surface);
+  border-color: rgba(var(--v-theme-on-surface), 0.38);
+  transition: border-color 0.2s ease;
+  overflow: hidden;
+}
+
+.file-path-display:hover {
+  border-color: rgba(var(--v-theme-on-surface), 0.86);
+}
+
+.text-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.clamp-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>
