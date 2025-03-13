@@ -402,5 +402,18 @@ export default {
         reset: "Reset",
       },
     },
+    fileBrowser: {
+      title: "File Browser",
+      currentPath: "Current Path",
+      upOneLevel: "Up",
+      refresh: "Refresh",
+      cancel: "Cancel",
+      noFiles: "No files found in this directory",
+      loadError: "Error loading files from this directory",
+      selectCurrentFolder: "Select This Folder",
+      confirm: "Confirm",
+      selectedItem: "Selected Item",
+      folderSelected: "(Folder Selected)"
+    },
   },
 }

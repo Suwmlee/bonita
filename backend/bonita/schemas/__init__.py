@@ -9,3 +9,4 @@ from .metadata import *
 from .system import *
 from .watch_history import *
 from .media_item import *
+from .file_browser import *

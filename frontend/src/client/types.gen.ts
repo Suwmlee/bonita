@@ -32,6 +32,26 @@ export type ExtraInfoPublic = {
     id?: number | null;
 };
 
+/**
+ * 文件或目录信息
+ */
+export type FileInfo = {
+    name: string;
+    path: string;
+    is_dir: boolean;
+    size?: number;
+    modified_time?: string | null;
+};
+
+/**
+ * 目录内文件列表响应
+ */
+export type FileListResponse = {
+    data: Array<FileInfo>;
+    current_path: string;
+    parent_path?: string | null;
+};
+
 export type HTTPValidationError = {
     detail?: Array<ValidationError>;
 };
@@ -43,6 +63,73 @@ export type JellyfinSettings = {
     jellyfin_host: string;
     jellyfin_apikey: string;
     enabled?: boolean | null;
+};
+
+/**
+ * MediaItem集合，用于分页响应
+ */
+export type MediaItemCollection = {
+    data: Array<MediaItemInDB>;
+    count: number;
+};
+
+/**
+ * 创建MediaItem时的属性
+ */
+export type MediaItemCreate = {
+    media_type: string;
+    title: string;
+    original_title?: string | null;
+    year?: number | null;
+    imdb_id?: string | null;
+    tmdb_id?: string | null;
+    tvdb_id?: string | null;
+    douban_id?: string | null;
+    number?: string | null;
+    season_number?: number | null;
+    episode_number?: number | null;
+    poster?: string | null;
+};
+
+/**
+ * 数据库中的MediaItem属性
+ */
+export type MediaItemInDB = {
+    media_type: string;
+    title: string;
+    original_title?: string | null;
+    year?: number | null;
+    imdb_id?: string | null;
+    tmdb_id?: string | null;
+    tvdb_id?: string | null;
+    douban_id?: string | null;
+    number?: string | null;
+    season_number?: number | null;
+    episode_number?: number | null;
+    poster?: string | null;
+    id: number;
+    series_id?: number | null;
+    created_at: string;
+    updated_at: string;
+};
+
+/**
+ * 更新MediaItem时的属性
+ */
+export type MediaItemUpdate = {
+    media_type?: string | null;
+    title?: string | null;
+    original_title?: string | null;
+    year?: number | null;
+    imdb_id?: string | null;
+    tmdb_id?: string | null;
+    tvdb_id?: string | null;
+    douban_id?: string | null;
+    number?: string | null;
+    season_number?: number | null;
+    episode_number?: number | null;
+    poster?: string | null;
+    series_id?: number | null;
 };
 
 export type MetadataBase = {
@@ -567,6 +654,52 @@ export type DeleteMetadataData = {
 
 export type DeleteMetadataResponse = Response;
 
+export type GetMediaItemsData = {
+    limit?: number;
+    mediaType?: string;
+    search?: string;
+    skip?: number;
+    sortBy?: string;
+    sortDesc?: boolean;
+};
+
+export type GetMediaItemsResponse = MediaItemCollection;
+
+export type CreateMediaItemData = {
+    requestBody: MediaItemCreate;
+};
+
+export type CreateMediaItemResponse = MediaItemInDB;
+
+export type GetWatchedMediaItemsData = {
+    limit?: number;
+    skip?: number;
+    sortBy?: string;
+    sortDesc?: boolean;
+    source?: string;
+};
+
+export type GetWatchedMediaItemsResponse = MediaItemCollection;
+
+export type GetMediaItemData = {
+    mediaId: number;
+};
+
+export type GetMediaItemResponse = MediaItemInDB;
+
+export type UpdateMediaItemData = {
+    mediaId: number;
+    requestBody: MediaItemUpdate;
+};
+
+export type UpdateMediaItemResponse = MediaItemInDB;
+
+export type DeleteMediaItemData = {
+    mediaId: number;
+};
+
+export type DeleteMediaItemResponse = unknown;
+
 export type RunImportNfoData = {
     requestBody: ToolArgsParam;
 };
@@ -627,6 +760,15 @@ export type UploadImageData = {
 };
 
 export type UploadImageResponse = unknown;
+
+export type ListDirectoryData = {
+    /**
+     * 要浏览的目录路径
+     */
+    directoryPath?: string;
+};
+
+export type ListDirectoryResponse = FileListResponse;
 
 export type $OpenApiTs = {
     '/api/v1/login/access-token': {
@@ -1048,6 +1190,90 @@ export type $OpenApiTs = {
             };
         };
     };
+    '/api/v1/media-items/': {
+        get: {
+            req: GetMediaItemsData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: MediaItemCollection;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+        post: {
+            req: CreateMediaItemData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: MediaItemInDB;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/media-items/watches': {
+        get: {
+            req: GetWatchedMediaItemsData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: MediaItemCollection;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/media-items/{media_id}': {
+        get: {
+            req: GetMediaItemData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: MediaItemInDB;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+        put: {
+            req: UpdateMediaItemData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: MediaItemInDB;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+        delete: {
+            req: DeleteMediaItemData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: unknown;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
     '/api/v1/tools/importnfo': {
         post: {
             req: RunImportNfoData;
@@ -1200,6 +1426,21 @@ export type $OpenApiTs = {
                  * Successful Response
                  */
                 200: unknown;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/files/list': {
+        get: {
+            req: ListDirectoryData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: FileListResponse;
                 /**
                  * Validation Error
                  */

@@ -181,6 +181,75 @@ export const $ExtraInfoPublic = {
     title: 'ExtraInfoPublic'
 } as const;
 
+export const $FileInfo = {
+    properties: {
+        name: {
+            type: 'string',
+            title: 'Name'
+        },
+        path: {
+            type: 'string',
+            title: 'Path'
+        },
+        is_dir: {
+            type: 'boolean',
+            title: 'Is Dir'
+        },
+        size: {
+            type: 'integer',
+            title: 'Size',
+            default: 0
+        },
+        modified_time: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Modified Time'
+        }
+    },
+    type: 'object',
+    required: ['name', 'path', 'is_dir'],
+    title: 'FileInfo',
+    description: '文件或目录信息'
+} as const;
+
+export const $FileListResponse = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/FileInfo'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        current_path: {
+            type: 'string',
+            title: 'Current Path'
+        },
+        parent_path: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Parent Path'
+        }
+    },
+    type: 'object',
+    required: ['data', 'current_path'],
+    title: 'FileListResponse',
+    description: '目录内文件列表响应'
+} as const;
+
 export const $HTTPValidationError = {
     properties: {
         detail: {
@@ -222,6 +291,456 @@ export const $JellyfinSettings = {
     required: ['jellyfin_host', 'jellyfin_apikey'],
     title: 'JellyfinSettings',
     description: 'Jellyfin settings schema'
+} as const;
+
+export const $MediaItemCollection = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/MediaItemInDB'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'MediaItemCollection',
+    description: 'MediaItem集合，用于分页响应'
+} as const;
+
+export const $MediaItemCreate = {
+    properties: {
+        media_type: {
+            type: 'string',
+            title: 'Media Type'
+        },
+        title: {
+            type: 'string',
+            title: 'Title'
+        },
+        original_title: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Original Title'
+        },
+        year: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Year'
+        },
+        imdb_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Imdb Id'
+        },
+        tmdb_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Tmdb Id'
+        },
+        tvdb_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Tvdb Id'
+        },
+        douban_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Douban Id'
+        },
+        number: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Number'
+        },
+        season_number: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Season Number'
+        },
+        episode_number: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Episode Number'
+        },
+        poster: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Poster'
+        }
+    },
+    type: 'object',
+    required: ['media_type', 'title'],
+    title: 'MediaItemCreate',
+    description: '创建MediaItem时的属性'
+} as const;
+
+export const $MediaItemInDB = {
+    properties: {
+        media_type: {
+            type: 'string',
+            title: 'Media Type'
+        },
+        title: {
+            type: 'string',
+            title: 'Title'
+        },
+        original_title: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Original Title'
+        },
+        year: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Year'
+        },
+        imdb_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Imdb Id'
+        },
+        tmdb_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Tmdb Id'
+        },
+        tvdb_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Tvdb Id'
+        },
+        douban_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Douban Id'
+        },
+        number: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Number'
+        },
+        season_number: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Season Number'
+        },
+        episode_number: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Episode Number'
+        },
+        poster: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Poster'
+        },
+        id: {
+            type: 'integer',
+            title: 'Id'
+        },
+        series_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Series Id'
+        },
+        created_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Created At'
+        },
+        updated_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Updated At'
+        }
+    },
+    type: 'object',
+    required: ['media_type', 'title', 'id', 'created_at', 'updated_at'],
+    title: 'MediaItemInDB',
+    description: '数据库中的MediaItem属性'
+} as const;
+
+export const $MediaItemUpdate = {
+    properties: {
+        media_type: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Media Type'
+        },
+        title: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Title'
+        },
+        original_title: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Original Title'
+        },
+        year: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Year'
+        },
+        imdb_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Imdb Id'
+        },
+        tmdb_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Tmdb Id'
+        },
+        tvdb_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Tvdb Id'
+        },
+        douban_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Douban Id'
+        },
+        number: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Number'
+        },
+        season_number: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Season Number'
+        },
+        episode_number: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Episode Number'
+        },
+        poster: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Poster'
+        },
+        series_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Series Id'
+        }
+    },
+    type: 'object',
+    title: 'MediaItemUpdate',
+    description: '更新MediaItem时的属性'
 } as const;
 
 export const $MetadataBase = {

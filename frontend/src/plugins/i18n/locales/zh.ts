@@ -393,5 +393,18 @@ export default {
         reset: "重置",
       },
     },
+    fileBrowser: {
+      title: "文件浏览器",
+      currentPath: "当前路径",
+      upOneLevel: "上一级",
+      refresh: "刷新",
+      cancel: "取消",
+      noFiles: "此目录中没有找到文件",
+      loadError: "加载此目录中的文件时出错",
+      selectCurrentFolder: "选择当前文件夹",
+      confirm: "确认",
+      selectedItem: "已选项目",
+      folderSelected: "(已选择文件夹)"
+    },
   },
 }

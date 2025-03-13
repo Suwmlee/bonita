@@ -4,22 +4,56 @@ import { useTaskStore } from "@/stores/task.store"
 import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import { useI18n } from "vue-i18n"
 import { VCardActions } from "vuetify/components"
+import FileBrowserDialog from "@/components/FileBrowserDialog.vue"
 
 const taskStore = useTaskStore()
 const scrapingStore = useScrapingStore()
 const { t } = useI18n() // 导入国际化工具函数
 
-// Store directory inputs for each task
-const directoryInputs = ref(new Map<number, string>())
+// Store selected files for each task
+const selectedFiles = ref(new Map<number, string>())
 
-// Get directory input for a task
-function getDirectoryInput(taskId: number): string {
-  return directoryInputs.value.get(taskId) || ""
+// File browser dialog control
+const showFileBrowser = ref(false)
+const currentTaskId = ref<number | null>(null)
+
+// Get selected file for a task
+function getSelectedFile(taskId: number): string {
+  return selectedFiles.value.get(taskId) || ""
 }
 
-// Set directory input for a task
-function setDirectoryInput(taskId: number, value: string): void {
-  directoryInputs.value.set(taskId, value)
+// Set selected file for a task
+function setSelectedFile(taskId: number, value: string): void {
+  if (value && taskStore.allTasks) {
+    const task = taskStore.allTasks.find(t => t.id === taskId)
+    if (task) {
+      // Store the selected path regardless of whether it's a file or folder
+      selectedFiles.value.set(taskId, value)
+    }
+  } else {
+    // If value is empty, clear it
+    selectedFiles.value.delete(taskId)
+  }
+}
+
+// Get the display value (selected file or source folder)
+function getSourceFolderDisplay(taskId: number, sourceFolder: string): string {
+  const selectedFile = getSelectedFile(taskId)
+  return selectedFile || sourceFolder
+}
+
+// Open file browser for a specific task
+function openFileBrowser(taskId: number, sourcePath: string): void {
+  currentTaskId.value = taskId
+  showFileBrowser.value = true
+}
+
+// Handle file selection from the file browser
+function handleFileSelected(path: string): void {
+  if (currentTaskId.value !== null) {
+    setSelectedFile(currentTaskId.value, path)
+    currentTaskId.value = null
+  }
 }
 
 // Create a computed map of running task statuses for reactivity
@@ -50,13 +84,15 @@ function addNewTask() {
 }
 
 function runTask(id: number) {
-  // Get the directory input for this task
-  const directory = getDirectoryInput(id)
+  // Get the selected file for this task
+  const selectedFile = getSelectedFile(id)
 
-  // Use the appropriate method based on whether a directory is specified
-  if (directory.trim()) {
-    taskStore.runTaskByIdWithPath(id, directory)
+  // Use the appropriate method based on whether a file is selected
+  if (selectedFile) {
+    // If a file is selected, use that
+    taskStore.runTaskByIdWithPath(id, selectedFile)
   } else {
+    // Otherwise, just run with the default source folder
     taskStore.runTaskById(id)
   }
 }
@@ -85,7 +121,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div>
-
     <p class="text-xl mb-6">
       {{ t('pages.task.title') }}
     </p>
@@ -105,23 +140,32 @@ onBeforeUnmount(() => {
             </p>
           </VCardText>
 
-          <VCardText class="d-flex justify-space-between align-center flex-wrap">
-            <div class="text-no-wrap">
-              <span class="ms-2">{{ data.source_folder }}</span>
-            </div>
-          </VCardText>
-
-          <!-- Add directory input field -->
+          <!-- File path display with file browser button -->
           <VCardText>
-            <VTextField
-              :model-value="getDirectoryInput(data.id)"
-              @update:model-value="setDirectoryInput(data.id, $event)"
-              @click="handleInputClick"
-              :placeholder="t('pages.task.directoryHint')"
-              persistent-hint
-              density="compact"
-              variant="outlined"
-            ></VTextField>
+            <div class="d-flex align-center">
+              <VTextField
+                :model-value="getSourceFolderDisplay(data.id, data.source_folder)"
+                readonly
+                density="compact"
+                variant="outlined"
+                hide-details="auto"
+                class="flex-grow-1"
+              >
+                <template v-slot:prepend-inner>
+                  <VIcon size="small" icon="bx-folder" />
+                </template>
+              </VTextField>
+              <VBtn
+                icon
+                variant="text"
+                density="compact"
+                color="primary"
+                class="ml-2"
+                @click.stop="openFileBrowser(data.id, data.source_folder)"
+              >
+                <VIcon>bx-folder-open</VIcon>
+              </VBtn>
+            </div>
           </VCardText>
 
           <VCardActions class="justify-space-between">
@@ -148,6 +192,14 @@ onBeforeUnmount(() => {
         </VCard>
       </VCol>
     </VRow>
+
+    <!-- File Browser Dialog -->
+    <FileBrowserDialog
+      v-model="showFileBrowser"
+      :initial-path="currentTaskId !== null && taskStore.allTasks ? 
+        (taskStore.allTasks.find(t => t.id === currentTaskId)?.source_folder || '') : ''"
+      @select="handleFileSelected"
+    />
   </div>
 
   <TransferConfigDetailDialog />
