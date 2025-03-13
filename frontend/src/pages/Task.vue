@@ -126,7 +126,7 @@ onBeforeUnmount(() => {
     </p>
 
     <VRow>
-      <VCol v-for="data in taskStore.allTasks" :key="data.id" cols="12" md="6" lg="4" @click="showSelectedTask(data)">
+      <VCol v-for="data in taskStore.allTasks" :key="data.id" cols="12" sm="6" md="4" lg="3" xl="2" @click="showSelectedTask(data)">
         <VCard>
           <VCardItem>
             <VCardTitle>
@@ -178,7 +178,7 @@ onBeforeUnmount(() => {
         </VCard>
       </VCol>
 
-      <VCol cols="12" md="6" lg="4" @click="addNewTask">
+      <VCol cols="12" sm="6" md="4" lg="3" xl="2" @click="addNewTask">
         <VCard style="height: 100%;">
           <VCardText class="d-flex flex-column align-center justify-center" style="height: 100%;">
             <VIcon icon="bx-plus" size="140" color="primary" />

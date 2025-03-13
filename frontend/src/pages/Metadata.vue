@@ -101,7 +101,7 @@ onMounted(() => {
     </VRow>
 
     <VRow>
-      <VCol v-for="item in metadataStore.allMetadata" :key="item.id" cols="12" sm="4" md="4" lg="3" xl="3">
+      <VCol v-for="item in metadataStore.allMetadata" :key="item.id" cols="12" sm="6" md="4" lg="3" xl="2">
         <VCard class="d-flex flex-column" @click="showEditDialog(item)">
           <VCardItem>
             <VCardTitle class="d-flex justify-space-between align-center">
