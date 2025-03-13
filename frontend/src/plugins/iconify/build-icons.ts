@@ -92,6 +92,7 @@ const sources: BundleScriptConfig = {
     {
       filename: require.resolve('@iconify-json/mdi/icons.json'),
       icons: [
+        'close',
         'close-circle',
         'language-javascript',
         'language-typescript',
@@ -102,6 +103,14 @@ const sources: BundleScriptConfig = {
         'arrow-top-right',
         'arrow-collapse-all',
         'arrow-down-left',
+        'magnify',
+        'pound',
+        'refresh',
+        'sync',
+        'sync-off',
+        'delete',
+        'alert',
+        'magnify',
       ],
     },
     {
