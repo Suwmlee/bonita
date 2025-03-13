@@ -9,13 +9,11 @@ class WatchHistory(Base):
     """观看历史
     仅关注用户的观看行为，不再存储媒体元数据
     """
-    __tablename__ = "watch_history"
-    
     id = Column(Integer, primary_key=True, index=True)
     
     # 关联到中央媒体项
-    media_item_id = Column(Integer, ForeignKey("mediaitems.id"), nullable=False, index=True)
-    media_item = relationship("MediaItem", backref="watch_history")
+    media_item_id = Column(Integer, ForeignKey("mediaitem.id"), nullable=False, index=True)
+    media_item = relationship("MediaItem", backref="watchhistory")
     
     # 来源信息
     source = Column(String, nullable=False, comment="观看历史来源(trakt, emby, jellyfin, douban等)")

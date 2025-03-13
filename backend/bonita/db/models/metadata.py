@@ -9,12 +9,10 @@ class Metadata(Base):
     """元数据
     存储丰富的媒体详情，特别是特殊影片的详细信息
     """
-    __tablename__ = "metadata"
-    
     id = Column(Integer, primary_key=True, index=True)
     
     # 关联到中央媒体项
-    media_item_id = Column(Integer, ForeignKey("mediaitems.id"), nullable=False, index=True)
+    media_item_id = Column(Integer, ForeignKey("mediaitem.id"), index=True)
     media_item = relationship("MediaItem", backref="metadata_detail")
     
     # 基础信息 (已有字段)

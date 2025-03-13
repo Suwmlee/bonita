@@ -9,8 +9,6 @@ class MediaItem(Base):
     """媒体项目中央映射表
     作为所有媒体内容的统一标识和桥接各种元数据来源
     """
-    __tablename__ = "mediaitems"
-
     id = Column(Integer, primary_key=True, index=True)
     
     # 内部标识
@@ -32,7 +30,7 @@ class MediaItem(Base):
     poster = Column(String, comment="海报图片URL")
     
     # 对于剧集类型
-    series_id = Column(Integer, ForeignKey("mediaitems.id"), comment="关联的剧集ID")
+    series_id = Column(Integer, ForeignKey("mediaitem.id"), comment="关联的剧集ID")
     season_number = Column(Integer, default=-1, comment="季数")
     episode_number = Column(Integer, default=-1, comment="集数")
     
