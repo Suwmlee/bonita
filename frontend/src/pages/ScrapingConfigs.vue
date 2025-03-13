@@ -63,22 +63,8 @@ onMounted(() => {
 
       <VCol cols="12" md="6" lg="4" @click="addNewSetting">
         <VCard style="height: 100%;">
-          <VCardItem>
-            <VCardTitle>
-              New Setting
-            </VCardTitle>
-          </VCardItem>
-
-          <VCardText>
-            <p class="clamp-text mb-0">
-              Add new setting
-            </p>
-          </VCardText>
-
-          <VCardText class="d-flex justify-space-between align-center flex-wrap">
-            <div class="text-no-wrap">
-              <span class="ms-2">+</span>
-            </div>
+          <VCardText class="d-flex flex-column align-center justify-center" style="height: 100%;">
+            <VIcon icon="bx-plus" size="140" color="primary" />
           </VCardText>
         </VCard>
       </VCol>
