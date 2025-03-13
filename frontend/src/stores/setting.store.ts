@@ -5,6 +5,9 @@ import type {
   TestEmbyConnectionData,
   UpdateEmbySettingsData,
   UpdateProxySettingsData,
+  JellyfinSettings,
+  TestJellyfinConnectionData,
+  UpdateJellyfinSettingsData,
 } from "@/client/types.gen"
 import { defineStore } from "pinia"
 import { useToastStore } from "./toast.store"
@@ -14,12 +17,16 @@ interface SettingState {
   proxySettings: ProxySettings
   /** Emby API设置 */
   embyApiSettings: EmbySettings
+  /** Jellyfin API设置 */
+  jellyfinApiSettings: JellyfinSettings
   /** 加载状态 */
   loading: boolean
   /** 保存状态 */
   saving: boolean
   /** Emby测试状态 */
   testingEmby: boolean
+  /** Jellyfin测试状态 */
+  testingJellyfin: boolean
 }
 
 export const useSettingStore = defineStore("setting-store", {
@@ -33,10 +40,17 @@ export const useSettingStore = defineStore("setting-store", {
       embyApiSettings: {
         emby_host: "",
         emby_apikey: "",
+        enabled: false,
+      },
+      jellyfinApiSettings: {
+        jellyfin_host: "",
+        jellyfin_apikey: "",
+        enabled: false,
       },
       loading: false,
       saving: false,
       testingEmby: false,
+      testingJellyfin: false,
     }
   },
   actions: {
@@ -147,6 +161,72 @@ export const useSettingStore = defineStore("setting-store", {
         throw error
       } finally {
         this.testingEmby = false
+      }
+    },
+
+    /**
+     * 获取Jellyfin设置
+     */
+    async fetchJellyfinSettings() {
+      const toast = useToastStore()
+      this.loading = true
+
+      try {
+        const response = await SettingsService.getJellyfinSettings()
+        this.jellyfinApiSettings = response
+        return response
+      } catch (error) {
+        console.error("Error fetching Jellyfin settings:", error)
+        toast.error("获取Jellyfin设置失败")
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
+     * 更新Jellyfin设置
+     */
+    async saveJellyfinApiSettings() {
+      this.saving = true
+
+      try {
+        const data: UpdateJellyfinSettingsData = {
+          requestBody: this.jellyfinApiSettings,
+        }
+
+        const response = await SettingsService.updateJellyfinSettings(data)
+        return response
+      } catch (error) {
+        console.error("Error updating Jellyfin settings:", error)
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    /**
+     * 测试Jellyfin连接
+     * @param apiKey 用于测试的API Key
+     */
+    async testJellyfinConnection(apiKey: string) {
+      this.testingJellyfin = true
+
+      try {
+        const data: TestJellyfinConnectionData = {
+          requestBody: {
+            jellyfin_host: this.jellyfinApiSettings.jellyfin_host,
+            jellyfin_apikey: apiKey,
+          },
+        }
+
+        const response = await SettingsService.testJellyfinConnection(data)
+        return response
+      } catch (error) {
+        console.error("Error testing Jellyfin connection:", error)
+        throw error
+      } finally {
+        this.testingJellyfin = false
       }
     },
   },

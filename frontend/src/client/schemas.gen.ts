@@ -77,6 +77,18 @@ export const $EmbySettings = {
         emby_apikey: {
             type: 'string',
             title: 'Emby Apikey'
+        },
+        enabled: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Enabled',
+            default: false
         }
     },
     type: 'object',
@@ -181,6 +193,35 @@ export const $HTTPValidationError = {
     },
     type: 'object',
     title: 'HTTPValidationError'
+} as const;
+
+export const $JellyfinSettings = {
+    properties: {
+        jellyfin_host: {
+            type: 'string',
+            title: 'Jellyfin Host'
+        },
+        jellyfin_apikey: {
+            type: 'string',
+            title: 'Jellyfin Apikey'
+        },
+        enabled: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Enabled',
+            default: false
+        }
+    },
+    type: 'object',
+    required: ['jellyfin_host', 'jellyfin_apikey'],
+    title: 'JellyfinSettings',
+    description: 'Jellyfin settings schema'
 } as const;
 
 export const $MetadataBase = {

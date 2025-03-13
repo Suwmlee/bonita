@@ -53,3 +53,13 @@ class EmbySettings(BaseModel):
     """
     emby_host: str
     emby_apikey: str
+    enabled: Optional[bool] = False
+
+
+class JellyfinSettings(BaseModel):
+    """
+    Jellyfin settings schema
+    """
+    jellyfin_host: str
+    jellyfin_apikey: str
+    enabled: Optional[bool] = False

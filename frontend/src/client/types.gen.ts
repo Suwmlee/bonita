@@ -19,6 +19,7 @@ export type Body_resource_upload_image = {
 export type EmbySettings = {
     emby_host: string;
     emby_apikey: string;
+    enabled?: boolean | null;
 };
 
 export type ExtraInfoPublic = {
@@ -33,6 +34,15 @@ export type ExtraInfoPublic = {
 
 export type HTTPValidationError = {
     detail?: Array<ValidationError>;
+};
+
+/**
+ * Jellyfin settings schema
+ */
+export type JellyfinSettings = {
+    jellyfin_host: string;
+    jellyfin_apikey: string;
+    enabled?: boolean | null;
 };
 
 export type MetadataBase = {
@@ -591,6 +601,20 @@ export type TestEmbyConnectionData = {
 
 export type TestEmbyConnectionResponse = Response;
 
+export type GetJellyfinSettingsResponse = JellyfinSettings;
+
+export type UpdateJellyfinSettingsData = {
+    requestBody: JellyfinSettings;
+};
+
+export type UpdateJellyfinSettingsResponse = Response;
+
+export type TestJellyfinConnectionData = {
+    requestBody: JellyfinSettings;
+};
+
+export type TestJellyfinConnectionResponse = Response;
+
 export type GetImageByQueryData = {
     path: string;
 };
@@ -1103,6 +1127,44 @@ export type $OpenApiTs = {
     '/api/v1/settings/emby/test': {
         post: {
             req: TestEmbyConnectionData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/settings/jellyfin': {
+        get: {
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: JellyfinSettings;
+            };
+        };
+        post: {
+            req: UpdateJellyfinSettingsData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/settings/jellyfin/test': {
+        post: {
+            req: TestJellyfinConnectionData;
             res: {
                 /**
                  * Successful Response
