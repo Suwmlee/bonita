@@ -1,4 +1,3 @@
-
 import os
 
 from celery import Celery
@@ -22,6 +21,16 @@ def create_celery():
     celery.conf.update(worker_send_task_events=False)
     celery.conf.update(worker_prefetch_multiplier=1)
     celery.conf.update(broker_connection_retry_on_startup=True)  # 启动时重试代理连接
+
+    # Set up scheduled tasks
+    celery.conf.beat_schedule = {
+        # Sync watch history from all sources daily
+        'sync-watch-history-daily': {
+            'task': 'watch_history:sync',
+            'schedule': 86400.0,  # 24 hours in seconds
+            'args': (None, 30, 100),  # sources=None, days=30, limit=100
+        },
+    }
 
     return celery
 

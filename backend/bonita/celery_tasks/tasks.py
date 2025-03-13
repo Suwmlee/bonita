@@ -17,6 +17,7 @@ from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
 from bonita.db.models.scraping import ScrapingConfig
 from bonita.db.models.setting import SystemSetting
+from bonita.db.models.watch_history import WatchHistory
 from bonita.modules.scraping.number_parser import FileNumInfo
 from bonita.modules.scraping.scraping import add_mark, process_nfo_file, process_cover, scraping, load_all_NFO_from_folder
 from bonita.utils.fileinfo import BasicFileInfo, TargetFileInfo
@@ -25,6 +26,9 @@ from bonita.utils.downloader import process_cached_file, update_cache_from_local
 from bonita.utils.filehelper import cleanExtraMedia, cleanFolderWithoutSuffix, video_type
 from bonita.utils.http import get_active_proxy
 from bonita.modules.media_service.emby_service import EmbyService
+from bonita.modules.media_service.jellyfin_service import JellyfinService
+from bonita.modules.media_service.trakt_service import TraktService
+from bonita.db.models.media_item import MediaItem
 
 
 # 创建信号量，最多允许X任务同时执行
@@ -433,3 +437,686 @@ def celery_import_nfo(self, folder_path, option):
     except Exception as e:
         logger.error(f"[!] import nfo failed: {str(e)}")
     return True
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
+             name='watch_history:sync')
+def celery_sync_watch_history(self, sources=None, days=30, limit=100):
+    """Syncs watch history from multiple sources (Trakt, Emby, Jellyfin)
+    
+    Args:
+        sources (list, optional): List of sources to sync from. If None, syncs from all configured sources.
+        days (int, optional): Number of days of history to fetch. Defaults to 30.
+        limit (int, optional): Maximum number of items to fetch per source. Defaults to 100.
+    
+    Returns:
+        bool: True if sync was successful
+    """
+    self.update_state(state="PROGRESS", meta={"progress": 0, "step": "watch history sync: start"})
+    logger.info(f"[+] watch history sync: start")
+    
+    if sources is None:
+        sources = ["trakt", "emby", "jellyfin"]
+    
+    new_records = 0
+    updated_records = 0
+    
+    session = SessionFactory()
+    try:
+        # Process each source
+        for source_idx, source in enumerate(sources):
+            progress_pct = int((source_idx / len(sources)) * 90)
+            self.update_state(state="PROGRESS", meta={"progress": progress_pct, "step": f"watch history sync: processing {source}"})
+            
+            try:
+                if source == "trakt":
+                    trakt_records = sync_trakt_history(session, days, limit)
+                    if trakt_records:
+                        new_records += trakt_records[0]
+                        updated_records += trakt_records[1]
+                elif source == "emby":
+                    emby_records = sync_emby_history(session, days, limit)
+                    if emby_records:
+                        new_records += emby_records[0]
+                        updated_records += emby_records[1]
+                elif source == "jellyfin":
+                    jellyfin_records = sync_jellyfin_history(session, days, limit)
+                    if jellyfin_records:
+                        new_records += jellyfin_records[0]
+                        updated_records += jellyfin_records[1]
+            except Exception as e:
+                logger.error(f"Error syncing from {source}: {str(e)}")
+                # Continue with other sources even if one fails
+        
+        # Commit all changes
+        session.commit()
+        
+        self.update_state(state="PROGRESS", meta={"progress": 100, "step": "watch history sync: complete"})
+        logger.info(f"[+] Watch history sync complete. Added {new_records} new records, updated {updated_records} records")
+        
+    except Exception as e:
+        logger.error(f"Error during watch history sync: {str(e)}")
+        session.rollback()
+        raise
+    finally:
+        session.close()
+    
+    return True
+
+
+def sync_trakt_history(session, days=30, limit=100):
+    """Syncs watch history from Trakt
+    
+    Args:
+        session: Database session
+        days (int): Number of days of history to fetch
+        limit (int): Maximum number of items to fetch
+    
+    Returns:
+        tuple: (new_records, updated_records)
+    """
+    try:
+        # Get Trakt configuration
+        trakt_client_id = session.query(SystemSetting).filter(SystemSetting.key == "trakt_client_id").first()
+        trakt_access_token = session.query(SystemSetting).filter(SystemSetting.key == "trakt_access_token").first()
+        
+        if not trakt_client_id or not trakt_access_token:
+            logger.info("Trakt client ID or access token not configured")
+            return (0, 0)
+            
+        # Extract the actual values
+        trakt_client_id_value = trakt_client_id.value
+        trakt_access_token_value = trakt_access_token.value
+        
+        # Fetch watch history
+        watch_history = TraktService.get_watch_history(
+            trakt_client_id_value,
+            trakt_access_token_value,
+            days=days,
+            limit=limit,
+            extended=True
+        )
+        
+        if not watch_history:
+            logger.info("No watch history found on Trakt")
+            return (0, 0)
+            
+        # Fetch ratings
+        ratings = TraktService.get_ratings(trakt_client_id_value, trakt_access_token_value)
+        
+        # Process watch history
+        new_records = 0
+        updated_records = 0
+        
+        for item in watch_history:
+            # Extract movie data
+            movie = item.get("movie", {})
+            ids = movie.get("ids", {})
+            
+            trakt_id = str(ids.get("trakt", ""))
+            if not trakt_id:
+                continue
+                
+            # Extract watch timestamp
+            played_at = None
+            if "watched_at" in item:
+                played_at = datetime.fromisoformat(item["watched_at"].replace("Z", "+00:00"))
+            
+            # Extract movie metadata
+            title = movie.get("title", "")
+            year = movie.get("year")
+            overview = movie.get("overview", "")
+            genres = ", ".join(movie.get("genres", [])) if "genres" in movie else ""
+            runtime = movie.get("runtime")
+            
+            # Get rating if available
+            rating = ratings.get(trakt_id, 0.0)
+            has_rating = rating > 0
+            
+            # 获取外部ID
+            imdb_id = ids.get("imdb")
+            tmdb_id = str(ids["tmdb"]) if "tmdb" in ids and ids["tmdb"] else None
+            tvdb_id = str(ids["tvdb"]) if "tvdb" in ids and ids["tvdb"] else None
+            
+            # 查找或创建MediaItem
+            media_item = None
+            
+            # 按外部ID查找
+            if imdb_id:
+                media_item = session.query(MediaItem).filter(MediaItem.imdb_id == imdb_id).first()
+            if not media_item and tmdb_id:
+                media_item = session.query(MediaItem).filter(MediaItem.tmdb_id == tmdb_id).first()
+            if not media_item and tvdb_id:
+                media_item = session.query(MediaItem).filter(MediaItem.tvdb_id == tvdb_id).first()
+                
+            # 如果没找到，按标题和年份查找
+            if not media_item:
+                query = session.query(MediaItem).filter(MediaItem.title == title)
+                if year:
+                    query = query.filter(MediaItem.year == year)
+                media_item = query.first()
+                
+            # 如果仍然没找到，创建新的MediaItem
+            if not media_item:
+                media_item = MediaItem(
+                    media_type="movie",
+                    title=title,
+                    original_title=None,
+                    year=year,
+                    imdb_id=imdb_id,
+                    tmdb_id=tmdb_id,
+                    tvdb_id=tvdb_id
+                )
+                session.add(media_item)
+                session.flush()  # 获取ID
+            
+            # 检查是否已存在观看记录
+            existing_record = session.query(WatchHistory).filter(
+                WatchHistory.source == "trakt",
+                WatchHistory.external_id == trakt_id).first()
+            
+            # 创建或更新观看记录
+            if existing_record:
+                # 更新关联的MediaItem
+                existing_record.media_item_id = media_item.id
+                
+                # 只有在新日期更晚时才更新played_at
+                if played_at and (not existing_record.played_at or played_at > existing_record.played_at):
+                    existing_record.played_at = played_at
+                
+                existing_record.rating = rating
+                existing_record.has_rating = has_rating
+                
+                updated_records += 1
+            else:
+                # 创建新记录
+                new_record = WatchHistory(
+                    source="trakt",
+                    external_id=trakt_id,
+                    media_item_id=media_item.id,
+                    played_at=played_at,
+                    rating=rating,
+                    has_rating=has_rating
+                )
+                session.add(new_record)
+                new_records += 1
+        
+        return (new_records, updated_records)
+        
+    except Exception as e:
+        logger.error(f"Error syncing from Trakt: {str(e)}")
+        raise
+
+
+def sync_emby_history(session, days=30, limit=100):
+    """Syncs watch history from Emby
+    
+    Args:
+        session: Database session
+        days (int): Number of days of history to fetch
+        limit (int): Maximum number of items to fetch
+    
+    Returns:
+        tuple: (new_records, updated_records)
+    """
+    try:
+        # Get Emby configuration
+        emby_host = session.query(SystemSetting).filter(SystemSetting.key == "emby_host").first()
+        emby_apikey = session.query(SystemSetting).filter(SystemSetting.key == "emby_apikey").first()
+        
+        if not emby_host or not emby_apikey:
+            logger.info("Emby host or API key not configured")
+            return (0, 0)
+            
+        # Extract the actual values
+        emby_host_value = emby_host.value
+        emby_apikey_value = emby_apikey.value
+        
+        # Fetch watch history
+        watch_history = EmbyService.get_watch_history(
+            emby_host_value,
+            emby_apikey_value,
+            days=days,
+            limit=limit
+        )
+        
+        if not watch_history:
+            logger.info("No watch history found on Emby")
+            return (0, 0)
+            
+        # Process watch history
+        new_records = 0
+        updated_records = 0
+        
+        for item in watch_history:
+            # Extract item data
+            item_id = item.get("Id", "")
+            if not item_id:
+                continue
+                
+            # Determine content type
+            content_type = "movie"
+            if item.get("Type") == "Episode":
+                content_type = "episode"
+            
+            # Extract play timestamp and progress
+            played_at = None
+            if "DatePlayed" in item:
+                played_at = datetime.fromisoformat(item["DatePlayed"].replace("Z", "+00:00"))
+            
+            # Convert ticks to seconds and calculate progress
+            play_progress = 100.0  # Default to fully watched
+            duration = 0
+            
+            if "RunTimeTicks" in item and item["RunTimeTicks"] > 0:
+                # Convert ticks to seconds (1 tick = 100 nanoseconds)
+                duration = int(item["RunTimeTicks"] / 10000000)
+                
+                if "PlaybackPositionTicks" in item and item["PlaybackPositionTicks"] > 0:
+                    position_seconds = int(item["PlaybackPositionTicks"] / 10000000)
+                    play_progress = min(100.0, (position_seconds / duration) * 100)
+            
+            # Extract metadata
+            title = item.get("Name", "")
+            original_title = item.get("OriginalTitle", "")
+            year = item.get("ProductionYear")
+            overview = item.get("Overview", "")
+            genres = ", ".join(item.get("Genres", [])) if "Genres" in item else ""
+            runtime = int(duration / 60) if duration > 0 else None  # Convert to minutes
+            
+            # TV series specific fields
+            series_name = None
+            season_number = -1
+            episode_number = -1
+            
+            if content_type == "episode":
+                series_name = item.get("SeriesName", "")
+                if "ParentIndexNumber" in item:
+                    season_number = item["ParentIndexNumber"]
+                if "IndexNumber" in item:
+                    episode_number = item["IndexNumber"]
+            
+            # Extract external IDs
+            provider_ids = item.get("ProviderIds", {})
+            imdb_id = provider_ids.get("Imdb", "")
+            tmdb_id = provider_ids.get("Tmdb", "")
+            tvdb_id = provider_ids.get("Tvdb", "")
+            
+            # Get play count
+            play_count = item.get("PlayCount", 1)
+            
+            # 查找或创建MediaItem
+            media_item = None
+            
+            # 按外部ID查找
+            if imdb_id:
+                media_item = session.query(MediaItem).filter(MediaItem.imdb_id == imdb_id).first()
+            if not media_item and tmdb_id:
+                media_item = session.query(MediaItem).filter(MediaItem.tmdb_id == tmdb_id).first()
+            if not media_item and tvdb_id:
+                media_item = session.query(MediaItem).filter(MediaItem.tvdb_id == tvdb_id).first()
+                
+            # 如果没找到，按标题和年份查找
+            if not media_item:
+                query = session.query(MediaItem).filter(MediaItem.title == title)
+                if year:
+                    query = query.filter(MediaItem.year == year)
+                media_item = query.first()
+            
+            # 如果是剧集，先查找或创建剧集
+            series_item = None
+            if content_type == "episode" and series_name:
+                # 查找剧集
+                series_query = session.query(MediaItem).filter(
+                    MediaItem.media_type == "show",
+                    MediaItem.title == series_name
+                )
+                series_item = series_query.first()
+                
+                # 如果没找到，创建新的剧集
+                if not series_item:
+                    series_item = MediaItem(
+                        media_type="show",
+                        title=series_name,
+                        year=year
+                    )
+                    session.add(series_item)
+                    session.flush()  # 获取ID
+            
+            # 如果仍然没找到，创建新的MediaItem
+            if not media_item:
+                media_item = MediaItem(
+                    media_type=content_type,
+                    title=title,
+                    original_title=original_title,
+                    year=year,
+                    imdb_id=imdb_id,
+                    tmdb_id=tmdb_id,
+                    tvdb_id=tvdb_id
+                )
+                
+                # 如果是剧集，设置剧集信息
+                if content_type == "episode" and series_item:
+                    media_item.series_id = series_item.id
+                    media_item.season_number = season_number
+                    media_item.episode_number = episode_number
+                
+                session.add(media_item)
+                session.flush()  # 获取ID
+            
+            # 检查是否已存在观看记录
+            existing_record = session.query(WatchHistory).filter(
+                WatchHistory.source == "emby",
+                WatchHistory.external_id == item_id).first()
+            
+            # 创建或更新观看记录
+            if existing_record:
+                # 更新关联的MediaItem
+                existing_record.media_item_id = media_item.id
+                
+                # 只有在新日期更晚时才更新played_at
+                if played_at and (not existing_record.played_at or played_at > existing_record.played_at):
+                    existing_record.played_at = played_at
+                
+                existing_record.play_count = play_count
+                existing_record.play_progress = play_progress
+                existing_record.duration = duration
+                
+                updated_records += 1
+            else:
+                # 创建新记录
+                new_record = WatchHistory(
+                    source="emby",
+                    external_id=item_id,
+                    media_item_id=media_item.id,
+                    played_at=played_at,
+                    play_count=play_count,
+                    play_progress=play_progress,
+                    duration=duration
+                )
+                session.add(new_record)
+                new_records += 1
+        
+        return (new_records, updated_records)
+        
+    except Exception as e:
+        logger.error(f"Error syncing from Emby: {str(e)}")
+        raise
+
+
+def sync_jellyfin_history(session, days=30, limit=100):
+    """Syncs watch history from Jellyfin
+    
+    Args:
+        session: Database session
+        days (int): Number of days of history to fetch
+        limit (int): Maximum number of items to fetch
+    
+    Returns:
+        tuple: (new_records, updated_records)
+    """
+    try:
+        # Get Jellyfin configuration
+        jellyfin_host = session.query(SystemSetting).filter(SystemSetting.key == "jellyfin_host").first()
+        jellyfin_apikey = session.query(SystemSetting).filter(SystemSetting.key == "jellyfin_apikey").first()
+        jellyfin_userid = session.query(SystemSetting).filter(SystemSetting.key == "jellyfin_userid").first()
+        
+        if not jellyfin_host or not jellyfin_apikey:
+            logger.info("Jellyfin host or API key not configured")
+            return (0, 0)
+            
+        # Extract the actual values
+        jellyfin_host_value = jellyfin_host.value
+        jellyfin_apikey_value = jellyfin_apikey.value
+        jellyfin_userid_value = jellyfin_userid.value if jellyfin_userid else None
+        
+        # Fetch watch history
+        watch_history = JellyfinService.get_watch_history(
+            jellyfin_host_value,
+            jellyfin_apikey_value,
+            jellyfin_userid_value,
+            days=days,
+            limit=limit
+        )
+        
+        if not watch_history:
+            logger.info("No watch history found on Jellyfin")
+            return (0, 0)
+            
+        # Process watch history
+        new_records = 0
+        updated_records = 0
+        
+        for item in watch_history:
+            # Extract item data
+            item_id = item.get("Id", "")
+            if not item_id:
+                continue
+                
+            # Determine content type
+            content_type = "movie"
+            if item.get("Type") == "Episode":
+                content_type = "episode"
+            
+            # Extract play timestamp and progress
+            played_at = None
+            if "DateLastPlayed" in item:
+                played_at = datetime.fromisoformat(item["DateLastPlayed"].replace("Z", "+00:00"))
+            
+            # Calculate progress
+            play_progress = 100.0  # Default to fully watched
+            duration = 0
+            
+            if "RunTimeTicks" in item and item["RunTimeTicks"] > 0:
+                # Convert ticks to seconds (1 tick = 100 nanoseconds)
+                duration = int(item["RunTimeTicks"] / 10000000)
+                
+                if "PlaybackPositionTicks" in item and item["PlaybackPositionTicks"] > 0:
+                    position_seconds = int(item["PlaybackPositionTicks"] / 10000000)
+                    play_progress = min(100.0, (position_seconds / duration) * 100)
+            
+            # Extract metadata
+            title = item.get("Name", "")
+            original_title = item.get("OriginalTitle", "")
+            year = item.get("ProductionYear")
+            overview = item.get("Overview", "")
+            genres = ", ".join(item.get("Genres", [])) if "Genres" in item else ""
+            runtime = int(duration / 60) if duration > 0 else None  # Convert to minutes
+            
+            # TV series specific fields
+            series_name = None
+            season_number = -1
+            episode_number = -1
+            
+            if content_type == "episode":
+                series_name = item.get("SeriesName", "")
+                if "ParentIndexNumber" in item:
+                    season_number = item["ParentIndexNumber"]
+                if "IndexNumber" in item:
+                    episode_number = item["IndexNumber"]
+            
+            # Extract external IDs
+            provider_ids = item.get("ProviderIds", {})
+            imdb_id = provider_ids.get("Imdb", "")
+            tmdb_id = provider_ids.get("Tmdb", "")
+            tvdb_id = provider_ids.get("Tvdb", "")
+            
+            # Get play count
+            play_count = item.get("PlayCount", 1)
+            
+            # 查找或创建MediaItem
+            media_item = None
+            
+            # 按外部ID查找
+            if imdb_id:
+                media_item = session.query(MediaItem).filter(MediaItem.imdb_id == imdb_id).first()
+            if not media_item and tmdb_id:
+                media_item = session.query(MediaItem).filter(MediaItem.tmdb_id == tmdb_id).first()
+            if not media_item and tvdb_id:
+                media_item = session.query(MediaItem).filter(MediaItem.tvdb_id == tvdb_id).first()
+                
+            # 如果没找到，按标题和年份查找
+            if not media_item:
+                query = session.query(MediaItem).filter(MediaItem.title == title)
+                if year:
+                    query = query.filter(MediaItem.year == year)
+                media_item = query.first()
+            
+            # 如果是剧集，先查找或创建剧集
+            series_item = None
+            if content_type == "episode" and series_name:
+                # 查找剧集
+                series_query = session.query(MediaItem).filter(
+                    MediaItem.media_type == "show",
+                    MediaItem.title == series_name
+                )
+                series_item = series_query.first()
+                
+                # 如果没找到，创建新的剧集
+                if not series_item:
+                    series_item = MediaItem(
+                        media_type="show",
+                        title=series_name,
+                        year=year
+                    )
+                    session.add(series_item)
+                    session.flush()  # 获取ID
+            
+            # 如果仍然没找到，创建新的MediaItem
+            if not media_item:
+                media_item = MediaItem(
+                    media_type=content_type,
+                    title=title,
+                    original_title=original_title,
+                    year=year,
+                    imdb_id=imdb_id,
+                    tmdb_id=tmdb_id,
+                    tvdb_id=tvdb_id
+                )
+                
+                # 如果是剧集，设置剧集信息
+                if content_type == "episode" and series_item:
+                    media_item.series_id = series_item.id
+                    media_item.season_number = season_number
+                    media_item.episode_number = episode_number
+                
+                session.add(media_item)
+                session.flush()  # 获取ID
+            
+            # 检查是否已存在观看记录
+            existing_record = session.query(WatchHistory).filter(
+                WatchHistory.source == "jellyfin",
+                WatchHistory.external_id == item_id).first()
+            
+            # 创建或更新观看记录
+            if existing_record:
+                # 更新关联的MediaItem
+                existing_record.media_item_id = media_item.id
+                
+                # 只有在新日期更晚时才更新played_at
+                if played_at and (not existing_record.played_at or played_at > existing_record.played_at):
+                    existing_record.played_at = played_at
+                
+                existing_record.play_count = play_count
+                existing_record.play_progress = play_progress
+                existing_record.duration = duration
+                
+                updated_records += 1
+            else:
+                # 创建新记录
+                new_record = WatchHistory(
+                    source="jellyfin",
+                    external_id=item_id,
+                    media_item_id=media_item.id,
+                    played_at=played_at,
+                    play_count=play_count,
+                    play_progress=play_progress,
+                    duration=duration
+                )
+                session.add(new_record)
+                new_records += 1
+        
+        return (new_records, updated_records)
+        
+    except Exception as e:
+        logger.error(f"Error syncing from Jellyfin: {str(e)}")
+        raise
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
+             name='watch_history:link_metadata')
+def celery_link_metadata_to_watch_history(self):
+    """将特殊影片的Metadata关联到WatchHistory
+    
+    通过标题匹配或其他方式，尝试将特殊影片的Metadata关联到WatchHistory
+    """
+    self.update_state(state="PROGRESS", meta={"progress": 0, "step": "linking metadata to watch history: start"})
+    logger.info("[+] 开始关联特殊影片元数据到观看历史")
+    
+    session = SessionFactory()
+    try:
+        # 导入模型
+        from bonita.db.models.media_item import MediaItem
+        from bonita.db.models.metadata import Metadata
+        
+        # 获取所有有number的MediaItem
+        media_items_with_number = session.query(MediaItem).filter(
+            MediaItem.number != None,
+            MediaItem.number != ''
+        ).all()
+        
+        logger.info(f"[+] 找到 {len(media_items_with_number)} 个带番号的媒体项")
+        
+        # 获取所有Metadata
+        metadata_records = session.query(Metadata).all()
+        
+        # 创建番号到Metadata的映射
+        number_to_metadata = {}
+        for metadata in metadata_records:
+            if metadata.number:
+                number_to_metadata[metadata.number] = metadata
+        
+        logger.info(f"[+] 找到 {len(number_to_metadata)} 个带番号的元数据记录")
+        
+        # 关联MediaItem和Metadata
+        linked_count = 0
+        for media_item in media_items_with_number:
+            if media_item.number in number_to_metadata:
+                metadata = number_to_metadata[media_item.number]
+                
+                # 检查是否已关联
+                if metadata.media_item_id != media_item.id:
+                    metadata.media_item_id = media_item.id
+                    linked_count += 1
+        
+        # 查找没有number但可能通过标题匹配的MediaItem
+        media_items_without_number = session.query(MediaItem).filter(
+            (MediaItem.number == None) | (MediaItem.number == '')
+        ).all()
+        
+        title_match_count = 0
+        for media_item in media_items_without_number:
+            # 查找标题匹配的Metadata
+            matching_metadata = session.query(Metadata).filter(
+                Metadata.title == media_item.title
+            ).first()
+            
+            if matching_metadata and not matching_metadata.media_item_id:
+                # 更新MediaItem的number
+                media_item.number = matching_metadata.number
+                # 关联Metadata到MediaItem
+                matching_metadata.media_item_id = media_item.id
+                title_match_count += 1
+        
+        session.commit()
+        logger.info(f"[+] 成功关联 {linked_count} 个番号匹配的记录和 {title_match_count} 个标题匹配的记录")
+        
+        self.update_state(state="PROGRESS", meta={"progress": 100, "step": "linking metadata to watch history: complete"})
+        return {"linked_by_number": linked_count, "linked_by_title": title_match_count}
+        
+    except Exception as e:
+        logger.error(f"关联元数据时出错: {str(e)}")
+        session.rollback()
+        raise
+    finally:
+        session.close()

@@ -6,3 +6,5 @@ from .extrainfo import ExtraInfo
 from .record import TransRecords
 from .downloads import Downloads
 from .setting import SystemSetting
+from .watch_history import WatchHistory
+from .media_item import MediaItem
