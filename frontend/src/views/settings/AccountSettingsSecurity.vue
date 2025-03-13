@@ -12,9 +12,7 @@ const currentPassword = ref("")
 const newPassword = ref("")
 const confirmPassword = ref("")
 
-const passwordRequirements = [
-  t('auth.passwordMinLength'),
-]
+const passwordRequirements = [t("auth.passwordMinLength")]
 
 const changePasswd = async () => {
   const data: UpdatePassword = {

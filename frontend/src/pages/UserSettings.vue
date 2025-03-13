@@ -8,11 +8,13 @@ const { t } = useI18n() // 导入国际化工具函数
 const activeTab = ref(route.params.tab)
 
 // tabs
-const tabs = [{ 
-  title: t('pages.userSettings.tabs.security'), 
-  icon: "bx-lock-open", 
-  tab: "security" 
-}]
+const tabs = [
+  {
+    title: t("pages.userSettings.tabs.security"),
+    icon: "bx-lock-open",
+    tab: "security",
+  },
+]
 </script>
 
 <template>

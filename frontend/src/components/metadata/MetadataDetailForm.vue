@@ -71,12 +71,16 @@ function validateForm() {
 
   // Validate required fields
   if (!currentMetadata.value.number?.trim()) {
-    formErrors.value.number = t('components.metadata.form.validation.numberRequired')
+    formErrors.value.number = t(
+      "components.metadata.form.validation.numberRequired",
+    )
     formValid.value = false
   }
 
   if (!currentMetadata.value.title?.trim()) {
-    formErrors.value.title = t('components.metadata.form.validation.titleRequired')
+    formErrors.value.title = t(
+      "components.metadata.form.validation.titleRequired",
+    )
     formValid.value = false
   }
 
@@ -118,7 +122,7 @@ async function handleFileUpload(event: Event) {
   const file = target.files[0]
   // Validate file type
   if (!file.type.startsWith("image/")) {
-    alert(t('components.metadata.form.imageTypeError'))
+    alert(t("components.metadata.form.imageTypeError"))
     return
   }
 
@@ -148,11 +152,11 @@ async function handleFileUpload(event: Event) {
       currentMetadata.value = { ...currentMetadata.value }
     } else {
       console.error("Could not determine path from upload response:", response)
-      alert(t('components.metadata.form.uploadSuccess'))
+      alert(t("components.metadata.form.uploadSuccess"))
     }
   } catch (error) {
     console.error("Image upload failed:", error)
-    alert(t('components.metadata.form.uploadError'))
+    alert(t("components.metadata.form.uploadError"))
   } finally {
     isUploading.value = false
     if (fileInput.value) {

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useScrapingStore } from "@/stores/scraping.store"
 import { useTaskStore } from "@/stores/task.store"
-import { VCardActions } from "vuetify/components"
+import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import { useI18n } from "vue-i18n"
-import { ref, computed, onMounted, onBeforeUnmount } from "vue"
+import { VCardActions } from "vuetify/components"
 
 const taskStore = useTaskStore()
 const scrapingStore = useScrapingStore()
@@ -14,7 +14,7 @@ const directoryInputs = ref(new Map<number, string>())
 
 // Get directory input for a task
 function getDirectoryInput(taskId: number): string {
-  return directoryInputs.value.get(taskId) || ''
+  return directoryInputs.value.get(taskId) || ""
 }
 
 // Set directory input for a task
@@ -52,7 +52,7 @@ function addNewTask() {
 function runTask(id: number) {
   // Get the directory input for this task
   const directory = getDirectoryInput(id)
-  
+
   // Use the appropriate method based on whether a directory is specified
   if (directory.trim()) {
     taskStore.runTaskByIdWithPath(id, directory)

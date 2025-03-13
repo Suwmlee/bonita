@@ -2,12 +2,12 @@
 import {
   ExtraInfoPublic,
   type RecordPublic,
+  RecordService,
   TransferRecordPublic,
-  RecordService
 } from "@/client"
 import { useRecordStore } from "@/stores/record.store"
-import { useI18n } from "vue-i18n"
 import { useToastStore } from "@/stores/toast.store"
+import { useI18n } from "vue-i18n"
 
 interface Props {
   updateRecord?: RecordPublic
@@ -39,26 +39,30 @@ async function handleSubmit() {
 
 async function applyTopFolderToAll() {
   try {
-    if (currentTransferRecord.value.srcfolder !== undefined && currentTransferRecord.value.top_folder !== undefined) {
+    if (
+      currentTransferRecord.value.srcfolder !== undefined &&
+      currentTransferRecord.value.top_folder !== undefined
+    ) {
       const response = await RecordService.updateTopFolder({
         srcfolder: currentTransferRecord.value.srcfolder,
         oldTopFolder: originalTopFolder.value || "",
         newTopFolder: currentTransferRecord.value.top_folder || "",
       })
-      
-      if (response && response.success) {
-        toastStore.success(t('components.record.form.topFolderUpdateSuccess'))
+
+      if (response?.success) {
+        toastStore.success(t("components.record.form.topFolderUpdateSuccess"))
         originalTopFolder.value = currentTransferRecord.value.top_folder
       } else {
-        const errorMessage = response?.message || t('components.record.form.topFolderUpdateError')
+        const errorMessage =
+          response?.message || t("components.record.form.topFolderUpdateError")
         toastStore.error(errorMessage)
       }
     } else {
-      toastStore.error(t('components.record.form.topFolderMissingData'))
+      toastStore.error(t("components.record.form.topFolderMissingData"))
     }
   } catch (error) {
     console.error("Top folder update failed:", error)
-    toastStore.error(t('components.record.form.topFolderUpdateError'))
+    toastStore.error(t("components.record.form.topFolderUpdateError"))
   }
 }
 </script>

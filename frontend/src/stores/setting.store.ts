@@ -1,13 +1,13 @@
 import { SettingsService } from "@/client/services.gen"
 import type {
   EmbySettings,
+  JellyfinSettings,
   ProxySettings,
   TestEmbyConnectionData,
-  UpdateEmbySettingsData,
-  UpdateProxySettingsData,
-  JellyfinSettings,
   TestJellyfinConnectionData,
+  UpdateEmbySettingsData,
   UpdateJellyfinSettingsData,
+  UpdateProxySettingsData,
 } from "@/client/types.gen"
 import { defineStore } from "pinia"
 import { useToastStore } from "./toast.store"

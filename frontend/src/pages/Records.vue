@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useRecordStore } from "@/stores/record.store"
 import { useTaskStore } from "@/stores/task.store"
-import { VIcon } from "vuetify/components"
 import { useI18n } from "vue-i18n"
+import { VIcon } from "vuetify/components"
 
 const recordStore = useRecordStore()
 const taskStore = useTaskStore()
@@ -43,70 +43,70 @@ const formatDateTime = (dateStr: string | null | undefined) => {
 
 const headers = [
   {
-    title: t('pages.records.name'),
+    title: t("pages.records.name"),
     align: "start" as "start" | "center" | "end",
     key: "transfer_record.srcname",
     width: 250,
     sortable: true,
   },
   {
-    title: t('pages.records.path'),
+    title: t("pages.records.path"),
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.srcpath",
     width: 200,
     sortable: true,
   },
   {
-    title: t('pages.records.destPath'),
+    title: t("pages.records.destPath"),
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.destpath",
     width: 200,
     sortable: true,
   },
   {
-    title: t('pages.records.season'),
+    title: t("pages.records.season"),
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.season",
     width: 100,
     sortable: true,
   },
   {
-    title: t('pages.records.episode'),
+    title: t("pages.records.episode"),
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.episode",
     width: 100,
     sortable: true,
   },
   {
-    title: t('pages.records.number'),
+    title: t("pages.records.number"),
     align: "center" as "start" | "center" | "end",
     key: "extra_info.number",
     width: 100,
     sortable: false,
   },
   {
-    title: t('pages.records.tag'),
+    title: t("pages.records.tag"),
     align: "center" as "start" | "center" | "end",
     key: "extra_info.tag",
     width: 100,
     sortable: false,
   },
   {
-    title: t('pages.records.updateTime'),
+    title: t("pages.records.updateTime"),
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.updatetime",
     width: 120,
     sortable: true,
   },
   {
-    title: t('pages.records.deadTime'),
+    title: t("pages.records.deadTime"),
     align: "center" as "start" | "center" | "end",
     key: "transfer_record.deadtime",
     width: 120,
     sortable: true,
   },
   {
-    title: t('common.actions'),
+    title: t("common.actions"),
     key: "actions",
     sortable: false,
     width: 100,

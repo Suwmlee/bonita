@@ -9,12 +9,23 @@ const settingStore = useSettingStore()
 const { t } = useI18n() // 导入国际化工具函数
 
 // 通过 storeToRefs 保持响应性
-const { proxySettings, embyApiSettings, jellyfinApiSettings, loading, saving, testingEmby, testingJellyfin } =
-  storeToRefs(settingStore)
+const {
+  proxySettings,
+  embyApiSettings,
+  jellyfinApiSettings,
+  loading,
+  saving,
+  testingEmby,
+  testingJellyfin,
+} = storeToRefs(settingStore)
 const testResult = ref<{ success?: boolean; message?: string } | null>(null)
 const saveResult = ref<{ success: boolean; message: string } | null>(null)
-const jellyfinTestResult = ref<{ success?: boolean; message?: string } | null>(null)
-const jellyfinSaveResult = ref<{ success: boolean; message: string } | null>(null)
+const jellyfinTestResult = ref<{ success?: boolean; message?: string } | null>(
+  null,
+)
+const jellyfinSaveResult = ref<{ success: boolean; message: string } | null>(
+  null,
+)
 
 const fetchProxySettings = async () => {
   await settingStore.fetchProxySettings()
@@ -66,8 +77,10 @@ const saveJellyfinApiSettings = async () => {
   jellyfinSaveResult.value = null
 
   // 确保字段有正确的值类型
-  jellyfinApiSettings.value.jellyfin_host = jellyfinApiSettings.value.jellyfin_host || ""
-  jellyfinApiSettings.value.jellyfin_apikey = jellyfinApiSettings.value.jellyfin_apikey || ""
+  jellyfinApiSettings.value.jellyfin_host =
+    jellyfinApiSettings.value.jellyfin_host || ""
+  jellyfinApiSettings.value.jellyfin_apikey =
+    jellyfinApiSettings.value.jellyfin_apikey || ""
 
   try {
     const response = await settingStore.saveJellyfinApiSettings()

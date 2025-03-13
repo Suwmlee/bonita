@@ -11,7 +11,7 @@ const updateOption = ref("ignore")
 
 const importNfoData = async () => {
   if (!nfoFolder.value) {
-    alert(t('pages.tools.importNfo.folderRequired'))
+    alert(t("pages.tools.importNfo.folderRequired"))
     return
   }
   isLoading.value = true

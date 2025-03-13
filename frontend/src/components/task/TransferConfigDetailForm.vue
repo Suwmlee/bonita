@@ -23,16 +23,16 @@ const currentTask = ref<any>()
 
 // Define content type options
 const contentTypeOptions = [
-  { title: t('components.task.form.movie'), value: 1 },
-  { title: t('components.task.form.series'), value: 2 },
+  { title: t("components.task.form.movie"), value: 1 },
+  { title: t("components.task.form.series"), value: 2 },
 ]
 
 // Define operation method options
 const operationOptions = [
-  { title: t('components.task.form.hardLink'), value: 1 },
-  { title: t('components.task.form.softLink'), value: 2 },
-  { title: t('components.task.form.move'), value: 3 },
-  { title: t('components.task.form.copy'), value: 4 },
+  { title: t("components.task.form.hardLink"), value: 1 },
+  { title: t("components.task.form.softLink"), value: 2 },
+  { title: t("components.task.form.move"), value: 3 },
+  { title: t("components.task.form.copy"), value: 4 },
 ]
 
 if (updateTask) {
