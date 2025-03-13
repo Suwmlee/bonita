@@ -17,12 +17,36 @@ const tagColorMap = {
   破解: "#FFA500",
 } as const
 
+// 刷新相关变量
+const autoRefresh = ref(true) // 是否自动刷新
+const refreshInterval = ref(10) // 刷新间隔（秒）
+const refreshTimer = ref<number | null>(null) // 刷新定时器
+const lastRefreshTime = ref<Date | null>(null) // 上次刷新时间
+const hasNewData = ref(false) // 是否有新数据
+const lastDataHash = ref("") // 上次数据的哈希值，用于检测变化
+
 // 删除确认对话框
 const deleteDialog = ref(false)
 const forceDelete = ref(false)
 
 // 分页选项
 const pageSizeOptions = [10, 25, 50, 100]
+
+// 计算下次刷新时间的倒计时
+const refreshCountdown = computed(() => {
+  if (!autoRefresh.value || !lastRefreshTime.value) return 0
+  
+  const nextRefreshTime = new Date(lastRefreshTime.value.getTime() + refreshInterval.value * 1000)
+  const now = new Date()
+  const remainingSeconds = Math.max(0, Math.floor((nextRefreshTime.getTime() - now.getTime()) / 1000))
+  
+  return remainingSeconds
+})
+
+// 一个简单的函数来生成数据哈希，用于检测变化
+const generateDataHash = (data: any[]) => {
+  return JSON.stringify(data.map(item => item.transfer_record.id + '_' + item.transfer_record.updatetime))
+}
 
 const getTagColor = (tag: string) => {
   return tagColorMap[tag.trim() as keyof typeof tagColorMap] || "#9DA8B5"
@@ -139,6 +163,7 @@ const handleItemsPerPageChange = async (newItemsPerPage: number) => {
 const loadData = async (
   page = recordStore.currentPage,
   itemsPerPage = recordStore.itemsPerPage,
+  isAutoRefresh = false,
 ) => {
   // 构建搜索参数
   const searchParams: {
@@ -176,7 +201,63 @@ const loadData = async (
       searchParams.sortDesc = sortBy.value[0].order === "desc"
     }
   }
-  recordStore.getRecords(searchParams)
+  await recordStore.getRecords(searchParams)
+  
+  // 刷新后处理
+  lastRefreshTime.value = new Date()
+  
+  // 如果是自动刷新，检查数据是否有变化
+  if (isAutoRefresh) {
+    const newDataHash = generateDataHash(recordStore.records)
+    if (lastDataHash.value && newDataHash !== lastDataHash.value) {
+      hasNewData.value = true
+    }
+    lastDataHash.value = newDataHash
+  } else {
+    // 如果是手动刷新，重置新数据标志
+    hasNewData.value = false
+    lastDataHash.value = generateDataHash(recordStore.records)
+  }
+  
+  // 设置下一次自动刷新
+  setupAutoRefresh()
+}
+
+// 设置自动刷新定时器
+const setupAutoRefresh = () => {
+  // 清除现有定时器
+  if (refreshTimer.value) {
+    clearTimeout(refreshTimer.value)
+    refreshTimer.value = null
+  }
+  
+  // 如果启用了自动刷新，设置新的定时器
+  if (autoRefresh.value) {
+    refreshTimer.value = setTimeout(() => {
+      loadData(recordStore.currentPage, recordStore.itemsPerPage, true)
+    }, refreshInterval.value * 1000) as unknown as number
+  }
+}
+
+// 切换自动刷新状态
+const toggleAutoRefresh = () => {
+  autoRefresh.value = !autoRefresh.value
+  if (autoRefresh.value) {
+    // 启用自动刷新时，立即设置定时器
+    setupAutoRefresh()
+  } else {
+    // 禁用自动刷新时，清除定时器
+    if (refreshTimer.value) {
+      clearTimeout(refreshTimer.value)
+      refreshTimer.value = null
+    }
+  }
+}
+
+// 手动刷新数据
+const manualRefresh = async () => {
+  hasNewData.value = false
+  await loadData(recordStore.currentPage, recordStore.itemsPerPage)
 }
 
 async function initial() {
@@ -234,6 +315,14 @@ const handleSortChange = (newSortBy: any) => {
   loadData(recordStore.currentPage, recordStore.itemsPerPage)
 }
 
+// 组件卸载时清除定时器
+onBeforeUnmount(() => {
+  if (refreshTimer.value) {
+    clearTimeout(refreshTimer.value)
+    refreshTimer.value = null
+  }
+})
+
 onMounted(() => {
   initial()
 })
@@ -256,10 +345,41 @@ onMounted(() => {
             @click:clear="taskIdQuery = ''; loadData(1, recordStore.itemsPerPage)" />
         </div>
         
-        <v-btn color="error" :disabled="selected.length === 0" prepend-icon="mdi-delete" @click="handleDelete"
-          size="default" class="delete-btn">
-          {{ t('pages.records.deleteSelected', { count: selected.length }) }}
-        </v-btn>
+        <div class="d-flex align-center gap-2">
+          <!-- 刷新状态和控件 -->
+          <div class="refresh-controls d-flex align-center">
+            <v-tooltip :text="autoRefresh ? t('pages.records.refreshOn') : t('pages.records.refreshOff')">
+              <template v-slot:activator="{ props }">
+                <v-btn icon v-bind="props" :color="autoRefresh ? 'success' : 'grey'" @click="toggleAutoRefresh" size="small">
+                  <v-icon>{{ autoRefresh ? 'mdi-sync' : 'mdi-sync-off' }}</v-icon>
+                </v-btn>
+              </template>
+            </v-tooltip>
+            
+            <v-tooltip :text="t('pages.records.manualRefresh')">
+              <template v-slot:activator="{ props }">
+                <v-btn icon v-bind="props" color="primary" @click="manualRefresh" size="small" class="ml-1" 
+                  :disabled="recordStore.loading" :loading="recordStore.loading">
+                  <v-icon>mdi-refresh</v-icon>
+                </v-btn>
+              </template>
+            </v-tooltip>
+            
+            <v-chip v-if="hasNewData" color="warning" size="small" class="ml-2" @click="manualRefresh">
+              <v-icon start size="x-small" class="mr-1">mdi-alert</v-icon>
+              {{ t('pages.records.newData') }}
+            </v-chip>
+            
+            <div v-if="autoRefresh && lastRefreshTime && !hasNewData" class="refresh-counter text-grey text-caption ml-2">
+              {{ t('pages.records.nextRefresh', { seconds: refreshCountdown }) }}
+            </div>
+          </div>
+          
+          <v-btn color="error" :disabled="selected.length === 0" prepend-icon="mdi-delete" @click="handleDelete"
+            size="default" class="delete-btn">
+            {{ t('pages.records.deleteSelected', { count: selected.length }) }}
+          </v-btn>
+        </div>
       </div>
 
       <div class="search-filters mt-2 mb-1 d-flex flex-wrap align-center gap-2" v-if="searchQuery || taskIdQuery">
@@ -475,4 +595,26 @@ onMounted(() => {
 }
 
 /* ... existing responsive adjustments ... */
+
+.refresh-controls {
+  white-space: nowrap;
+}
+
+.refresh-counter {
+  min-width: 100px;
+}
+
+@media (max-width: 768px) {
+  /* ... existing responsive styles ... */
+  
+  .refresh-controls {
+    width: 100%;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  
+  .refresh-counter {
+    text-align: right;
+  }
+}
 </style>

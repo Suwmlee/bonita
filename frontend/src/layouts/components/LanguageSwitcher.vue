@@ -17,8 +17,8 @@ import { useI18n } from "vue-i18n"
 
 // 语言配置
 const languages = [
-  { code: "zh", name: "中文", icon: "bx-alarm-off" },
-  { code: "en", name: "English", icon: "bx-font" },
+  { code: "zh", name: "中文", icon: "mdi-translate" },
+  { code: "en", name: "English", icon: "mdi-translate" },
 ]
 
 const { locale: i18nLocale, t } = useI18n()

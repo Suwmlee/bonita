@@ -236,6 +236,11 @@ export default {
       updateTime: "Update Time",
       deadTime: "Dead Time",
       actions: "Actions",
+      refreshOn: "Auto-refresh is on",
+      refreshOff: "Auto-refresh is off",
+      manualRefresh: "Refresh now",
+      newData: "New data available",
+      nextRefresh: "Next refresh in {seconds}s",
       deleteDialog: {
         title: "Confirm Delete",
         message:

@@ -231,6 +231,11 @@ export default {
       updateTime: "更新时间",
       deadTime: "截止时间",
       actions: "操作",
+      refreshOn: "自动刷新已开启",
+      refreshOff: "自动刷新已关闭",
+      manualRefresh: "立即刷新",
+      newData: "有新数据可用",
+      nextRefresh: "{seconds}秒后刷新",
       deleteDialog: {
         title: "确认删除",
         message: "您确定要删除选中的 {count} 条记录吗？此操作无法撤销。",
