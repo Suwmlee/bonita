@@ -1,4 +1,5 @@
 
+import logging
 from alembic.command import upgrade, stamp
 from alembic.config import Config
 
@@ -7,6 +8,7 @@ from bonita.core.security import get_password_hash
 from bonita.db import Base, engine, SessionFactory
 from bonita.db.models import *
 
+logger = logging.getLogger(__name__)
 
 def init_db():
     """
@@ -36,10 +38,10 @@ def upgrade_db():
     """
     更新数据库
     """
-    alembic_cfg = Config()
-    alembic_cfg.set_main_option('script_location', settings.ALEMBIC_LOCATION)
-    alembic_cfg.set_main_option('sqlalchemy.url', settings.SQLALCHEMY_DATABASE_URI)
     try:
+        alembic_cfg = Config()
+        alembic_cfg.set_main_option('script_location', settings.ALEMBIC_LOCATION)
+        alembic_cfg.set_main_option('sqlalchemy.url', settings.SQLALCHEMY_DATABASE_URI)
         upgrade(alembic_cfg, 'head')
     except Exception as e:
-        stamp(alembic_cfg, 'head')
+        logger.error(f"升级数据库失败: {e}")
