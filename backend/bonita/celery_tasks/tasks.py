@@ -267,13 +267,16 @@ def celery_scrapping(self, file_path, scraping_dict):
         # 根据规则生成文件夹和文件名
         maxlen = scraping_conf.max_title_len
         extra_folder = eval(scraping_conf.location_rule, metadata_mixed.__dict__)
-        if 'actor' in scraping_conf.location_rule and len(metadata_mixed.actor) > 100:
+        extra_name = eval(scraping_conf.naming_rule, metadata_mixed.__dict__)
+        if 'actor' in scraping_conf.location_rule and len(metadata_mixed.actor) > maxlen:
             extra_folder = eval(scraping_conf.location_rule.replace("actor", "'多人作品'"), metadata_mixed.__dict__)
+            extra_name = eval(scraping_conf.naming_rule.replace("actor", "'多人作品'"), metadata_mixed.__dict__)
         if 'title' in scraping_conf.location_rule and len(metadata_mixed.title) > maxlen:
             shorttitle = metadata_mixed.title[0:maxlen]
             extra_folder = extra_folder.replace(metadata_mixed.title, shorttitle)
+            extra_name = extra_name.replace(metadata_mixed.title, shorttitle)
         metadata_mixed.extra_folder = extra_folder
-        metadata_mixed.extra_filename = eval(scraping_conf.naming_rule, metadata_mixed.__dict__)
+        metadata_mixed.extra_filename = extra_name
 
         # 将 extrainfo.tag 中的标签添加到 metadata_base.tag 中，过滤重复的标签
         existing_tags = set(metadata_mixed.tag.split(", "))
