@@ -1,5 +1,6 @@
 
 import logging
+import os
 from alembic.command import upgrade, stamp
 from alembic.config import Config
 
@@ -10,12 +11,21 @@ from bonita.db.models import *
 
 logger = logging.getLogger(__name__)
 
+
 def init_db():
     """
     初始化数据库
     """
-    Base.metadata.create_all(bind=engine)
-
+    try:
+        location = settings.DATABASE_LOCATION
+        if not os.path.exists(location):
+            Base.metadata.create_all(bind=engine)
+            init_super_user()
+            stamp_db()
+        else:
+            upgrade_db()
+    except Exception as e:
+        logger.error(f"初始化数据库失败: {e}")
 
 def init_super_user():
     """
@@ -45,3 +55,13 @@ def upgrade_db():
         upgrade(alembic_cfg, 'head')
     except Exception as e:
         logger.error(f"升级数据库失败: {e}")
+
+
+def stamp_db():
+    """
+    打标签
+    """
+    alembic_cfg = Config()
+    alembic_cfg.set_main_option('script_location', settings.ALEMBIC_LOCATION)
+    alembic_cfg.set_main_option('sqlalchemy.url', settings.SQLALCHEMY_DATABASE_URI)
+    stamp(alembic_cfg, 'head')

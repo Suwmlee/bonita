@@ -6,7 +6,7 @@ from fastapi.routing import APIRoute
 from starlette.middleware.cors import CORSMiddleware
 
 from bonita.core.config import settings
-from bonita.core.db import init_db, init_super_user, upgrade_db
+from bonita.core.db import init_db
 from bonita.core.task import init_monitor
 from bonita.api.main import api_router
 
@@ -61,6 +61,4 @@ app.celery_app = celery
 
 log_config()
 init_db()
-init_super_user()
-upgrade_db()
 init_monitor()

@@ -1,6 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, DateTime, Integer, String, Date, FLOAT, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, DateTime, Integer, String, Date, FLOAT, func
 
 from bonita.db import Base
 
@@ -10,12 +9,6 @@ class Metadata(Base):
     存储丰富的媒体详情，特别是特殊影片的详细信息
     """
     id = Column(Integer, primary_key=True, index=True)
-    
-    # 关联到中央媒体项
-    media_item_id = Column(Integer, ForeignKey("mediaitem.id"), index=True)
-    media_item = relationship("MediaItem", backref="metadata_detail")
-    
-    # 基础信息 (已有字段)
     number = Column(String, default="", index=True, comment="番号")
     title = Column(String, default="", nullable=False, comment="标题")
     studio = Column(String, default="", comment="制作公司")
@@ -41,7 +34,6 @@ class Metadata(Base):
     uservotes = Column(Integer, default=0, comment="用户投票数")
     detailurl = Column(String, default="", comment="来源链接")
     site = Column(String, default="", comment="资源站点")
-    updatetime = Column(DateTime, default=datetime.now(), comment="更新时间")
-    
-    def __repr__(self):
-        return f"<Metadata {self.number}: {self.title}>"
+
+    createtime = Column(DateTime, default=func.now(), server_default=func.now(), comment="创建时间")
+    updatetime = Column(DateTime, default=func.now(), onupdate=func.now(), server_default=func.now(), comment="更新时间")

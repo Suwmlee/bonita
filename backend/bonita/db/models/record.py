@@ -1,6 +1,5 @@
 
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, func
 
 from bonita.db import Base
 
@@ -32,7 +31,8 @@ class TransRecords(Base):
     # 链接使用的地址，可能与docker内地址不同
     linkpath = Column(String, default='')
     destpath = Column(String, default='')
-
-    updatetime = Column(DateTime, default=datetime.now(), comment="更新时间")
     # 完全删除时间，包括源文件和目标路径文件
     deadtime = Column(DateTime, default=None, comment='time to delete files')
+
+    createtime = Column(DateTime, default=func.now(), server_default=func.now(), comment="创建时间")
+    updatetime = Column(DateTime, default=func.now(), onupdate=func.now(), server_default=func.now(), comment="更新时间")
