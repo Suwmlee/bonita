@@ -61,7 +61,7 @@ class EmbyService(metaclass=Singleton):
         if expected_status_codes is None:
             expected_status_codes = [200, 204]
         try:
-            logger.info(f"[+] Emby request: {method.upper()} {url}")
+            logger.debug(f"[-] Emby request: {method.upper()} {url}")
             # Use the session for better performance with connection pooling
             response = requests.request(
                 method=method.lower(),
@@ -130,8 +130,8 @@ class EmbyService(metaclass=Singleton):
 
         return libraries
 
-    def get_library_user_watched(self, library_id: str, library_type: str, user_id: str) -> dict[str, Any]:
-        """Get watched items for a library
+    def get_user_library_items(self, library_id: str, library_type: str, user_id: str) -> dict[str, Any]:
+        """Get items for a library
         """
         if not library_id or not user_id:
             return None
@@ -141,41 +141,24 @@ class EmbyService(metaclass=Singleton):
             "episodes": []
         }
 
-        # Get watched movies
+        # Get movies
         if library_type == "movies" or not library_type:
-            # Get fully watched movies
-            watched_movies = self._make_request(
+            # Get fully movies
+            matched_movies = self._make_request(
                 'get',
                 f'/Users/{user_id}/Items',
                 params={
                     "ParentId": library_id,
-                    "Filters": "IsPlayed",
                     "IncludeItemTypes": "Movie",
                     "Recursive": "True",
                     "Fields": "ItemCounts,ProviderIds,MediaSources"
                 }
             )
 
-            if isinstance(watched_movies, dict) and watched_movies.get("Items"):
-                result["movies"].extend(watched_movies.get("Items", []))
+            if isinstance(matched_movies, dict) and matched_movies.get("Items"):
+                result["movies"].extend(matched_movies.get("Items", []))
 
-            # Get in-progress movies
-            in_progress_movies = self._make_request(
-                'get',
-                f'/Users/{user_id}/Items',
-                params={
-                    "ParentId": library_id,
-                    "Filters": "IsResumable",
-                    "IncludeItemTypes": "Movie",
-                    "Recursive": "True",
-                    "Fields": "ItemCounts,ProviderIds,MediaSources"
-                }
-            )
-
-            if isinstance(in_progress_movies, dict) and in_progress_movies.get("Items"):
-                result["movies"].extend(in_progress_movies.get("Items", []))
-
-        # Get watched TV shows and episodes
+        # Get TV shows and episodes
         if library_type == "tvshows" or not library_type:
             # Get all shows in the library
             all_shows = self._make_request(
@@ -191,14 +174,13 @@ class EmbyService(metaclass=Singleton):
             )
 
             if isinstance(all_shows, dict) and all_shows.get("Items"):
-                # Filter to shows that have been at least partially watched
-                watched_shows = []
+                # Filter to shows that have been at least partially
+                matched_shows = []
                 for show in all_shows.get("Items", []):
-                    if show.get("UserData", {}).get("PlayedPercentage", 0) > 0:
-                        watched_shows.append(show)
+                    matched_shows.append(show)
 
-                # For each watched show, get its episodes
-                for show in watched_shows:
+                # For each show, get its episodes
+                for show in matched_shows:
                     show_id = show.get("Id")
                     show_episodes = self._make_request(
                         'get',
@@ -211,22 +193,19 @@ class EmbyService(metaclass=Singleton):
                     )
 
                     if isinstance(show_episodes, dict) and show_episodes.get("Items"):
-                        # Add watched episodes to result
+                        # Add episodes to result
                         for episode in show_episodes.get("Items", []):
-                            user_data = episode.get("UserData", {})
-                            # Include if fully watched or watched more than a minute
-                            if user_data.get("Played") or user_data.get("PlaybackPositionTicks", 0) > 600000000:
-                                result["episodes"].append(episode)
+                            result["episodes"].append(episode)
 
         return result
 
-    def get_user_watched(self, user_id=None) -> dict[str, Any]:
-        """Get all watched items for a user across all libraries
+    def get_user_all_items(self, user_id=None) -> dict[str, Any]:
+        """Get all items for a user across all libraries
         """
         if not user_id:
             user_id = self.emby_user_id
         if not user_id:
-            logger.warning("No user ID available to fetch watched items")
+            logger.warning("No user ID available to fetch all items")
             return None
 
         # Get all libraries for the user
@@ -237,16 +216,16 @@ class EmbyService(metaclass=Singleton):
 
         result = {}
 
-        # Get watched items for each library
+        # Get items for each library
         for library_id, library_info in libraries.items():
             library_name = library_info.get("name")
             library_type = library_info.get("type")
             if not library_name or not library_type:
                 continue
 
-            watched_items = self.get_library_user_watched(library_id, library_type, user_id)
-            if watched_items:
-                result[library_id] = watched_items
+            items = self.get_user_library_items(library_id, library_type, user_id)
+            if items:
+                result[library_id] = items
 
         return result
 

@@ -15,8 +15,8 @@ class WatchHistory(Base):
     media_item = relationship("MediaItem", backref="watchhistory")
 
     # 观看信息
-    played_at = Column(DateTime, comment="观看时间")
-    play_count = Column(Integer, default=1, comment="观看次数")
+    watched = Column(Boolean, default=False, server_default="0", comment="是否观看")
+    watch_count = Column(Integer, default=1, comment="观看次数")
     play_progress = Column(Float, default=100.0, comment="播放进度百分比")
     duration = Column(Integer, comment="时长(秒)")
 

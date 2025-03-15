@@ -1,0 +1,166 @@
+
+from datetime import datetime
+import logging
+
+from bonita.db.models.extrainfo import ExtraInfo
+from bonita.db.models.metadata import Metadata
+from bonita.db.models.record import TransRecords
+from bonita.modules.media_service.emby import EmbyService
+from bonita.db.models.media_item import MediaItem
+from bonita.db.models.watch_history import WatchHistory
+from bonita.db.models.setting import SystemSetting
+from bonita.modules.scraping.number_parser import get_number
+
+
+logger = logging.getLogger(__name__)
+
+
+def sync_emby_history(session):
+    """Syncs watch history from Emby
+
+    Args:
+        session: Database session
+        days (int): Number of days of history to fetch
+        limit (int): Maximum number of items to fetch
+
+    Returns:
+        tuple: (new_records, updated_records)
+    """
+    try:
+        # Get Emby configuration
+        emby_host = session.query(SystemSetting).filter(SystemSetting.key == "emby_host").first()
+        emby_apikey = session.query(SystemSetting).filter(SystemSetting.key == "emby_apikey").first()
+        emby_user = session.query(SystemSetting).filter(SystemSetting.key == "emby_user").first()
+        if not emby_host or not emby_apikey or not emby_user:
+            logger.info("Emby host or API key or user not configured")
+            return
+        # Fetch watch history
+        emby_service = EmbyService()
+        emby_service.initialize(emby_host.value, emby_apikey.value, emby_user.value)
+        watched_items = emby_service.get_user_all_items()
+
+        if not watched_items:
+            logger.info("No watch history found on Emby")
+            return
+
+        for library_id, library_items in watched_items.items():
+            for item in library_items["movies"]:
+                try:
+                    convert_emby_watched_items(session, item)
+                except Exception as e:
+                    logger.error(f"Error converting Emby watched item: {e}")
+                    continue
+            # for item in library_items["episodes"]:
+            #     convert_emby_watched_items(session, item)
+
+        return
+
+    except Exception as e:
+        logger.error(f"Error syncing from Emby: {e}")
+        raise
+
+
+def convert_emby_watched_items(session, item):
+    """Convert Emby watched items to a list of dictionaries
+    """
+    # Extract item data
+    item_id = item.get("Id", "")
+    if not item_id:
+        return None
+
+    # Determine content type
+    content_type = "movie"
+    if item.get("Type") == "Episode":
+        content_type = "episode"
+
+    # Extract metadata
+    title = item.get("Name", "")
+    original_title = item.get("OriginalTitle", "")
+    duration = 0
+    if "RunTimeTicks" in item and item["RunTimeTicks"] > 0:
+        duration = int(item["RunTimeTicks"] / 10000000)
+
+    user_data = item.get("UserData", {})
+    watched = user_data.get("Played", False)
+    is_favorite = user_data.get("IsFavorite", False)
+    watch_count = user_data.get("PlayCount", 1)
+    play_progress = 100.0 if watched else 0.0
+    if "PlaybackPositionTicks" in user_data and user_data["PlaybackPositionTicks"] > 0:
+        position_seconds = int(user_data["PlaybackPositionTicks"] / 10000000)
+        play_progress = min(100.0, (position_seconds / duration) * 100)
+
+    # Extract external IDs
+    provider_ids = item.get("ProviderIds", {})
+    imdb_id = provider_ids.get("Imdb", "")
+    tmdb_id = provider_ids.get("Tmdb", "")
+    tvdb_id = provider_ids.get("Tvdb", "")
+
+    # 查找或创建MediaItem
+    media_item = None
+
+    if len(provider_ids):
+        # 有提供商ID，按提供商ID查找
+        if imdb_id:
+            media_item = session.query(MediaItem).filter(MediaItem.imdb_id == imdb_id).first()
+        if not media_item and tmdb_id:
+            media_item = session.query(MediaItem).filter(MediaItem.tmdb_id == tmdb_id).first()
+        if not media_item and tvdb_id:
+            media_item = session.query(MediaItem).filter(MediaItem.tvdb_id == tvdb_id).first()
+        if media_item:
+            media_item.media_type = content_type
+            media_item.title = title
+            media_item.original_title = original_title
+            media_item.imdb_id = imdb_id
+            media_item.tmdb_id = tmdb_id
+            media_item.tvdb_id = tvdb_id
+            media_item.update(session)
+        else:
+            media_item = MediaItem(
+                media_type=content_type,
+                title=title,
+                original_title=original_title,
+                imdb_id=imdb_id,
+                tmdb_id=tmdb_id,
+                tvdb_id=tvdb_id,
+            )
+            media_item.create(session)
+    else:
+        filepath = item.get("MediaSources")[0].get("Path")
+        result = session.query(TransRecords, ExtraInfo).outerjoin(
+            ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath).filter(TransRecords.srcpath == filepath).first()
+        if result:
+            extra_info: ExtraInfo = result[1] if result[1] else None
+            number = extra_info.number
+        else:
+            number = get_number(filepath)
+        if not number:
+            return None
+        meta = session.query(Metadata).filter(Metadata.number == number).first()
+        if meta:
+            media_item = MediaItem(
+                media_type=content_type,
+                title=meta.title,
+                number=number,
+            )
+            media_item.create(session)
+        else:
+            return None
+
+    existing_record = session.query(WatchHistory).filter(WatchHistory.media_item_id == media_item.id).first()
+    if existing_record:
+        existing_record.watched = watched
+        existing_record.watch_count = watch_count
+        existing_record.favorite = is_favorite
+        existing_record.play_progress = play_progress
+        existing_record.duration = duration
+        existing_record.update(session)
+    else:
+        new_record = WatchHistory(
+            media_item_id=media_item.id,
+            watched=watched,
+            watch_count=watch_count,
+            favorite=is_favorite,
+            play_progress=play_progress,
+            duration=duration,
+        )
+        new_record.create(session)
