@@ -50,6 +50,7 @@ const saveEmbyApiSettings = async () => {
   // 确保字段有正确的值类型
   embyApiSettings.value.emby_host = embyApiSettings.value.emby_host || ""
   embyApiSettings.value.emby_apikey = embyApiSettings.value.emby_apikey || ""
+  embyApiSettings.value.emby_user = embyApiSettings.value.emby_user || ""
 
   try {
     const response = await settingStore.saveEmbyApiSettings()
@@ -216,6 +217,17 @@ onMounted(() => {
                   </VCol>
                   <VCol cols="12" md="9">
                     <VTextField v-model="embyApiSettings.emby_host" :placeholder="t('pages.serviceSettings.emby.serverPlaceholder')" />
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="embyUser">{{ t('pages.serviceSettings.emby.user') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField v-model="embyApiSettings.emby_user" :placeholder="t('pages.serviceSettings.emby.userPlaceholder')" />
                   </VCol>
                 </VRow>
               </VCol>

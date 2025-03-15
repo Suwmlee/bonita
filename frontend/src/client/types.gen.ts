@@ -19,6 +19,7 @@ export type Body_resource_upload_image = {
 export type EmbySettings = {
     emby_host: string;
     emby_apikey: string;
+    emby_user?: string | null;
     enabled?: boolean | null;
 };
 
@@ -770,6 +771,8 @@ export type ListDirectoryData = {
 
 export type ListDirectoryResponse = FileListResponse;
 
+export type SyncEmbyWatchHistoryResponse = Response;
+
 export type $OpenApiTs = {
     '/api/v1/login/access-token': {
         post: {
@@ -1445,6 +1448,16 @@ export type $OpenApiTs = {
                  * Validation Error
                  */
                 422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/watchhistory/sync/emby': {
+        post: {
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
             };
         };
     };

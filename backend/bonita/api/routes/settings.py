@@ -83,12 +83,13 @@ def get_emby_settings(session: SessionDep) -> Any:
     """
     try:
         emby_setting_db = session.query(SystemSetting).filter(
-            SystemSetting.key.in_(["emby_host", "emby_apikey", "emby_enabled"])
+            SystemSetting.key.in_(["emby_host", "emby_apikey", "emby_user", "emby_enabled"])
         ).all()
         emby_dict = {setting.key: setting.value for setting in emby_setting_db}
         emby_settings = {
             "emby_host": emby_dict.get("emby_host", ""),
             "emby_apikey": emby_dict.get("emby_apikey", ""),
+            "emby_user": emby_dict.get("emby_user", ""),
             "enabled": emby_dict.get("emby_enabled", "false").lower() == "true"
         }
 
@@ -130,6 +131,12 @@ def update_emby_settings(
             "Emby API密钥"
         )
 
+        SystemSetting.set_setting(
+            session,
+            "emby_user",
+            settings_in.emby_user,
+            "Emby用户名"
+        )
         return schemas.Response(
             success=True,
             message="Emby设置已更新"

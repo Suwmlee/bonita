@@ -78,6 +78,17 @@ export const $EmbySettings = {
             type: 'string',
             title: 'Emby Apikey'
         },
+        emby_user: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Emby User'
+        },
         enabled: {
             anyOf: [
                 {
