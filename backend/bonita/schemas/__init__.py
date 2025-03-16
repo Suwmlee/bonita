@@ -7,6 +7,5 @@ from .record import *
 from .extrainfo import *
 from .metadata import *
 from .system import *
-from .watch_history import *
-from .media_item import *
+from .mediaitem import *
 from .file_browser import *
