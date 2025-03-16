@@ -1,14 +1,13 @@
 
-from datetime import datetime
 import logging
 
 from bonita.db.models.extrainfo import ExtraInfo
 from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
-from bonita.modules.media_service.emby import EmbyService
 from bonita.db.models.media_item import MediaItem
 from bonita.db.models.watch_history import WatchHistory
 from bonita.db.models.setting import SystemSetting
+from bonita.modules.media_service.emby import EmbyService
 from bonita.modules.scraping.number_parser import get_number
 
 
@@ -113,7 +112,7 @@ def convert_emby_watched_items(session, item):
             media_item.imdb_id = imdb_id
             media_item.tmdb_id = tmdb_id
             media_item.tvdb_id = tvdb_id
-            media_item.update(session)
+            session.commit()
         else:
             media_item = MediaItem(
                 media_type=content_type,
@@ -125,26 +124,49 @@ def convert_emby_watched_items(session, item):
             )
             media_item.create(session)
     else:
-        filepath = item.get("MediaSources")[0].get("Path")
+        try:
+            media_sources = item.get("MediaSources", [])
+            if not media_sources:
+                logger.warning(f"No MediaSources found for item {item.get('Id')}")
+                return None
+            filepath = media_sources[0].get("Path")
+            if not filepath:
+                logger.warning(f"No Path found in MediaSources for item {item.get('Id')}")
+                return None
+        except (IndexError, KeyError) as e:
+            logger.error(f"Error accessing MediaSources: {e}")
+            return None
+        # Extract number from filepath - first try database, then fallback to parsing
+        number = None
         result = session.query(TransRecords, ExtraInfo).outerjoin(
-            ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath).filter(TransRecords.srcpath == filepath).first()
-        if result:
-            extra_info: ExtraInfo = result[1] if result[1] else None
-            number = extra_info.number
+            ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath
+        ).filter(TransRecords.destpath == filepath).first()
+        if result and result[1]:
+            number = result[1].number
         else:
             number = get_number(filepath)
         if not number:
             return None
-        meta = session.query(Metadata).filter(Metadata.number == number).first()
-        if meta:
+        meta_and_item = session.query(Metadata, MediaItem).outerjoin(
+            MediaItem, MediaItem.number == Metadata.number
+        ).filter(Metadata.number == number).first()
+
+        if not meta_and_item or not meta_and_item[0]:
+            logger.debug(f"No metadata found for number: {number}")
+            return None
+        meta = meta_and_item[0]
+        media_item = meta_and_item[1]
+        if media_item:
+            if media_item.title != meta.title:
+                media_item.title = meta.title
+                session.commit()
+        else:
             media_item = MediaItem(
                 media_type=content_type,
                 title=meta.title,
                 number=number,
             )
             media_item.create(session)
-        else:
-            return None
 
     existing_record = session.query(WatchHistory).filter(WatchHistory.media_item_id == media_item.id).first()
     if existing_record:
@@ -153,7 +175,7 @@ def convert_emby_watched_items(session, item):
         existing_record.favorite = is_favorite
         existing_record.play_progress = play_progress
         existing_record.duration = duration
-        existing_record.update(session)
+        session.commit()
     else:
         new_record = WatchHistory(
             media_item_id=media_item.id,
