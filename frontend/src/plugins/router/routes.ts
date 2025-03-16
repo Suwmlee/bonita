@@ -2,6 +2,7 @@ import blanklayout from "@/layouts/blank.vue"
 import defaultlayout from "@/layouts/default.vue"
 import DashboardPage from "@/pages/Dashboard.vue"
 import LoginPage from "@/pages/Login.vue"
+import MediaitemPage from "@/pages/Mediaitem.vue"
 import MetadataPage from "@/pages/Metadata.vue"
 import RecordsPage from "@/pages/Records.vue"
 import ScrapingConfigsPage from "@/pages/ScrapingConfigs.vue"
@@ -21,6 +22,11 @@ export const routes = [
         path: "dashboard",
         meta: { requiresAuth: true },
         component: DashboardPage,
+      },
+      {
+        path: "mediaitems",
+        meta: { requiresAuth: true },
+        component: MediaitemPage,
       },
       {
         path: "records",

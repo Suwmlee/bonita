@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetAllTasksStatusResponse, GetAllTaskConfigsData, GetAllTaskConfigsResponse, CreateTaskConfigData, CreateTaskConfigResponse, UpdateTaskConfigData, UpdateTaskConfigResponse, DeleteTaskConfigData, DeleteTaskConfigResponse, GetAllConfigsData, GetAllConfigsResponse, CreateConfigData, CreateConfigResponse, UpdateConfigData, UpdateConfigResponse, DeleteConfigData, DeleteConfigResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, UpdateTopFolderData, UpdateTopFolderResponse, DeleteRecordsData, DeleteRecordsResponse, GetTransRecordsData, GetTransRecordsResponse, CreateMetadataData, CreateMetadataResponse, GetMetadataData, GetMetadataResponse, UpdateMetadataData, UpdateMetadataResponse, DeleteMetadataData, DeleteMetadataResponse, GetMediaItemsData, GetMediaItemsResponse, CreateMediaItemData, CreateMediaItemResponse, GetWatchedMediaItemsData, GetWatchedMediaItemsResponse, GetMediaItemData, GetMediaItemResponse, UpdateMediaItemData, UpdateMediaItemResponse, DeleteMediaItemData, DeleteMediaItemResponse, RunImportNfoData, RunImportNfoResponse, RunEmbyScanData, RunEmbyScanResponse, GetProxySettingsResponse, UpdateProxySettingsData, UpdateProxySettingsResponse, GetEmbySettingsResponse, UpdateEmbySettingsData, UpdateEmbySettingsResponse, TestEmbyConnectionData, TestEmbyConnectionResponse, GetJellyfinSettingsResponse, UpdateJellyfinSettingsData, UpdateJellyfinSettingsResponse, TestJellyfinConnectionData, TestJellyfinConnectionResponse, GetImageByQueryData, GetImageByQueryResponse, UploadImageData, UploadImageResponse, ListDirectoryData, ListDirectoryResponse, SyncEmbyWatchHistoryResponse } from './types.gen';
+import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetAllTasksStatusResponse, GetAllTaskConfigsData, GetAllTaskConfigsResponse, CreateTaskConfigData, CreateTaskConfigResponse, UpdateTaskConfigData, UpdateTaskConfigResponse, DeleteTaskConfigData, DeleteTaskConfigResponse, GetAllConfigsData, GetAllConfigsResponse, CreateConfigData, CreateConfigResponse, UpdateConfigData, UpdateConfigResponse, DeleteConfigData, DeleteConfigResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, UpdateTopFolderData, UpdateTopFolderResponse, DeleteRecordsData, DeleteRecordsResponse, GetTransRecordsData, GetTransRecordsResponse, CreateMetadataData, CreateMetadataResponse, GetMetadataData, GetMetadataResponse, UpdateMetadataData, UpdateMetadataResponse, DeleteMetadataData, DeleteMetadataResponse, GetMediaItemsData, GetMediaItemsResponse, CreateMediaItemData, CreateMediaItemResponse, GetMediaItemData, GetMediaItemResponse, UpdateMediaItemData, UpdateMediaItemResponse, DeleteMediaItemData, DeleteMediaItemResponse, CleanMediaItemResponse, RunImportNfoData, RunImportNfoResponse, RunEmbyScanData, RunEmbyScanResponse, SyncEmbyWatchHistoryResponse, GetProxySettingsResponse, UpdateProxySettingsData, UpdateProxySettingsResponse, GetEmbySettingsResponse, UpdateEmbySettingsData, UpdateEmbySettingsResponse, TestEmbyConnectionData, TestEmbyConnectionResponse, GetJellyfinSettingsResponse, UpdateJellyfinSettingsData, UpdateJellyfinSettingsResponse, TestJellyfinConnectionData, TestJellyfinConnectionResponse, GetImageByQueryData, GetImageByQueryResponse, UploadImageData, UploadImageResponse, ListDirectoryData, ListDirectoryResponse } from './types.gen';
 
 export class LoginService {
     /**
@@ -715,11 +715,13 @@ export class MetadataService {
     
 }
 
-export class MediaItemsService {
+export class MediaitemService {
     /**
      * Get Media Items
      * 获取媒体项列表
      * 支持按标题搜索、类型过滤和排序
+     * - has_number: 是否只返回有番号的内容
+     * - watched: True只返回已观看的内容，False只返回未观看的内容，None返回所有内容
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
@@ -727,20 +729,24 @@ export class MediaItemsService {
      * @param data.mediaType
      * @param data.sortBy
      * @param data.sortDesc
+     * @param data.hasNumber
+     * @param data.watched
      * @returns MediaItemCollection Successful Response
      * @throws ApiError
      */
     public static getMediaItems(data: GetMediaItemsData = {}): CancelablePromise<GetMediaItemsResponse> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/v1/media-items/',
+            url: '/api/v1/mediaitems/',
             query: {
                 skip: data.skip,
                 limit: data.limit,
                 search: data.search,
                 media_type: data.mediaType,
                 sort_by: data.sortBy,
-                sort_desc: data.sortDesc
+                sort_desc: data.sortDesc,
+                has_number: data.hasNumber,
+                watched: data.watched
             },
             errors: {
                 422: 'Validation Error'
@@ -759,39 +765,9 @@ export class MediaItemsService {
     public static createMediaItem(data: CreateMediaItemData): CancelablePromise<CreateMediaItemResponse> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/v1/media-items/',
+            url: '/api/v1/mediaitems/',
             body: data.requestBody,
             mediaType: 'application/json',
-            errors: {
-                422: 'Validation Error'
-            }
-        });
-    }
-    
-    /**
-     * Get Watched Media Items
-     * 获取已观看的媒体项列表
-     * 按最后观看时间排序
-     * @param data The data for the request.
-     * @param data.skip
-     * @param data.limit
-     * @param data.source
-     * @param data.sortBy
-     * @param data.sortDesc
-     * @returns MediaItemCollection Successful Response
-     * @throws ApiError
-     */
-    public static getWatchedMediaItems(data: GetWatchedMediaItemsData = {}): CancelablePromise<GetWatchedMediaItemsResponse> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/media-items/watches',
-            query: {
-                skip: data.skip,
-                limit: data.limit,
-                source: data.source,
-                sort_by: data.sortBy,
-                sort_desc: data.sortDesc
-            },
             errors: {
                 422: 'Validation Error'
             }
@@ -809,7 +785,7 @@ export class MediaItemsService {
     public static getMediaItem(data: GetMediaItemData): CancelablePromise<GetMediaItemResponse> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/v1/media-items/{media_id}',
+            url: '/api/v1/mediaitems/{media_id}',
             path: {
                 media_id: data.mediaId
             },
@@ -831,7 +807,7 @@ export class MediaItemsService {
     public static updateMediaItem(data: UpdateMediaItemData): CancelablePromise<UpdateMediaItemResponse> {
         return __request(OpenAPI, {
             method: 'PUT',
-            url: '/api/v1/media-items/{media_id}',
+            url: '/api/v1/mediaitems/{media_id}',
             path: {
                 media_id: data.mediaId
             },
@@ -854,13 +830,27 @@ export class MediaItemsService {
     public static deleteMediaItem(data: DeleteMediaItemData): CancelablePromise<DeleteMediaItemResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
-            url: '/api/v1/media-items/{media_id}',
+            url: '/api/v1/mediaitems/{media_id}',
             path: {
                 media_id: data.mediaId
             },
             errors: {
                 422: 'Validation Error'
             }
+        });
+    }
+    
+    /**
+     * Clean Media Item
+     * 清理媒体项
+     * 1. 删除番号重复的媒体项（保留最新的一条）
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static cleanMediaItem(): CancelablePromise<CleanMediaItemResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/mediaitems/clean'
         });
     }
     
@@ -904,6 +894,19 @@ export class ToolsService {
             errors: {
                 422: 'Validation Error'
             }
+        });
+    }
+    
+    /**
+     * Sync Emby Watch History
+     * 同步emby watch history
+     * @returns Response Successful Response
+     * @throws ApiError
+     */
+    public static syncEmbyWatchHistory(): CancelablePromise<SyncEmbyWatchHistoryResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/tools/sync/emby'
         });
     }
     
@@ -1133,22 +1136,6 @@ export class FilesService {
             errors: {
                 422: 'Validation Error'
             }
-        });
-    }
-    
-}
-
-export class WatchhistoryService {
-    /**
-     * Sync Emby Watch History
-     * 同步emby watch history
-     * @returns Response Successful Response
-     * @throws ApiError
-     */
-    public static syncEmbyWatchHistory(): CancelablePromise<SyncEmbyWatchHistoryResponse> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/v1/watchhistory/sync/emby'
         });
     }
     

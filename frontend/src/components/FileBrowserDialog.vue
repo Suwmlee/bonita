@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
-import { FilesService } from '@/client'
+import { FilesService } from "@/client"
+import type { FileInfo } from "@/client/types.gen"
+import { computed, ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
-import type { FileInfo } from '@/client/types.gen'
 
 const { t } = useI18n()
 const props = defineProps<{
@@ -11,65 +11,71 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
-  (e: 'select', path: string): void
+  (e: "update:modelValue", value: boolean): void
+  (e: "select", path: string): void
 }>()
 
 const dialog = computed({
   get: () => props.modelValue,
-  set: (value: boolean) => emit('update:modelValue', value)
+  set: (value: boolean) => emit("update:modelValue", value),
 })
 
-const currentPath = ref(props.initialPath || '')
+const currentPath = ref(props.initialPath || "")
 const files = ref<FileInfo[]>([])
 const isLoading = ref(false)
-const error = ref('')
+const error = ref("")
 const isSelected = ref(false)
 
-watch(() => props.initialPath, (newPath) => {
-  if (newPath) {
-    currentPath.value = newPath
-    isSelected.value = false
-    if (dialog.value) {
+watch(
+  () => props.initialPath,
+  (newPath) => {
+    if (newPath) {
+      currentPath.value = newPath
+      isSelected.value = false
+      if (dialog.value) {
+        loadFiles()
+      }
+    }
+  },
+)
+
+watch(
+  () => props.modelValue,
+  (show) => {
+    if (show && currentPath.value) {
+      isSelected.value = false
       loadFiles()
     }
-  }
-})
-
-watch(() => props.modelValue, (show) => {
-  if (show && currentPath.value) {
-    isSelected.value = false
-    loadFiles()
-  }
-})
+  },
+)
 
 async function loadFiles() {
   if (!currentPath.value) return
-  
+
   isLoading.value = true
-  error.value = ''
-  
+  error.value = ""
+
   try {
     const response = await FilesService.listDirectory({
-      directoryPath: currentPath.value
+      directoryPath: currentPath.value,
     })
-    
+
     files.value = response.data || []
     currentPath.value = response.current_path || currentPath.value
     isSelected.value = false
   } catch (err) {
     console.error("Error loading files:", err)
-    error.value = t('components.fileBrowser.loadError')
+    error.value = t("components.fileBrowser.loadError")
   } finally {
     isLoading.value = false
   }
 }
 
 function navigateUp() {
-  if (currentPath.value.includes('/') || currentPath.value.includes('\\')) {
+  if (currentPath.value.includes("/") || currentPath.value.includes("\\")) {
     const parts = currentPath.value.split(/[/\\]/)
     parts.pop()
-    currentPath.value = parts.join('/')
+    currentPath.value = parts.join("/")
     isSelected.value = false
     loadFiles()
   }
@@ -88,7 +94,7 @@ function selectItem(file: FileInfo) {
 
 function confirmSelection() {
   if (isSelected.value) {
-    emit('select', currentPath.value)
+    emit("select", currentPath.value)
     dialog.value = false
   }
 }

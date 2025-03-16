@@ -35,17 +35,26 @@ const pageSizeOptions = [10, 25, 50, 100]
 // 计算下次刷新时间的倒计时
 const refreshCountdown = computed(() => {
   if (!autoRefresh.value || !lastRefreshTime.value) return 0
-  
-  const nextRefreshTime = new Date(lastRefreshTime.value.getTime() + refreshInterval.value * 1000)
+
+  const nextRefreshTime = new Date(
+    lastRefreshTime.value.getTime() + refreshInterval.value * 1000,
+  )
   const now = new Date()
-  const remainingSeconds = Math.max(0, Math.floor((nextRefreshTime.getTime() - now.getTime()) / 1000))
-  
+  const remainingSeconds = Math.max(
+    0,
+    Math.floor((nextRefreshTime.getTime() - now.getTime()) / 1000),
+  )
+
   return remainingSeconds
 })
 
 // 一个简单的函数来生成数据哈希，用于检测变化
 const generateDataHash = (data: any[]) => {
-  return JSON.stringify(data.map(item => item.transfer_record.id + '_' + item.transfer_record.updatetime))
+  return JSON.stringify(
+    data.map(
+      (item) => `${item.transfer_record.id}_${item.transfer_record.updatetime}`,
+    ),
+  )
 }
 
 const getTagColor = (tag: string) => {
@@ -202,10 +211,10 @@ const loadData = async (
     }
   }
   await recordStore.getRecords(searchParams)
-  
+
   // 刷新后处理
   lastRefreshTime.value = new Date()
-  
+
   // 如果是自动刷新，检查数据是否有变化
   if (isAutoRefresh) {
     const newDataHash = generateDataHash(recordStore.records)
@@ -218,7 +227,7 @@ const loadData = async (
     hasNewData.value = false
     lastDataHash.value = generateDataHash(recordStore.records)
   }
-  
+
   // 设置下一次自动刷新
   setupAutoRefresh()
 }
@@ -230,7 +239,7 @@ const setupAutoRefresh = () => {
     clearTimeout(refreshTimer.value)
     refreshTimer.value = null
   }
-  
+
   // 如果启用了自动刷新，设置新的定时器
   if (autoRefresh.value) {
     refreshTimer.value = setTimeout(() => {

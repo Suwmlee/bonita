@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import FileBrowserDialog from "@/components/FileBrowserDialog.vue"
 import { useScrapingStore } from "@/stores/scraping.store"
 import { useTaskStore } from "@/stores/task.store"
 import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import { useI18n } from "vue-i18n"
 import { VCardActions } from "vuetify/components"
-import FileBrowserDialog from "@/components/FileBrowserDialog.vue"
 
 const taskStore = useTaskStore()
 const scrapingStore = useScrapingStore()
@@ -25,7 +25,7 @@ function getSelectedFile(taskId: number): string {
 // Set selected file for a task
 function setSelectedFile(taskId: number, value: string): void {
   if (value && taskStore.allTasks) {
-    const task = taskStore.allTasks.find(t => t.id === taskId)
+    const task = taskStore.allTasks.find((t) => t.id === taskId)
     if (task) {
       // Store the selected path regardless of whether it's a file or folder
       selectedFiles.value.set(taskId, value)

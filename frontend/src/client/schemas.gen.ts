@@ -308,7 +308,7 @@ export const $MediaItemCollection = {
     properties: {
         data: {
             items: {
-                '$ref': '#/components/schemas/MediaItemInDB'
+                '$ref': '#/components/schemas/MediaItemWithWatches'
             },
             type: 'array',
             title: 'Data'
@@ -345,17 +345,6 @@ export const $MediaItemCreate = {
             ],
             title: 'Original Title'
         },
-        year: {
-            anyOf: [
-                {
-                    type: 'integer'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Year'
-        },
         imdb_id: {
             anyOf: [
                 {
@@ -388,17 +377,6 @@ export const $MediaItemCreate = {
                 }
             ],
             title: 'Tvdb Id'
-        },
-        douban_id: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Douban Id'
         },
         number: {
             anyOf: [
@@ -433,16 +411,16 @@ export const $MediaItemCreate = {
             ],
             title: 'Episode Number'
         },
-        poster: {
+        series_id: {
             anyOf: [
                 {
-                    type: 'string'
+                    type: 'integer'
                 },
                 {
                     type: 'null'
                 }
             ],
-            title: 'Poster'
+            title: 'Series Id'
         }
     },
     type: 'object',
@@ -472,17 +450,6 @@ export const $MediaItemInDB = {
             ],
             title: 'Original Title'
         },
-        year: {
-            anyOf: [
-                {
-                    type: 'integer'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Year'
-        },
         imdb_id: {
             anyOf: [
                 {
@@ -515,17 +482,6 @@ export const $MediaItemInDB = {
                 }
             ],
             title: 'Tvdb Id'
-        },
-        douban_id: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Douban Id'
         },
         number: {
             anyOf: [
@@ -560,17 +516,6 @@ export const $MediaItemInDB = {
             ],
             title: 'Episode Number'
         },
-        poster: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Poster'
-        },
         id: {
             type: 'integer',
             title: 'Id'
@@ -586,19 +531,19 @@ export const $MediaItemInDB = {
             ],
             title: 'Series Id'
         },
-        created_at: {
+        createtime: {
             type: 'string',
             format: 'date-time',
-            title: 'Created At'
+            title: 'Createtime'
         },
-        updated_at: {
+        updatetime: {
             type: 'string',
             format: 'date-time',
-            title: 'Updated At'
+            title: 'Updatetime'
         }
     },
     type: 'object',
-    required: ['media_type', 'title', 'id', 'created_at', 'updated_at'],
+    required: ['media_type', 'title', 'id', 'createtime', 'updatetime'],
     title: 'MediaItemInDB',
     description: '数据库中的MediaItem属性'
 } as const;
@@ -638,17 +583,6 @@ export const $MediaItemUpdate = {
             ],
             title: 'Original Title'
         },
-        year: {
-            anyOf: [
-                {
-                    type: 'integer'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Year'
-        },
         imdb_id: {
             anyOf: [
                 {
@@ -681,17 +615,6 @@ export const $MediaItemUpdate = {
                 }
             ],
             title: 'Tvdb Id'
-        },
-        douban_id: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Douban Id'
         },
         number: {
             anyOf: [
@@ -726,17 +649,6 @@ export const $MediaItemUpdate = {
             ],
             title: 'Episode Number'
         },
-        poster: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Poster'
-        },
         series_id: {
             anyOf: [
                 {
@@ -752,6 +664,135 @@ export const $MediaItemUpdate = {
     type: 'object',
     title: 'MediaItemUpdate',
     description: '更新MediaItem时的属性'
+} as const;
+
+export const $MediaItemWithWatches = {
+    properties: {
+        media_type: {
+            type: 'string',
+            title: 'Media Type'
+        },
+        title: {
+            type: 'string',
+            title: 'Title'
+        },
+        original_title: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Original Title'
+        },
+        imdb_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Imdb Id'
+        },
+        tmdb_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Tmdb Id'
+        },
+        tvdb_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Tvdb Id'
+        },
+        number: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Number'
+        },
+        season_number: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Season Number'
+        },
+        episode_number: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Episode Number'
+        },
+        id: {
+            type: 'integer',
+            title: 'Id'
+        },
+        series_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Series Id'
+        },
+        createtime: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Createtime'
+        },
+        updatetime: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Updatetime'
+        },
+        userdata: {
+            anyOf: [
+                {
+                    '$ref': '#/components/schemas/UserWatchData'
+                },
+                {
+                    type: 'null'
+                }
+            ]
+        }
+    },
+    type: 'object',
+    required: ['media_type', 'title', 'id', 'createtime', 'updatetime'],
+    title: 'MediaItemWithWatches',
+    description: '包含观看历史的MediaItem'
 } as const;
 
 export const $MetadataBase = {
@@ -2965,6 +3006,112 @@ export const $UserUpdateMe = {
     },
     type: 'object',
     title: 'UserUpdateMe'
+} as const;
+
+export const $UserWatchData = {
+    properties: {
+        watched: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Watched',
+            default: false
+        },
+        favorite: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Favorite',
+            default: false
+        },
+        total_plays: {
+            type: 'integer',
+            title: 'Total Plays',
+            default: 0
+        },
+        play_progress: {
+            anyOf: [
+                {
+                    type: 'number'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Play Progress'
+        },
+        duration: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Duration'
+        },
+        has_rating: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Has Rating',
+            default: false
+        },
+        user_rating: {
+            anyOf: [
+                {
+                    type: 'number'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'User Rating'
+        },
+        last_played: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Played'
+        },
+        watch_updatetime: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Watch Updatetime'
+        }
+    },
+    type: 'object',
+    title: 'UserWatchData',
+    description: '用户观看数据，用于嵌套在MediaItem中'
 } as const;
 
 export const $UsersPublic = {

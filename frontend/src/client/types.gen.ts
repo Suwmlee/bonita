@@ -70,7 +70,7 @@ export type JellyfinSettings = {
  * MediaItem集合，用于分页响应
  */
 export type MediaItemCollection = {
-    data: Array<MediaItemInDB>;
+    data: Array<MediaItemWithWatches>;
     count: number;
 };
 
@@ -81,15 +81,13 @@ export type MediaItemCreate = {
     media_type: string;
     title: string;
     original_title?: string | null;
-    year?: number | null;
     imdb_id?: string | null;
     tmdb_id?: string | null;
     tvdb_id?: string | null;
-    douban_id?: string | null;
     number?: string | null;
     season_number?: number | null;
     episode_number?: number | null;
-    poster?: string | null;
+    series_id?: number | null;
 };
 
 /**
@@ -99,19 +97,16 @@ export type MediaItemInDB = {
     media_type: string;
     title: string;
     original_title?: string | null;
-    year?: number | null;
     imdb_id?: string | null;
     tmdb_id?: string | null;
     tvdb_id?: string | null;
-    douban_id?: string | null;
     number?: string | null;
     season_number?: number | null;
     episode_number?: number | null;
-    poster?: string | null;
     id: number;
     series_id?: number | null;
-    created_at: string;
-    updated_at: string;
+    createtime: string;
+    updatetime: string;
 };
 
 /**
@@ -121,16 +116,33 @@ export type MediaItemUpdate = {
     media_type?: string | null;
     title?: string | null;
     original_title?: string | null;
-    year?: number | null;
     imdb_id?: string | null;
     tmdb_id?: string | null;
     tvdb_id?: string | null;
-    douban_id?: string | null;
     number?: string | null;
     season_number?: number | null;
     episode_number?: number | null;
-    poster?: string | null;
     series_id?: number | null;
+};
+
+/**
+ * 包含观看历史的MediaItem
+ */
+export type MediaItemWithWatches = {
+    media_type: string;
+    title: string;
+    original_title?: string | null;
+    imdb_id?: string | null;
+    tmdb_id?: string | null;
+    tvdb_id?: string | null;
+    number?: string | null;
+    season_number?: number | null;
+    episode_number?: number | null;
+    id: number;
+    series_id?: number | null;
+    createtime: string;
+    updatetime: string;
+    userdata?: UserWatchData | null;
 };
 
 export type MetadataBase = {
@@ -455,6 +467,21 @@ export type UserUpdateMe = {
     email?: string | null;
 };
 
+/**
+ * 用户观看数据，用于嵌套在MediaItem中
+ */
+export type UserWatchData = {
+    watched?: boolean | null;
+    favorite?: boolean | null;
+    total_plays?: number;
+    play_progress?: number | null;
+    duration?: number | null;
+    has_rating?: boolean | null;
+    user_rating?: number | null;
+    last_played?: string | null;
+    watch_updatetime?: string | null;
+};
+
 export type UsersPublic = {
     data: Array<UserPublic>;
     count: number;
@@ -656,12 +683,14 @@ export type DeleteMetadataData = {
 export type DeleteMetadataResponse = Response;
 
 export type GetMediaItemsData = {
+    hasNumber?: boolean;
     limit?: number;
     mediaType?: string;
     search?: string;
     skip?: number;
     sortBy?: string;
     sortDesc?: boolean;
+    watched?: boolean;
 };
 
 export type GetMediaItemsResponse = MediaItemCollection;
@@ -671,16 +700,6 @@ export type CreateMediaItemData = {
 };
 
 export type CreateMediaItemResponse = MediaItemInDB;
-
-export type GetWatchedMediaItemsData = {
-    limit?: number;
-    skip?: number;
-    sortBy?: string;
-    sortDesc?: boolean;
-    source?: string;
-};
-
-export type GetWatchedMediaItemsResponse = MediaItemCollection;
 
 export type GetMediaItemData = {
     mediaId: number;
@@ -701,6 +720,8 @@ export type DeleteMediaItemData = {
 
 export type DeleteMediaItemResponse = unknown;
 
+export type CleanMediaItemResponse = unknown;
+
 export type RunImportNfoData = {
     requestBody: ToolArgsParam;
 };
@@ -712,6 +733,8 @@ export type RunEmbyScanData = {
 };
 
 export type RunEmbyScanResponse = TaskStatus;
+
+export type SyncEmbyWatchHistoryResponse = Response;
 
 export type GetProxySettingsResponse = ProxySettings;
 
@@ -770,8 +793,6 @@ export type ListDirectoryData = {
 };
 
 export type ListDirectoryResponse = FileListResponse;
-
-export type SyncEmbyWatchHistoryResponse = Response;
 
 export type $OpenApiTs = {
     '/api/v1/login/access-token': {
@@ -1193,7 +1214,7 @@ export type $OpenApiTs = {
             };
         };
     };
-    '/api/v1/media-items/': {
+    '/api/v1/mediaitems/': {
         get: {
             req: GetMediaItemsData;
             res: {
@@ -1221,22 +1242,7 @@ export type $OpenApiTs = {
             };
         };
     };
-    '/api/v1/media-items/watches': {
-        get: {
-            req: GetWatchedMediaItemsData;
-            res: {
-                /**
-                 * Successful Response
-                 */
-                200: MediaItemCollection;
-                /**
-                 * Validation Error
-                 */
-                422: HTTPValidationError;
-            };
-        };
-    };
-    '/api/v1/media-items/{media_id}': {
+    '/api/v1/mediaitems/{media_id}': {
         get: {
             req: GetMediaItemData;
             res: {
@@ -1277,6 +1283,16 @@ export type $OpenApiTs = {
             };
         };
     };
+    '/api/v1/mediaitems/clean': {
+        post: {
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: unknown;
+            };
+        };
+    };
     '/api/v1/tools/importnfo': {
         post: {
             req: RunImportNfoData;
@@ -1304,6 +1320,16 @@ export type $OpenApiTs = {
                  * Validation Error
                  */
                 422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/tools/sync/emby': {
+        post: {
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
             };
         };
     };
@@ -1448,16 +1474,6 @@ export type $OpenApiTs = {
                  * Validation Error
                  */
                 422: HTTPValidationError;
-            };
-        };
-    };
-    '/api/v1/watchhistory/sync/emby': {
-        post: {
-            res: {
-                /**
-                 * Successful Response
-                 */
-                200: Response;
             };
         };
     };
