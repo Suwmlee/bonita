@@ -18,16 +18,18 @@ async def get_media_items(
     limit: int = 100,
     search: str = None,
     media_type: str = None,
-    sort_by: str = "title",
+    sort_by: str = "updatetime",
     sort_desc: bool = False,
-    has_number: bool = False,
-    watched: bool = None
+    has_number: bool = None,
+    watched: bool = None,
+    favorite: bool = None
 ) -> Any:
     """
     获取媒体项列表
     支持按标题搜索、类型过滤和排序
-    - has_number: 是否只返回有番号的内容
+    - has_number: True只返回有番号的内容，False只返回没有番号的内容，None返回所有内容
     - watched: True只返回已观看的内容，False只返回未观看的内容，None返回所有内容
+    - favorite: True只返回已喜爱的内容，False只返回未喜爱的内容，None返回所有内容
     """
     # 创建包含观看信息的子查询
     watch_info = (
@@ -74,16 +76,26 @@ async def get_media_items(
     if media_type:
         query = query.filter(MediaItem.media_type == media_type)
 
-    # 只返回有番号的内容
-    if has_number:
-        query = query.filter(MediaItem.number.isnot(None), MediaItem.number != '')
+    # 按番号状态过滤
+    if has_number is not None:
+        if has_number:
+            query = query.filter(MediaItem.number.isnot(None), MediaItem.number != '')
+        else:
+            query = query.filter((MediaItem.number.is_(None)) | (MediaItem.number == ''))
 
     # 按观看状态过滤
     if watched is not None:
         if watched:
             query = query.filter(watch_info.c.watched > 0)
         else:
-            query = query.filter(watch_info.c.watched == 0)
+            query = query.filter((watch_info.c.watched == 0) | (watch_info.c.watched.is_(None)))
+
+    # 按喜爱状态过滤
+    if favorite is not None:
+        if favorite:
+            query = query.filter(watch_info.c.favorite > 0)
+        else:
+            query = query.filter((watch_info.c.favorite == 0) | (watch_info.c.favorite.is_(None)))
 
     # 获取总数
     count = query.count()
@@ -92,7 +104,7 @@ async def get_media_items(
     if sort_by == "updatetime":
         query = query.order_by(desc(watch_info.c.watch_updatetime) if sort_desc else asc(watch_info.c.watch_updatetime))
     else:
-        sort_column = getattr(MediaItem, sort_by, MediaItem.title)
+        sort_column = getattr(MediaItem, sort_by, MediaItem.updatetime)
         query = query.order_by(desc(sort_column) if sort_desc else asc(sort_column))
 
     # 分页

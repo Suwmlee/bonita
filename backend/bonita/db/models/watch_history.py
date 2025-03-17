@@ -20,7 +20,7 @@ class WatchHistory(Base):
     play_progress = Column(Float, default=100.0, comment="播放进度百分比")
     duration = Column(Integer, comment="时长(秒)")
 
-    favorite = Column(Boolean, default=False, comment="是否收藏")
+    favorite = Column(Boolean, default=False, comment="是否喜爱")
     has_rating = Column(Boolean, default=False, comment="是否有评分")
     rating = Column(Float, default=0.0, comment="用户评分(1-10)")
 

@@ -683,6 +683,7 @@ export type DeleteMetadataData = {
 export type DeleteMetadataResponse = Response;
 
 export type GetMediaItemsData = {
+    favorite?: boolean;
     hasNumber?: boolean;
     limit?: number;
     mediaType?: string;

@@ -26,6 +26,14 @@ const watchedOptions = [
   { value: false, title: t("pages.mediaitem.unwatched") },
 ]
 
+// Favorite filter
+const favoriteFilter = ref<boolean | null>(null)
+const favoriteOptions = [
+  { value: null, title: t("pages.mediaitem.allFavorites") },
+  { value: true, title: t("pages.mediaitem.favorite") },
+  { value: false, title: t("pages.mediaitem.notFavorite") },
+]
+
 // Has number filter
 const hasNumberFilter = ref<boolean | null>(null)
 const hasNumberOptions = [
@@ -49,6 +57,7 @@ const itemsPerPage = computed({
       undefined,
       hasNumberFilter.value === null ? undefined : hasNumberFilter.value,
       watchedFilter.value === null ? undefined : watchedFilter.value,
+      favoriteFilter.value === null ? undefined : favoriteFilter.value,
     )
   },
 })
@@ -80,6 +89,7 @@ async function searchMediaItems() {
       undefined,
       hasNumberFilter.value === null ? undefined : hasNumberFilter.value,
       watchedFilter.value === null ? undefined : watchedFilter.value,
+      favoriteFilter.value === null ? undefined : favoriteFilter.value,
     )
   } finally {
     isSearching.value = false
@@ -97,6 +107,7 @@ async function changePage(page: number) {
     undefined,
     hasNumberFilter.value === null ? undefined : hasNumberFilter.value,
     watchedFilter.value === null ? undefined : watchedFilter.value,
+    favoriteFilter.value === null ? undefined : favoriteFilter.value,
   )
 }
 
@@ -120,7 +131,7 @@ const formatDateTime = (dateStr: string | null | undefined) => {
 
 // Watch for changes in filters
 watch(
-  [searchQuery, selectedMediaType, watchedFilter, hasNumberFilter],
+  [searchQuery, selectedMediaType, watchedFilter, hasNumberFilter, favoriteFilter],
   async () => {
     await searchMediaItems()
   },
@@ -172,6 +183,19 @@ onMounted(() => {
           item-title="title"
           item-value="value"
           :label="t('pages.mediaitem.watchedStatus')"
+          variant="outlined"
+          density="comfortable"
+          hide-details
+        />
+      </VCol>
+      
+      <VCol cols="12" sm="6" md="2" lg="2" xl="2">
+        <VSelect
+          v-model="favoriteFilter"
+          :items="favoriteOptions"
+          item-title="title"
+          item-value="value"
+          :label="t('pages.mediaitem.favoriteStatus')"
           variant="outlined"
           density="comfortable"
           hide-details
@@ -241,6 +265,16 @@ onMounted(() => {
                 :color="item.userdata?.watched ? 'success' : 'warning'"
               />
               <span>{{ item.userdata?.watched ? t('pages.mediaitem.watched') : t('pages.mediaitem.unwatched') }}</span>
+            </div>
+            
+            <div class="d-flex align-center mt-1">
+              <VIcon 
+                :icon="item.userdata?.favorite ? 'bx-heart' : 'bx-heart-circle'" 
+                size="small" 
+                class="me-1"
+                :color="item.userdata?.favorite ? 'error' : 'grey'"
+              />
+              <span>{{ item.userdata?.favorite ? t('pages.mediaitem.favorite') : t('pages.mediaitem.notFavorite') }}</span>
             </div>
           </VCardText>
         </VCard>

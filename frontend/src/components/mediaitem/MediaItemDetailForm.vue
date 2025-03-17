@@ -60,6 +60,17 @@ const watched = computed({
     formData.value.userdata.watched = value
   },
 })
+
+// Computed property for favorite status
+const favorite = computed({
+  get: () => formData.value.userdata?.favorite || false,
+  set: (value) => {
+    if (!formData.value.userdata) {
+      formData.value.userdata = {}
+    }
+    formData.value.userdata.favorite = value
+  },
+})
 </script>
 
 <template>
@@ -115,6 +126,16 @@ const watched = computed({
           v-model="watched"
           :label="t('pages.mediaitem.watched')"
           color="primary"
+          hide-details
+        />
+      </VCol>
+
+      <!-- Favorite Status -->
+      <VCol cols="12" md="6">
+        <VSwitch
+          v-model="favorite"
+          :label="t('pages.mediaitem.favorite')"
+          color="error"
           hide-details
         />
       </VCol>

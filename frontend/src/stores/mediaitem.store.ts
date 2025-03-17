@@ -29,6 +29,7 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
       sortDesc?: boolean,
       hasNumber?: boolean,
       watched?: boolean,
+      favorite?: boolean,
     ) {
       this.isLoading = true
       try {
@@ -39,7 +40,8 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
         const limit =
           itemsPerPage !== undefined ? itemsPerPage : this.itemsPerPage
 
-        const response = await MediaitemService.getMediaItems({
+        // 使用类型断言来处理 favorite 参数
+        const params: any = {
           search: search,
           skip: skip,
           limit: limit,
@@ -48,7 +50,14 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
           sortDesc: sortDesc,
           hasNumber: hasNumber,
           watched: watched,
-        })
+        }
+        
+        // 只有当 favorite 有值时才添加到参数中
+        if (favorite !== undefined) {
+          params.favorite = favorite
+        }
+
+        const response = await MediaitemService.getMediaItems(params)
 
         this.allMediaItems = response.data
 
