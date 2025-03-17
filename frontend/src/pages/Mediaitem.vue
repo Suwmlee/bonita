@@ -322,7 +322,6 @@ onMounted(() => {
       rgba(0, 0, 0, 0) 60%,
       rgba(0, 0, 0, 0.9) 100%); */
   padding: 16px;
-  color: white;
   overflow: hidden;
 }
 
