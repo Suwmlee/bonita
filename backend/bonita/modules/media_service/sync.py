@@ -124,18 +124,7 @@ def convert_emby_watched_items(session, item):
             )
             media_item.create(session)
     else:
-        try:
-            media_sources = item.get("MediaSources", [])
-            if not media_sources:
-                logger.warning(f"No MediaSources found for item {item.get('Id')}")
-                return None
-            filepath = media_sources[0].get("Path")
-            if not filepath:
-                logger.warning(f"No Path found in MediaSources for item {item.get('Id')}")
-                return None
-        except (IndexError, KeyError) as e:
-            logger.error(f"Error accessing MediaSources: {e}")
-            return None
+        filepath = item.get("Path")
         # Extract number from filepath - first try database, then fallback to parsing
         number = None
         result = session.query(TransRecords, ExtraInfo).outerjoin(

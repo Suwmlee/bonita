@@ -151,7 +151,7 @@ class EmbyService(metaclass=Singleton):
                     "ParentId": library_id,
                     "IncludeItemTypes": "Movie",
                     "Recursive": "True",
-                    "Fields": "ItemCounts,ProviderIds,MediaSources"
+                    "Fields": "ItemCounts,ProviderIds,Path,DateCreated,UserDataLastPlayedDate"
                 }
             )
 
@@ -188,7 +188,7 @@ class EmbyService(metaclass=Singleton):
                         params={
                             "userId": user_id,
                             "isPlaceHolder": "false",
-                            "Fields": "ProviderIds,MediaSources"
+                            "Fields": "ProviderIds,Path,DateCreated,UserDataLastPlayedDate"
                         }
                     )
 
