@@ -1,13 +1,16 @@
 <script setup lang="ts">
+import { useMediaItemStore } from "@/stores/mediaitem.store"
 import { useToolStore } from "@/stores/tool.store"
 import { useI18n } from "vue-i18n"
 
 const toolStore = useToolStore()
+const mediaItemStore = useMediaItemStore()
 const { t } = useI18n() // 导入国际化工具函数
 
 const nfoFolder = ref("")
 const isLoading = ref(false)
 const isSyncingEmby = ref(false)
+const isCleaningMediaItems = ref(false)
 const updateOption = ref("ignore")
 
 const importNfoData = async () => {
@@ -34,6 +37,15 @@ const syncEmbyWatchHistory = async () => {
     isSyncingEmby.value = false
   }
 }
+
+const cleanMediaItems = async () => {
+  isCleaningMediaItems.value = true
+  try {
+    await mediaItemStore.cleanMediaItems()
+  } finally {
+    isCleaningMediaItems.value = false
+  }
+}
 </script>
 
 <template>
@@ -41,7 +53,7 @@ const syncEmbyWatchHistory = async () => {
     {{ t('pages.tools.title') }}
   </p>
   <VRow>
-    <VCol cols="12" md="7" lg="5">
+    <VCol cols="12" sm="8" md="6" lg="5" xl="4">
       <VCard class="mb-6">
         <VCardTitle>{{ t('pages.tools.importNfo.title') }}</VCardTitle>
         <VCardSubtitle>
@@ -86,14 +98,23 @@ const syncEmbyWatchHistory = async () => {
       </VCard>
       
       <VCard class="mb-6">
-        <VCardTitle>{{ t('pages.tools.syncEmby.title', '同步Emby观看历史') }}</VCardTitle>
+        <VCardTitle>{{ t('pages.tools.syncEmby.title') }}</VCardTitle>
         <VCardSubtitle>
-          {{ t('pages.tools.syncEmby.subtitle', '从Emby服务器同步观看历史到本地数据库') }}
+          {{ t('pages.tools.syncEmby.subtitle') }}
         </VCardSubtitle>
         <VCardText>
-          <VBtn color="primary" block :loading="isSyncingEmby" @click="syncEmbyWatchHistory">
-            {{ t('pages.tools.syncEmby.startSync', '开始同步') }}
-          </VBtn>
+          <VRow>
+            <VCol cols="12" class="mb-3">
+              <VBtn color="primary" block :loading="isSyncingEmby" @click="syncEmbyWatchHistory">
+                {{ t('pages.tools.syncEmby.startSync') }}
+              </VBtn>
+            </VCol>
+            <VCol cols="12">
+              <VBtn color="secondary" block :loading="isCleaningMediaItems" @click="cleanMediaItems">
+                {{ t('pages.mediaitem.clean') }}
+              </VBtn>
+            </VCol>
+          </VRow>
         </VCardText>
       </VCard>
     </VCol>

@@ -34,12 +34,12 @@ export const useToolStore = defineStore("tool-store", {
         )
       }
     },
-    
+
     async syncEmbyWatchHistory() {
       this.syncEmbyInProgress = true
       try {
         const toastStore = useToastStore()
-        
+
         const response = await ToolsService.syncEmbyWatchHistory()
         toastStore.success("Emby观看历史同步成功")
         return response
@@ -47,7 +47,9 @@ export const useToolStore = defineStore("tool-store", {
         console.error("Error syncing Emby watch history:", error)
         const toastStore = useToastStore()
         toastStore.error(
-          error instanceof Error ? error.message : "Emby观看历史同步失败: 未知错误",
+          error instanceof Error
+            ? error.message
+            : "Emby观看历史同步失败: 未知错误",
         )
       } finally {
         this.syncEmbyInProgress = false

@@ -160,6 +160,11 @@ export default {
         startImport: "开始导入",
         folderRequired: "请输入文件夹路径",
       },
+      syncEmby: {
+        title: "同步Emby观看历史",
+        subtitle: "从Emby服务器同步观看历史到本地数据库",
+        startSync: "开始同步",
+      },
     },
     serviceSettings: {
       title: "服务配置",

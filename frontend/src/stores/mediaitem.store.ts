@@ -51,7 +51,7 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
           hasNumber: hasNumber,
           watched: watched,
         }
-        
+
         // 只有当 favorite 有值时才添加到参数中
         if (favorite !== undefined) {
           params.favorite = favorite

@@ -162,6 +162,12 @@ export default {
         startImport: "Start Import",
         folderRequired: "Please enter folder path",
       },
+      syncEmby: {
+        title: "Sync Emby Watch History",
+        subtitle:
+          "Synchronize watch history from Emby server to local database",
+        startSync: "Start Sync",
+      },
     },
     serviceSettings: {
       title: "Service Settings",

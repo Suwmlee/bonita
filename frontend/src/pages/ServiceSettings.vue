@@ -158,7 +158,7 @@ onMounted(() => {
     {{ t('pages.serviceSettings.title') }}
   </p>
   <VRow>
-    <VCol cols="12" md="7" lg="5">
+    <VCol cols="12" sm="8" md="6" lg="5" xl="4">
       <VCard class="mb-6">
         <VCardTitle>{{ t('pages.serviceSettings.proxy.title') }}</VCardTitle>
         <VCardSubtitle>
