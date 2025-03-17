@@ -7,6 +7,7 @@ const { t } = useI18n() // 导入国际化工具函数
 
 const nfoFolder = ref("")
 const isLoading = ref(false)
+const isSyncingEmby = ref(false)
 const updateOption = ref("ignore")
 
 const importNfoData = async () => {
@@ -22,6 +23,15 @@ const importNfoData = async () => {
     })
   } finally {
     isLoading.value = false
+  }
+}
+
+const syncEmbyWatchHistory = async () => {
+  isSyncingEmby.value = true
+  try {
+    await toolStore.syncEmbyWatchHistory()
+  } finally {
+    isSyncingEmby.value = false
   }
 }
 </script>
@@ -72,6 +82,18 @@ const importNfoData = async () => {
               </VCol>
             </VRow>
           </VForm>
+        </VCardText>
+      </VCard>
+      
+      <VCard class="mb-6">
+        <VCardTitle>{{ t('pages.tools.syncEmby.title', '同步Emby观看历史') }}</VCardTitle>
+        <VCardSubtitle>
+          {{ t('pages.tools.syncEmby.subtitle', '从Emby服务器同步观看历史到本地数据库') }}
+        </VCardSubtitle>
+        <VCardText>
+          <VBtn color="primary" block :loading="isSyncingEmby" @click="syncEmbyWatchHistory">
+            {{ t('pages.tools.syncEmby.startSync', '开始同步') }}
+          </VBtn>
         </VCardText>
       </VCard>
     </VCol>

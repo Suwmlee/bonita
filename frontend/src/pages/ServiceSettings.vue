@@ -238,7 +238,7 @@ onMounted(() => {
                     <label for="embyApiKey">{{ t('pages.serviceSettings.emby.apiKey') }}</label>
                   </VCol>
                   <VCol cols="12" md="9">
-                    <VTextField v-model="embyApiSettings.emby_apikey" type="password" :placeholder="t('pages.serviceSettings.emby.apiKeyPlaceholder')" />
+                    <VTextField v-model="embyApiSettings.emby_apikey" :placeholder="t('pages.serviceSettings.emby.apiKeyPlaceholder')" />
                   </VCol>
                 </VRow>
               </VCol>
@@ -301,7 +301,7 @@ onMounted(() => {
                     <label for="jellyfinApiKey">{{ t('pages.serviceSettings.jellyfin.apiKey') }}</label>
                   </VCol>
                   <VCol cols="12" md="9">
-                    <VTextField v-model="jellyfinApiSettings.jellyfin_apikey" type="password" :placeholder="t('pages.serviceSettings.jellyfin.apiKeyPlaceholder')" />
+                    <VTextField v-model="jellyfinApiSettings.jellyfin_apikey" :placeholder="t('pages.serviceSettings.jellyfin.apiKeyPlaceholder')" />
                   </VCol>
                 </VRow>
               </VCol>
