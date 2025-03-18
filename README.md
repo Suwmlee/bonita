@@ -1,6 +1,24 @@
 
 ## Bonita
 
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/suwmlee/bonita/release.yml?branch=master)](https://github.com/suwmlee/bonita/actions) [![Docker Pulls](https://img.shields.io/docker/pulls/suwmlee/bonita)](https://hub.docker.com/r/suwmlee/bonita)
+
+安心享受影片
+
+特性:
+- 自动检测影视文件，自动入库
+- 管理视频元数据
+- 自定义刮削
+- 整理、迁移视频文件
+- 管理观影记录、喜爱的影片
+- 同步emby，可无痛迁移
+
+待做:
+- 同步各个媒体服务记录
+- 影片推荐
+- 推送服务
+- 关联下载器
+
 
 ### 部署
 
@@ -9,6 +27,10 @@
 ```sh
 # 拉取镜像
 docker pull suwmlee/bonita:latest
+
+# 指定登录账户和密码
+FIRST_SUPERUSER_EMAIL
+FIRST_SUPERUSER_PASSWORD
 
 # 默认使用SQLite作为broker
 docker run -d \
@@ -33,7 +55,10 @@ docker run -d \
 
 #### 源码部署
 
-如果期望使用Redis，手动修改 `/backend/bonita/core/config` 内路径
-`CELERY_BROKER_URL` `CELERY_RESULT_BACKEND`
-redis://localhost:6379/0
+参考各端 `README`
 
+如果期望使用Redis，手动修改 `/backend/bonita/core/config` 内路径
+```sh
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
+```
