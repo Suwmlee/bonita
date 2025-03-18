@@ -1,7 +1,7 @@
 
 ## Bonita
 
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/suwmlee/bonita/release.yml?branch=master)](https://github.com/suwmlee/bonita/actions) [![Docker Pulls](https://img.shields.io/docker/pulls/suwmlee/bonita)](https://hub.docker.com/r/suwmlee/bonita)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/suwmlee/bonita/docker-publish.yml?branch=master)](https://github.com/suwmlee/bonita/actions) [![Docker Pulls](https://img.shields.io/docker/pulls/suwmlee/bonita)](https://hub.docker.com/r/suwmlee/bonita)
 
 安心享受影片
 
