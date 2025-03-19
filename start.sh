@@ -10,7 +10,7 @@ UVICORN_PID=$!
 
 # 等待FastAPI启动完成
 echo "等待FastAPI服务启动和数据库初始化..."
-until $(curl --output /dev/null --silent --head --fail http://localhost:8000/api/v1/status/health); do
+until $(curl -X GET --output /dev/null --silent --fail http://localhost:8000/api/v1/status/health); do
   printf "."
   sleep 2
 done
