@@ -1,4 +1,3 @@
-
 import logging
 from logging.handlers import RotatingFileHandler
 from fastapi import FastAPI
@@ -36,6 +35,7 @@ def create_app() -> FastAPI:
 
     # initial router
     current_app.include_router(api_router, prefix=settings.API_V1_STR)
+    
     return current_app
 
 
