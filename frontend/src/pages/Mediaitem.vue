@@ -46,17 +46,17 @@ const sortDirection = ref<'asc' | 'desc'>('desc')
 const sortOptions = [
   { 
     value: "updatetime", 
-    title: t("pages.mediaitem.updatetime"), 
+    title: t("pages.mediaitem.sortUpdatetime"), 
     icon: "bx-sort"
   },
   { 
     value: "createtime", 
-    title: t("pages.mediaitem.createtime"), 
+    title: t("pages.mediaitem.sortCreatetime"), 
     icon: "bx-sort"
   },
   { 
     value: "title", 
-    title: t("pages.mediaitem.title"), 
+    title: t("pages.mediaitem.sortTitle"), 
     icon: "bx-sort"
   },
 ]

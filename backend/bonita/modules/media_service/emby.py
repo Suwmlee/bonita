@@ -318,18 +318,20 @@ class EmbyService(metaclass=Singleton):
             if not items:
                 logger.error(f"No items found for title: {title}")
                 return None
-
-            # 获取第一个匹配项的 ID
-            item = items[0]
-            item_id = item["Id"]
-            provider_ids = item.get("ProviderIds", {})
-
-            # 检查是否匹配 IMDb 或 TMDB ID
-            if (imdb_id and provider_ids.get("Imdb") != imdb_id) or \
-                    (tmdb_id and provider_ids.get("Tmdb") != str(tmdb_id)):
-                logger.error(f"ID mismatch in Emby: {imdb_id} {tmdb_id}")
+            matched_item = None
+            # 如果提供了 IMDb 或 TMDB ID，优先查找匹配的项
+            if imdb_id or tmdb_id:
+                for item in items:
+                    provider_ids = item.get("ProviderIds", {})
+                    # 检查是否匹配 IMDb 或 TMDB ID
+                    if (imdb_id and provider_ids.get("Imdb") == imdb_id) or \
+                       (tmdb_id and provider_ids.get("Tmdb") == str(tmdb_id)):
+                        matched_item = item
+                        logger.debug(f"Found matching item with ID: {item['Id']}")
+                        break
+            if not matched_item:
                 return None
-
+            item_id = matched_item["Id"]
             # 获取海报图片地址
             image_url = f"{self.emby_host}/Items/{item_id}/Images/Primary?maxWidth={size.split('w')[-1]}"
             return image_url
