@@ -195,14 +195,21 @@ async def delete_media_item(
 ) -> Any:
     """
     删除媒体项
+    同时删除关联的观看历史记录
     """
     media_item = session.query(MediaItem).filter(MediaItem.id == media_id).first()
     if not media_item:
         raise HTTPException(status_code=404, detail="媒体项不存在")
 
+    watch_history_deleted = session.query(WatchHistory).filter(
+        WatchHistory.media_item_id == media_id).delete(synchronize_session=False)
     session.delete(media_item)
     session.commit()
-    return {"detail": "媒体项已删除"}
+
+    return {
+        "detail": "媒体项已删除",
+        "watch_history_deleted": watch_history_deleted
+    }
 
 
 @router.post("/clean")

@@ -40,6 +40,7 @@ export const useSettingStore = defineStore("setting-store", {
       embyApiSettings: {
         emby_host: "",
         emby_apikey: "",
+        emby_user: "",
         enabled: false,
       },
       jellyfinApiSettings: {
@@ -151,6 +152,7 @@ export const useSettingStore = defineStore("setting-store", {
           requestBody: {
             emby_host: this.embyApiSettings.emby_host,
             emby_apikey: apiKey,
+            emby_user: this.embyApiSettings.emby_user,
           },
         }
 

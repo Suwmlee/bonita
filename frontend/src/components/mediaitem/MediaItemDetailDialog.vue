@@ -8,7 +8,7 @@ const { t } = useI18n() // 导入国际化工具函数
 </script>
 
 <template>
-  <VDialog v-model="dialog.showDialog" max-width="800" scrollable>
+  <VDialog v-model="dialog.showDialog" max-width="600" scrollable>
     <VCard class="dialog-mediaitem-content">
       <VCardTitle>
         <span v-if="dialog.editMediaItem" class="ms-2">{{ t('pages.mediaitem.editMediaItem') }}</span>

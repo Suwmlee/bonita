@@ -44,6 +44,14 @@ function cancel() {
   mediaItemStore.showDialog = false
 }
 
+// Function to delete the media item
+async function deleteItem() {
+  if (isEditMode.value && formData.value.id) {
+    await mediaItemStore.confirmDeleteMediaItem(formData.value.id)
+    mediaItemStore.showDialog = false
+  }
+}
+
 // Media types for dropdown
 const mediaTypes = [
   { value: "movie", title: t("pages.mediaitem.movie") },
@@ -77,135 +85,215 @@ const favorite = computed({
   <VForm @submit.prevent="saveForm">
     <VRow>
       <!-- Title -->
-      <VCol cols="12" md="6">
-        <VTextField
-          v-model="formData.title"
-          :label="t('pages.mediaitem.title')"
-          required
-          variant="outlined"
-          density="comfortable"
-        />
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="title">{{ t('pages.mediaitem.title') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField
+              v-model="formData.title"
+              required
+              variant="outlined"
+              density="comfortable"
+            />
+          </VCol>
+        </VRow>
       </VCol>
 
       <!-- Original Title -->
-      <VCol cols="12" md="6">
-        <VTextField
-          v-model="formData.original_title"
-          :label="t('pages.mediaitem.originalTitle')"
-          variant="outlined"
-          density="comfortable"
-        />
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="original_title">{{ t('pages.mediaitem.originalTitle') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField
+              v-model="formData.original_title"
+              variant="outlined"
+              density="comfortable"
+            />
+          </VCol>
+        </VRow>
       </VCol>
 
       <!-- Media Type -->
-      <VCol cols="12" md="6">
-        <VSelect
-          v-model="formData.media_type"
-          :items="mediaTypes"
-          item-title="title"
-          item-value="value"
-          :label="t('pages.mediaitem.mediaType')"
-          variant="outlined"
-          density="comfortable"
-        />
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="media_type">{{ t('pages.mediaitem.mediaType') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VSelect
+              v-model="formData.media_type"
+              :items="mediaTypes"
+              item-title="title"
+              item-value="value"
+              variant="outlined"
+              density="comfortable"
+            />
+          </VCol>
+        </VRow>
       </VCol>
 
       <!-- Number -->
-      <VCol cols="12" md="6">
-        <VTextField
-          v-model="formData.number"
-          :label="t('pages.mediaitem.number')"
-          variant="outlined"
-          density="comfortable"
-        />
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="number">{{ t('pages.mediaitem.number') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField
+              v-model="formData.number"
+              variant="outlined"
+              density="comfortable"
+            />
+          </VCol>
+        </VRow>
       </VCol>
 
       <!-- Watched Status -->
-      <VCol cols="12" md="6">
-        <VSwitch
-          v-model="watched"
-          :label="t('pages.mediaitem.watched')"
-          color="primary"
-          hide-details
-        />
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="watched">{{ t('pages.mediaitem.watched') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VSwitch
+              v-model="watched"
+              color="primary"
+              hide-details
+            />
+          </VCol>
+        </VRow>
       </VCol>
 
       <!-- Favorite Status -->
-      <VCol cols="12" md="6">
-        <VSwitch
-          v-model="favorite"
-          :label="t('pages.mediaitem.favorite')"
-          color="error"
-          hide-details
-        />
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="favorite">{{ t('pages.mediaitem.favorite') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VSwitch
+              v-model="favorite"
+              color="error"
+              hide-details
+            />
+          </VCol>
+        </VRow>
       </VCol>
 
       <!-- IMDB ID -->
-      <VCol cols="12" md="6">
-        <VTextField
-          v-model="formData.imdb_id"
-          :label="t('pages.mediaitem.imdbId')"
-          variant="outlined"
-          density="comfortable"
-        />
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="imdb_id">{{ t('pages.mediaitem.imdbId') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField
+              v-model="formData.imdb_id"
+              variant="outlined"
+              density="comfortable"
+            />
+          </VCol>
+        </VRow>
       </VCol>
 
       <!-- TMDB ID -->
-      <VCol cols="12" md="6">
-        <VTextField
-          v-model="formData.tmdb_id"
-          :label="t('pages.mediaitem.tmdbId')"
-          variant="outlined"
-          density="comfortable"
-        />
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="tmdb_id">{{ t('pages.mediaitem.tmdbId') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField
+              v-model="formData.tmdb_id"
+              variant="outlined"
+              density="comfortable"
+            />
+          </VCol>
+        </VRow>
       </VCol>
 
       <!-- TVDB ID -->
-      <VCol cols="12" md="6">
-        <VTextField
-          v-model="formData.tvdb_id"
-          :label="t('pages.mediaitem.tvdbId')"
-          variant="outlined"
-          density="comfortable"
-        />
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="tvdb_id">{{ t('pages.mediaitem.tvdbId') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField
+              v-model="formData.tvdb_id"
+              variant="outlined"
+              density="comfortable"
+            />
+          </VCol>
+        </VRow>
       </VCol>
 
       <!-- Season Number (for TV shows) -->
-      <VCol v-if="formData.media_type === 'tvshow'" cols="12" md="6">
-        <VTextField
-          v-model.number="formData.season_number"
-          type="number"
-          :label="t('pages.mediaitem.seasonNumber')"
-          variant="outlined"
-          density="comfortable"
-        />
+      <VCol v-if="formData.media_type === 'tvshow'" cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="season_number">{{ t('pages.mediaitem.seasonNumber') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField
+              v-model.number="formData.season_number"
+              type="number"
+              variant="outlined"
+              density="comfortable"
+            />
+          </VCol>
+        </VRow>
       </VCol>
 
       <!-- Episode Number (for TV shows) -->
-      <VCol v-if="formData.media_type === 'tvshow'" cols="12" md="6">
-        <VTextField
-          v-model.number="formData.episode_number"
-          type="number"
-          :label="t('pages.mediaitem.episodeNumber')"
-          variant="outlined"
-          density="comfortable"
-        />
+      <VCol v-if="formData.media_type === 'tvshow'" cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="episode_number">{{ t('pages.mediaitem.episodeNumber') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField
+              v-model.number="formData.episode_number"
+              type="number"
+              variant="outlined"
+              density="comfortable"
+            />
+          </VCol>
+        </VRow>
       </VCol>
 
       <!-- Action Buttons -->
-      <VCol cols="12" class="d-flex justify-end">
-        <VBtn
-          color="primary"
-          class="me-4"
-          type="submit"
-          :loading="mediaItemStore.isLoading"
-        >
-          {{ isEditMode ? t('common.save') : t('common.add') }}
-        </VBtn>
-        <VBtn @click="cancel">
-          {{ t('common.cancel') }}
-        </VBtn>
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" />
+          <VCol cols="12" md="9" class="d-flex">
+            <VBtn
+              v-if="isEditMode"
+              color="error"
+              class="me-auto"
+              @click="deleteItem"
+              :loading="mediaItemStore.isLoading"
+            >
+              {{ t('common.delete') }}
+            </VBtn>
+            <VBtn
+              color="primary"
+              class="me-4"
+              type="submit"
+              :loading="mediaItemStore.isLoading"
+            >
+              {{ isEditMode ? t('common.save') : t('common.add') }}
+            </VBtn>
+            <VBtn @click="cancel">
+              {{ t('common.cancel') }}
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCol>
     </VRow>
   </VForm>
-</template> 
+</template>

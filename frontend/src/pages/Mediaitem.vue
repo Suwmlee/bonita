@@ -330,15 +330,6 @@ onMounted(() => {
           </VCard>
         </VMenu>
       </VCol>
-
-      <!-- <VCol cols="12" sm="12" md="2" lg="3" xl="3" class="d-flex align-center">
-        <VBtn color="primary" @click="showAddDialog" prepend-icon="bx-plus" class="me-2">
-          {{ t('pages.mediaitem.addNew') }}
-        </VBtn>
-        <VBtn color="secondary" @click="cleanMediaItems" prepend-icon="bx-trash">
-          {{ t('pages.mediaitem.clean') }}
-        </VBtn>
-      </VCol> -->
     </VRow>
 
     <VContainer fluid class="px-2 py-2">
