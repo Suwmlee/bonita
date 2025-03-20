@@ -4,7 +4,7 @@ from sqlalchemy import func, desc, asc
 from sqlalchemy.orm import Session
 
 from bonita.api.deps import SessionDep
-from bonita.db.models.media_item import MediaItem
+from bonita.db.models.mediaitem import MediaItem
 from bonita.db.models.watch_history import WatchHistory
 from bonita import schemas
 
