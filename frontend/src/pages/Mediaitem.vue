@@ -17,7 +17,7 @@ const sortDropdownOpen = ref(false)
 // Media type filter with hasNumber options
 const selectedMediaType = ref<string | null>(null)
 const mediaTypeOptions = [
-  { value: null, title: t("pages.mediaitem.allTypes") },
+  { value: null, title: t("pages.mediaitem.mediaType") },
   { value: "movie", title: t("pages.mediaitem.movie") },
   { value: "tvshow", title: t("pages.mediaitem.tvshow") },
   { value: "number", title: t("pages.mediaitem.hasNumber") },
@@ -26,7 +26,7 @@ const mediaTypeOptions = [
 // Watched filter
 const watchedFilter = ref<boolean | null>(null)
 const watchedOptions = [
-  { value: null, title: t("pages.mediaitem.allWatched") },
+  { value: null, title: t("pages.mediaitem.watchedStatus") },
   { value: true, title: t("pages.mediaitem.watched") },
   { value: false, title: t("pages.mediaitem.unwatched") },
 ]
@@ -34,7 +34,7 @@ const watchedOptions = [
 // Favorite filter
 const favoriteFilter = ref<boolean | null>(null)
 const favoriteOptions = [
-  { value: null, title: t("pages.mediaitem.allFavorites") },
+  { value: null, title: t("pages.mediaitem.favoriteStatus") },
   { value: true, title: t("pages.mediaitem.favorite") },
   { value: false, title: t("pages.mediaitem.notFavorite") },
 ]
@@ -247,72 +247,88 @@ onMounted(() => {
           prepend-inner-icon="bx-search" :loading="isSearching" variant="outlined" density="comfortable" />
       </VCol>
 
-      <VCol cols="12" sm="6" md="2" lg="2" xl="2">
-        <VSelect v-model="selectedMediaType" :items="mediaTypeOptions" item-title="title" item-value="value"
-          :label="t('pages.mediaitem.mediaType')" variant="outlined" density="comfortable" hide-details />
+      <VCol cols="12" sm="6" md="2" lg="1" xl="1">
+        <VSelect 
+          v-model="selectedMediaType" 
+          :items="mediaTypeOptions" 
+          item-title="title" 
+          item-value="value"
+          variant="outlined" 
+          density="comfortable" 
+          hide-details
+          class="filter-dropdown"
+        />
       </VCol>
 
-      <VCol cols="12" sm="6" md="2" lg="2" xl="2">
-        <VSelect v-model="watchedFilter" :items="watchedOptions" item-title="title" item-value="value"
-          :label="t('pages.mediaitem.watchedStatus')" variant="outlined" density="comfortable" hide-details />
+      <VCol cols="12" sm="6" md="2" lg="1" xl="1">
+        <VSelect 
+          v-model="watchedFilter" 
+          :items="watchedOptions" 
+          item-title="title" 
+          item-value="value"
+          variant="outlined" 
+          density="comfortable" 
+          hide-details
+          class="filter-dropdown"
+        />
       </VCol>
 
-      <VCol cols="12" sm="6" md="2" lg="2" xl="2">
-        <VSelect v-model="favoriteFilter" :items="favoriteOptions" item-title="title" item-value="value"
-          :label="t('pages.mediaitem.favoriteStatus')" variant="outlined" density="comfortable" hide-details />
+      <VCol cols="12" sm="6" md="2" lg="1" xl="1">
+        <VSelect 
+          v-model="favoriteFilter" 
+          :items="favoriteOptions" 
+          item-title="title" 
+          item-value="value"
+          variant="outlined" 
+          density="comfortable" 
+          hide-details
+          class="filter-dropdown"
+        />
       </VCol>
 
       <VCol cols="12" sm="6" md="1" lg="1" xl="1">
-        <VBtn-group variant="outlined" class="sort-dropdown">
-          <VBtn
-            class="sort-btn"
-            @click="sortDropdownOpen = !sortDropdownOpen"
-            density="comfortable"
-          >
-            <div class="d-flex flex-column align-start w-100">
-              <div class="d-flex align-center w-100">
-                <VIcon :icon="getSortIcon(sortField)" size="small" class="me-2" />
-                <span>{{ sortOptions.find(opt => opt.value === sortField)?.title }}</span>
-                <VIcon
-                  :icon="sortDropdownOpen ? 'bx-chevron-up' : 'bx-chevron-down'"
-                  size="small"
-                  class="ms-auto"
-                />
-              </div>
-            </div>
-          </VBtn>
-          <VMenu
-            v-model="sortDropdownOpen"
-            location="bottom end"
-            :offset="[0, 5]"
-            :width="'auto'"
-            min-width="100%"
-          >
-            <template v-slot:activator="{ props }">
-              <div v-bind="props"></div>
-            </template>
-            <VCard class="sort-menu-card">
-              <VList>
-                <VListItem
-                  v-for="option in sortOptions"
-                  :key="option.value"
-                  @click="handleSortChange(option.value)"
-                  class="sort-list-item"
-                >
-                  <VListItemTitle>
-                    {{ option.title }}
-                    <VIcon
-                      v-if="option.value === sortField"
-                      size="small" 
-                      class="ms-2"
-                      :icon="sortDirection === 'desc' ? 'bx-down-arrow-alt' : 'bx-up-arrow-alt'"
-                    />
-                  </VListItemTitle>
-                </VListItem>
-              </VList>
-            </VCard>
-          </VMenu>
-        </VBtn-group>
+        <VBtn
+          variant="outlined"
+          class="sort-btn"
+          @click="sortDropdownOpen = !sortDropdownOpen"
+          density="comfortable"
+        >
+          <div class="d-flex align-center w-100">
+            <VIcon :icon="getSortIcon(sortField)" size="small" class="me-2" />
+            <span class="text-truncate">{{ sortOptions.find(opt => opt.value === sortField)?.title }}</span>
+          </div>
+        </VBtn>
+        <VMenu
+          v-model="sortDropdownOpen"
+          location="bottom end"
+          :offset="[0, 5]"
+          :width="'auto'"
+          min-width="100%"
+        >
+          <template v-slot:activator="{ props }">
+            <div v-bind="props"></div>
+          </template>
+          <VCard class="sort-menu-card">
+            <VList>
+              <VListItem
+                v-for="option in sortOptions"
+                :key="option.value"
+                @click="handleSortChange(option.value)"
+                class="sort-list-item"
+              >
+                <VListItemTitle>
+                  {{ option.title }}
+                  <VIcon
+                    v-if="option.value === sortField"
+                    size="small" 
+                    class="ms-2"
+                    :icon="sortDirection === 'desc' ? 'bx-down-arrow-alt' : 'bx-up-arrow-alt'"
+                  />
+                </VListItemTitle>
+              </VListItem>
+            </VList>
+          </VCard>
+        </VMenu>
       </VCol>
 
       <!-- <VCol cols="12" sm="12" md="2" lg="3" xl="3" class="d-flex align-center">
@@ -500,15 +516,9 @@ onMounted(() => {
   width: 100%;
   justify-content: flex-start;
   text-align: left;
+  height: 38px;
   border-radius: 4px;
-  height: 56px;
-  padding-top: 12px;
-  padding-bottom: 12px;
-  padding-left: 16px;
-  padding-right: 16px;
-  color: var(--v-theme-on-surface);
-  background-color: var(--v-theme-surface);
-  border: thin solid var(--v-border-color);
+  padding: 0 16px;
 }
 
 .sort-menu-card {
@@ -532,5 +542,10 @@ onMounted(() => {
     width: 100%;
     justify-content: space-between;
   }
+}
+
+.filter-dropdown {
+  width: 100%;
+  min-width: 0;
 }
 </style>
