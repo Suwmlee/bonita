@@ -4,6 +4,7 @@ import os
 import hashlib
 import logging
 from datetime import datetime
+from sqlalchemy import func
 
 from bonita import schemas
 from bonita.api.deps import SessionDep
@@ -114,7 +115,7 @@ async def get_poster(
     # 如果提供了number，优先从metadata获取cover
     if number:
         try:
-            metadata = session.query(Metadata).filter(Metadata.number == number.upper()).first()
+            metadata = session.query(Metadata).filter(func.upper(Metadata.number) == number.upper()).first()
             if metadata and metadata.cover:
                 # 根据cover字段值从Downloads表获取文件路径
                 cache_downloads_cover = session.query(Downloads).filter(Downloads.url == metadata.cover).first()

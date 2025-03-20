@@ -19,7 +19,7 @@ async def get_media_items(
     search: str = None,
     media_type: str = None,
     sort_by: str = "updatetime",
-    sort_desc: bool = False,
+    sort_desc: bool = True,
     has_number: bool = None,
     watched: bool = None,
     favorite: bool = None

@@ -15,7 +15,7 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
     editMediaItem: undefined as MediaItemWithWatches | undefined,
     totalCount: 0,
     currentPage: 1,
-    itemsPerPage: 24,
+    itemsPerPage: 32,
     isLoading: false,
   }),
   actions: {
