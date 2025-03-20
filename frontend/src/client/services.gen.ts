@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetAllTasksStatusResponse, GetAllTaskConfigsData, GetAllTaskConfigsResponse, CreateTaskConfigData, CreateTaskConfigResponse, UpdateTaskConfigData, UpdateTaskConfigResponse, DeleteTaskConfigData, DeleteTaskConfigResponse, GetAllConfigsData, GetAllConfigsResponse, CreateConfigData, CreateConfigResponse, UpdateConfigData, UpdateConfigResponse, DeleteConfigData, DeleteConfigResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, UpdateTopFolderData, UpdateTopFolderResponse, DeleteRecordsData, DeleteRecordsResponse, GetTransRecordsData, GetTransRecordsResponse, CreateMetadataData, CreateMetadataResponse, GetMetadataData, GetMetadataResponse, UpdateMetadataData, UpdateMetadataResponse, DeleteMetadataData, DeleteMetadataResponse, GetMediaItemsData, GetMediaItemsResponse, CreateMediaItemData, CreateMediaItemResponse, GetMediaItemData, GetMediaItemResponse, UpdateMediaItemData, UpdateMediaItemResponse, DeleteMediaItemData, DeleteMediaItemResponse, CleanMediaItemResponse, RunImportNfoData, RunImportNfoResponse, RunEmbyScanData, RunEmbyScanResponse, SyncEmbyWatchHistoryResponse, GetProxySettingsResponse, UpdateProxySettingsData, UpdateProxySettingsResponse, GetEmbySettingsResponse, UpdateEmbySettingsData, UpdateEmbySettingsResponse, TestEmbyConnectionData, TestEmbyConnectionResponse, GetJellyfinSettingsResponse, UpdateJellyfinSettingsData, UpdateJellyfinSettingsResponse, TestJellyfinConnectionData, TestJellyfinConnectionResponse, GetImageByQueryData, GetImageByQueryResponse, UploadImageData, UploadImageResponse, ListDirectoryData, ListDirectoryResponse } from './types.gen';
+import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetAllTasksStatusResponse, GetAllTaskConfigsData, GetAllTaskConfigsResponse, CreateTaskConfigData, CreateTaskConfigResponse, UpdateTaskConfigData, UpdateTaskConfigResponse, DeleteTaskConfigData, DeleteTaskConfigResponse, GetAllConfigsData, GetAllConfigsResponse, CreateConfigData, CreateConfigResponse, UpdateConfigData, UpdateConfigResponse, DeleteConfigData, DeleteConfigResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, UpdateTopFolderData, UpdateTopFolderResponse, DeleteRecordsData, DeleteRecordsResponse, GetTransRecordsData, GetTransRecordsResponse, CreateMetadataData, CreateMetadataResponse, GetMetadataData, GetMetadataResponse, UpdateMetadataData, UpdateMetadataResponse, DeleteMetadataData, DeleteMetadataResponse, GetMediaItemsData, GetMediaItemsResponse, CreateMediaItemData, CreateMediaItemResponse, GetMediaItemData, GetMediaItemResponse, UpdateMediaItemData, UpdateMediaItemResponse, DeleteMediaItemData, DeleteMediaItemResponse, CleanMediaItemResponse, RunImportNfoData, RunImportNfoResponse, RunEmbyScanData, RunEmbyScanResponse, SyncEmbyWatchHistoryResponse, GetProxySettingsResponse, UpdateProxySettingsData, UpdateProxySettingsResponse, GetEmbySettingsResponse, UpdateEmbySettingsData, UpdateEmbySettingsResponse, TestEmbyConnectionData, TestEmbyConnectionResponse, GetJellyfinSettingsResponse, UpdateJellyfinSettingsData, UpdateJellyfinSettingsResponse, TestJellyfinConnectionData, TestJellyfinConnectionResponse, GetImageByQueryData, GetImageByQueryResponse, UploadImageData, UploadImageResponse, GetPosterData, GetPosterResponse, ListDirectoryData, ListDirectoryResponse, HealthCheckResponse } from './types.gen';
 
 export class LoginService {
     /**
@@ -1118,6 +1118,43 @@ export class ResourceService {
         });
     }
     
+    /**
+     * Get Poster
+     * 获取海报图片，根据参数选择不同来源
+     *
+     * Args:
+     * title: 标题
+     * imdb_id: IMDB ID
+     * tmdb_id: TMDB ID
+     * number: 番号，如果提供则从metadata获取
+     * session: 数据库会话
+     *
+     * Returns:
+     * FileResponse或RedirectResponse: 图片文件或重定向到Emby图片URL
+     * @param data The data for the request.
+     * @param data.title
+     * @param data.imdbId
+     * @param data.tmdbId
+     * @param data.number
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static getPoster(data: GetPosterData): CancelablePromise<GetPosterResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/resource/poster',
+            query: {
+                title: data.title,
+                imdb_id: data.imdbId,
+                tmdb_id: data.tmdbId,
+                number: data.number
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
 }
 
 export class FilesService {
@@ -1139,6 +1176,22 @@ export class FilesService {
             errors: {
                 422: 'Validation Error'
             }
+        });
+    }
+    
+}
+
+export class StatusService {
+    /**
+     * Health Check
+     * 健康检查端点，用于确认API服务运行状态
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static healthCheck(): CancelablePromise<HealthCheckResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/status/health'
         });
     }
     

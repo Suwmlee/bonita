@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MediaItemWithWatches } from "@/client"
+import { OpenAPI, ResourceService } from "@/client"
 import MediaItemDetailDialog from "@/components/mediaitem/MediaItemDetailDialog.vue"
 import { useMediaItemStore } from "@/stores/mediaitem.store"
 import { computed, onMounted, ref, watch } from "vue"
@@ -129,6 +130,31 @@ const formatDateTime = (dateStr: string | null | undefined) => {
   })
 }
 
+// 处理海报URL的函数
+const getPosterUrl = (item: MediaItemWithWatches): string => {
+  const baseUrl = `${OpenAPI.BASE}/api/v1/resource/poster?`
+  const params = new URLSearchParams()
+  
+  params.append('title', item.title)
+  
+  if (item.imdb_id) {
+    params.append('imdb_id', item.imdb_id)
+  }
+  
+  if (item.tmdb_id) {
+    params.append('tmdb_id', item.tmdb_id.toString())
+  }
+  
+  if (item.number) {
+    params.append('number', item.number)
+  }
+  
+  // 添加时间戳防止缓存
+  params.append('t', Date.now().toString())
+  
+  return baseUrl + params.toString()
+}
+
 // Watch for changes in filters
 watch(
   [
@@ -195,8 +221,7 @@ onMounted(() => {
       <VCol v-for="item in mediaItemStore.allMediaItems" :key="item.id" cols="12" sm="6" md="4" lg="3" xl="2">
         <VCard class="media-card d-flex flex-column" @click="showEditDialog(item)">
           <!-- Card with poster as background -->
-          <div class="poster-background">
-            <!-- <div class="poster-background" :style="{ backgroundImage: `url(${item.posterUrl})` }"> -->
+          <div class="poster-background" :style="{ backgroundImage: `url(${getPosterUrl(item)})` }">
             <!-- Content overlay with gradient -->
             <div class="content-overlay">
               <!-- Title at the top -->
@@ -340,12 +365,6 @@ onMounted(() => {
 .media-info {
   margin-top: auto;
   overflow: hidden;
-}
-
-/* When actual images are added, this will be useful */
-.poster-background {
-  background-size: cover;
-  background-position: center;
 }
 
 /* 分页样式 */

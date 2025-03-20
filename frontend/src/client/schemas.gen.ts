@@ -79,14 +79,7 @@ export const $EmbySettings = {
             title: 'Emby Apikey'
         },
         emby_user: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
+            type: 'string',
             title: 'Emby User'
         },
         enabled: {
@@ -103,7 +96,7 @@ export const $EmbySettings = {
         }
     },
     type: 'object',
-    required: ['emby_host', 'emby_apikey'],
+    required: ['emby_host', 'emby_apikey', 'emby_user'],
     title: 'EmbySettings',
     description: 'Emby settings schema'
 } as const;

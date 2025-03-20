@@ -1,16 +1,19 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 import os
 import hashlib
+import logging
 from datetime import datetime
 
 from bonita import schemas
 from bonita.api.deps import SessionDep
 from bonita.core.config import settings
-from bonita.utils.downloader import process_cached_file
+from bonita.db.models.metadata import Metadata
 from bonita.db.models.downloads import Downloads
+from bonita.modules.media_service.emby import EmbyService
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/image")
@@ -66,10 +69,10 @@ async def upload_image(
 
     # Use custom_url if provided, otherwise use file_hash
     url_value = custom_url if custom_url is not None else file_hash
-    
+
     # Check if a record with this URL already exists
     existing_download = session.query(Downloads).filter(Downloads.url == url_value).first()
-    
+
     if existing_download:
         # Update existing record
         existing_download.filepath = file_path
@@ -86,3 +89,50 @@ async def upload_image(
         download.create(session)
 
     return schemas.Response(success=True, message=url_value)
+
+
+@router.get("/poster")
+async def get_poster(
+    title: str,
+    imdb_id: str = None,
+    tmdb_id: str = None,
+    number: str = None,
+    session: SessionDep = None
+):
+    """获取海报图片，根据参数选择不同来源
+
+    Args:
+        title: 标题
+        imdb_id: IMDB ID
+        tmdb_id: TMDB ID
+        number: 番号，如果提供则从metadata获取
+        session: 数据库会话
+
+    Returns:
+        FileResponse或RedirectResponse: 图片文件或重定向到Emby图片URL
+    """
+    # 如果提供了number，优先从metadata获取cover
+    if number:
+        try:
+            metadata = session.query(Metadata).filter(Metadata.number == number.upper()).first()
+            if metadata and metadata.cover:
+                # 根据cover字段值从Downloads表获取文件路径
+                cache_downloads_cover = session.query(Downloads).filter(Downloads.url == metadata.cover).first()
+                if cache_downloads_cover and os.path.exists(cache_downloads_cover.filepath):
+                    return FileResponse(cache_downloads_cover.filepath)
+        except Exception as e:
+            logger.error(f"从metadata获取海报失败: {e}")
+            # 记录错误但继续尝试其他方法获取海报
+            pass
+
+    # 如果number为空或者从metadata获取失败，尝试从Emby获取
+    try:
+        emby_service = EmbyService()
+        if emby_service.is_initialized:
+            poster_url = emby_service.get_poster_url(title, imdb_id, tmdb_id)
+            if poster_url:
+                return RedirectResponse(poster_url)
+    except Exception as e:
+        logger.error(f"从Emby获取海报失败: {e}")
+        # 记录错误但继续尝试其他方法获取海报
+        pass

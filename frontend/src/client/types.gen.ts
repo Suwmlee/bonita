@@ -19,7 +19,7 @@ export type Body_resource_upload_image = {
 export type EmbySettings = {
     emby_host: string;
     emby_apikey: string;
-    emby_user?: string | null;
+    emby_user: string;
     enabled?: boolean | null;
 };
 
@@ -786,6 +786,15 @@ export type UploadImageData = {
 
 export type UploadImageResponse = unknown;
 
+export type GetPosterData = {
+    imdbId?: string;
+    number?: string;
+    title: string;
+    tmdbId?: string;
+};
+
+export type GetPosterResponse = unknown;
+
 export type ListDirectoryData = {
     /**
      * 要浏览的目录路径
@@ -794,6 +803,8 @@ export type ListDirectoryData = {
 };
 
 export type ListDirectoryResponse = FileListResponse;
+
+export type HealthCheckResponse = unknown;
 
 export type $OpenApiTs = {
     '/api/v1/login/access-token': {
@@ -1463,6 +1474,21 @@ export type $OpenApiTs = {
             };
         };
     };
+    '/api/v1/resource/poster': {
+        get: {
+            req: GetPosterData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: unknown;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
     '/api/v1/files/list': {
         get: {
             req: ListDirectoryData;
@@ -1475,6 +1501,16 @@ export type $OpenApiTs = {
                  * Validation Error
                  */
                 422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/status/health': {
+        get: {
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: unknown;
             };
         };
     };
