@@ -134,24 +134,24 @@ const formatDateTime = (dateStr: string | null | undefined) => {
 const getPosterUrl = (item: MediaItemWithWatches): string => {
   const baseUrl = `${OpenAPI.BASE}/api/v1/resource/poster?`
   const params = new URLSearchParams()
-  
-  params.append('title', item.title)
-  
+
+  params.append("title", item.title)
+
   if (item.imdb_id) {
-    params.append('imdb_id', item.imdb_id)
+    params.append("imdb_id", item.imdb_id)
   }
-  
+
   if (item.tmdb_id) {
-    params.append('tmdb_id', item.tmdb_id.toString())
+    params.append("tmdb_id", item.tmdb_id.toString())
   }
-  
+
   if (item.number) {
-    params.append('number', item.number)
+    params.append("number", item.number)
   }
-  
+
   // 添加时间戳防止缓存
-  params.append('t', Date.now().toString())
-  
+  // params.append('t', Date.now().toString())
+
   return baseUrl + params.toString()
 }
 
@@ -239,7 +239,7 @@ onMounted(() => {
                 <div class="mb-2 d-flex align-center">
                   <VIcon icon="bx-film" size="small" class="me-1" />
                   <span>{{ item.media_type === 'movie' ? t('pages.mediaitem.movie') : t('pages.mediaitem.tvshow')
-                    }}</span>
+                  }}</span>
                 </div>
 
                 <div class="mb-2 d-flex align-center">
@@ -251,14 +251,14 @@ onMounted(() => {
                   <VIcon :icon="item.userdata?.watched ? 'bx-check-circle' : 'bx-time'" size="small" class="me-1"
                     :color="item.userdata?.watched ? 'success' : 'warning'" />
                   <span>{{ item.userdata?.watched ? t('pages.mediaitem.watched') : t('pages.mediaitem.unwatched')
-                    }}</span>
+                  }}</span>
                 </div>
 
                 <div class="d-flex align-center mt-1">
                   <VIcon :icon="item.userdata?.favorite ? 'bx-heart' : 'bx-heart-circle'" size="small" class="me-1"
                     :color="item.userdata?.favorite ? 'error' : 'grey'" />
                   <span>{{ item.userdata?.favorite ? t('pages.mediaitem.favorite') : t('pages.mediaitem.notFavorite')
-                    }}</span>
+                  }}</span>
                 </div>
               </div>
             </div>
@@ -307,7 +307,7 @@ onMounted(() => {
 
 /* Media Card Styling */
 .media-card {
-  height: 300px;
+  height: 350px;
   transition: transform 0.2s;
   cursor: pointer;
   overflow: hidden;
@@ -327,6 +327,8 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.05);
+  background-size: cover;
+  background-position: right center;
   display: flex;
   flex-direction: column;
 }
@@ -341,13 +343,9 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  /* background: linear-gradient(to bottom,
-      rgba(0, 0, 0, 0.7) 0%,
-      rgba(0, 0, 0, 0) 30%,
-      rgba(0, 0, 0, 0) 60%,
-      rgba(0, 0, 0, 0.9) 100%); */
   padding: 16px;
   overflow: hidden;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 0%, transparent 30%, transparent 70%, rgba(0, 0, 0, 0.8) 100%);
 }
 
 .media-title {
@@ -360,11 +358,19 @@ onMounted(() => {
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
+  color: #ffffff;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 .media-info {
   margin-top: auto;
   overflow: hidden;
+  color: #ffffff;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(2px);
+  padding: 8px;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.4);
 }
 
 /* 分页样式 */
