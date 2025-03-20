@@ -1,4 +1,3 @@
-
 import logging
 
 from bonita.db.models.extrainfo import ExtraInfo
@@ -101,13 +100,23 @@ def convert_emby_watched_items(session, item):
         if not media_item and tvdb_id:
             media_item = session.query(MediaItem).filter(MediaItem.tvdb_id == tvdb_id).first()
         if media_item:
-            media_item.media_type = content_type
-            media_item.title = title
-            media_item.original_title = original_title
-            media_item.imdb_id = imdb_id
-            media_item.tmdb_id = tmdb_id
-            media_item.tvdb_id = tvdb_id
-            session.commit()
+            # 检查media_item是否有实际变化
+            has_media_changes = (
+                media_item.media_type != content_type or
+                media_item.title != title or
+                media_item.original_title != original_title or
+                media_item.imdb_id != imdb_id or
+                media_item.tmdb_id != tmdb_id or
+                media_item.tvdb_id != tvdb_id
+            )
+            if has_media_changes:
+                media_item.media_type = content_type
+                media_item.title = title
+                media_item.original_title = original_title
+                media_item.imdb_id = imdb_id
+                media_item.tmdb_id = tmdb_id
+                media_item.tvdb_id = tvdb_id
+                session.commit()
         else:
             media_item = MediaItem(
                 media_type=content_type,
@@ -154,12 +163,21 @@ def convert_emby_watched_items(session, item):
 
     existing_record = session.query(WatchHistory).filter(WatchHistory.media_item_id == media_item.id).first()
     if existing_record:
-        existing_record.watched = watched
-        existing_record.watch_count = watch_count
-        existing_record.favorite = is_favorite
-        existing_record.play_progress = play_progress
-        existing_record.duration = duration
-        session.commit()
+        # 检查existing_record是否有实际变化
+        has_record_changes = (
+            existing_record.watched != watched or
+            existing_record.watch_count != watch_count or
+            existing_record.favorite != is_favorite or
+            existing_record.play_progress != play_progress or
+            existing_record.duration != duration
+        )
+        if has_record_changes:
+            existing_record.watched = watched
+            existing_record.watch_count = watch_count
+            existing_record.favorite = is_favorite
+            existing_record.play_progress = play_progress
+            existing_record.duration = duration
+            session.commit()
     else:
         new_record = WatchHistory(
             media_item_id=media_item.id,

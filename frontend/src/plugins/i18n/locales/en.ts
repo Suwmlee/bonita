@@ -298,6 +298,13 @@ export default {
       totalItems: "Total {count} items",
       editMediaItem: "Edit Media Item",
       addMediaItem: "Add Media Item",
+      sortBy: "Sort By",
+      noSort: "Default Order",
+      resetSort: "Reset Sort",
+      updatetime: "Update Time",
+      createtime: "Create Time",
+      ascending: "Ascending",
+      descending: "Descending",
     },
   },
   components: {

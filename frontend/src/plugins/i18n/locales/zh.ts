@@ -290,6 +290,13 @@ export default {
       totalItems: "总计 {count} 条记录",
       editMediaItem: "编辑媒体项",
       addMediaItem: "添加媒体项",
+      sortBy: "排序方式",
+      noSort: "默认排序",
+      resetSort: "重置排序",
+      updatetime: "更新时间",
+      createtime: "创建时间",
+      ascending: "升序",
+      descending: "降序",
     },
   },
   components: {

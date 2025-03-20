@@ -101,11 +101,8 @@ async def get_media_items(
     count = query.count()
 
     # 应用排序
-    if sort_by == "updatetime":
-        query = query.order_by(desc(watch_info.c.watch_updatetime) if sort_desc else asc(watch_info.c.watch_updatetime))
-    else:
-        sort_column = getattr(MediaItem, sort_by, MediaItem.updatetime)
-        query = query.order_by(desc(sort_column) if sort_desc else asc(sort_column))
+    sort_column = getattr(MediaItem, sort_by, MediaItem.updatetime)
+    query = query.order_by(desc(sort_column) if sort_desc else asc(sort_column))
 
     # 分页
     results = query.offset(skip).limit(limit).all()

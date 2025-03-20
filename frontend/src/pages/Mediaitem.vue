@@ -11,12 +11,16 @@ const searchQuery = ref("")
 const isSearching = ref(false)
 const { t } = useI18n()
 
-// Media type filter
+// Sort dropdown state
+const sortDropdownOpen = ref(false)
+
+// Media type filter with hasNumber options
 const selectedMediaType = ref<string | null>(null)
 const mediaTypeOptions = [
   { value: null, title: t("pages.mediaitem.allTypes") },
   { value: "movie", title: t("pages.mediaitem.movie") },
   { value: "tvshow", title: t("pages.mediaitem.tvshow") },
+  { value: "number", title: t("pages.mediaitem.hasNumber") },
 ]
 
 // Watched filter
@@ -35,13 +39,56 @@ const favoriteOptions = [
   { value: false, title: t("pages.mediaitem.notFavorite") },
 ]
 
-// Has number filter
-const hasNumberFilter = ref<boolean | null>(null)
-const hasNumberOptions = [
-  { value: null, title: t("pages.mediaitem.allItems") },
-  { value: true, title: t("pages.mediaitem.hasNumber") },
-  { value: false, title: t("pages.mediaitem.noNumber") },
+// Sort options
+const sortField = ref<string>("updatetime")
+const sortDirection = ref<'asc' | 'desc'>('desc')
+
+const sortOptions = [
+  { 
+    value: "updatetime", 
+    title: t("pages.mediaitem.updatetime"), 
+    icon: "bx-sort"
+  },
+  { 
+    value: "createtime", 
+    title: t("pages.mediaitem.createtime"), 
+    icon: "bx-sort"
+  },
+  { 
+    value: "title", 
+    title: t("pages.mediaitem.title"), 
+    icon: "bx-sort"
+  },
 ]
+
+// Handle sort selection
+function handleSortChange(value: string) {
+  // If selecting the same field, toggle direction
+  if (value === sortField.value) {
+    sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
+  } else {
+    // If selecting a new field, set it with default desc direction
+    sortField.value = value
+    sortDirection.value = 'desc'
+  }
+  
+  // Close the dropdown
+  sortDropdownOpen.value = false
+  
+  // Trigger search with new sort params
+  searchMediaItems()
+}
+
+// Get sort icon based on field and current direction
+function getSortIcon(value: string): string {
+  if (value !== sortField.value) return "bx-sort"
+  
+  if (value === "title") {
+    return sortDirection.value === 'desc' ? "bx-sort-a-z" : "bx-sort-z-a"
+  }
+  
+  return sortDirection.value === 'desc' ? "bx-sort-down" : "bx-sort-up"
+}
 
 // Pagination
 const currentPage = computed(() => mediaItemStore.currentPage)
@@ -53,10 +100,10 @@ const itemsPerPage = computed({
       searchQuery.value,
       1,
       value,
-      selectedMediaType.value || undefined,
-      undefined,
-      undefined,
-      hasNumberFilter.value === null ? undefined : hasNumberFilter.value,
+      getMediaTypeValue(),
+      sortField.value || undefined,
+      sortDirection.value === 'desc',
+      getHasNumberValue(),
       watchedFilter.value === null ? undefined : watchedFilter.value,
       favoriteFilter.value === null ? undefined : favoriteFilter.value,
     )
@@ -66,6 +113,20 @@ const totalPages = computed(() =>
   Math.ceil(totalItems.value / itemsPerPage.value),
 )
 const itemsPerPageOptions = [24, 48, 96]
+
+// Function to extract media type, hasNumber from combined selection
+function getMediaTypeValue(): string | undefined {
+  if (!selectedMediaType.value) return undefined
+  if (selectedMediaType.value === "number") return undefined
+  return selectedMediaType.value
+}
+
+// Function to extract hasNumber value from combined selection
+function getHasNumberValue(): boolean | undefined {
+  if (selectedMediaType.value === "number") return true
+  if (selectedMediaType.value === "movie" || selectedMediaType.value === "tvshow") return false
+  return undefined
+}
 
 // Function to show the edit dialog
 function showEditDialog(item: MediaItemWithWatches) {
@@ -85,10 +146,10 @@ async function searchMediaItems() {
       searchQuery.value,
       undefined,
       undefined,
-      selectedMediaType.value || undefined,
-      undefined,
-      undefined,
-      hasNumberFilter.value === null ? undefined : hasNumberFilter.value,
+      getMediaTypeValue(),
+      sortField.value || undefined,
+      sortDirection.value === 'desc',
+      getHasNumberValue(),
       watchedFilter.value === null ? undefined : watchedFilter.value,
       favoriteFilter.value === null ? undefined : favoriteFilter.value,
     )
@@ -103,10 +164,10 @@ async function changePage(page: number) {
     searchQuery.value,
     page,
     undefined,
-    selectedMediaType.value || undefined,
-    undefined,
-    undefined,
-    hasNumberFilter.value === null ? undefined : hasNumberFilter.value,
+    getMediaTypeValue(),
+    sortField.value || undefined,
+    sortDirection.value === 'desc',
+    getHasNumberValue(),
     watchedFilter.value === null ? undefined : watchedFilter.value,
     favoriteFilter.value === null ? undefined : favoriteFilter.value,
   )
@@ -161,7 +222,6 @@ watch(
     searchQuery,
     selectedMediaType,
     watchedFilter,
-    hasNumberFilter,
     favoriteFilter,
   ],
   async () => {
@@ -202,9 +262,57 @@ onMounted(() => {
           :label="t('pages.mediaitem.favoriteStatus')" variant="outlined" density="comfortable" hide-details />
       </VCol>
 
-      <VCol cols="12" sm="6" md="2" lg="2" xl="2">
-        <VSelect v-model="hasNumberFilter" :items="hasNumberOptions" item-title="title" item-value="value"
-          :label="t('pages.mediaitem.numberStatus')" variant="outlined" density="comfortable" hide-details />
+      <VCol cols="12" sm="6" md="1" lg="1" xl="1">
+        <VBtn-group variant="outlined" class="sort-dropdown">
+          <VBtn
+            class="sort-btn"
+            @click="sortDropdownOpen = !sortDropdownOpen"
+            density="comfortable"
+          >
+            <div class="d-flex flex-column align-start w-100">
+              <div class="d-flex align-center w-100">
+                <VIcon :icon="getSortIcon(sortField)" size="small" class="me-2" />
+                <span>{{ sortOptions.find(opt => opt.value === sortField)?.title }}</span>
+                <VIcon
+                  :icon="sortDropdownOpen ? 'bx-chevron-up' : 'bx-chevron-down'"
+                  size="small"
+                  class="ms-auto"
+                />
+              </div>
+            </div>
+          </VBtn>
+          <VMenu
+            v-model="sortDropdownOpen"
+            location="bottom end"
+            :offset="[0, 5]"
+            :width="'auto'"
+            min-width="100%"
+          >
+            <template v-slot:activator="{ props }">
+              <div v-bind="props"></div>
+            </template>
+            <VCard class="sort-menu-card">
+              <VList>
+                <VListItem
+                  v-for="option in sortOptions"
+                  :key="option.value"
+                  @click="handleSortChange(option.value)"
+                  class="sort-list-item"
+                >
+                  <VListItemTitle>
+                    {{ option.title }}
+                    <VIcon
+                      v-if="option.value === sortField"
+                      size="small" 
+                      class="ms-2"
+                      :icon="sortDirection === 'desc' ? 'bx-down-arrow-alt' : 'bx-up-arrow-alt'"
+                    />
+                  </VListItemTitle>
+                </VListItem>
+              </VList>
+            </VCard>
+          </VMenu>
+        </VBtn-group>
       </VCol>
 
       <!-- <VCol cols="12" sm="12" md="2" lg="3" xl="3" class="d-flex align-center">
@@ -381,6 +489,35 @@ onMounted(() => {
 
 :deep(.v-pagination__item) {
   min-width: 34px;
+}
+
+/* Sort dropdown styles */
+.sort-dropdown {
+  width: 100%;
+}
+
+.sort-btn {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  border-radius: 4px;
+  height: 56px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  padding-left: 16px;
+  padding-right: 16px;
+  color: var(--v-theme-on-surface);
+  background-color: var(--v-theme-surface);
+  border: thin solid var(--v-border-color);
+}
+
+.sort-menu-card {
+  width: 100%;
+}
+
+.sort-list-item {
+  padding-left: 16px;
+  padding-right: 16px;
 }
 
 @media (max-width: 768px) {

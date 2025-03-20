@@ -111,6 +111,8 @@ const sources: BundleScriptConfig = {
         'delete',
         'alert',
         'magnify',
+        'sort-reverse-variant',
+        'sort-variant',
       ],
     },
     {
