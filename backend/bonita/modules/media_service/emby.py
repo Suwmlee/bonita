@@ -279,3 +279,39 @@ class EmbyService(metaclass=Singleton):
             "PlaybackPositionTicks": position_ticks
         }
         return self._make_request('post', f'/emby/Users/{user_id}/Items/{item_id}/UserData', data=data)
+
+    def get_poster_url(self, title: str, imdb_id: str = None, tmdb_id: int = None, size: str = "w500") -> str:
+        """ 从 Emby 获取海报地址
+        """
+        try:
+            # 如果提供了 IMDb ID 或 TMDB ID，查询 Emby 中的媒体项
+            search_url = "/emby/Items"
+            params = {
+                "Recursive": True,
+                "Fields": "ProviderIds",
+                "SearchTerm": title
+            }
+            response = self._make_request('get', search_url, params=params)
+            items = response.get("Items", [])
+            if not items:
+                logger.error(f"No items found for title: {title}")
+                return None
+
+            # 获取第一个匹配项的 ID
+            item = items[0]
+            item_id = item["Id"]
+            provider_ids = item.get("ProviderIds", {})
+
+            # 检查是否匹配 IMDb 或 TMDB ID
+            if (imdb_id and provider_ids.get("Imdb") != imdb_id) or \
+                    (tmdb_id and provider_ids.get("Tmdb") != str(tmdb_id)):
+                logger.error(f"ID mismatch in Emby: {imdb_id} {tmdb_id}")
+                return None
+
+            # 获取海报图片地址
+            image_url = f"{self.emby_host}/Items/{item_id}/Images/Primary?maxWidth={size.split('w')[-1]}"
+            return image_url
+
+        except Exception as e:
+            logger.error(f"Error fetching Emby data: {str(e)}")
+            return None
