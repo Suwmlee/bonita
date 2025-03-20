@@ -321,24 +321,9 @@ def celery_emby_scan(self, task_json):
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "emby scan: start"})
     logger.info(f"[+] emby scan: start")
     try:
-        # Get Emby configuration from the database
-        session = SessionFactory()
-        try:
-            emby_host = session.query(SystemSetting).filter(SystemSetting.key == "emby_host").first()
-            emby_apikey = session.query(SystemSetting).filter(SystemSetting.key == "emby_apikey").first()
-
-            if not emby_host or not emby_apikey:
-                logger.error("Emby host or API key not configured")
-                return
-
-            # Extract the actual values from the SystemSetting objects
-            emby_host_value = emby_host.value
-            emby_apikey_value = emby_apikey.value
-        finally:
-            session.close()
         emby_service = EmbyService()
-        emby_service.initialize(emby_host_value, emby_apikey_value)
-        emby_service.trigger_library_scan()
+        if emby_service.is_initialized:
+            emby_service.trigger_library_scan()
     except Exception as e:
         logger.error(f"Error during Emby library scan: {str(e)}")
 

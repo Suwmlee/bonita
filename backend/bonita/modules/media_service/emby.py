@@ -10,24 +10,46 @@ logger = logging.getLogger(__name__)
 class EmbyService(metaclass=Singleton):
     """Emby media server service for interacting with Emby API"""
 
-    def initialize(self, emby_host: str, emby_apikey: str, emby_user: str = None):
+    def __init__(self):
+        """Initialize EmbyService with default values"""
+        self.emby_host = None
+        self.emby_apikey = None
+        self.emby_user = None
+        self.emby_user_id = None
+        self.headers = {}
+        self.is_initialized = False
+
+    def initialize(self, emby_host: str, emby_apikey: str, emby_user: str):
         """Initialize the Emby service with connection parameters
         """
+        # 如果已经初始化并且参数相同，直接返回 True
+        if (self.is_initialized and
+            self.emby_host == emby_host.rstrip('/') and
+            self.emby_apikey == emby_apikey and
+            self.emby_user == emby_user.lower()):
+            return True
+
         self.emby_host = emby_host.rstrip('/') if emby_host else None
         self.emby_apikey = emby_apikey
         self.headers = {
             "X-Emby-Token": self.emby_apikey,
             "Content-Type": "application/json"
         }
-        if not self.emby_host or not self.emby_apikey:
-            logger.warning("Emby service initialized with missing host or API key")
+        if not self.emby_host or not self.emby_apikey or not emby_user:
+            logger.warning("Emby service initialized with missing host, API key or user")
+            self.is_initialized = False
             return False
         try:
             self.emby_user = emby_user.lower()
-            if self.emby_user:
-                self.emby_user_id = self.get_users().get(self.emby_user)
+            self.emby_user_id = self.get_users().get(self.emby_user)
+            if not self.emby_user_id:
+                logger.warning(f"User {self.emby_user} not found in Emby")
+                self.is_initialized = False
+                return False
+            self.is_initialized = True
         except Exception as e:
             logger.error(f"Error initializing Emby service: {e}")
+            self.is_initialized = False
             return False
         return True
 

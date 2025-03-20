@@ -7,6 +7,7 @@ import traceback
 from bonita import schemas
 from bonita.api.deps import SessionDep
 from bonita.db.models.setting import SystemSetting
+from bonita.modules.media_service.emby import EmbyService
 
 router = APIRouter()
 
@@ -109,14 +110,6 @@ def update_emby_settings(
     更新Emby设置.
     """
     try:
-        # 保存Emby设置
-        SystemSetting.set_setting(
-            session,
-            "emby_enabled",
-            str(settings_in.enabled).lower(),
-            "是否启用Emby"
-        )
-
         SystemSetting.set_setting(
             session,
             "emby_host",
@@ -137,6 +130,28 @@ def update_emby_settings(
             settings_in.emby_user,
             "Emby用户名"
         )
+
+        # 如果启用了Emby，则立即初始化EmbyService
+        if settings_in.enabled:
+            emby_service = EmbyService()
+            init_success = emby_service.initialize(
+                emby_host=settings_in.emby_host,
+                emby_apikey=settings_in.emby_apikey,
+                emby_user=settings_in.emby_user
+            )
+            if not init_success:
+                return schemas.Response(
+                    success=False,
+                    message="Emby设置已保存但初始化失败，请检查设置是否正确"
+                )
+
+        SystemSetting.set_setting(
+            session,
+            "emby_enabled",
+            str(settings_in.enabled).lower(),
+            "是否启用Emby"
+        )
+
         return schemas.Response(
             success=True,
             message="Emby设置已更新"
@@ -156,20 +171,15 @@ def test_emby_connection(
     """
 
     try:
-        # 构建Emby API URL
-        base_url = test_data.emby_host.rstrip('/')
-        api_url = urljoin(f"{base_url}/", "emby/System/Info")
+        # 使用EmbyService进行连接测试
+        emby_service = EmbyService()
+        init_success = emby_service.initialize(
+            emby_host=test_data.emby_host,
+            emby_apikey=test_data.emby_apikey,
+            emby_user=test_data.emby_user
+        )
 
-        # 添加API Key到请求头
-        headers = {
-            "X-Emby-Token": test_data.emby_apikey
-        }
-
-        # 发送请求测试连接
-        response = requests.get(api_url, headers=headers, timeout=10)
-
-        # 检查响应
-        if response.status_code == 200:
+        if init_success:
             return schemas.Response(
                 success=True,
                 message="Emby连接成功，API Key有效"
@@ -177,13 +187,8 @@ def test_emby_connection(
         else:
             return schemas.Response(
                 success=False,
-                message=f"Emby连接失败，状态码: {response.status_code}"
+                message="Emby连接失败，请检查服务器地址、API Key和用户名"
             )
-    except requests.RequestException as e:
-        return schemas.Response(
-            success=False,
-            message=f"Emby连接失败: {str(e)}"
-        )
     except Exception as e:
         traceback.print_exc()
         return schemas.Response(

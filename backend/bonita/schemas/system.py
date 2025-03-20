@@ -53,7 +53,7 @@ class EmbySettings(BaseModel):
     """
     emby_host: str
     emby_apikey: str
-    emby_user: Optional[str] = None
+    emby_user: str
     enabled: Optional[bool] = False
 
 

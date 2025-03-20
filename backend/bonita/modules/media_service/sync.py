@@ -26,16 +26,11 @@ def sync_emby_history(session):
         tuple: (new_records, updated_records)
     """
     try:
-        # Get Emby configuration
-        emby_host = session.query(SystemSetting).filter(SystemSetting.key == "emby_host").first()
-        emby_apikey = session.query(SystemSetting).filter(SystemSetting.key == "emby_apikey").first()
-        emby_user = session.query(SystemSetting).filter(SystemSetting.key == "emby_user").first()
-        if not emby_host or not emby_apikey or not emby_user:
-            logger.info("Emby host or API key or user not configured")
-            return
         # Fetch watch history
         emby_service = EmbyService()
-        emby_service.initialize(emby_host.value, emby_apikey.value, emby_user.value)
+        if not emby_service.is_initialized:
+            logger.info("EmbyService未初始化，跳过同步")
+            return
         watched_items = emby_service.get_user_all_items()
 
         if not watched_items:
