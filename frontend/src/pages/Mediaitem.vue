@@ -307,7 +307,7 @@ onMounted(() => {
 
 /* Media Card Styling */
 .media-card {
-  height: 350px;
+  aspect-ratio: 2/3;
   transition: transform 0.2s;
   cursor: pointer;
   overflow: hidden;
@@ -394,10 +394,6 @@ onMounted(() => {
     margin-right: 0 !important;
     width: 100%;
     justify-content: space-between;
-  }
-
-  .media-card {
-    height: 280px;
   }
 }
 </style>
