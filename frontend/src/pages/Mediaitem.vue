@@ -492,7 +492,7 @@ onMounted(() => {
   height: 100%;
   background-color: rgba(0, 0, 0, 0.05);
   background-size: cover;
-  background-position: center;
+  background-position: right center;
   display: flex;
   flex-direction: column;
 }
