@@ -12,6 +12,10 @@ FROM python:3.12
 ENV TZ=Asia/Shanghai
 ENV MAX_CONCURRENCY=5
 
+# update TZ
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
+    echo $TZ > /etc/timezone
+
 WORKDIR /app/backend
 
 COPY backend/ /app/backend/
