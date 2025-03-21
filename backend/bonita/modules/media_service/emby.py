@@ -51,6 +51,7 @@ class EmbyService(metaclass=Singleton):
             logger.error(f"Error initializing Emby service: {e}")
             self.is_initialized = False
             return False
+        logger.info(f"Emby service initialized with host: {self.emby_host}, user: {self.emby_user}")
         return True
 
     def _make_request(

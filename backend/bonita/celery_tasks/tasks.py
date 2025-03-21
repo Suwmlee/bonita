@@ -322,8 +322,10 @@ def celery_emby_scan(self, task_json):
     logger.info(f"[+] emby scan: start")
     try:
         emby_service = EmbyService()
-        if emby_service.is_initialized:
-            emby_service.trigger_library_scan()
+        if not emby_service.is_initialized:
+            from bonita.core.service import init_emby
+            init_emby()
+        emby_service.trigger_library_scan()
     except Exception as e:
         logger.error(f"Error during Emby library scan: {str(e)}")
 
