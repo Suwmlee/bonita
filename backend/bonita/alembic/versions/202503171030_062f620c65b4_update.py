@@ -27,7 +27,7 @@ def upgrade() -> None:
         batch_op.drop_column('douban_id')
 
     with op.batch_alter_table('watchhistory', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('favorite', sa.Boolean(), nullable=True, comment='是否喜爱'))
+        batch_op.add_column(sa.Column('favorite', sa.Boolean(), nullable=True, comment='是否收藏'))
         batch_op.drop_column('source')
         batch_op.drop_column('external_id')
 

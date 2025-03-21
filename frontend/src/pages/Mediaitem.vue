@@ -112,7 +112,7 @@ const itemsPerPage = computed({
 const totalPages = computed(() =>
   Math.ceil(totalItems.value / itemsPerPage.value),
 )
-const itemsPerPageOptions = [32, 56, 96]
+const itemsPerPageOptions = [24, 48, 96]
 
 // Function to extract media type, hasNumber from combined selection
 function getMediaTypeValue(): string | undefined {
@@ -247,7 +247,7 @@ onMounted(() => {
           prepend-inner-icon="bx-search" :loading="isSearching" variant="outlined" density="comfortable" />
       </VCol>
 
-      <VCol cols="12" sm="6" md="2" lg="1" xl="1">
+      <VCol cols="12" sm="6" md="2" lg="2" xl="1">
         <VSelect 
           v-model="selectedMediaType" 
           :items="mediaTypeOptions" 
@@ -260,7 +260,7 @@ onMounted(() => {
         />
       </VCol>
 
-      <VCol cols="12" sm="6" md="2" lg="1" xl="1">
+      <VCol cols="12" sm="6" md="2" lg="2" xl="1">
         <VSelect 
           v-model="watchedFilter" 
           :items="watchedOptions" 
@@ -273,7 +273,7 @@ onMounted(() => {
         />
       </VCol>
 
-      <VCol cols="12" sm="6" md="2" lg="1" xl="1">
+      <VCol cols="12" sm="6" md="2" lg="2" xl="1">
         <VSelect 
           v-model="favoriteFilter" 
           :items="favoriteOptions" 
@@ -286,7 +286,7 @@ onMounted(() => {
         />
       </VCol>
 
-      <VCol cols="12" sm="6" md="1" lg="1" xl="1">
+      <VCol cols="12" sm="6" md="2" lg="2" xl="1">
         <VBtn
           variant="outlined"
           class="sort-btn"

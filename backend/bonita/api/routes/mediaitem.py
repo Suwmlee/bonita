@@ -29,7 +29,7 @@ async def get_media_items(
     支持按标题搜索、类型过滤和排序
     - has_number: True只返回有番号的内容，False只返回没有番号的内容，None返回所有内容
     - watched: True只返回已观看的内容，False只返回未观看的内容，None返回所有内容
-    - favorite: True只返回已喜爱的内容，False只返回未喜爱的内容，None返回所有内容
+    - favorite: True只返回已收藏的内容，False只返回未收藏的内容，None返回所有内容
     """
     # 创建包含观看信息的子查询
     watch_info = (
@@ -90,7 +90,7 @@ async def get_media_items(
         else:
             query = query.filter((watch_info.c.watched == 0) | (watch_info.c.watched.is_(None)))
 
-    # 按喜爱状态过滤
+    # 按收藏状态过滤
     if favorite is not None:
         if favorite:
             query = query.filter(watch_info.c.favorite > 0)
