@@ -35,5 +35,5 @@ class Metadata(Base):
     detailurl = Column(String, default="", comment="来源链接")
     site = Column(String, default="", comment="资源站点")
 
-    createtime = Column(DateTime, default=func.now(), server_default=func.now(), comment="创建时间")
-    updatetime = Column(DateTime, default=func.now(), onupdate=func.now(), server_default=func.now(), comment="更新时间")
+    createtime = Column(DateTime, default=datetime.now, comment="创建时间")
+    updatetime = Column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")

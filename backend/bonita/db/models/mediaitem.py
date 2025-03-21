@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func
 from sqlalchemy.orm import relationship
 
@@ -28,7 +29,7 @@ class MediaItem(Base):
     season_number = Column(Integer, default=-1, comment="季数")
     episode_number = Column(Integer, default=-1, comment="集数")
     # 记录信息
-    createtime = Column(DateTime, default=func.now(), server_default=func.now(), comment="创建时间")
-    updatetime = Column(DateTime, default=func.now(), onupdate=func.now(), server_default=func.now(), comment="更新时间")
+    createtime = Column(DateTime, default=datetime.now, comment="创建时间")
+    updatetime = Column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
     # 关系
     series = relationship("MediaItem", remote_side=[id], backref="episodes")
