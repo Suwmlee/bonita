@@ -9,3 +9,8 @@ class Response(BaseModel):
     message: Optional[str] = None
     # 数据
     data: Optional[Union[dict, list]] = {}
+
+
+class StatusResponse(BaseModel):
+    status: str
+    version: str

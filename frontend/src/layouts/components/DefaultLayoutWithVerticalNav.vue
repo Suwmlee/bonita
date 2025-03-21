@@ -7,6 +7,14 @@ import VerticalNavLayout from "./VerticalNavLayout.vue"
 // Components
 import NavbarThemeSwitcher from "@/layouts/components/NavbarThemeSwitcher.vue"
 import UserProfile from "@/layouts/components/UserProfile.vue"
+import { useAppStore } from "@/stores/app.store"
+import { onMounted } from "vue"
+
+const appStore = useAppStore()
+
+onMounted(async () => {
+  await appStore.fetchVersion()
+})
 </script>
 
 <template>
@@ -48,6 +56,10 @@ import UserProfile from "@/layouts/components/UserProfile.vue"
       <NavItems />
     </template>
 
+    <template #after-vertical-nav-items>
+      <div class="d-flex justify-center version-info">{{ appStore.version ? 'v' + appStore.version : '...' }}</div>
+    </template>
+
     <!-- 👉 Pages -->
     <slot />
 
@@ -62,6 +74,13 @@ import UserProfile from "@/layouts/components/UserProfile.vue"
   line-height: 1.3125rem;
   padding-block: 0.125rem;
   padding-inline: 0.25rem;
+}
+
+.version-info {
+  margin-top: 1rem;
+  margin-bottom: 3rem;
+  font-size: 1rem;
+  opacity: 0.8;
 }
 
 .app-logo {

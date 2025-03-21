@@ -2171,6 +2171,22 @@ export const $ScrapingConfigsPublic = {
     title: 'ScrapingConfigsPublic'
 } as const;
 
+export const $StatusResponse = {
+    properties: {
+        status: {
+            type: 'string',
+            title: 'Status'
+        },
+        version: {
+            type: 'string',
+            title: 'Version'
+        }
+    },
+    type: 'object',
+    required: ['status', 'version'],
+    title: 'StatusResponse'
+} as const;
+
 export const $TaskPathParam = {
     properties: {
         path: {

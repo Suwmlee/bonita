@@ -825,6 +825,7 @@ export class MediaitemService {
     /**
      * Delete Media Item
      * 删除媒体项
+     * 同时删除关联的观看历史记录
      * @param data The data for the request.
      * @param data.mediaId
      * @returns unknown Successful Response
@@ -1185,7 +1186,7 @@ export class StatusService {
     /**
      * Health Check
      * 健康检查端点，用于确认API服务运行状态
-     * @returns unknown Successful Response
+     * @returns StatusResponse Successful Response
      * @throws ApiError
      */
     public static healthCheck(): CancelablePromise<HealthCheckResponse> {

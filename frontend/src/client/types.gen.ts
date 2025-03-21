@@ -321,6 +321,11 @@ export type ScrapingConfigsPublic = {
     count: number;
 };
 
+export type StatusResponse = {
+    status: string;
+    version: string;
+};
+
 export type TaskPathParam = {
     path?: string | null;
 };
@@ -804,7 +809,7 @@ export type ListDirectoryData = {
 
 export type ListDirectoryResponse = FileListResponse;
 
-export type HealthCheckResponse = unknown;
+export type HealthCheckResponse = StatusResponse;
 
 export type $OpenApiTs = {
     '/api/v1/login/access-token': {
@@ -1510,7 +1515,7 @@ export type $OpenApiTs = {
                 /**
                  * Successful Response
                  */
-                200: unknown;
+                200: StatusResponse;
             };
         };
     };

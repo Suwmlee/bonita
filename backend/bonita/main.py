@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from starlette.middleware.cors import CORSMiddleware
 
-import bonita
+from bonita import __version__
 from bonita.core.config import settings
 from bonita.core.db import init_db
 from bonita.core.service import init_service
@@ -61,6 +61,6 @@ app.celery_app = celery
 
 log_config()
 logger = logging.getLogger(__name__)
-logger.info(f"Bonita version: {bonita.__version__}")
+logger.info(f"Bonita version: {__version__}")
 init_db()
 init_service()

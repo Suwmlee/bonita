@@ -41,23 +41,23 @@ const favoriteOptions = [
 
 // Sort options
 const sortField = ref<string>("updatetime")
-const sortDirection = ref<'asc' | 'desc'>('desc')
+const sortDirection = ref<"asc" | "desc">("desc")
 
 const sortOptions = [
-  { 
-    value: "updatetime", 
-    title: t("pages.mediaitem.sortUpdatetime"), 
-    icon: "bx-sort"
+  {
+    value: "updatetime",
+    title: t("pages.mediaitem.sortUpdatetime"),
+    icon: "bx-sort",
   },
-  { 
-    value: "createtime", 
-    title: t("pages.mediaitem.sortCreatetime"), 
-    icon: "bx-sort"
+  {
+    value: "createtime",
+    title: t("pages.mediaitem.sortCreatetime"),
+    icon: "bx-sort",
   },
-  { 
-    value: "title", 
-    title: t("pages.mediaitem.sortTitle"), 
-    icon: "bx-sort"
+  {
+    value: "title",
+    title: t("pages.mediaitem.sortTitle"),
+    icon: "bx-sort",
   },
 ]
 
@@ -65,16 +65,16 @@ const sortOptions = [
 function handleSortChange(value: string) {
   // If selecting the same field, toggle direction
   if (value === sortField.value) {
-    sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
+    sortDirection.value = sortDirection.value === "desc" ? "asc" : "desc"
   } else {
     // If selecting a new field, set it with default desc direction
     sortField.value = value
-    sortDirection.value = 'desc'
+    sortDirection.value = "desc"
   }
-  
+
   // Close the dropdown
   sortDropdownOpen.value = false
-  
+
   // Trigger search with new sort params
   searchMediaItems()
 }
@@ -82,12 +82,12 @@ function handleSortChange(value: string) {
 // Get sort icon based on field and current direction
 function getSortIcon(value: string): string {
   if (value !== sortField.value) return "bx-sort"
-  
+
   if (value === "title") {
-    return sortDirection.value === 'desc' ? "bx-sort-a-z" : "bx-sort-z-a"
+    return sortDirection.value === "desc" ? "bx-sort-a-z" : "bx-sort-z-a"
   }
-  
-  return sortDirection.value === 'desc' ? "bx-sort-down" : "bx-sort-up"
+
+  return sortDirection.value === "desc" ? "bx-sort-down" : "bx-sort-up"
 }
 
 // Pagination
@@ -102,7 +102,7 @@ const itemsPerPage = computed({
       value,
       getMediaTypeValue(),
       sortField.value || undefined,
-      sortDirection.value === 'desc',
+      sortDirection.value === "desc",
       getHasNumberValue(),
       watchedFilter.value === null ? undefined : watchedFilter.value,
       favoriteFilter.value === null ? undefined : favoriteFilter.value,
@@ -124,7 +124,11 @@ function getMediaTypeValue(): string | undefined {
 // Function to extract hasNumber value from combined selection
 function getHasNumberValue(): boolean | undefined {
   if (selectedMediaType.value === "number") return true
-  if (selectedMediaType.value === "movie" || selectedMediaType.value === "tvshow") return false
+  if (
+    selectedMediaType.value === "movie" ||
+    selectedMediaType.value === "tvshow"
+  )
+    return false
   return undefined
 }
 
@@ -148,7 +152,7 @@ async function searchMediaItems() {
       undefined,
       getMediaTypeValue(),
       sortField.value || undefined,
-      sortDirection.value === 'desc',
+      sortDirection.value === "desc",
       getHasNumberValue(),
       watchedFilter.value === null ? undefined : watchedFilter.value,
       favoriteFilter.value === null ? undefined : favoriteFilter.value,
@@ -166,7 +170,7 @@ async function changePage(page: number) {
     undefined,
     getMediaTypeValue(),
     sortField.value || undefined,
-    sortDirection.value === 'desc',
+    sortDirection.value === "desc",
     getHasNumberValue(),
     watchedFilter.value === null ? undefined : watchedFilter.value,
     favoriteFilter.value === null ? undefined : favoriteFilter.value,
@@ -218,12 +222,7 @@ const getPosterUrl = (item: MediaItemWithWatches): string => {
 
 // Watch for changes in filters
 watch(
-  [
-    searchQuery,
-    selectedMediaType,
-    watchedFilter,
-    favoriteFilter,
-  ],
+  [searchQuery, selectedMediaType, watchedFilter, favoriteFilter],
   async () => {
     await searchMediaItems()
   },
