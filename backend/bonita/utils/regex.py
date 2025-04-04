@@ -11,33 +11,6 @@ def regexMatch(basename, reg):
     return result
 
 
-def extractEpNum(single: str):
-    """ 提取剧集编号
-    1. 头尾匹配 空格 [] 第话
-    2. 剔除头尾修饰字符
-    3. 校验含有数字
-    4. 如果不包含E,仍需校验是否是年份，个位数
-    """
-    left = single[0]
-    right = single[-1:]
-    if left == right or (left == '[' and right == ']') or (left == '第' and right in '話话集'):
-
-        result = single.lstrip('第.EPep[ ')
-        result = result.rstrip('話话集]. ')
-
-        if bool(re.search(r'\d', result)):
-            if not bool(re.search(r'[Ee]', single)):
-                if len(result) == 1:
-                    return None
-                match = re.match(r'.*([1-3][0-9]{3})', result)
-                if match:
-                    return None
-                return result
-            else:
-                return result
-    return None
-
-
 def matchSeason(filename: str):
     """匹配季度信息
     >>> matchSeason("Fights.Break.Sphere.2018.S02.WEB-DL.1080p.H264.AAC-TJUPT")
@@ -91,85 +64,86 @@ def matchSeason(filename: str):
     return None
 
 
-def matchEpPart(basename):
-    """ 正则匹配单集编号
+def matchEpisodePart(basename):
+    """ 正则匹配集数的片段
 
-    >>> matchEpPart("生徒会役員共＊ 09 (BDrip 1920x1080 HEVC-YUV420P10 FLAC)")
-    ' 09 '
-    >>> matchEpPart("[Rip] SLAM DUNK 第013話「湘北VS陵南 燃える主将!」(BDrip 1440x1080 H264 FLAC)")
-    '第013話'
-    >>> matchEpPart("[Rip] SLAM DUNK [013]「湘北VS陵南 燃える主将!」(BDrip 1440x1080 H264 FLAC)")
-    '[013]'
-    >>> matchEpPart("[Rip] SLAM DUNK [13.5]「湘北VS陵南 燃える主将!」(BDrip 1440x1080 H264 FLAC)")
-    '[13.5]'
-    >>> matchEpPart("[Rip] SLAM DUNK [13v2]「湘北VS陵南 燃える主将!」(BDrip 1440x1080 H264 FLAC)")
-    '[13v2]'
-    >>> matchEpPart("[Rip] SLAM DUNK [13(OA)]「湘北VS陵南 燃える主将!」(BDrip 1440x1080 H264 FLAC)")
-    '[13(OA)]'
-    >>> matchEpPart("[Neon Genesis Evangelion][23(Video)][BDRIP][1440x1080][H264_FLACx2]")
-    '[23(Video)]'
-    >>> matchEpPart("[Studio] Fullmetal Alchemist꞉ Brotherhood [01][Ma10p_1080p][x265_flac]")
-    '[01]'
-    >>> matchEpPart("[raws][Code Geass Lelouch of the Rebellion R2][15][BDRIP][Hi10P FLAC][1920X1080]")
-    '[15]'
-    >>> matchEpPart("[raws][High School Of The Dead][01][BDRIP][HEVC Main10P FLAC][1920X1080]")
-    '[01]'
-    >>> matchEpPart("[Studio] Steins;Gate 0 [01][Ma10p_1080p][x265_flac]")
-    '[01]'
-    >>> matchEpPart("Steins;Gate 2011 EP01 [BluRay 1920x1080p 23.976fps x264-Hi10P FLAC]")
-    ' EP01 '
-    >>> matchEpPart("Fate Stay Night [Unlimited Blade Works] 2014 - EP01 [BD 1920x1080 AVC-yuv444p10 FLAC PGSx2 Chap]")
-    ' EP01 '
-    >>> matchEpPart("Fate Zero EP01 [BluRay 1920x1080p 23.976fps x264-Hi10P FLAC PGSx2]")
-    ' EP01 '
-    >>> matchEpPart("[AI-Raws&ANK-Raws] Initial D First Stage 01 (BDRip 960x720 x264 DTS-HD Hi10P)[044D7040]")
-    ' 01 '
-    >>> matchEpPart("[AI-Raws&ANK-Raws] Initial D First Stage [05] (BDRip 960x720 x264 DTS-HD Hi10P)[044D7040]")
-    '[05]'
-    >>> matchEpPart("Evangelion.2021[E02(OA)]1080p.WEB-DL.H264.AAC-PTerWEB")
-    'E02'
-    >>> matchEpPart("Shadow.2021.E11.WEB-DL.4k.H265.60fps.AAC.2Audio")
-    '.E11.'
-    >>> matchEpPart("Shadow 2021 E11 WEB-DL 4k H265 AAC 2Audio")
-    ' E11 '
-    >>> matchEpPart("Shadow.2021.第11集.WEB-DL.4k.H265.60fps.AAC.2Audio")
-    '第11集'
-    >>> matchEpPart("Shadow.2021.E13v2.WEB-DL.4k.H265.60fps.AAC.2Audio")
+    >>> matchEpisodePart("[Rip] SLAM DUNK [013]「湘北VS陵南 燃える主将!」(BDrip 1440x1080 H264 FLAC)")
+    '013'
+    >>> matchEpisodePart("[Rip] SLAM DUNK [13.5]「湘北VS陵南 燃える主将!」(BDrip 1440x1080 H264 FLAC)")
+    '[13.'
+    >>> matchEpisodePart("[Rip] SLAM DUNK [13v2]「湘北VS陵南 燃える主将!」(BDrip 1440x1080 H264 FLAC)")
+    '13v2'
+    >>> matchEpisodePart("[Rip] SLAM DUNK [13(OA)]「湘北VS陵南 燃える主将!」(BDrip 1440x1080 H264 FLAC)")
+    '13(OA)'
+    >>> matchEpisodePart("[Neon Genesis Evangelion][23(Video)][BDRIP][1440x1080][H264_FLACx2]")
+    '23(Video)'
+    >>> matchEpisodePart("[Studio] Fullmetal Alchemist꞉ Brotherhood [01][Ma10p_1080p][x265_flac]")
+    '01'
+    >>> matchEpisodePart("[raws][Code Geass Lelouch of the Rebellion R2][15][BDRIP][Hi10P FLAC][1920X1080]")
+    '15'
+    >>> matchEpisodePart("[raws][High School Of The Dead][01][BDRIP][HEVC Main10P FLAC][1920X1080]")
+    '01'
+    >>> matchEpisodePart("[Studio] Steins;Gate 0 [01][Ma10p_1080p].DDP.5.1.2Audio")
+    '01'
+    >>> matchEpisodePart("[AI-Raws&ANK-Raws] Initial D First Stage [05] (BDRip 960x720 x264 DTS-HD Hi10P)[044D7040]")
+    '05'
+    >>> matchEpisodePart("Evangelion.2021.E02(OA).1080p.WEB-DL.H264.AAC-PTerWEB")
+    '.E02(OA).'
+    >>> matchEpisodePart("Shadow.2021.E13v2.WEB-DL.4k.H265.60fps.DDP.5.1.2Audio")
     '.E13v2.'
-    >>> matchEpPart("Shadow.2021.E14(OA).WEB-DL.4k.H265.60fps.AAC.2Audio")
+    >>> matchEpisodePart("Shadow.2021.E14(OA).WEB-DL.4k.H265.60fps.DDP.7.1.2Audio")
     '.E14(OA).'
-    >>> matchEpPart("S03/Person.of.Interest.EP01.2013.1080p.Blu-ray.x265.10bit.AC3")
+    >>> matchEpisodePart("Person.of.Interest.EP01.2013.1080p.Blu-ray.x265.10bit.AC3")
     '.EP01.'
-    >>> matchEpPart("The.Office.S01E05.1080p.BluRay")
-    'E05'
-    >>> matchEpPart("TV 节目 第1期 嘉宾张三")
+    >>> matchEpisodePart("Shadow.2021.E11.WEB-DL.4k.H265.60fps.AAC.2Audio")
+    '.E11.'
+    >>> matchEpisodePart("Steins;Gate 2011 EP01 [BluRay 1920x1080p 23.976fps x264-Hi10P FLAC]")
+    ' EP01 '
+    >>> matchEpisodePart("Fate Stay Night [Unlimited Blade Works] 2014 - EP01 [BD 1920x1080 AVC-yuv444p10 FLAC PGSx2 Chap]")
+    ' EP01 '
+    >>> matchEpisodePart("Fate Zero EP01 [BluRay 1920x1080p 23.976fps x264-Hi10P FLAC PGSx2]")
+    ' EP01 '
+    >>> matchEpisodePart("Shadow 2021 E11 WEB-DL 4k H265 AAC 2Audio")
+    ' E11 '
+    >>> matchEpisodePart("Shadow.2021.第11集.WEB-DL.4k.H265.60fps.AAC.2Audio")
+    '第11集'
+    >>> matchEpisodePart("TV 节目 第1期 嘉宾张三")
     '第1期'
-    >>> matchEpPart("Person.of.Interest.S03E01.2013.1080p.Blu-ray.x265.10bit.AC3")
-    'E01'
-    >>> matchEpPart("The.Final.Challenge.of.Evangelion.2021[E02(OA)]1080p.WEB-DL.H264.AAC")
-    'E02'
-    >>> matchEpPart("Slam.Dunk.22.Ma10p.1080p.x265.flac")
+    >>> matchEpisodePart("[Rip] SLAM DUNK 第013話「湘北VS陵南 燃える主将!」(BDrip 1440x1080 H264 FLAC)")
+    '第013話'
+    >>> matchEpisodePart("Slam.Dunk.22.Ma10p.1080p.x265.flac")
     '.22.'
+    >>> matchEpisodePart("[AI-Raws&ANK-Raws] Initial D First Stage 01 (BDRip 960x720 x264 DTS-HD Hi10P)[044D7040]")
+    ' 01 '
+    >>> matchEpisodePart("生徒会役員共＊ 09 (BDrip 1920x1080 HEVC-YUV420P10 FLAC)")
+    ' 09 '
+    >>> matchEpisodePart("Why.Poverty.1of8.Poor.Us.-.An.Animated.History.of.Poverty.1080p.WEB-DL.AVC.AAC")
+    '.1of8.'
+    >>> matchEpisodePart("PBS Simon Schama's Power of Art - Part 1of8, Van Gogh (2007.720p.HDTV.AC3-SoS)")
+    ' 1of8,'
+    >>> matchEpisodePart("Why.Poverty 1of8 Poor.Us.-.An.Animated.History.of.Poverty.1080p.WEB-DL.AVC.AAC")
+    ' 1of8 '
+    >>> matchEpisodePart("O.J.Made.In.America.Part2.2016.1080p.Blu-ray.x265.10bit.AC3")
+    '.Part2.'
+    >>> matchEpisodePart("Person.of.Interest.S03E01.2013.1080p.Blu-ray.x265.10bit.AC3")
+    'E01'
+    >>> matchEpisodePart("The.Office.S01E05.1080p.BluRay.DDP.5.1.x264")
+    'E05'
     """
     # 先尝试匹配S01E05格式的E05部分
     sxxexx_match = re.search(r'[Ss]\d{1,2}([Ee]\d{1,3})', basename)
     if sxxexx_match:
         return sxxexx_match.group(1)
 
-    # 特别处理方括号的模式，优先匹配含数字的方括号
-    bracket_match = re.search(
-        r'\[(\d{1,3}(?:\.\d+)?(?:v\d+)?(?:\(OA\)|\(Video\)|\(video\))?)\]', basename, re.IGNORECASE)
-    if bracket_match:
-        return f'[{bracket_match.group(1)}]'
-
     regexs = [
-        r"第\d*[話话集期]",                                # 匹配中文集数标记
-        r"[ ]ep?[0-9.\(\)videoa]*[ ]",                   # 匹配空格+E+数字+空格
-        r"\.ep?[0-9\(\)videoa]*\.",                      # 匹配点+E+数字+点
-        r"\.\d{1,3}(?:v\d)?[\(\)videoa]*\.",             # 匹配点+数字(可能带v2等版本)+点
-        r"[ ]\d{1,3}(?:\.\d|v\d)?[\(\)videoa]*[ ]",      # 匹配空格+数字(可能带小数或v2等版本)+空格
-        r"(?<=[\.\s])[Ee]\d{1,3}(?=[\.\s])",             # 匹配独立的 E05 (前后有点或空格)
-        r"(?<=[^a-zA-Z0-9])E\d{1,3}",                    # 匹配前面非字母数字的 E05
+        r"\[(\d{1,3}(?:\d+)?(?:v\d+)?(?:\(oa\)|\(video\))?)\]",
+        r"[\[\. ]ep?[0-9\(\)videoa]*[\[\. ]",                       # 匹配空格+E+数字+空格
+        r"[\[\. ]\d{1,3}(?:\.\d|v\d)?[\(\)videoa]*[\[\. ]",         # 匹配空格+数字(可能带小数或v2等版本)+空格
+        r"(?<=[\.\s])[Ee]\d{1,3}(?=[\.\s])",                        # 匹配独立的 E05 (前后有点或空格)
+        r"第\d*[話话集期]",                                         # 匹配中文集数标记
+        r"(?<=[^a-zA-Z0-9])E\d{1,3}",                               # 匹配前面非字母数字的 E05
+        r"[\[\. ]\d+of\d+[\]\. ,]",                                 # 匹配 .1of8. 格式
+        r"[\[\. ]Part\d+[\[\. ]",                                   # 匹配 .Part2. 格式
     ]
 
     for regex in regexs:
@@ -178,6 +152,58 @@ def matchEpPart(basename):
             return results[0]
 
     return None
+
+
+def extractEpisodeNum(single: str):
+    """ 提取集数片段内具体集数
+    >>> extractEpisodeNum("第013話")
+    (13, None)
+    >>> extractEpisodeNum("第1期")
+    (1, None)
+    >>> extractEpisodeNum("第11集")
+    (11, None)
+    >>> extractEpisodeNum("01")
+    (1, None)
+    >>> extractEpisodeNum("01(video)")
+    (1, 'video')
+    >>> extractEpisodeNum("01v2")
+    (1, 'v2')
+    >>> extractEpisodeNum("ep01")
+    (1, None)
+    >>> extractEpisodeNum(".E02(OA).")
+    (2, 'oa')
+    >>> extractEpisodeNum("13.5")
+    (13, '5')
+    >>> extractEpisodeNum("'.Part2.'")
+    (2, None)
+    >>> extractEpisodeNum("1of8")
+    (1, None)
+    """
+    if not single:
+        return (-1, None)
+    clean_str = single.strip("'\"[]., \t").lower()
+    # 处理带括号的情况，如 01(video), E02(OA)
+    if match := re.search(r"(?:第|ep|e)?(\d+)\(([^)]+)\)", clean_str):
+        return (int(match.group(1)), match.group(2).lower())
+    # 处理带小数点的情况，如 13.5
+    if match := re.search(r"(?:第|ep|e)?(\d+)\.(\d+)", clean_str):
+        return (int(match.group(1)), match.group(2))
+    # 处理带v版本的情况，如 01v2
+    if match := re.search(r"(?:第|ep|e)?(\d+)v(\d+)", clean_str):
+        return (int(match.group(1)), f"v{match.group(2)}")
+    # 处理Part格式: Part2
+    if match := re.search(r"(?:part|部分)(\d+)", clean_str):
+        return (int(match.group(1)), None)
+    # 处理of格式: 1of8
+    if match := re.search(r"(\d+)of\d+", clean_str):
+        return (int(match.group(1)), None)
+    # 处理标准格式: 第01集, 第013話, EP01, 01
+    if match := re.search(r"(?:第|ep|e)?(\d+)(?:[期集話话])?$", clean_str):
+        return (int(match.group(1)), None)
+    # 最后尝试提取任何数字
+    if match := re.search(r"\d+", clean_str):
+        return (int(match.group(0)), None)
+    return (-1, None)
 
 
 def matchSeries(basename):

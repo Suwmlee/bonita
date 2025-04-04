@@ -121,17 +121,18 @@ def cleanFilebyFilter(root, filter):
     try:
         dirs = os.scandir(root)
         for file in dirs:
-            f = os.path.join(root, file)
-            if not os.path.isdir(f):
-                if file.startswith(filter):
+            filename = file.name
+            fullpath = file.path
+            if file.is_file():
+                if filename.startswith(filter):
                     # 未分集到分集 重复删除分集内容
-                    if '-CD' in file.upper():
+                    if '-CD' in filename.upper():
                         if '-CD' in filter.upper():
-                            logger.info("clean file [{}]".format(f))
-                            os.remove(f)
+                            logger.info("clean file [{}]".format(fullpath))
+                            os.remove(fullpath)
                     else:
-                        logger.info("clean file [{}]".format(f))
-                        os.remove(f)
+                        logger.info("clean file [{}]".format(fullpath))
+                        os.remove(fullpath)
     except Exception as e:
         logger.error(f"[-] cleanFilebyFilter failed {root} {filter}")
         logger.error(e)
@@ -142,17 +143,20 @@ def moveSubs(srcfolder, destfolder, basename, newname, saved=True):
     :param saved    True: 复制字幕  False: 移动字幕
     """
     dirs = os.scandir(srcfolder)
-    for item in dirs:
-        (path, ext) = os.path.splitext(item.name)
+    for file in dirs:
+        filename = file.name
+        filepath = file.path
+        if file.is_dir():
+            continue
+        (path, ext) = os.path.splitext(filename)
         if ext.lower() in subext_type and path.startswith(basename):
-            src_file = os.path.join(srcfolder, item)
             newpath = path.replace(basename, newname)
-            logger.debug("[-] - copy sub  " + src_file)
+            logger.debug("[-] - copy sub  " + filepath)
             newfile = os.path.join(destfolder, newpath + ext)
             if saved:
-                shutil.copyfile(src_file, newfile)
+                shutil.copyfile(filepath, newfile)
             else:
-                shutil.move(src_file, newfile)
+                shutil.move(filepath, newfile)
             # modify permission
             os.chmod(newfile, stat.S_IRWXU | stat.S_IRGRP |
                      stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH)
@@ -231,27 +235,27 @@ def replaceCJK(base: str):
     eg: 你好  [4k修复] (实例1)
     """
     tmp = base
-    for n in re.findall('[\(\[\（](.*?)[\)\]\）]', base):
-        if re.findall('[\u3000-\u33FF\u4e00-\u9fff]+', n):
+    for n in re.findall(r'[\(\[\（](.*?)[\)\]\）]', base):
+        if re.findall(r'[\u3000-\u33FF\u4e00-\u9fff]+', n):
             try:
-                cop = re.compile("[\(\[\（]" + n + "[\)\]\）]")
+                # Escape special regex characters in 'n'
+                escaped_n = re.escape(n)
+                cop = re.compile(r"[\(\[\（]" + escaped_n + r"[\)\]\）]")
                 tmp = cop.sub('', tmp)
-            except:
+            except Exception as e:
+                print(f"replaceCJK error occurred: {e}")
                 pass
-    tmp = re.sub('[\u3000-\u33FF\u4e00-\u9fff]+', '', tmp)
+    tmp = re.sub(r'[\u3000-\u33FF\u4e00-\u9fff]+', '', tmp)
     tmp = cleanParentheses(tmp)
     tmp = re.sub(r'(\W)\1+', r'\1', tmp).lstrip(' !?@#$.:：]）)').rstrip(' !?@#$.:：[(（')
     return tmp
 
 
-def cleanParentheses(input: str):
-    tag = True
-    while tag:
-        if "()" in input or "[]" in input:
-            input = input.replace("()", "").replace("[]", "")
-        else:
-            tag = False
-    return input
+def cleanParentheses(text: str) -> str:
+    """清理多余的括号"""
+    while '()' in text or '[]' in text or '（）' in text:
+        text = text.replace('()', '').replace('[]', '').replace('（）', '')
+    return text
 
 
 def replaceRegex(base: str, regex: str):

@@ -63,41 +63,39 @@ def _fix_series_naming(original_file: BasicFileInfo, target_file: TargetFileInfo
     tmp_secondfolder = original_file.second_folder
     tmp_filename = original_file.basename
     tmp_original_marker = original_file.original_episode_marker
+    tmp_episode_special = original_file.episode_special
     # 如果已有有效的季数和集数记录，直接使用
     if tmp_season > -1 and tmp_episode > -1:
         marker = f"S{tmp_season:02d}E{tmp_episode:02d}"
         if marker not in tmp_filename:
-            tmp_filename = marker
+            if tmp_episode_special:
+                tmp_filename = marker + "(" + tmp_episode_special + ")"
+            else:
+                tmp_filename = marker
     # 没有完整的季数和集数
     # 季数最重要，季数涉及到中间的文件夹，集数可以使用自身的名称
     elif tmp_season > -1 and tmp_episode == -1:
-        tmp_filename, tmp_episode = fix_episode_name(tmp_filename, tmp_season, tmp_episode, tmp_original_marker)
+        tmp_filename, tmp_episode = fix_episode_name(tmp_filename, tmp_season, tmp_episode, tmp_original_marker, tmp_episode_special)
     else:
-        find_season = matchSeason(original_file.basefolder)
-        if find_season:
-            tmp_season = find_season
-            tmp_filename, tmp_episode = fix_episode_name(tmp_filename, find_season, tmp_episode, tmp_original_marker)
+        # 父级未发现season标记，二级目录为空则可能为单季，默认第一季
+        if tmp_secondfolder == '':
+            tmp_season = 1
+            tmp_filename, tmp_episode = fix_episode_name(tmp_filename, tmp_season, tmp_episode, tmp_original_marker, tmp_episode_special)
         else:
-            # 父级未发现season标记，二级目录为空则可能为单季，默认第一季
-            if tmp_secondfolder == '':
-                tmp_season = 1
-                tmp_filename, tmp_episode = fix_episode_name(tmp_filename, tmp_season, tmp_episode, tmp_original_marker)
-            else:
-                # 存在一些特殊标记，可能为特典
-                special_tags = ['花絮', '特典', '特辑', '特典', 'extra', 'special', '[sp]']
-                if any(x in tmp_secondfolder for x in special_tags):
-                    tmp_season = 0
-                    tmp_filename, tmp_episode = fix_episode_name(
-                        tmp_filename, tmp_season, tmp_episode, tmp_original_marker)
+            # 存在一些特殊标记，可能为特典
+            special_tags = ['花絮', '特典', '特辑', '特典', 'extra', 'special', '[sp]']
+            if any(x in tmp_secondfolder for x in special_tags):
+                tmp_season = 0
+                tmp_filename, tmp_episode = fix_episode_name(
+                    tmp_filename, tmp_season, tmp_episode, tmp_original_marker, tmp_episode_special)
 
     target_file.season_number = tmp_season
     target_file.episode_number = tmp_episode
     target_file.second_folder = "Specials" if tmp_season == 0 else f"Season {tmp_season}"
     target_file.basename = tmp_filename
-    return
 
 
-def fix_episode_name(name: str, season: int, episode: int, original_marker: str):
+def fix_episode_name(name: str, season: int, episode: int, original_marker: str, episode_special: str):
     """ 修正单集命名
 
     Args:
@@ -127,6 +125,8 @@ def fix_episode_name(name: str, season: int, episode: int, original_marker: str)
             return marker, episode
     else:
         # 原始匹配的 marker 是 [S01E01] 这种格式
+        if episode_special:
+            marker = marker + "(" + episode_special + ")"
         # 修正替换
         if original_marker[0] == ".":
             renum = "." + marker + "."

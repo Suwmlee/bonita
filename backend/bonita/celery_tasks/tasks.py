@@ -94,7 +94,8 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
 
         waiting_list = []
         if os.path.isdir(full_path):
-            allvideo_list = findAllFilesWithSuffix(full_path, video_type, task_info.escape_folder)
+            escape_folders = [fo.strip() for fo in task_info.escape_folder.split(',')]
+            allvideo_list = findAllFilesWithSuffix(full_path, video_type, escape_folders)
             for video in allvideo_list:
                 tf = BasicFileInfo(video)
                 tf.set_root_folder(task_info.source_folder)
