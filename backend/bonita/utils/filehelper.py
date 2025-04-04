@@ -8,15 +8,15 @@ import stat
 import logging
 from enum import Enum as PyEnum
 
-video_type = ['.mp4', '.avi', '.rmvb', '.wmv', '.strm',
-              '.mov', '.mkv', '.flv', '.ts', '.m2ts', '.webm', '.iso']
-ext_type = ['.ass', '.srt', '.sub', '.ssa', '.smi', '.idx', '.sup',
-            '.psb', '.usf', '.xss', '.ssf', '.rt', '.lrc', '.sbv', '.vtt', '.ttml']
+video_type = set(['.mp4', '.avi', '.rmvb', '.wmv', '.strm',
+                  '.mov', '.mkv', '.flv', '.ts', '.m2ts', '.webm', '.iso'])
+subext_type = set(['.ass', '.srt', '.sub', '.ssa', '.smi', '.idx', '.sup',
+                   '.psb', '.usf', '.xss', '.ssf', '.rt', '.lrc', '.sbv', '.vtt', '.ttml'])
 
-video_filter = ['*.mp4', '*.avi', '*.rmvb', '*.wmv', '*.strm',
-                '*.mov', '*.mkv', '*.flv', '*.ts', '*.m2ts', '*.webm', '*.iso']
-ext_filter = ['*.ass', '*.srt', '*.sub', '*.ssa', '*.smi', '*.idx', '*.sup',
-              '*.psb', '*.usf', '*.xss', '*.ssf', '*.rt', '*.lrc', '*.sbv', '*.vtt', '*.ttml']
+video_filter = set(['*.mp4', '*.avi', '*.rmvb', '*.wmv', '*.strm',
+                    '*.mov', '*.mkv', '*.flv', '*.ts', '*.m2ts', '*.webm', '*.iso'])
+ext_filter = set(['*.ass', '*.srt', '*.sub', '*.ssa', '*.smi', '*.idx', '*.sup',
+                  '*.psb', '*.usf', '*.xss', '*.ssf', '*.rt', '*.lrc', '*.sbv', '*.vtt', '*.ttml'])
 
 logger = logging.getLogger(__name__)
 
@@ -30,146 +30,98 @@ class OperationMethod(PyEnum):
     COPY = 4
 
 
-def creatFolder(foldername):
-    """ 创建文件
+def findAllFilesWithSuffix(root, suffix, escape_folder: list[str] = [], escape_file: list[str] = []):
+    """ 查找root目录下的所有文件
+    :param root: 根目录
+    :param suffix: 后缀列表
+    :param escape_folder: 跳过目录列表
+    :param escape_file: 跳过文件列表
     """
-    if not os.path.exists(foldername + '/'):
-        try:
-            os.makedirs(foldername + '/')
-        except Exception as e:
-            logger.info("[-]failed!can not be make Failed output folder\n[-](Please run as Administrator)")
-            logger.error(e)
-            return
+    default_exclude_folder = ['@eaDir']
+    default_exclude_file = ['.DS_Store', '.drive_sync']
+    escape_folder.extend(default_exclude_folder)
+    escape_file.extend(default_exclude_file)
+    escape_folder = set(escape_folder)
+    escape_file = set(escape_file)
+
+    suffix = set(s.lower() for s in suffix)
+    result = []
+    try:
+        for path, dirs, files in os.walk(root):
+            dirs[:] = [d for d in dirs if d not in escape_folder]
+            for file in files:
+                if file in escape_file:
+                    continue
+                file_suffix = os.path.splitext(file)[1].lower()
+                if file_suffix in suffix:
+                    result.append(os.path.join(path, file))
+    except Exception as e:
+        logger.error(f"[!] findAllFilesWithSuffix failed {root}")
+        logger.error(e)
+    return result
 
 
-def checkFolderhasMedia(folder):
-    """ 检测文件夹内是否有视频文件
-    """
-    if not os.path.isdir(folder):
-        if os.path.exists(folder):
-            return True
-        return False
-    for root, dirs, files in os.walk(folder, topdown=False):
-        for file in files:
-            if file.lower().endswith(tuple(video_type)):
-                return True
-    return False
-
-
-def cleanFolder(foldername):
-    """ 删除并重新创建文件夹
+def cleanFilebyNameSuffix(root, basename, suffixes):
+    """ 删除指定目录下文件名以basename开头且后缀匹配的文件
+    :param root: 根目录路径
+    :param basename: 文件名前缀
+    :param suffixes: 文件后缀，可以是单一字符串或字符串集合
     """
     try:
-        shutil.rmtree(foldername)
-    except:
-        pass
-    creatFolder(foldername)
+        for file in os.scandir(root):
+            path = file.path
+            if file.is_dir():
+                cleanFilebyNameSuffix(path, basename, suffixes)
+            elif file.is_file():
+                fname, ext = os.path.splitext(file.name)
+                if ext.lower() in suffixes and fname.startswith(basename):
+                    logger.debug(f"Removing file: {path}")
+                    os.remove(path)
+    except PermissionError as e:
+        logger.warning(f"Permission denied: {e}")
+    except OSError as e:
+        logger.error(f"OS error occurred: {e}")
 
 
-def cleanbySuffix(folder, suffix):
-    """ 删除匹配后缀的文件
+def cleanFolderWithoutSuffix(root, suffixes):
+    """ 删除指定目录下不包含指定后缀文件的目录及其子目录
+    :param root: 根目录路径
+    :param suffixes: 文件后缀集合
     """
-    dirs = os.listdir(folder)
-    for file in dirs:
-        f = os.path.join(folder, file)
-        if os.path.isdir(f):
-            cleanbySuffix(f, suffix)
-        elif os.path.splitext(f)[1].lower() in suffix:
-            logger.info("clean file by suffix [{}]".format(f))
-            os.remove(f)
+    has_suffix = False
+    try:
+        for entry in os.scandir(root):
+            path = entry.path
+            if entry.is_dir():
+                if cleanFolderWithoutSuffix(path, suffixes):
+                    has_suffix = True
+            elif entry.is_file():
+                _, ext = os.path.splitext(entry.name)
+                if ext.lower() in suffixes:
+                    has_suffix = True
+                    break
+        if not has_suffix:
+            logger.info(f"Removing folder without target suffixes: {root}")
+            shutil.rmtree(root, ignore_errors=True)
+    except PermissionError as e:
+        logger.warning(f"Permission denied: {e}")
+        return True
+    except OSError as e:
+        logger.error(f"OS error occurred: {e}")
+        return True
+    return has_suffix
 
 
-def cleanbyNameSuffix(folder, basename, suffix):
-    """ 根据名称和后缀删除文件
-    """
-    dirs = os.listdir(folder)
-    for file in dirs:
-        f = os.path.join(folder, file)
-        fname, fsuffix = os.path.splitext(file)
-        if os.path.isdir(f):
-            cleanbyNameSuffix(f, basename, suffix)
-        elif fsuffix.lower() in suffix and fname.startswith(basename):
-            logger.debug("clean by name & suffix [{}]".format(f))
-            os.remove(f)
-
-
-def cleanExtraMedia(folder):
-    """ 删除多余的媒体文件(没有匹配的视频文件)
-    """
-    dirs = os.listdir(folder)
-    vlists = []
-    for vf in dirs:
-        if os.path.splitext(vf)[1].lower() in video_type:
-            fname, fsuffix = os.path.splitext(vf)
-            vlists.append(fname)
-    for file in dirs:
-        f = os.path.join(folder, file)
-        if os.path.isdir(f) and file != "extrafanart":
-            cleanExtraMedia(f)
-        else:
-            cleanflag = True
-            if file.lower().startswith(('fanart', 'poster', 'tvshow', 'season', 'landscape')):
-                cleanflag = False
-            else:
-                for s in vlists:
-                    if file.startswith(s):
-                        cleanflag = False
-                        break
-            if cleanflag:
-                logger.debug("clean extra media file [{}]".format(f))
-                os.remove(f)
-
-
-def cleanFolderWithoutSuffix(folder, suffix):
-    """ 删除无匹配后缀文件的目录
-    """
-    hassuffix = False
-    dirs = os.listdir(folder)
-    for file in dirs:
-        f = os.path.join(folder, file)
-        if os.path.isdir(f):
-            hastag = cleanFolderWithoutSuffix(f, suffix)
-            if hastag:
-                hassuffix = True
-        elif os.path.splitext(f)[1].lower() in suffix:
-            hassuffix = True
-    if not hassuffix:
-        logger.info("clean empty media folder [{}]".format(folder))
-        shutil.rmtree(folder)
-    return hassuffix
-
-
-def cleanFolderbyFilter(folder, filter):
-    """ 根据过滤名删除文件
-
-    如果目录下所有文件都被删除，将删除文件夹
-    """
-    cleanAll = True
-    dirs = os.listdir(folder)
-    for file in dirs:
-        f = os.path.join(folder, file)
-        if os.path.isdir(f):
-            cleanAll = False
-        else:
-            if filter in file:
-                logger.info("clean folder by filter [{}]".format(f))
-                os.remove(f)
-            else:
-                cleanAll = False
-    if cleanAll:
-        shutil.rmtree(folder)
-
-
-def cleanFilebyFilter(folder, filter):
+def cleanFilebyFilter(root, filter):
     """ 根据过滤名删除文件
 
     只当前目录,不递归删除
     未含分集标识的filter不能删除带有分集标识的文件
     """
     try:
-        dirs = os.listdir(folder)
+        dirs = os.scandir(root)
         for file in dirs:
-            f = os.path.join(folder, file)
+            f = os.path.join(root, file)
             if not os.path.isdir(f):
                 if file.startswith(filter):
                     # 未分集到分集 重复删除分集内容
@@ -181,7 +133,7 @@ def cleanFilebyFilter(folder, filter):
                         logger.info("clean file [{}]".format(f))
                         os.remove(f)
     except Exception as e:
-        logger.error(f"[-] cleanFilebyFilter failed {folder} {filter}")
+        logger.error(f"[-] cleanFilebyFilter failed {root} {filter}")
         logger.error(e)
 
 
@@ -189,10 +141,10 @@ def moveSubs(srcfolder, destfolder, basename, newname, saved=True):
     """ 移动字幕
     :param saved    True: 复制字幕  False: 移动字幕
     """
-    dirs = os.listdir(srcfolder)
+    dirs = os.scandir(srcfolder)
     for item in dirs:
-        (path, ext) = os.path.splitext(item)
-        if ext.lower() in ext_type and path.startswith(basename):
+        (path, ext) = os.path.splitext(item.name)
+        if ext.lower() in subext_type and path.startswith(basename):
             src_file = os.path.join(srcfolder, item)
             newpath = path.replace(basename, newname)
             logger.debug("[-] - copy sub  " + src_file)
@@ -204,17 +156,6 @@ def moveSubs(srcfolder, destfolder, basename, newname, saved=True):
             # modify permission
             os.chmod(newfile, stat.S_IRWXU | stat.S_IRGRP |
                      stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH)
-
-
-def moveSubsbyFilepath(srcpath, destpath, saved=True):
-    """ 根据文件名匹配字幕，并移动到指定目录
-    :param saved    True: 复制字幕  False: 移动字幕
-    """
-    srcfolder, srcname = os.path.split(srcpath)
-    srcbasename, srcext = os.path.splitext(srcname)
-    destfolder, destname = os.path.split(destpath)
-    destbasename, destext = os.path.splitext(destname)
-    moveSubs(srcfolder, destfolder, srcbasename, destbasename, saved)
 
 
 def forceSymlink(srcpath, dstpath):

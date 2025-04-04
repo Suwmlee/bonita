@@ -8,7 +8,7 @@ from bonita import schemas
 from bonita.api.deps import SessionDep
 from bonita.db.models.record import TransRecords
 from bonita.db.models.extrainfo import ExtraInfo
-from bonita.utils.filehelper import cleanFilebyFilter
+from bonita.utils.filehelper import cleanFilebyFilter, cleanFolderWithoutSuffix, video_type
 
 router = APIRouter()
 
@@ -180,6 +180,7 @@ async def delete_records(
         cleanfolder = os.path.dirname(record.destpath)
         namefilter = os.path.splitext(os.path.basename(record.destpath))[0]
         cleanFilebyFilter(cleanfolder, namefilter)
+        cleanFolderWithoutSuffix(cleanfolder, video_type)
         # 删除关联的额外信息
         extra_info = session.query(ExtraInfo).filter(ExtraInfo.filepath == record.srcpath).first()
         if extra_info:
@@ -189,6 +190,7 @@ async def delete_records(
             cleanfolder = os.path.dirname(record.srcpath)
             namefilter = os.path.splitext(os.path.basename(record.srcpath))[0]
             cleanFilebyFilter(cleanfolder, namefilter)
+            cleanFolderWithoutSuffix(cleanfolder, video_type)
             session.delete(record)
         else:
             # 清除状态，可以重新转移

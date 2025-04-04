@@ -47,14 +47,14 @@ async def list_directory(
     # 获取目录内容
     file_list = []
     try:
-        items = os.listdir(directory_path)
+        items = os.scandir(directory_path)
         for item in items:
             item_path = os.path.join(directory_path, item)
             item_stat = os.stat(item_path)
             is_dir = os.path.isdir(item_path)
             
             file_info = schemas.FileInfo(
-                name=item,
+                name=item.name,
                 path=item_path,
                 is_dir=is_dir,
                 size=item_stat.st_size if not is_dir else 0,

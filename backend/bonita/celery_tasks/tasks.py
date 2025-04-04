@@ -16,14 +16,12 @@ from bonita.db.models.extrainfo import ExtraInfo
 from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
 from bonita.db.models.scraping import ScrapingConfig
-from bonita.db.models.setting import SystemSetting
-from bonita.db.models.watch_history import WatchHistory
 from bonita.modules.scraping.number_parser import FileNumInfo
 from bonita.modules.scraping.scraping import add_mark, process_nfo_file, process_cover, scraping, load_all_NFO_from_folder
 from bonita.utils.fileinfo import BasicFileInfo, TargetFileInfo
-from bonita.modules.transfer.transfer import transSingleFile, transferfile, findAllVideos
+from bonita.modules.transfer.transfer import transSingleFile, transferfile
 from bonita.utils.downloader import process_cached_file, update_cache_from_local
-from bonita.utils.filehelper import cleanExtraMedia, cleanFolderWithoutSuffix, video_type
+from bonita.utils.filehelper import cleanFolderWithoutSuffix, findAllFilesWithSuffix, video_type
 from bonita.utils.http import get_active_proxy
 from bonita.modules.media_service.emby import EmbyService
 
@@ -44,7 +42,7 @@ def celery_transfer_entry(self, task_json):
     task_info = schemas.TransferConfigPublic(**task_json)
     logger.info(f"transfer task {task_info.id}: start")
     # 获取 source 文件夹下所有顶层文件/文件夹
-    dirs = os.listdir(task_info.source_folder)
+    dirs = os.scandir(task_info.source_folder)
 
     # 创建转移任务组
     transfer_group = group(celery_transfer_group.s(task_json, os.path.join(
@@ -94,13 +92,17 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
         if task_info.content_type == 2:
             is_series = True
 
+        waiting_list = []
         if os.path.isdir(full_path):
-            waiting_list = findAllVideos(full_path, task_info.source_folder, re.split("[,，]", task_info.escape_folder))
+            allvideo_list = findAllFilesWithSuffix(full_path, video_type, task_info.escape_folder)
+            for video in allvideo_list:
+                tf = BasicFileInfo(video)
+                tf.set_root_folder(task_info.source_folder)
+                waiting_list.append(tf)
         else:
             if not os.path.splitext(full_path)[1].lower() in video_type:
                 logger.info(f"[!] Transfer failed {full_path}")
                 return []
-            waiting_list = []
             tf = BasicFileInfo(full_path)
             tf.set_root_folder(task_info.source_folder)
             waiting_list.append(tf)
@@ -296,20 +298,19 @@ def celery_scrapping(self, file_path, scraping_dict):
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='clean:clean_others')
-def celery_clean_others(self, folder_path, done_list):
+def celery_clean_others(self, root_path, done_list):
     self.update_state(state="PROGRESS", meta={"progress": 0, "step": "clean others: start"})
-    logger.info(f"[+] clean others task for {folder_path}: start")
+    logger.info(f"[+] clean others task for {root_path}: start")
 
     cleaned_files = []
-    dest_list = findAllVideos(folder_path, '', [], 2)
+    dest_list = findAllFilesWithSuffix(root_path, video_type)
     for dest in dest_list:
         if dest not in done_list:
             cleaned_files.append(dest)
     for torm in cleaned_files:
         logger.info(f"[!] remove other file: [{torm}]")
         os.remove(torm)
-        cleanExtraMedia(folder_path)
-        cleanFolderWithoutSuffix(folder_path, video_type)
+    cleanFolderWithoutSuffix(root_path, video_type)
 
     logger.info(f"Clean others completed. Removed {len(cleaned_files)} files")
     return cleaned_files

@@ -24,7 +24,7 @@ class TransferConfig(Base):
     source_folder = Column(String, default='/media/source')
     output_folder = Column(String, default='/media/output')
     failed_folder = Column(String, default='/media/failed')
-    escape_folder = Column(String, default='Sample,sample')
+    escape_folder = Column(String, default='Sample,sample,@eaDir')
     escape_literals = Column(String, default="\\()/")
     escape_size = Column(Integer, default=0)
     threads_num = Column(Integer, default=5)

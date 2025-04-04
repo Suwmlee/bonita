@@ -6,34 +6,9 @@ import logging
 
 from bonita.utils.fileinfo import BasicFileInfo, TargetFileInfo
 from bonita.utils.regex import matchSeason, simpleMatchEp
-from bonita.utils.filehelper import OperationMethod, linkFile, video_type, ext_type, replaceRegex, replaceCJK, cleanbyNameSuffix, moveSubs
+from bonita.utils.filehelper import OperationMethod, linkFile, video_type, subext_type, replaceRegex, replaceCJK, cleanFilebyNameSuffix, moveSubs
 
 logger = logging.getLogger(__name__)
-
-
-def findAllVideos(root, src_folder, escape_folder, mode=1):
-    """ find all videos
-    :param root: 递归的根目录
-    :param src_folder: 源目录
-    :param escape_folder: 跳过目录
-    :param mode: 1 返回 BasicFileInfo 合集 2 返回 realPath 合集
-    """
-    if os.path.basename(root) in escape_folder:
-        return []
-    total = []
-    dirs = os.listdir(root)
-    for entry in dirs:
-        f = os.path.join(root, entry)
-        if os.path.isdir(f):
-            total += findAllVideos(f, src_folder, escape_folder, mode)
-        elif os.path.splitext(f)[1].lower() in video_type:
-            if mode == 1:
-                fi = BasicFileInfo(f)
-                fi.set_root_folder(src_folder)
-                total.append(fi)
-            elif mode == 2:
-                total.append(f)
-    return total
 
 
 def _handle_group_naming(original_file: BasicFileInfo, target_file: TargetFileInfo, file_list: list):
@@ -192,7 +167,7 @@ def transferfile(original_file: BasicFileInfo,
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
 
-    cleanbyNameSuffix(folder_path, target_file.basename, ext_type)
+    cleanFilebyNameSuffix(folder_path, target_file.basename, subext_type)
     target_file.full_path = transSingleFile(original_file, folder_path, target_file.basename, linktype)
 
     return target_file
