@@ -932,14 +932,7 @@ export const $MetadataBase = {
             title: 'Actor Photo'
         },
         cover: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
+            type: 'string',
             title: 'Cover'
         },
         cover_small: {
@@ -1066,7 +1059,7 @@ export const $MetadataBase = {
         }
     },
     type: 'object',
-    required: ['number', 'title'],
+    required: ['number', 'title', 'cover'],
     title: 'MetadataBase'
 } as const;
 
@@ -1233,14 +1226,7 @@ export const $MetadataCreate = {
             title: 'Actor Photo'
         },
         cover: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
+            type: 'string',
             title: 'Cover'
         },
         cover_small: {
@@ -1367,7 +1353,7 @@ export const $MetadataCreate = {
         }
     },
     type: 'object',
-    required: ['number', 'title'],
+    required: ['number', 'title', 'cover'],
     title: 'MetadataCreate',
     description: '用于创建元数据的模型'
 } as const;
@@ -1516,14 +1502,7 @@ export const $MetadataPublic = {
             title: 'Actor Photo'
         },
         cover: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
+            type: 'string',
             title: 'Cover'
         },
         cover_small: {
@@ -1654,7 +1633,7 @@ export const $MetadataPublic = {
         }
     },
     type: 'object',
-    required: ['number', 'title', 'id'],
+    required: ['number', 'title', 'cover', 'id'],
     title: 'MetadataPublic'
 } as const;
 

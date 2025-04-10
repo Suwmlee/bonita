@@ -160,7 +160,7 @@ export type MetadataBase = {
     director?: string | null;
     actor?: string | null;
     actor_photo?: string | null;
-    cover?: string | null;
+    cover: string;
     cover_small?: string | null;
     extrafanart?: string | null;
     trailer?: string | null;
@@ -197,7 +197,7 @@ export type MetadataCreate = {
     director?: string | null;
     actor?: string | null;
     actor_photo?: string | null;
-    cover?: string | null;
+    cover: string;
     cover_small?: string | null;
     extrafanart?: string | null;
     trailer?: string | null;
@@ -226,7 +226,7 @@ export type MetadataPublic = {
     director?: string | null;
     actor?: string | null;
     actor_photo?: string | null;
-    cover?: string | null;
+    cover: string;
     cover_small?: string | null;
     extrafanart?: string | null;
     trailer?: string | null;

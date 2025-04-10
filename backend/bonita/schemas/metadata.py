@@ -18,7 +18,7 @@ class MetadataBase(BaseModel):
     director: Optional[str] = None
     actor: Optional[str] = None
     actor_photo: Optional[str] = None
-    cover: Optional[str] = None
+    cover: str
     cover_small: Optional[str] = None
     extrafanart: Optional[str] = None
     trailer: Optional[str] = None

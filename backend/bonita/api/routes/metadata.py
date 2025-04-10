@@ -5,6 +5,7 @@ from datetime import datetime
 from bonita import schemas
 from bonita.api.deps import SessionDep
 from bonita.db.models.metadata import Metadata
+from bonita.utils.downloader import process_cached_file
 
 router = APIRouter()
 
@@ -24,6 +25,9 @@ async def create_metadata(
         创建的元数据
     """
     metadata_dict = metadata_in.model_dump()
+    if metadata_dict.get("cover") and metadata_dict["cover"].startswith(("http://", "https://")):
+        metadata_dict["cover"] = process_cached_file(session, metadata_dict["cover"], metadata_dict["number"])
+
     db_metadata = Metadata(**metadata_dict)
     db_metadata.create(session)
     return schemas.MetadataPublic.model_validate(db_metadata.to_dict())
@@ -87,6 +91,9 @@ async def update_metadata(
         raise HTTPException(status_code=404, detail=f"Metadata with id {id} not found")
 
     update_dict = metadata.model_dump(exclude_unset=True)
+    if update_dict.get("cover") and update_dict["cover"].startswith(("http://", "https://")):
+        update_dict["cover"] = process_cached_file(session, update_dict["cover"], update_dict["number"])
+
     db_metadata.update(session, update_dict)
     db_metadata.updatetime = datetime.now()
     session.commit()
