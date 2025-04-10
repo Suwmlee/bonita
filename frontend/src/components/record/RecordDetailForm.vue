@@ -6,8 +6,10 @@ import {
   TransferRecordPublic,
 } from "@/client"
 import { useRecordStore } from "@/stores/record.store"
+import { useTaskStore } from "@/stores/task.store"
 import { useToastStore } from "@/stores/toast.store"
 import { useI18n } from "vue-i18n"
+import { onMounted } from "vue"
 
 interface Props {
   updateRecord?: RecordPublic
@@ -15,6 +17,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const recordStore = useRecordStore()
+const taskStore = useTaskStore()
 const { t } = useI18n()
 const toastStore = useToastStore()
 
@@ -28,6 +31,12 @@ const originalTopFolder = ref<string | null | undefined>("")
 currentTransferRecord.value = { ...updateRecord.transfer_record }
 currentExtraInfo.value = { ...updateRecord.extra_info }
 originalTopFolder.value = currentTransferRecord.value.top_folder
+
+onMounted(async () => {
+  if (!taskStore.allTasks.length) {
+    await taskStore.getAllTasks()
+  }
+})
 
 async function handleSubmit() {
   const data: RecordPublic = {
@@ -98,6 +107,23 @@ async function applyTopFolderToAll() {
           </VCol>
           <VCol cols="12" md="9">
             <span>{{ currentTransferRecord.destpath }}</span>
+          </VCol>
+        </VRow>
+
+        <VRow no-gutters class="mb-4">
+          <VCol cols="12" md="3" class="row-label">
+            <label>{{ t('components.record.form.taskId') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VSelect 
+              v-model="currentTransferRecord.task_id"
+              :items="taskStore.allTasks"
+              item-title="name"
+              item-value="id"
+              :placeholder="t('components.record.form.selectTask')"
+              :return-object="false"
+              density="comfortable"
+            />
           </VCol>
         </VRow>
 

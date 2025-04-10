@@ -321,7 +321,7 @@ export default {
         extraFanart: "额外图片",
         trailer: "预告片",
         tag: "标签",
-        label: "标签",
+        label: "标记",
         series: "系列",
         userRating: "用户评分",
         userVotes: "用户投票",
@@ -380,6 +380,8 @@ export default {
         topFolderUpdateSuccess: "成功更新所有匹配记录的顶层文件夹",
         topFolderUpdateError: "更新顶层文件夹失败，请重试",
         topFolderMissingData: "源文件夹或顶层文件夹值缺失",
+        taskId: "任务ID",
+        selectTask: "选择任务",
       },
     },
     task: {

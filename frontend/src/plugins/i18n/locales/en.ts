@@ -390,6 +390,8 @@ export default {
           "Top folder updated successfully for all matching records",
         topFolderUpdateError: "Failed to update top folder, please try again",
         topFolderMissingData: "Source folder or top folder value is missing",
+        taskId: "Task ID",
+        selectTask: "Select a task",
       },
     },
     task: {
