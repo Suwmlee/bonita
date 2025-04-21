@@ -22,6 +22,8 @@
 
 ### 部署
 
+详细参考 [Bonita](https://bonita.starunits.net/zh/guide/)
+
 #### Docker
 
 ```sh
@@ -57,7 +59,7 @@ docker run -d \
 
 参考各端 `README`
 
-如果期望使用Redis，手动修改 `/backend/bonita/core/config` 内路径
+配置文件路径 `/backend/bonita/core/config`
 ```sh
 CELERY_BROKER_URL=redis://localhost:6379/0
 CELERY_RESULT_BACKEND=redis://localhost:6379/0
