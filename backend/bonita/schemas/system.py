@@ -64,3 +64,15 @@ class JellyfinSettings(BaseModel):
     jellyfin_host: str
     jellyfin_apikey: str
     enabled: Optional[bool] = False
+
+
+class TransmissionSettings(BaseModel):
+    """
+    Transmission downloader settings schema
+    """
+    transmission_host: str
+    transmission_username: str
+    transmission_password: str
+    transmission_source_path: Optional[str] = ""
+    transmission_dest_path: Optional[str] = ""
+    enabled: Optional[bool] = False

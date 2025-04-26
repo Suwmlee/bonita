@@ -8,6 +8,7 @@ from bonita import schemas
 from bonita.api.deps import SessionDep
 from bonita.db.models.setting import SystemSetting
 from bonita.modules.media_service.emby import EmbyService
+from bonita.modules.download_clients.transmission import TransmissionClient
 
 router = APIRouter()
 
@@ -303,4 +304,130 @@ def test_jellyfin_connection(
         return schemas.Response(
             success=False,
             message=f"测试Jellyfin连接时出错: {str(e)}"
+        )
+
+
+@router.get("/transmission", response_model=schemas.TransmissionSettings)
+def get_transmission_settings(session: SessionDep) -> Any:
+    """
+    获取Transmission下载器设置.
+    """
+    try:
+        transmission_setting_db = session.query(SystemSetting).filter(
+            SystemSetting.key.in_(["transmission_host", "transmission_username",
+                                   "transmission_password", "transmission_enabled",
+                                   "transmission_source_path", "transmission_dest_path"])
+        ).all()
+        transmission_dict = {setting.key: setting.value for setting in transmission_setting_db}
+        transmission_settings = {
+            "transmission_host": transmission_dict.get("transmission_host", ""),
+            "transmission_username": transmission_dict.get("transmission_username", ""),
+            "transmission_password": transmission_dict.get("transmission_password", ""),
+            "transmission_source_path": transmission_dict.get("transmission_source_path", ""),
+            "transmission_dest_path": transmission_dict.get("transmission_dest_path", ""),
+            "enabled": transmission_dict.get("transmission_enabled", "false").lower() == "true"
+        }
+
+        return transmission_settings
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/transmission", response_model=schemas.Response)
+def update_transmission_settings(
+    *,
+    session: SessionDep,
+    settings_in: schemas.TransmissionSettings
+) -> Any:
+    """
+    更新Transmission下载器设置.
+    """
+    try:
+        # 保存Transmission设置
+        SystemSetting.set_setting(
+            session,
+            "transmission_enabled",
+            str(settings_in.enabled).lower(),
+            "是否启用Transmission下载器"
+        )
+
+        SystemSetting.set_setting(
+            session,
+            "transmission_host",
+            settings_in.transmission_host,
+            "Transmission服务器地址"
+        )
+
+        SystemSetting.set_setting(
+            session,
+            "transmission_username",
+            settings_in.transmission_username,
+            "Transmission用户名"
+        )
+
+        SystemSetting.set_setting(
+            session,
+            "transmission_password",
+            settings_in.transmission_password,
+            "Transmission密码"
+        )
+        
+        SystemSetting.set_setting(
+            session,
+            "transmission_source_path",
+            settings_in.transmission_source_path,
+            "Transmission路径映射-容器内路径"
+        )
+        
+        SystemSetting.set_setting(
+            session,
+            "transmission_dest_path",
+            settings_in.transmission_dest_path,
+            "Transmission路径映射-宿主机路径"
+        )
+
+        return schemas.Response(
+            success=True,
+            message="Transmission设置已更新"
+        )
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/transmission/test", response_model=schemas.Response)
+def test_transmission_connection(
+    *,
+    test_data: schemas.TransmissionSettings
+) -> Any:
+    """
+    测试Transmission连接是否有效.
+    """
+    try:
+        # 使用TransmissionClient进行连接测试
+        transmission_client = TransmissionClient()
+        init_success = transmission_client.initialize(
+            url=test_data.transmission_host,
+            username=test_data.transmission_username, 
+            password=test_data.transmission_password,
+            source_path=test_data.transmission_source_path,
+            dest_path=test_data.transmission_dest_path
+        )
+
+        if init_success:
+            return schemas.Response(
+                success=True,
+                message="Transmission连接成功"
+            )
+        else:
+            return schemas.Response(
+                success=False,
+                message="Transmission连接失败，请检查服务器地址、用户名和密码"
+            )
+    except Exception as e:
+        traceback.print_exc()
+        return schemas.Response(
+            success=False,
+            message=f"测试Transmission连接时出错: {str(e)}"
         )

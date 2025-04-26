@@ -432,6 +432,18 @@ export type TransferRecordsPublic = {
     count: number;
 };
 
+/**
+ * Transmission downloader settings schema
+ */
+export type TransmissionSettings = {
+    transmission_host: string;
+    transmission_username: string;
+    transmission_password: string;
+    transmission_source_path?: string | null;
+    transmission_dest_path?: string | null;
+    enabled?: boolean | null;
+};
+
 export type UpdatePassword = {
     current_password: string;
     new_password: string;
@@ -777,6 +789,20 @@ export type TestJellyfinConnectionData = {
 };
 
 export type TestJellyfinConnectionResponse = Response;
+
+export type GetTransmissionSettingsResponse = TransmissionSettings;
+
+export type UpdateTransmissionSettingsData = {
+    requestBody: TransmissionSettings;
+};
+
+export type UpdateTransmissionSettingsResponse = Response;
+
+export type TestTransmissionConnectionData = {
+    requestBody: TransmissionSettings;
+};
+
+export type TestTransmissionConnectionResponse = Response;
 
 export type GetImageByQueryData = {
     path: string;
@@ -1437,6 +1463,44 @@ export type $OpenApiTs = {
     '/api/v1/settings/jellyfin/test': {
         post: {
             req: TestJellyfinConnectionData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/settings/transmission': {
+        get: {
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: TransmissionSettings;
+            };
+        };
+        post: {
+            req: UpdateTransmissionSettingsData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/settings/transmission/test': {
+        post: {
+            req: TestTransmissionConnectionData;
             res: {
                 /**
                  * Successful Response

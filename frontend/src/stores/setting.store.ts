@@ -5,9 +5,12 @@ import type {
   ProxySettings,
   TestEmbyConnectionData,
   TestJellyfinConnectionData,
+  TestTransmissionConnectionData,
+  TransmissionSettings,
   UpdateEmbySettingsData,
   UpdateJellyfinSettingsData,
   UpdateProxySettingsData,
+  UpdateTransmissionSettingsData,
 } from "@/client/types.gen"
 import { defineStore } from "pinia"
 import { useToastStore } from "./toast.store"
@@ -19,6 +22,8 @@ interface SettingState {
   embyApiSettings: EmbySettings
   /** Jellyfin API设置 */
   jellyfinApiSettings: JellyfinSettings
+  /** Transmission设置 */
+  transmissionSettings: TransmissionSettings
   /** 加载状态 */
   loading: boolean
   /** 保存状态 */
@@ -27,6 +32,8 @@ interface SettingState {
   testingEmby: boolean
   /** Jellyfin测试状态 */
   testingJellyfin: boolean
+  /** Transmission测试状态 */
+  testingTransmission: boolean
 }
 
 export const useSettingStore = defineStore("setting-store", {
@@ -48,10 +55,19 @@ export const useSettingStore = defineStore("setting-store", {
         jellyfin_apikey: "",
         enabled: false,
       },
+      transmissionSettings: {
+        transmission_host: "",
+        transmission_username: "",
+        transmission_password: "",
+        transmission_source_path: "",
+        transmission_dest_path: "",
+        enabled: false,
+      },
       loading: false,
       saving: false,
       testingEmby: false,
       testingJellyfin: false,
+      testingTransmission: false,
     }
   },
   actions: {
@@ -229,6 +245,74 @@ export const useSettingStore = defineStore("setting-store", {
         throw error
       } finally {
         this.testingJellyfin = false
+      }
+    },
+
+    /**
+     * 获取Transmission设置
+     */
+    async fetchTransmissionSettings() {
+      const toast = useToastStore()
+      this.loading = true
+
+      try {
+        const response = await SettingsService.getTransmissionSettings()
+        this.transmissionSettings = response
+        return response
+      } catch (error) {
+        console.error("Error fetching Transmission settings:", error)
+        toast.error("获取Transmission设置失败")
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
+     * 更新Transmission设置
+     */
+    async saveTransmissionSettings() {
+      this.saving = true
+
+      try {
+        const data: UpdateTransmissionSettingsData = {
+          requestBody: this.transmissionSettings,
+        }
+
+        const response = await SettingsService.updateTransmissionSettings(data)
+        return response
+      } catch (error) {
+        console.error("Error updating Transmission settings:", error)
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    /**
+     * 测试Transmission连接
+     */
+    async testTransmissionConnection() {
+      this.testingTransmission = true
+
+      try {
+        const data: TestTransmissionConnectionData = {
+          requestBody: {
+            transmission_host: this.transmissionSettings.transmission_host,
+            transmission_username: this.transmissionSettings.transmission_username,
+            transmission_password: this.transmissionSettings.transmission_password,
+            transmission_source_path: this.transmissionSettings.transmission_source_path,
+            transmission_dest_path: this.transmissionSettings.transmission_dest_path,
+          },
+        }
+
+        const response = await SettingsService.testTransmissionConnection(data)
+        return response
+      } catch (error) {
+        console.error("Error testing Transmission connection:", error)
+        throw error
+      } finally {
+        this.testingTransmission = false
       }
     },
   },

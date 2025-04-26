@@ -2771,6 +2771,63 @@ export const $TransferRecordsPublic = {
     title: 'TransferRecordsPublic'
 } as const;
 
+export const $TransmissionSettings = {
+    properties: {
+        transmission_host: {
+            type: 'string',
+            title: 'Transmission Host'
+        },
+        transmission_username: {
+            type: 'string',
+            title: 'Transmission Username'
+        },
+        transmission_password: {
+            type: 'string',
+            title: 'Transmission Password'
+        },
+        transmission_source_path: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Transmission Source Path',
+            default: ''
+        },
+        transmission_dest_path: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Transmission Dest Path',
+            default: ''
+        },
+        enabled: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Enabled',
+            default: false
+        }
+    },
+    type: 'object',
+    required: ['transmission_host', 'transmission_username', 'transmission_password'],
+    title: 'TransmissionSettings',
+    description: 'Transmission downloader settings schema'
+} as const;
+
 export const $UpdatePassword = {
     properties: {
         current_password: {

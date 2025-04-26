@@ -12,3 +12,4 @@ redis==5.0.8
 watchdog==6.0.0
 scrapinglib
 pillow==11.1.0
+transmission_rpc==7.0.11

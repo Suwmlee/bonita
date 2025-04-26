@@ -13,10 +13,12 @@ const {
   proxySettings,
   embyApiSettings,
   jellyfinApiSettings,
+  transmissionSettings,
   loading,
   saving,
   testingEmby,
   testingJellyfin,
+  testingTransmission,
 } = storeToRefs(settingStore)
 const testResult = ref<{ success?: boolean; message?: string } | null>(null)
 const saveResult = ref<{ success: boolean; message: string } | null>(null)
@@ -26,6 +28,8 @@ const jellyfinTestResult = ref<{ success?: boolean; message?: string } | null>(
 const jellyfinSaveResult = ref<{ success: boolean; message: string } | null>(
   null,
 )
+const transmissionTestResult = ref<{ success?: boolean; message?: string } | null>(null)
+const transmissionSaveResult = ref<{ success: boolean; message: string } | null>(null)
 
 const fetchProxySettings = async () => {
   await settingStore.fetchProxySettings()
@@ -37,6 +41,10 @@ const fetchEmbySettings = async () => {
 
 const fetchJellyfinSettings = async () => {
   await settingStore.fetchJellyfinSettings()
+}
+
+const fetchTransmissionSettings = async () => {
+  await settingStore.fetchTransmissionSettings()
 }
 
 const saveProxySettings = async () => {
@@ -104,6 +112,36 @@ const saveJellyfinApiSettings = async () => {
   }, 3000)
 }
 
+const saveTransmissionSettings = async () => {
+  // 重置之前的保存结果
+  transmissionSaveResult.value = null
+
+  // 确保字段有正确的值类型
+  transmissionSettings.value.transmission_host = transmissionSettings.value.transmission_host || ""
+  transmissionSettings.value.transmission_username = transmissionSettings.value.transmission_username || ""
+  transmissionSettings.value.transmission_password = transmissionSettings.value.transmission_password || ""
+
+  try {
+    const response = await settingStore.saveTransmissionSettings()
+    transmissionSaveResult.value = {
+      success: true,
+      message: t("pages.serviceSettings.transmission.saveSuccess"),
+    }
+    return response
+  } catch (error) {
+    console.error("Error saving Transmission settings:", error)
+    transmissionSaveResult.value = {
+      success: false,
+      message: t("pages.serviceSettings.transmission.saveError"),
+    }
+  }
+
+  // 3秒后自动清除保存结果提示
+  setTimeout(() => {
+    transmissionSaveResult.value = null
+  }, 3000)
+}
+
 const testEmbyConnection = async () => {
   testResult.value = null
 
@@ -146,10 +184,29 @@ const testJellyfinConnection = async () => {
   }
 }
 
+const testTransmissionConnection = async () => {
+  transmissionTestResult.value = null
+
+  try {
+    const response = await settingStore.testTransmissionConnection()
+    transmissionTestResult.value = {
+      success: response.success,
+      message: response.message ?? "", // 使用空字符串作为 null 或 undefined 的默认值
+    }
+  } catch (error) {
+    console.error("Error testing Transmission connection:", error)
+    transmissionTestResult.value = {
+      success: false,
+      message: t("pages.serviceSettings.transmission.testError"),
+    }
+  }
+}
+
 onMounted(() => {
   fetchProxySettings()
   fetchEmbySettings()
   fetchJellyfinSettings()
+  fetchTransmissionSettings()
 })
 </script>
 
@@ -276,7 +333,7 @@ onMounted(() => {
         </VCardText>
       </VCard>
 
-      <VCard>
+      <VCard class="mb-6">
         <VCardTitle>{{ t('pages.serviceSettings.jellyfin.title') }}</VCardTitle>
         <VCardSubtitle>
           {{ t('pages.serviceSettings.jellyfin.subtitle') }}
@@ -332,6 +389,112 @@ onMounted(() => {
               <VCol cols="12" v-if="jellyfinTestResult">
                 <VAlert :type="jellyfinTestResult.success ? 'success' : 'error'" variant="tonal" density="compact">
                   {{ jellyfinTestResult.message || (jellyfinTestResult.success ? t('pages.serviceSettings.jellyfin.connectionSuccess') : t('pages.serviceSettings.jellyfin.connectionError')) }}
+                </VAlert>
+              </VCol>
+            </VRow>
+          </VForm>
+        </VCardText>
+      </VCard>
+
+      <VCard>
+        <VCardTitle>{{ t('pages.serviceSettings.transmission.title') }}</VCardTitle>
+        <VCardSubtitle>
+          {{ t('pages.serviceSettings.transmission.subtitle') }}
+        </VCardSubtitle>
+        <VCardText>
+          <VForm :loading="loading">
+            <VRow>
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="transmissionUrl">{{ t('pages.serviceSettings.transmission.server') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField v-model="transmissionSettings.transmission_host" :placeholder="t('pages.serviceSettings.transmission.serverPlaceholder')" />
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="transmissionUsername">{{ t('pages.serviceSettings.transmission.username') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField v-model="transmissionSettings.transmission_username" :placeholder="t('pages.serviceSettings.transmission.usernamePlaceholder')" />
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="transmissionPassword">{{ t('pages.serviceSettings.transmission.password') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField 
+                      v-model="transmissionSettings.transmission_password" 
+                      :placeholder="t('pages.serviceSettings.transmission.passwordPlaceholder')"
+                      type="password"
+                    />
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="transmissionPathMappingFrom">{{ t('pages.serviceSettings.transmission.pathMappingFrom') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField 
+                      v-model="transmissionSettings.transmission_source_path" 
+                      :placeholder="t('pages.serviceSettings.transmission.pathMappingFromPlaceholder')"
+                    />
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="transmissionPathMappingTo">{{ t('pages.serviceSettings.transmission.pathMappingTo') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField 
+                      v-model="transmissionSettings.transmission_dest_path" 
+                      :placeholder="t('pages.serviceSettings.transmission.pathMappingToPlaceholder')"
+                    />
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VSwitch v-model="transmissionSettings.enabled" :label="t('pages.serviceSettings.transmission.enable')" color="primary" inset />
+              </VCol>
+
+              <VCol cols="12">
+                <VRow>
+                  <VCol>
+                    <VBtn color="primary" :loading="saving" @click="saveTransmissionSettings" class="mr-2">
+                      {{ t('pages.serviceSettings.transmission.save') }}
+                    </VBtn>
+                    <VBtn color="secondary" :loading="testingTransmission" @click="testTransmissionConnection">
+                      {{ t('pages.serviceSettings.transmission.test') }}
+                    </VBtn>
+                  </VCol>
+                </VRow>
+              </VCol>
+              
+              <VCol cols="12" v-if="transmissionSaveResult">
+                <VAlert :type="transmissionSaveResult.success ? 'success' : 'error'" variant="tonal" density="compact" class="mb-3">
+                  {{ transmissionSaveResult.message }}
+                </VAlert>
+              </VCol>
+              
+              <VCol cols="12" v-if="transmissionTestResult">
+                <VAlert :type="transmissionTestResult.success ? 'success' : 'error'" variant="tonal" density="compact">
+                  {{ transmissionTestResult.message || (transmissionTestResult.success ? t('pages.serviceSettings.transmission.connectionSuccess') : t('pages.serviceSettings.transmission.connectionError')) }}
                 </VAlert>
               </VCol>
             </VRow>
