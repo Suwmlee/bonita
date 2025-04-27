@@ -33,9 +33,11 @@ def create_task_config(
     task_config.create(session)
 
     if task_config.auto_watch:
-        MonitorService().start_monitoring_directory(task_config.source_folder, task_config.id)
+        MonitorService().start_monitoring_directory(task_config.source_folder, task_config.id, "source")
+        MonitorService().start_monitoring_directory(task_config.output_folder, task_config.id, "output")
     else:
         MonitorService().stop_monitoring_directory(task_config.source_folder, task_config.id)
+        MonitorService().stop_monitoring_directory(task_config.output_folder, task_config.id)
     return task_config
 
 
@@ -57,9 +59,11 @@ def update_task_config(
     session.refresh(task_config)
 
     if task_config.auto_watch:
-        MonitorService().start_monitoring_directory(task_config.source_folder, task_config.id)
+        MonitorService().start_monitoring_directory(task_config.source_folder, task_config.id, "source")
+        MonitorService().start_monitoring_directory(task_config.output_folder, task_config.id, "output")
     else:
         MonitorService().stop_monitoring_directory(task_config.source_folder, task_config.id)
+        MonitorService().stop_monitoring_directory(task_config.output_folder, task_config.id)
     return task_config
 
 
@@ -74,6 +78,7 @@ def delete_task_config(
     config = session.get(TransferConfig, id)
     if config.auto_watch:
         MonitorService().stop_monitoring_directory(config.source_folder, config.id)
+        MonitorService().stop_monitoring_directory(config.output_folder, config.id)
     session.delete(config)
     session.commit()
 

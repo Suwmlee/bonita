@@ -1,9 +1,8 @@
-
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from threading import Lock
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Literal
 from watchdog.events import FileSystemEvent
 from watchdog.observers import Observer, ObserverType
 
@@ -59,12 +58,13 @@ class MonitorService(metaclass=Singleton):
                 for task_config in task_configs:
                     if task_config.auto_watch:
                         logger.info(f"Setting up monitoring for task: {task_config.id}")
-                        self.start_monitoring_directory(task_config.source_folder, task_config.id)
+                        self.start_monitoring_directory(task_config.source_folder, task_config.id, "source")
+                        self.start_monitoring_directory(task_config.output_folder, task_config.id, "output")
         except Exception as e:
             logger.error(f"Failed to load configuration: {e}")
 
-    def start_monitoring_directory(self, folder_path: str, task_id: str) -> None:
-        """Add a directory to monitor for a specific task"""
+    def start_monitoring_directory(self, folder_path: str, task_id: str, folder_type: Literal["source", "output"]) -> None:
+        """Add a directory to monitor for a specific task with folder type"""
         if not self._is_running:
             logger.warning("Cannot add directory - MonitorService is not running")
             return
@@ -80,13 +80,13 @@ class MonitorService(metaclass=Singleton):
             logger.debug(f"Task {task_id} is already monitoring {folder_path}")
             return
 
-        event_handler = MonitorHandler(callback_func=self.handle_file_event, task_id=task_id)
+        event_handler = MonitorHandler(callback_func=self.handle_file_event, task_id=task_id, folder_type=folder_type)
         observer = Observer()
         observer.schedule(event_handler, folder_path, recursive=True)
         observer.start()
 
         self._monitors[folder_path][task_id] = observer
-        logger.info(f"Added monitoring for {folder_path} with task {task_id}")
+        logger.info(f"Added monitoring for {folder_path} with task {task_id} as {folder_type} folder")
 
     def stop_monitoring_directory(self, folder_path: str, task_id: str) -> None:
         """Remove a directory from monitoring for a specific task"""
@@ -107,16 +107,27 @@ class MonitorService(metaclass=Singleton):
             if not self._monitors[folder_path]:
                 del self._monitors[folder_path]
 
-    def handle_file_event(self, event: FileSystemEvent, task_id: str, filepath: str) -> None:
+    def handle_file_event(self, event: FileSystemEvent, task_id: str, filepath: str, folder_type: Literal["source", "output"]) -> None:
         """Execute task based on file system event"""
         try:
-            logger.info(f"File event: {event.event_type}, filepath: {filepath}, task_id: {task_id}")
-            if event.event_type == 'created' or event.event_type == 'moved':
-                if event.is_directory or not is_video_file(filepath):
-                    return
-                self._trigger_transfer_task(filepath, task_id)
-            elif event.event_type == 'deleted':
-                self._update_deleted_records(filepath)
+            logger.info(
+                f"File event: {event.event_type}, filepath: {filepath}, task_id: {task_id}, type: {folder_type}")
+            if folder_type == "source":
+                # 源文件夹的处理逻辑
+                if event.event_type == 'created' or event.event_type == 'moved':
+                    if event.is_directory or not is_video_file(filepath):
+                        return
+                    self._trigger_transfer_task(filepath, task_id)
+                elif event.event_type == 'deleted':
+                    self._update_deleted_records(filepath)
+            elif folder_type == "output":
+                # 输出文件夹的处理逻辑
+                if event.event_type == 'created' or event.event_type == 'moved':
+                    if event.is_directory or not is_video_file(filepath):
+                        return
+                    self._handle_output_file_created(filepath)
+                elif event.event_type == 'deleted':
+                    self._update_output_deleted_records(filepath)
         except Exception as e:
             logger.error(f"Task execution failed: {e}")
 
@@ -138,13 +149,43 @@ class MonitorService(metaclass=Singleton):
             logger.error(f"Task execution failed: {e}")
 
     def _update_deleted_records(self, path: str) -> None:
-        """Update records for deleted files"""
+        """Update records for deleted files in source folder"""
         try:
             with SessionFactory() as session:
-                records = session.query(TransRecords).filter(TransRecords.srcpath.like(f"%{path}%")).all()
+                # 删除可能是文件夹
+                records = session.query(TransRecords).filter(TransRecords.srcpath.startswith(path)).all()
                 for record in records:
-                    logger.info(f"Updating deleted record: {record.srcpath}")
+                    logger.info(f"Updating deleted source record: {record.srcpath}")
                     record.srcdeleted = True
                 session.commit()
         except Exception as e:
             logger.error(f"Failed to update deleted record: {e}")
+
+    def _handle_output_file_created(self, filepath: str) -> None:
+        """处理输出文件夹中文件创建的逻辑"""
+        try:
+            with SessionFactory() as session:
+                # 查找是否有对应的记录且有deadtime值
+                record = session.query(TransRecords).filter(TransRecords.destpath == filepath).first()
+                if record:
+                    if record.deadtime:
+                        logger.info(f"Clearing deadtime for record: {record.destpath}")
+                        record.deadtime = None
+                        record.deleted = False
+                session.commit()
+        except Exception as e:
+            logger.error(f"Failed to handle output file created: {e}")
+
+    def _update_output_deleted_records(self, path: str) -> None:
+        """处理输出文件夹中文件删除的逻辑，更新deadtime"""
+        try:
+            with SessionFactory() as session:
+                # 删除可能是文件夹
+                records = session.query(TransRecords).filter(TransRecords.destpath.startswith(path)).all()
+                for record in records:
+                    logger.info(f"Setting deadtime for record: {record.destpath}")
+                    record.deadtime = datetime.now() + timedelta(days=7)
+                    record.deleted = True
+                session.commit()
+        except Exception as e:
+            logger.error(f"Failed to update output deleted record: {e}")
