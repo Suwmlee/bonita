@@ -77,7 +77,6 @@ async def upload_image(
     if existing_download:
         # Update existing record
         existing_download.filepath = file_path
-        existing_download.updatetime = datetime.now()
         session.commit()
         download = existing_download
     else:

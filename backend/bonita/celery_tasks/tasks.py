@@ -138,7 +138,6 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     with allow_join_result():
                         metabase_json = scraping_task.get()
                     if not metabase_json:
-                        record.updatetime = datetime.now()
                         logger.error(f"[-] scraping failed {original_file.full_path}")
                         continue
                     metamixed = schemas.MetadataMixed.model_validate(metabase_json)
@@ -163,7 +162,6 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     # 更新
                     record.destpath = destpath
                     record.deleted = False
-                    record.updatetime = datetime.now()
                     logger.info(f"[-] scraping transfer end")
                 else:
                     logger.info(f"[-] start transfer")
@@ -190,7 +188,6 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     record.second_folder = target_file.second_folder
                     record.destpath = target_file.full_path
                     record.deleted = False
-                    record.updatetime = datetime.now()
                     logger.info(f"[-] transfer end")
         except Exception as e:
             logger.error(e)

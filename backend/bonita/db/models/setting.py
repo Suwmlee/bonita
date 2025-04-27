@@ -11,7 +11,7 @@ class SystemSetting(Base):
     key = Column(String, unique=True, index=True, nullable=False)
     value = Column(String, nullable=True, default="")
     description = Column(String, default="")
-    updatetime = Column(DateTime, default=datetime.now(), onupdate=datetime.now())
+    updatetime = Column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
 
     @classmethod
     def get_setting(cls, session, key, default=None):

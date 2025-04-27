@@ -90,7 +90,6 @@ async def update_record(session: SessionDep, record: schemas.RecordPublic) -> An
     transfer_record: TransRecords = result[0]
     update_dict = record.transfer_record.model_dump(exclude_unset=True)
     transfer_record.update(session, update_dict)
-    transfer_record.updatetime = datetime.now()
     extra_info: ExtraInfo = result[1] if result[1] else None
     if extra_info:
         extra_info_update_dict = record.extra_info.model_dump(exclude_unset=True)

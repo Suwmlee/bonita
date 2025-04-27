@@ -95,7 +95,6 @@ async def update_metadata(
         update_dict["cover"] = process_cached_file(session, update_dict["cover"], update_dict["number"])
 
     db_metadata.update(session, update_dict)
-    db_metadata.updatetime = datetime.now()
     session.commit()
     session.refresh(db_metadata)
     return schemas.MetadataPublic.model_validate(db_metadata.to_dict())

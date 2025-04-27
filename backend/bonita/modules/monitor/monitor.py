@@ -145,7 +145,6 @@ class MonitorService(metaclass=Singleton):
                 for record in records:
                     logger.info(f"Updating deleted record: {record.srcpath}")
                     record.srcdeleted = True
-                    record.updatetime = datetime.now()
                 session.commit()
         except Exception as e:
             logger.error(f"Failed to update deleted record: {e}")
