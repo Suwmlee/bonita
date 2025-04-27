@@ -165,6 +165,12 @@ export default {
         subtitle: "从Emby服务器同步观看历史到本地数据库",
         startSync: "开始同步",
       },
+      cleanup: {
+        title: "清理孤立记录",
+        subtitle: "清理实际文件已经不存在的记录及关联的种子文件（已删除超过7天）",
+        forceOption: "强制删除",
+        startCleanup: "开始清理"
+      },
     },
     serviceSettings: {
       title: "服务配置",

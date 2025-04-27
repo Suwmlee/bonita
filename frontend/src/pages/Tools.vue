@@ -11,7 +11,9 @@ const nfoFolder = ref("")
 const isLoading = ref(false)
 const isSyncingEmby = ref(false)
 const isCleaningMediaItems = ref(false)
+const isCleaningData = ref(false)
 const updateOption = ref("ignore")
+const forceCleanupOption = ref(false)
 
 const importNfoData = async () => {
   if (!nfoFolder.value) {
@@ -46,6 +48,15 @@ const cleanMediaItems = async () => {
     isCleaningMediaItems.value = false
   }
 }
+
+const cleanupData = async () => {
+  isCleaningData.value = true
+  try {
+    await toolStore.cleanupData(forceCleanupOption.value)
+  } finally {
+    isCleaningData.value = false
+  }
+}
 </script>
 
 <template>
@@ -56,7 +67,7 @@ const cleanMediaItems = async () => {
     <VCol cols="12" sm="8" md="6" lg="5" xl="4">
       <VCard class="mb-6">
         <VCardTitle>{{ t('pages.tools.importNfo.title') }}</VCardTitle>
-        <VCardSubtitle>
+        <VCardSubtitle class="text-wrap">
           {{ t('pages.tools.importNfo.subtitle') }}
         </VCardSubtitle>
         <VCardText>
@@ -99,7 +110,7 @@ const cleanMediaItems = async () => {
       
       <VCard class="mb-6">
         <VCardTitle>{{ t('pages.tools.syncEmby.title') }}</VCardTitle>
-        <VCardSubtitle>
+        <VCardSubtitle class="text-wrap">
           {{ t('pages.tools.syncEmby.subtitle') }}
         </VCardSubtitle>
         <VCardText>
@@ -112,6 +123,32 @@ const cleanMediaItems = async () => {
             <VCol cols="12">
               <VBtn color="secondary" block :loading="isCleaningMediaItems" @click="cleanMediaItems">
                 {{ t('pages.mediaitem.clean') }}
+              </VBtn>
+            </VCol>
+          </VRow>
+        </VCardText>
+      </VCard>
+
+      <VCard class="mb-6">
+        <VCardTitle>{{ t('pages.tools.cleanup.title') }}</VCardTitle>
+        <VCardSubtitle class="text-wrap">
+          {{ t('pages.tools.cleanup.subtitle') }}
+        </VCardSubtitle>
+        <VCardText>
+          <VRow>
+            <VCol cols="12">
+              <VRow no-gutters>
+                <VCol cols="12" md="3" class="row-label">
+                  <label for="forceCleanupOption">{{ t('pages.tools.cleanup.forceOption') }}</label>
+                </VCol>
+                <VCol cols="12" md="9">
+                  <VCheckbox v-model="forceCleanupOption" hide-details />
+                </VCol>
+              </VRow>
+            </VCol>
+            <VCol cols="12">
+              <VBtn color="error" block :loading="isCleaningData" @click="cleanupData">
+                {{ t('pages.tools.cleanup.startCleanup') }}
               </VBtn>
             </VCol>
           </VRow>

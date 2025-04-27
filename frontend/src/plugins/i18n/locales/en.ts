@@ -168,6 +168,12 @@ export default {
           "Synchronize watch history from Emby server to local database",
         startSync: "Start Sync",
       },
+      cleanup: {
+        title: "Clean Orphaned Records",
+        subtitle: "Clean records and related torrent files where actual files no longer exist (deleted for more than 7 days)",
+        forceOption: "Force Delete",
+        startCleanup: "Start Cleanup"
+      },
     },
     serviceSettings: {
       title: "Service Settings",

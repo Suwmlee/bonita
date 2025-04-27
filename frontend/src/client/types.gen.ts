@@ -754,6 +754,12 @@ export type RunEmbyScanResponse = TaskStatus;
 
 export type SyncEmbyWatchHistoryResponse = Response;
 
+export type CleanupDataData = {
+    requestBody: ToolArgsParam;
+};
+
+export type CleanupDataResponse = Response;
+
 export type GetProxySettingsResponse = ProxySettings;
 
 export type UpdateProxySettingsData = {
@@ -1373,6 +1379,21 @@ export type $OpenApiTs = {
                  * Successful Response
                  */
                 200: Response;
+            };
+        };
+    };
+    '/api/v1/tools/cleanup': {
+        post: {
+            req: CleanupDataData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
             };
         };
     };

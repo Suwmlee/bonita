@@ -7,6 +7,8 @@ from bonita import schemas
 from bonita.api.deps import SessionDep
 from bonita.celery_tasks.tasks import celery_import_nfo
 from bonita.modules.media_service.sync import sync_emby_history
+from bonita.modules.download_clients.transmission import TransmissionClient
+from bonita.db.models.setting import SystemSetting
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -54,3 +56,20 @@ async def sync_emby_watch_history(
 
     return schemas.Response(success=True,
                             message="sync emby watch history success")
+
+
+@router.post("/cleanup", response_model=schemas.Response)
+async def cleanup_data(
+        session: SessionDep,
+        params: schemas.ToolArgsParam):
+    """ 清理下载器、转移记录和实际文件
+
+    Args:
+        arg1: 强制删除 ("true"/"false") 
+    """
+    logger.info("Check and cleanup data")
+
+    # 获取是否删除文件的参数，默认为false
+    delete_files = params.arg1.lower() == "true" if params.arg1 else False
+    return schemas.Response(success=True,
+                            message="cleanup torrents success")

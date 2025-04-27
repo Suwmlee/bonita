@@ -435,7 +435,6 @@ onMounted(() => {
                     <VTextField 
                       v-model="transmissionSettings.transmission_password" 
                       :placeholder="t('pages.serviceSettings.transmission.passwordPlaceholder')"
-                      type="password"
                     />
                   </VCol>
                 </VRow>
