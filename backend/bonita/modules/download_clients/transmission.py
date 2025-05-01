@@ -4,7 +4,7 @@ import logging
 from typing import List, Any, Union, Optional
 
 from bonita.utils.singleton import Singleton
-from bonita.modules.download_clients.base_client import BaseDownloadClient
+from bonita.modules.download_clients.base_client import BaseDownloadClient, torrent_info
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class TransmissionClient(BaseDownloadClient, metaclass=Singleton):
         self.source_path = ""  # 容器内路径
         self.dest_path = ""    # 宿主机路径
         self.is_initialized = False
-        self.fields = ["id", "name", "status", "downloadDir", "error", "errorString"]
+        self.fields = ["id", "name", "hashString", "downloadDir", "error", "errorString"]
 
     def initialize(self, url: str, username: str, password: str, source_path: str = "", dest_path: str = "") -> bool:
         """Initialize the Transmission service with connection parameters
@@ -108,7 +108,7 @@ class TransmissionClient(BaseDownloadClient, metaclass=Singleton):
             return None
 
     def getTorrents(self, ids: Optional[Union[str, int, List[Union[str, int]]]] = None,
-                    fields: Optional[List[str]] = None):
+                    fields: Optional[List[str]] = None) -> List[torrent_info]:
         """Get torrents from the Transmission client
 
         Args:
@@ -125,9 +125,19 @@ class TransmissionClient(BaseDownloadClient, metaclass=Singleton):
         elif ids:
             ids = int(ids)
         torrents = self.trsession.get_torrents(ids=ids, arguments=fields)
-        return torrents
+        torrents_info = []
+        for torrent in torrents:
+            info = torrent_info()
+            info.id = torrent.id
+            info.name = torrent.name
+            info.hash = torrent.hashString
+            info.downloadDir = torrent.download_dir
+            info.error = torrent.error
+            info.errorString = torrent.error_string
+            torrents_info.append(info)
+        return torrents_info
 
-    def searchByName(self, name: str):
+    def searchByName(self, name: str) -> List[torrent_info]:
         """Search torrents by name
 
         Args:
@@ -145,25 +155,19 @@ class TransmissionClient(BaseDownloadClient, metaclass=Singleton):
 
     def map_path(self, path: str) -> str:
         """Maps path between Docker container and host
-        
+
         Args:
             path: Original path
-            
+
         Returns:
             str: Mapped path if mapping is configured, otherwise original path
         """
         if not self.source_path or not self.dest_path:
             return path
-            
-        if self.source_path in path:
-            return path.replace(self.source_path, self.dest_path)
-        elif self.dest_path in path:
-            return path.replace(self.dest_path, self.source_path)
-            
-        return path
-        
-    def searchByPath(self, path: str):
-        """Search torrents by path
+        return path.replace(self.dest_path, self.source_path)
+
+    def searchByPath(self, path: str) -> List[torrent_info]:
+        """ 逐级搜索种子(最多3次)
 
         Args:
             path: Path to search for
@@ -171,9 +175,7 @@ class TransmissionClient(BaseDownloadClient, metaclass=Singleton):
         Returns:
             List[T]: List of matching torrent objects
         """
-        # First map the path if path mapping is configured
         path = self.map_path(path)
-        
         retry = 3
         for i in range(retry):
             name = os.path.basename(path)
@@ -183,23 +185,6 @@ class TransmissionClient(BaseDownloadClient, metaclass=Singleton):
             else:
                 path = os.path.dirname(path)
         return []
-
-    def getTorrentFiles(self, torrent_id: Union[int, str]):
-        """Get files for a specific torrent
-
-        Args:
-            torrent_id: ID of the torrent
-
-        Returns:
-            Optional[F]: Torrent files if successful, None if failed
-        """
-        if not self.trsession:
-            return None
-        torrent = self.trsession.get_torrent(torrent_id)
-        if torrent:
-            return torrent.files()
-        else:
-            return None
 
     def deleteTorrent(self, torrent_id: Union[int, str], delete: bool = False) -> None:
         """Remove a torrent

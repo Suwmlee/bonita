@@ -2,13 +2,13 @@ from abc import ABC, abstractmethod
 from typing import List, Any, Union, Optional, Dict, TypeVar, Generic
 
 
-class torrent_file():
+class torrent_info():
     id: int
     name: str
     hash: str
-    size: int
     downloadDir: str
-    category: str
+    error: int
+    errorString: str
 
 
 class BaseDownloadClient(ABC):
@@ -38,7 +38,7 @@ class BaseDownloadClient(ABC):
         pass
 
     @abstractmethod
-    def getTorrents(self, ids: List[int]) -> List[torrent_file]:
+    def getTorrents(self, ids: List[int]) -> List[torrent_info]:
         """Get torrents from the client
 
         Args:
@@ -50,7 +50,7 @@ class BaseDownloadClient(ABC):
         pass
 
     @abstractmethod
-    def searchByName(self, name: str) -> List[torrent_file]:
+    def searchByName(self, name: str) -> List[torrent_info]:
         """Search torrents by name
 
         Args:
@@ -62,7 +62,7 @@ class BaseDownloadClient(ABC):
         pass
 
     @abstractmethod
-    def searchByPath(self, path: str) -> List[torrent_file]:
+    def searchByPath(self, path: str) -> List[torrent_info]:
         """Search torrents by path
 
         Args:
@@ -70,18 +70,6 @@ class BaseDownloadClient(ABC):
 
         Returns:
             List[torrent_file]: List of matching torrent objects
-        """
-        pass
-
-    @abstractmethod
-    def getTorrentFiles(self, torrent_id: int) -> List[torrent_file]:
-        """Get files for a specific torrent
-
-        Args:
-            torrent_id: ID of the torrent
-
-        Returns:
-            List[torrent_file]: Torrent files if successful, None if failed
         """
         pass
 

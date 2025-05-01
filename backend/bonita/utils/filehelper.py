@@ -61,6 +61,27 @@ def findAllFilesWithSuffix(root, suffix, escape_folder: list[str] = [], escape_f
     return result
 
 
+def has_video_files(directory_path: str) -> bool:
+    """检查目录中是否存在视频文件
+
+    Args:
+        directory_path: 要检查的目录路径
+
+    Returns:
+        bool: 如果目录中存在视频文件返回True，否则返回False
+    """
+    if not os.path.exists(directory_path) or not os.path.isdir(directory_path):
+        logger.warning(f"Directory does not exist or is not a directory: {directory_path}")
+        return False
+    try:
+        video_files = findAllFilesWithSuffix(directory_path, video_type)
+        return len(video_files) > 0
+    except Exception as e:
+        logger.error(f"Error checking for video files in directory {directory_path}: {str(e)}")
+        # 如果检查出错，默认返回True以防止误删
+        return True
+
+
 def cleanFilebyNameSuffix(root, basename, suffixes):
     """ 删除指定目录下文件名以basename开头且后缀匹配的文件
     :param root: 根目录路径
