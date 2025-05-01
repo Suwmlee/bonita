@@ -166,9 +166,9 @@ export default {
         startSync: "开始同步",
       },
       cleanup: {
-        title: "清理孤立记录",
+        title: "清理文件与记录",
         subtitle: "清理实际文件已经不存在的记录及关联的种子文件（已删除超过7天）",
-        forceOption: "强制删除",
+        forceOption: "立即删除",
         startCleanup: "开始清理"
       },
     },
@@ -275,7 +275,7 @@ export default {
       deleteDialog: {
         title: "确认删除",
         message: "您确定要删除选中的 {count} 条记录吗？此操作无法撤销。",
-        forceDelete: "强制删除（忽略锁定状态）",
+        forceDelete: "删除原始文件（忽略锁定状态）",
         cancel: "取消",
         confirm: "删除",
       },
