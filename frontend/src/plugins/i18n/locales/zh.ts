@@ -180,7 +180,7 @@ export default {
         http: "HTTP 代理",
         https: "HTTPS 代理",
         httpsPlaceholder: "例如: http://127.0.0.1:7890",
-        enable: "启用代理",
+        enable: "启用",
         save: "保存设置",
       },
       emby: {
@@ -199,7 +199,7 @@ export default {
         testError: "测试连接失败，请检查您的设置和网络",
         connectionSuccess: "连接成功！",
         connectionError: "连接失败！",
-        enable: "启用Emby集成",
+        enable: "启用",
       },
       jellyfin: {
         title: "Jellyfin API 设置",
@@ -215,7 +215,7 @@ export default {
         testError: "测试连接失败，请检查您的设置和网络",
         connectionSuccess: "连接成功！",
         connectionError: "连接失败！",
-        enable: "启用Jellyfin集成",
+        enable: "启用",
       },
       transmission: {
         title: "Transmission 下载器设置",
@@ -227,9 +227,9 @@ export default {
         password: "密码",
         passwordPlaceholder: "Transmission 密码",
         pathMappingFrom: "路径映射源",
-        pathMappingFromPlaceholder: "例如: /downloads (Docker容器内路径)",
+        pathMappingFromPlaceholder: "Transmission内下载路径",
         pathMappingTo: "路径映射目标",
-        pathMappingToPlaceholder: "例如: /volume1/downloads (宿主机路径)",
+        pathMappingToPlaceholder: "宿主机(bonita)内路径",
         save: "保存设置",
         test: "测试连接",
         saveSuccess: "Transmission设置已成功保存",
@@ -237,7 +237,7 @@ export default {
         testError: "测试连接失败，请检查您的设置和网络",
         connectionSuccess: "连接成功！",
         connectionError: "连接失败！",
-        enable: "启用Transmission集成",
+        enable: "启用",
       },
     },
     userSettings: {
