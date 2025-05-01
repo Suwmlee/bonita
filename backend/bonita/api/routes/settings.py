@@ -6,7 +6,7 @@ import traceback
 
 from bonita import schemas
 from bonita.api.deps import SessionDep
-from bonita.db.models.setting import SystemSetting
+from bonita.services.setting_service import SettingService
 from bonita.modules.media_service.emby import EmbyService
 from bonita.modules.download_clients.transmission import TransmissionClient
 
@@ -19,17 +19,8 @@ def get_proxy_settings(session: SessionDep) -> Any:
     获取代理设置.
     """
     try:
-        proxy_setting_db = session.query(SystemSetting).filter(
-            SystemSetting.key.in_(["proxy_enabled", "proxy_http", "proxy_https"])
-        ).all()
-        proxy_dict = {setting.key: setting.value for setting in proxy_setting_db}
-        proxy_settings = {
-            "enabled": proxy_dict.get("proxy_enabled", "false").lower() == "true",
-            "http": proxy_dict.get("proxy_http", ""),
-            "https": proxy_dict.get("proxy_https", "")
-        }
-
-        return proxy_settings
+        setting_service = SettingService(session)
+        return setting_service.get_proxy_settings()
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -45,29 +36,12 @@ def update_proxy_settings(
     更新代理设置.
     """
     try:
-        # 保存代理设置
-        SystemSetting.set_setting(
-            session,
-            "proxy_enabled",
-            str(settings_in.enabled).lower(),
-            "是否启用代理"
+        setting_service = SettingService(session)
+        setting_service.update_proxy_settings(
+            enabled=settings_in.enabled,
+            http=settings_in.http,
+            https=settings_in.https
         )
-
-        if settings_in.http:
-            SystemSetting.set_setting(
-                session,
-                "proxy_http",
-                settings_in.http,
-                "HTTP代理地址"
-            )
-
-        if settings_in.https:
-            SystemSetting.set_setting(
-                session,
-                "proxy_https",
-                settings_in.https,
-                "HTTPS代理地址"
-            )
 
         return schemas.Response(
             success=True,
@@ -84,18 +58,8 @@ def get_emby_settings(session: SessionDep) -> Any:
     获取Emby设置.
     """
     try:
-        emby_setting_db = session.query(SystemSetting).filter(
-            SystemSetting.key.in_(["emby_host", "emby_apikey", "emby_user", "emby_enabled"])
-        ).all()
-        emby_dict = {setting.key: setting.value for setting in emby_setting_db}
-        emby_settings = {
-            "emby_host": emby_dict.get("emby_host", ""),
-            "emby_apikey": emby_dict.get("emby_apikey", ""),
-            "emby_user": emby_dict.get("emby_user", ""),
-            "enabled": emby_dict.get("emby_enabled", "false").lower() == "true"
-        }
-
-        return emby_settings
+        setting_service = SettingService(session)
+        return setting_service.get_emby_settings()
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -111,28 +75,9 @@ def update_emby_settings(
     更新Emby设置.
     """
     try:
-        SystemSetting.set_setting(
-            session,
-            "emby_host",
-            settings_in.emby_host,
-            "Emby服务器地址"
-        )
+        setting_service = SettingService(session)
 
-        SystemSetting.set_setting(
-            session,
-            "emby_apikey",
-            settings_in.emby_apikey,
-            "Emby API密钥"
-        )
-
-        SystemSetting.set_setting(
-            session,
-            "emby_user",
-            settings_in.emby_user,
-            "Emby用户名"
-        )
-
-        # 如果启用了Emby，则立即初始化EmbyService
+        # 如果启用了Emby，则立即初始化EmbyService以验证连接
         if settings_in.enabled:
             emby_service = EmbyService()
             init_success = emby_service.initialize(
@@ -146,11 +91,12 @@ def update_emby_settings(
                     message="Emby设置已保存但初始化失败，请检查设置是否正确"
                 )
 
-        SystemSetting.set_setting(
-            session,
-            "emby_enabled",
-            str(settings_in.enabled).lower(),
-            "是否启用Emby"
+        # 更新设置
+        setting_service.update_emby_settings(
+            host=settings_in.emby_host,
+            apikey=settings_in.emby_apikey,
+            user=settings_in.emby_user,
+            enabled=settings_in.enabled
         )
 
         return schemas.Response(
@@ -204,17 +150,8 @@ def get_jellyfin_settings(session: SessionDep) -> Any:
     获取Jellyfin设置.
     """
     try:
-        jellyfin_setting_db = session.query(SystemSetting).filter(
-            SystemSetting.key.in_(["jellyfin_host", "jellyfin_apikey", "jellyfin_enabled"])
-        ).all()
-        jellyfin_dict = {setting.key: setting.value for setting in jellyfin_setting_db}
-        jellyfin_settings = {
-            "jellyfin_host": jellyfin_dict.get("jellyfin_host", ""),
-            "jellyfin_apikey": jellyfin_dict.get("jellyfin_apikey", ""),
-            "enabled": jellyfin_dict.get("jellyfin_enabled", "false").lower() == "true"
-        }
-
-        return jellyfin_settings
+        setting_service = SettingService(session)
+        return setting_service.get_jellyfin_settings()
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -230,26 +167,11 @@ def update_jellyfin_settings(
     更新Jellyfin设置.
     """
     try:
-        # 保存Jellyfin设置
-        SystemSetting.set_setting(
-            session,
-            "jellyfin_enabled",
-            str(settings_in.enabled).lower(),
-            "是否启用Jellyfin"
-        )
-
-        SystemSetting.set_setting(
-            session,
-            "jellyfin_host",
-            settings_in.jellyfin_host,
-            "Jellyfin服务器地址"
-        )
-
-        SystemSetting.set_setting(
-            session,
-            "jellyfin_apikey",
-            settings_in.jellyfin_apikey,
-            "Jellyfin API密钥"
+        setting_service = SettingService(session)
+        setting_service.update_jellyfin_settings(
+            host=settings_in.jellyfin_host,
+            apikey=settings_in.jellyfin_apikey,
+            enabled=settings_in.enabled
         )
 
         return schemas.Response(
@@ -313,22 +235,8 @@ def get_transmission_settings(session: SessionDep) -> Any:
     获取Transmission下载器设置.
     """
     try:
-        transmission_setting_db = session.query(SystemSetting).filter(
-            SystemSetting.key.in_(["transmission_host", "transmission_username",
-                                   "transmission_password", "transmission_enabled",
-                                   "transmission_source_path", "transmission_dest_path"])
-        ).all()
-        transmission_dict = {setting.key: setting.value for setting in transmission_setting_db}
-        transmission_settings = {
-            "transmission_host": transmission_dict.get("transmission_host", ""),
-            "transmission_username": transmission_dict.get("transmission_username", ""),
-            "transmission_password": transmission_dict.get("transmission_password", ""),
-            "transmission_source_path": transmission_dict.get("transmission_source_path", ""),
-            "transmission_dest_path": transmission_dict.get("transmission_dest_path", ""),
-            "enabled": transmission_dict.get("transmission_enabled", "false").lower() == "true"
-        }
-
-        return transmission_settings
+        setting_service = SettingService(session)
+        return setting_service.get_transmission_settings()
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -344,47 +252,14 @@ def update_transmission_settings(
     更新Transmission下载器设置.
     """
     try:
-        # 保存Transmission设置
-        SystemSetting.set_setting(
-            session,
-            "transmission_enabled",
-            str(settings_in.enabled).lower(),
-            "是否启用Transmission下载器"
-        )
-
-        SystemSetting.set_setting(
-            session,
-            "transmission_host",
-            settings_in.transmission_host,
-            "Transmission服务器地址"
-        )
-
-        SystemSetting.set_setting(
-            session,
-            "transmission_username",
-            settings_in.transmission_username,
-            "Transmission用户名"
-        )
-
-        SystemSetting.set_setting(
-            session,
-            "transmission_password",
-            settings_in.transmission_password,
-            "Transmission密码"
-        )
-        
-        SystemSetting.set_setting(
-            session,
-            "transmission_source_path",
-            settings_in.transmission_source_path,
-            "Transmission路径映射-容器内路径"
-        )
-        
-        SystemSetting.set_setting(
-            session,
-            "transmission_dest_path",
-            settings_in.transmission_dest_path,
-            "Transmission路径映射-宿主机路径"
+        setting_service = SettingService(session)
+        setting_service.update_transmission_settings(
+            host=settings_in.transmission_host,
+            username=settings_in.transmission_username,
+            password=settings_in.transmission_password,
+            source_path=settings_in.transmission_source_path,
+            dest_path=settings_in.transmission_dest_path,
+            enabled=settings_in.enabled
         )
 
         return schemas.Response(
@@ -409,7 +284,7 @@ def test_transmission_connection(
         transmission_client = TransmissionClient()
         init_success = transmission_client.initialize(
             url=test_data.transmission_host,
-            username=test_data.transmission_username, 
+            username=test_data.transmission_username,
             password=test_data.transmission_password,
             source_path=test_data.transmission_source_path,
             dest_path=test_data.transmission_dest_path
