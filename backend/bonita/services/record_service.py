@@ -87,10 +87,10 @@ class RecordService:
         """
         result = self.session.query(TransRecords, ExtraInfo).outerjoin(
             ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath).filter(TransRecords.id == record_id).first()
-        
+
         if not result:
             return None, None
-        
+
         return result[0], result[1]
 
     def update_record(self, record: TransRecords, update_dict: dict) -> TransRecords:
@@ -106,7 +106,7 @@ class RecordService:
         for key, value in update_dict.items():
             if hasattr(record, key):
                 setattr(record, key, value)
-        
+
         self.session.commit()
         return record
 
@@ -125,16 +125,16 @@ class RecordService:
             TransRecords.srcfolder == srcfolder,
             TransRecords.top_folder == old_top_folder
         )
-        
+
         records_count = query.count()
-        
+
         if records_count == 0:
             return False, f"没有找到匹配的记录: srcfolder={srcfolder}, top_folder={old_top_folder}", 0
-        
+
         if records_count > 0:
             query.update({"top_folder": new_top_folder, "updatetime": datetime.now()})
             self.session.commit()
-            
+
         return True, f"成功更新 {records_count} 条记录的 top_folder 从 '{old_top_folder}' 到 '{new_top_folder}'", records_count
 
     def delete_records(self, record_ids: List[int], force: bool = False) -> Tuple[bool, str, int, List[int]]:
@@ -208,24 +208,52 @@ class RecordService:
         """
         trans_records = self.session.query(TransRecords).offset(skip).limit(limit).all()
         count = self.session.query(TransRecords).count()
-        
+
         return trans_records, count
 
-    def get_records_to_cleanup(self, current_time: datetime) -> List[TransRecords]:
+    def get_records_to_cleanup(self) -> List[TransRecords]:
         """获取需要清理的记录（过期或标记为已删除源文件的记录）
-        
-        Args:
-            current_time: 当前时间，用于比较deadtime
+        在返回结果前，会检查文件是否真的不存在，如果文件仍然存在，会更新记录状态并延长过期时间
+        忽略标记为ignored的记录
+
+        清理规则：
+        1. 源文件不存在，则标记为需要清理
+        2. 目标文件不存在且已超过过期时间，则标记为需要清理
 
         Returns:
             List[TransRecords]: 需要清理的记录列表
         """
-        return self.session.query(TransRecords).filter(
+        current_time = datetime.now()
+        # 首先获取潜在需要清理的记录
+        potential_records = self.session.query(TransRecords).filter(
             or_(
                 TransRecords.srcdeleted == True,
                 TransRecords.deadtime.isnot(None) & (TransRecords.deadtime <= current_time)
-            )
+            ),
+            TransRecords.ignored == False
         ).all()
+
+        # 筛选确实需要清理的记录
+        records_to_cleanup = []
+        for record in potential_records:
+            src_exists = record.srcpath and os.path.exists(record.srcpath)
+            dest_exists = record.destpath and os.path.exists(record.destpath)
+            # 更新源文件是否存在的状态
+            record.srcdeleted = not src_exists
+            # 根据源文件和目标文件状态决定是否需要清理
+            if not src_exists:
+                # 源文件不存在，需要清理
+                records_to_cleanup.append(record)
+            elif not dest_exists and record.deadtime and record.deadtime <= current_time:
+                # 目标文件不存在且已超过过期时间，需要清理
+                records_to_cleanup.append(record)
+            else:
+                # 文件都存在或未超过过期时间，不需要清理，重置状态
+                record.deleted = False
+                record.deadtime = None
+            self.session.commit()
+
+        return records_to_cleanup
 
     def _clean_files(self, file_path: str) -> None:
         """清理文件及相关文件

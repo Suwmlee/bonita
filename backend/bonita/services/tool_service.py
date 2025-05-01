@@ -1,6 +1,4 @@
 import logging
-from typing import Dict, List, Optional, Tuple
-from datetime import datetime
 from sqlalchemy.orm import Session
 
 from bonita import schemas
@@ -88,15 +86,8 @@ class ToolService:
             schemas.Response: 操作响应
         """
         logger.info("Check and cleanup data")
-
-        # 获取需要清理的记录（deadtime已过期或srcdeleted标记的记录）
-        current_time = datetime.now()
-        
-        # 直接从数据库获取需要清理的记录
-        records_to_cleanup = self.record_service.get_records_to_cleanup(current_time)
-
+        records_to_cleanup = self.record_service.get_records_to_cleanup()
         logger.info(f"Found {len(records_to_cleanup)} records to cleanup")
-
         # 如果没有需要清理的记录，直接返回成功
         if not records_to_cleanup:
             return schemas.Response(
@@ -107,7 +98,6 @@ class ToolService:
         # 初始化Transmission客户端
         transmission_client = TransmissionClient()
         transmission_settings = self.setting_service.get_transmission_settings()
-
         if transmission_settings.get("enabled"):
             # 初始化Transmission客户端
             transmission_url = transmission_settings.get("transmission_host", "")
@@ -115,7 +105,6 @@ class ToolService:
             transmission_password = transmission_settings.get("transmission_password", "")
             transmission_source_path = transmission_settings.get("transmission_source_path", "")
             transmission_dest_path = transmission_settings.get("transmission_dest_path", "")
-
             transmission_client.initialize(
                 url=transmission_url,
                 username=transmission_username,
@@ -129,21 +118,20 @@ class ToolService:
         # 统计信息
         deleted_count = 0
         skipped_count = 0
-
         # 处理每条记录
         for record in records_to_cleanup:
             try:
                 # 查找对应的种子
                 if transmission_settings.get("enabled") and record.srcpath:
                     torrents = transmission_client.searchByPath(record.srcpath)
-
                     # 如果找到匹配的种子且需要删除种子文件
                     if torrents and delete_files:
                         for torrent in torrents:
                             # 检查种子目录是否还存在视频文件
                             torrent_directory = torrent.downloadDir
                             if torrent_directory and has_video_files(torrent_directory):
-                                logger.warning(f"Skipping deletion of torrent with video files: {torrent.name} at {torrent_directory}")
+                                logger.warning(
+                                    f"Skipping deletion of torrent with video files: {torrent.name} at {torrent_directory}")
                                 skipped_count += 1
                                 continue
                             logger.info(f"Deleting torrent: {torrent.name}")
