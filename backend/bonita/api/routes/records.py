@@ -52,18 +52,15 @@ async def update_record(session: SessionDep, record: schemas.RecordPublic) -> An
     """
     record_service = RecordService(session)
     transfer_record, extra_info = record_service.get_record_by_id(record.transfer_record.id)
-
     if not transfer_record:
         raise HTTPException(status_code=404, detail=f"TransferRecord with id {record.transfer_record.id} not found")
 
-    # 使用模型的update方法更新记录
     update_dict = record.transfer_record.model_dump(exclude_unset=True)
     transfer_record.update(session, update_dict)
-
-    # 如果extra_info存在，也使用模型的update方法更新
     if extra_info and record.extra_info:
         extra_info_update_dict = record.extra_info.model_dump(exclude_unset=True)
         extra_info.update(session, extra_info_update_dict)
+    session.commit()
 
     updated_transfer_record_public = schemas.TransferRecordPublic.model_validate(transfer_record)
     updated_extra_info_public = schemas.ExtraInfoPublic.model_validate(extra_info) if extra_info else None

@@ -5,7 +5,6 @@ from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
 from bonita.db.models.mediaitem import MediaItem
 from bonita.db.models.watch_history import WatchHistory
-from bonita.db.models.setting import SystemSetting
 from bonita.modules.media_service.emby import EmbyService
 from bonita.modules.scraping.number_parser import get_number
 

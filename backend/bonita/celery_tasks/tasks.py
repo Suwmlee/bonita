@@ -255,6 +255,7 @@ def celery_scrapping(self, file_path, scraping_dict):
                 return None
             # 数据转换
             metadata_base = schemas.MetadataBase(**json_data)
+            metadata_base.number = metadata_base.number.upper()
             filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
             metadata_record = Metadata(**filter_dict)
             if scraping_conf.save_metadata:
