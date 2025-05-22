@@ -299,10 +299,14 @@ export const useSettingStore = defineStore("setting-store", {
         const data: TestTransmissionConnectionData = {
           requestBody: {
             transmission_host: this.transmissionSettings.transmission_host,
-            transmission_username: this.transmissionSettings.transmission_username,
-            transmission_password: this.transmissionSettings.transmission_password,
-            transmission_source_path: this.transmissionSettings.transmission_source_path,
-            transmission_dest_path: this.transmissionSettings.transmission_dest_path,
+            transmission_username:
+              this.transmissionSettings.transmission_username,
+            transmission_password:
+              this.transmissionSettings.transmission_password,
+            transmission_source_path:
+              this.transmissionSettings.transmission_source_path,
+            transmission_dest_path:
+              this.transmissionSettings.transmission_dest_path,
           },
         }
 

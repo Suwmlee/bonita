@@ -28,8 +28,14 @@ const jellyfinTestResult = ref<{ success?: boolean; message?: string } | null>(
 const jellyfinSaveResult = ref<{ success: boolean; message: string } | null>(
   null,
 )
-const transmissionTestResult = ref<{ success?: boolean; message?: string } | null>(null)
-const transmissionSaveResult = ref<{ success: boolean; message: string } | null>(null)
+const transmissionTestResult = ref<{
+  success?: boolean
+  message?: string
+} | null>(null)
+const transmissionSaveResult = ref<{
+  success: boolean
+  message: string
+} | null>(null)
 
 const fetchProxySettings = async () => {
   await settingStore.fetchProxySettings()
@@ -117,9 +123,12 @@ const saveTransmissionSettings = async () => {
   transmissionSaveResult.value = null
 
   // 确保字段有正确的值类型
-  transmissionSettings.value.transmission_host = transmissionSettings.value.transmission_host || ""
-  transmissionSettings.value.transmission_username = transmissionSettings.value.transmission_username || ""
-  transmissionSettings.value.transmission_password = transmissionSettings.value.transmission_password || ""
+  transmissionSettings.value.transmission_host =
+    transmissionSettings.value.transmission_host || ""
+  transmissionSettings.value.transmission_username =
+    transmissionSettings.value.transmission_username || ""
+  transmissionSettings.value.transmission_password =
+    transmissionSettings.value.transmission_password || ""
 
   try {
     const response = await settingStore.saveTransmissionSettings()

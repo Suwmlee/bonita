@@ -8,8 +8,8 @@ import {
 import { useRecordStore } from "@/stores/record.store"
 import { useTaskStore } from "@/stores/task.store"
 import { useToastStore } from "@/stores/toast.store"
-import { useI18n } from "vue-i18n"
 import { onMounted } from "vue"
+import { useI18n } from "vue-i18n"
 
 interface Props {
   updateRecord?: RecordPublic

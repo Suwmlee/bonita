@@ -2,10 +2,10 @@ import { defineStore } from "pinia"
 
 // 定义日志条目类型，不再从客户端导入
 interface LogEntry {
-  timestamp: string;
-  level: string;
-  module: string;
-  message: string;
+  timestamp: string
+  level: string
+  module: string
+  message: string
 }
 
 export const useLogStore = defineStore("log-store", {
@@ -36,6 +36,6 @@ export const useLogStore = defineStore("log-store", {
       if (this.logs.length > 1000) {
         this.logs = this.logs.slice(-1000)
       }
-    }
+    },
   },
-}) 
+})

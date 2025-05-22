@@ -45,49 +45,49 @@
 </template>
 
 <script setup lang="ts">
-import { useLogStore } from '@/stores/log.store'
-import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { useLogStore } from "@/stores/log.store"
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
+import { useI18n } from "vue-i18n"
 
 const { t, locale } = useI18n()
-const isAdmin = true;
+const isAdmin = true
 const logStore = useLogStore() // 使用日志存储
 
 // WebSocket连接
 const wsConnection = ref<WebSocket | null>(null)
-const wsConnectionStatus = ref('disconnected') // 'disconnected', 'connecting', 'connected'
+const wsConnectionStatus = ref("disconnected") // 'disconnected', 'connecting', 'connected'
 const logsContainer = ref<HTMLElement | null>(null)
 const autoScroll = ref(true)
 
 // 解析特殊格式的时间戳
 const parseTimestamp = (timestamp: string): Date | null => {
-  if (!timestamp) return null;
-  
+  if (!timestamp) return null
+
   try {
     // 处理特殊格式：2025-05-22 11:19:05,302
     // 将逗号替换为点，使其成为标准的 ISO 格式
-    let processedTimestamp = timestamp;
-    if (timestamp.includes(',')) {
-      processedTimestamp = timestamp.replace(',', '.');
+    let processedTimestamp = timestamp
+    if (timestamp.includes(",")) {
+      processedTimestamp = timestamp.replace(",", ".")
     }
-    
+
     // 如果时间戳不是 ISO 格式，进行转换
-    if (!processedTimestamp.includes('T') && processedTimestamp.includes(' ')) {
+    if (!processedTimestamp.includes("T") && processedTimestamp.includes(" ")) {
       // 假设格式为 "YYYY-MM-DD HH:MM:SS.sss"
-      processedTimestamp = processedTimestamp.replace(' ', 'T');
+      processedTimestamp = processedTimestamp.replace(" ", "T")
     }
-    
-    const date = new Date(processedTimestamp);
-    
+
+    const date = new Date(processedTimestamp)
+
     // 检查转换后的日期是否有效
-    if (isNaN(date.getTime())) {
-      return null;
+    if (Number.isNaN(date.getTime())) {
+      return null
     }
-    
-    return date;
+
+    return date
   } catch (error) {
-    console.error('时间戳解析错误:', error, 'timestamp:', timestamp);
-    return null;
+    console.error("时间戳解析错误:", error, "timestamp:", timestamp)
+    return null
   }
 }
 
@@ -95,49 +95,49 @@ const parseTimestamp = (timestamp: string): Date | null => {
 const formatTimestamp = (timestamp: string) => {
   try {
     // 使用解析函数
-    const date = parseTimestamp(timestamp);
-    
+    const date = parseTimestamp(timestamp)
+
     // 如果解析失败，直接返回原始时间戳
     if (!date) {
-      return timestamp;
+      return timestamp
     }
-    
+
     // 使用当前语言环境
-    const currentLocale = locale.value || 'zh-CN';
+    const currentLocale = locale.value || "zh-CN"
     return new Intl.DateTimeFormat(currentLocale, {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    }).format(date);
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(date)
   } catch (error) {
-    console.error('时间格式化错误:', error, 'timestamp:', timestamp);
-    return timestamp; // 发生错误时返回原始时间戳字符串
+    console.error("时间格式化错误:", error, "timestamp:", timestamp)
+    return timestamp // 发生错误时返回原始时间戳字符串
   }
 }
 
 // 获取日志级别对应的颜色类名
 const getLevelClass = (level: string) => {
   const levelClasses: Record<string, string> = {
-    debug: 'level-debug',
-    info: 'level-info',
-    warning: 'level-warning',
-    error: 'level-error',
-    critical: 'level-critical'
+    debug: "level-debug",
+    info: "level-info",
+    warning: "level-warning",
+    error: "level-error",
+    critical: "level-critical",
   }
-  return levelClasses[level?.toLowerCase()] || 'level-unknown'
+  return levelClasses[level?.toLowerCase()] || "level-unknown"
 }
 
 // 获取整行日志的类名
 const getLogClass = (level: string) => {
   const logClasses: Record<string, string> = {
-    error: 'log-error',
-    critical: 'log-critical'
+    error: "log-error",
+    critical: "log-critical",
   }
-  return logClasses[level?.toLowerCase()] || ''
+  return logClasses[level?.toLowerCase()] || ""
 }
 
 // 清空日志
@@ -149,10 +149,10 @@ const clearLogs = () => {
 const handleWebSocketMessage = (event: MessageEvent) => {
   try {
     const data = JSON.parse(event.data)
-    
+
     // 使用store方法处理日志
     logStore.handleWebSocketLogs(data)
-    
+
     // 下一个tick后滚动到底部
     if (autoScroll.value) {
       nextTick(() => {
@@ -160,7 +160,7 @@ const handleWebSocketMessage = (event: MessageEvent) => {
       })
     }
   } catch (error) {
-    console.error('解析WebSocket消息失败', error)
+    console.error("解析WebSocket消息失败", error)
   }
 }
 
@@ -175,58 +175,61 @@ const scrollToBottom = () => {
 const createWebSocketConnection = () => {
   // 关闭已有连接
   closeWebSocketConnection()
-  
+
   // 获取token
-  const token = localStorage.getItem('access_token')
+  const token = localStorage.getItem("access_token")
   if (!token) {
-    console.error('创建WebSocket连接失败：未找到认证token')
+    console.error("创建WebSocket连接失败：未找到认证token")
     return
   }
-  
-  wsConnectionStatus.value = 'connecting'
-  
+
+  wsConnectionStatus.value = "connecting"
+
   // 构建WebSocket地址
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const host = import.meta.env.VITE_API_URL 
-    ? new URL(import.meta.env.VITE_API_URL).host 
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
+  const host = import.meta.env.VITE_API_URL
+    ? new URL(import.meta.env.VITE_API_URL).host
     : window.location.host
-  
+
   // 构建WebSocket URL (不再添加过滤参数)
   const wsUrl = `${protocol}//${host}/api/v1/ws/logs?token=${token}`
-  
+
   // 创建WebSocket连接
   try {
     wsConnection.value = new WebSocket(wsUrl)
-    
+
     // 设置事件处理器
     wsConnection.value.onmessage = handleWebSocketMessage
     wsConnection.value.onopen = () => {
-      console.log('WebSocket连接已建立')
-      wsConnectionStatus.value = 'connected'
+      console.log("WebSocket连接已建立")
+      wsConnectionStatus.value = "connected"
       // 清空现有日志，只显示实时日志
       logStore.logs = []
     }
     wsConnection.value.onerror = (error) => {
-      console.error('WebSocket错误', error)
-      wsConnectionStatus.value = 'disconnected'
+      console.error("WebSocket错误", error)
+      wsConnectionStatus.value = "disconnected"
     }
     wsConnection.value.onclose = () => {
-      console.log('WebSocket连接已关闭')
-      wsConnectionStatus.value = 'disconnected'
+      console.log("WebSocket连接已关闭")
+      wsConnectionStatus.value = "disconnected"
     }
   } catch (error) {
-    console.error('创建WebSocket连接失败', error)
-    wsConnectionStatus.value = 'disconnected'
+    console.error("创建WebSocket连接失败", error)
+    wsConnectionStatus.value = "disconnected"
   }
 }
 
 // 关闭WebSocket连接
 const closeWebSocketConnection = () => {
-  if (wsConnection.value && wsConnection.value.readyState !== WebSocket.CLOSED) {
+  if (
+    wsConnection.value &&
+    wsConnection.value.readyState !== WebSocket.CLOSED
+  ) {
     wsConnection.value.close()
     wsConnection.value = null
   }
-  wsConnectionStatus.value = 'disconnected'
+  wsConnectionStatus.value = "disconnected"
 }
 
 // 重新连接WebSocket

@@ -169,9 +169,10 @@ export default {
       },
       cleanup: {
         title: "清理文件与记录",
-        subtitle: "清理实际文件已经不存在的记录及关联的种子文件（已删除超过7天）",
+        subtitle:
+          "清理实际文件已经不存在的记录及关联的种子文件（已删除超过7天）",
         forceOption: "立即删除",
-        startCleanup: "开始清理"
+        startCleanup: "开始清理",
       },
     },
     serviceSettings: {
@@ -341,7 +342,7 @@ export default {
       noLogs: "暂无日志",
       reconnect: "重新连接",
       connecting: "正在连接日志服务器...",
-      disconnected: "已断开与日志服务器的连接，请点击重新连接尝试"
+      disconnected: "已断开与日志服务器的连接，请点击重新连接尝试",
     },
   },
   components: {

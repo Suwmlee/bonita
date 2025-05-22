@@ -172,9 +172,10 @@ export default {
       },
       cleanup: {
         title: "Clean Orphaned Records",
-        subtitle: "Clean records and related torrent files where actual files no longer exist (deleted for more than 7 days)",
+        subtitle:
+          "Clean records and related torrent files where actual files no longer exist (deleted for more than 7 days)",
         forceOption: "Force Delete",
-        startCleanup: "Start Cleanup"
+        startCleanup: "Start Cleanup",
       },
     },
     serviceSettings: {
@@ -229,20 +230,25 @@ export default {
         title: "Transmission Client Settings",
         subtitle: "Configure Transmission torrent client connection parameters",
         server: "Server Address",
-        serverPlaceholder: "Example: http://192.168.1.100:9091/transmission/rpc",
+        serverPlaceholder:
+          "Example: http://192.168.1.100:9091/transmission/rpc",
         username: "Username",
         usernamePlaceholder: "Transmission Username",
         password: "Password",
         passwordPlaceholder: "Transmission Password",
         pathMappingFrom: "Path Mapping Source",
-        pathMappingFromPlaceholder: "Example: /downloads (Docker container path)",
+        pathMappingFromPlaceholder:
+          "Example: /downloads (Docker container path)",
         pathMappingTo: "Path Mapping Target",
-        pathMappingToPlaceholder: "Example: /volume1/downloads (Host machine path)",
+        pathMappingToPlaceholder:
+          "Example: /volume1/downloads (Host machine path)",
         save: "Save Settings",
         test: "Test Connection",
         saveSuccess: "Transmission settings saved successfully",
-        saveError: "Failed to save Transmission settings, please try again later",
-        testError: "Connection test failed, please check your settings and network",
+        saveError:
+          "Failed to save Transmission settings, please try again later",
+        testError:
+          "Connection test failed, please check your settings and network",
         connectionSuccess: "Connection successful!",
         connectionError: "Connection failed!",
         enable: "Enable Transmission Integration",
@@ -342,14 +348,16 @@ export default {
       realtime: "Realtime Logs",
       refresh: "Refresh",
       clear: "Clear",
-      realtimeAlert: "Displaying realtime logs, historical logs have been cleared",
+      realtimeAlert:
+        "Displaying realtime logs, historical logs have been cleared",
       totalItems: "Total {count} items",
       itemsPerPage: "Items per page",
       autoScroll: "Auto Scroll",
       noLogs: "No logs available",
       reconnect: "Reconnect",
       connecting: "Connecting to log server...",
-      disconnected: "Disconnected from log server. Click reconnect to try again."
+      disconnected:
+        "Disconnected from log server. Click reconnect to try again.",
     },
   },
   components: {
@@ -524,6 +532,7 @@ export default {
     realtime: "Realtime Logs",
     refresh: "Refresh",
     clear: "Clear",
-    realtimeAlert: "Displaying realtime logs, historical logs have been cleared",
+    realtimeAlert:
+      "Displaying realtime logs, historical logs have been cleared",
   },
 }

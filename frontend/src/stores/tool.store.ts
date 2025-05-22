@@ -1,5 +1,9 @@
 import { ToolsService } from "@/client"
-import type { RunImportNfoResponse, ToolArgsParam, CleanupDataResponse } from "@/client/types.gen"
+import type {
+  CleanupDataResponse,
+  RunImportNfoResponse,
+  ToolArgsParam,
+} from "@/client/types.gen"
 import { defineStore } from "pinia"
 import { useTaskStore } from "./task.store"
 import { useToastStore } from "./toast.store"
@@ -57,15 +61,15 @@ export const useToolStore = defineStore("tool-store", {
       }
     },
 
-    async cleanupData(forceDelete: boolean = false) {
+    async cleanupData(forceDelete = false) {
       this.cleaningInProgress = true
       try {
         const toastStore = useToastStore()
 
         const response: CleanupDataResponse = await ToolsService.cleanupData({
           requestBody: {
-            arg1: forceDelete ? "true" : "false"
-          }
+            arg1: forceDelete ? "true" : "false",
+          },
         })
         toastStore.success("清理数据成功")
         return response
@@ -73,9 +77,7 @@ export const useToolStore = defineStore("tool-store", {
         console.error("Error cleaning data:", error)
         const toastStore = useToastStore()
         toastStore.error(
-          error instanceof Error
-            ? error.message
-            : "清理数据失败: 未知错误",
+          error instanceof Error ? error.message : "清理数据失败: 未知错误",
         )
       } finally {
         this.cleaningInProgress = false
