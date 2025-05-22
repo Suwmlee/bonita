@@ -22,7 +22,8 @@ def create_app() -> FastAPI:
     current_app = FastAPI(
         title=settings.PROJECT_NAME,
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
-        generate_unique_id_function=custom_generate_unique_id
+        generate_unique_id_function=custom_generate_unique_id,
+        version=__version__
     )
 
     # Set all CORS enabled origins

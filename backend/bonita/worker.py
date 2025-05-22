@@ -21,6 +21,9 @@ def create_celery():
     celery.conf.update(worker_send_task_events=False)
     celery.conf.update(worker_prefetch_multiplier=1)
     celery.conf.update(broker_connection_retry_on_startup=True)  # 启动时重试代理连接
+    celery.conf.update(worker_log_format=settings.LOGGING_FORMAT)  # 日志格式
+    celery.conf.update(worker_task_log_format=settings.LOGGING_FORMAT)  # 任务日志格式
+    celery.conf.update(worker_logfile=settings.LOGGING_LOCATION)  # 日志文件路径
 
     # Set up scheduled tasks
     celery.conf.beat_schedule = {
