@@ -13,6 +13,7 @@ export default {
     tools: "工具",
     serviceSettings: "服务设置",
     userSettings: "用户设置",
+    logs: "系统日志",
   },
   common: {
     save: "保存",
@@ -43,6 +44,7 @@ export default {
     editTitle: "编辑",
     addTitle: "添加",
     actions: "操作",
+    clearFilters: "清除筛选",
   },
   auth: {
     login: "登录",
@@ -322,6 +324,25 @@ export default {
       sortUpdatetime: "更新时间",
       sortCreatetime: "创建时间",
     },
+    logs: {
+      title: "系统日志",
+      level: "日志级别",
+      module: "模块名称",
+      message: "消息",
+      time: "时间",
+      search: "关键词搜索",
+      realtime: "实时日志",
+      refresh: "刷新",
+      clear: "清空",
+      realtimeAlert: "正在显示实时日志，历史日志已被清空",
+      totalItems: "总计 {count} 条记录",
+      itemsPerPage: "每页显示",
+      autoScroll: "自动滚动",
+      noLogs: "暂无日志",
+      reconnect: "重新连接",
+      connecting: "正在连接日志服务器...",
+      disconnected: "已断开与日志服务器的连接，请点击重新连接尝试"
+    },
   },
   components: {
     metadata: {
@@ -481,5 +502,17 @@ export default {
       selectedItem: "已选项目",
       folderSelected: "(已选择文件夹)",
     },
+  },
+  logs: {
+    title: "系统日志",
+    level: "日志级别",
+    module: "模块名称",
+    message: "消息",
+    time: "时间",
+    search: "关键词搜索",
+    realtime: "实时日志",
+    refresh: "刷新",
+    clear: "清空",
+    realtimeAlert: "正在显示实时日志，历史日志已被清空",
   },
 }

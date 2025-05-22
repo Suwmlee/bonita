@@ -47,6 +47,11 @@ const { t } = useI18n()
     to: '/settings/service',
   }" />
   <VerticalNavLink :item="{
+    title: t('navitems.logs'),
+    icon: 'bxs-file-doc',
+    to: '/settings/logs',
+  }" />
+  <VerticalNavLink :item="{
     title: t('navitems.userSettings'),
     icon: 'bxs-user-detail',
     to: '/settings/user',

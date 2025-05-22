@@ -2,6 +2,7 @@ import blanklayout from "@/layouts/blank.vue"
 import defaultlayout from "@/layouts/default.vue"
 import DashboardPage from "@/pages/Dashboard.vue"
 import LoginPage from "@/pages/Login.vue"
+import LogsPage from "@/pages/Logs.vue"
 import MediaitemPage from "@/pages/Mediaitem.vue"
 import MetadataPage from "@/pages/Metadata.vue"
 import RecordsPage from "@/pages/Records.vue"
@@ -81,6 +82,11 @@ export const routes = [
         path: "service",
         meta: { requiresAuth: true },
         component: ServiceSettingsPage,
+      },
+      {
+        path: "logs",
+        meta: { requiresAuth: true },
+        component: LogsPage,
       },
     ],
   },

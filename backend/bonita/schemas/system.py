@@ -76,3 +76,19 @@ class TransmissionSettings(BaseModel):
     transmission_source_path: Optional[str] = ""
     transmission_dest_path: Optional[str] = ""
     enabled: Optional[bool] = False
+
+
+class LogEntry(BaseModel):
+    """单条日志信息"""
+    timestamp: str
+    level: str
+    module: str
+    message: str
+
+
+class LogResponse(BaseModel):
+    """日志响应"""
+    logs: list[LogEntry]
+    total_lines: int
+    current_page: int
+    total_pages: int
