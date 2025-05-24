@@ -211,7 +211,7 @@ class RecordService:
 
         return trans_records, count
 
-    def get_records_to_cleanup(self) -> List[TransRecords]:
+    def get_records_to_cleanup(self, force: bool = False) -> List[TransRecords]:
         """获取需要清理的记录（过期或标记为已删除源文件的记录）
         在返回结果前，会检查文件是否真的不存在，如果文件仍然存在，会更新记录状态并延长过期时间
         忽略标记为ignored的记录
@@ -228,7 +228,7 @@ class RecordService:
         potential_records = self.session.query(TransRecords).filter(
             or_(
                 TransRecords.srcdeleted == True,
-                TransRecords.deadtime.isnot(None) & (TransRecords.deadtime <= current_time)
+                TransRecords.deadtime.isnot(None)
             ),
             TransRecords.ignored == False
         ).all()
@@ -239,19 +239,23 @@ class RecordService:
             src_exists = record.srcpath and os.path.exists(record.srcpath)
             dest_exists = record.destpath and os.path.exists(record.destpath)
             # 更新源文件是否存在的状态
-            record.srcdeleted = not src_exists
+            if record.srcdeleted == src_exists:
+                record.srcdeleted = not src_exists
+                self.session.commit()
             # 根据源文件和目标文件状态决定是否需要清理
             if not src_exists:
                 # 源文件不存在，需要清理
                 records_to_cleanup.append(record)
-            elif not dest_exists and record.deadtime and record.deadtime <= current_time:
-                # 目标文件不存在且已超过过期时间，需要清理
-                records_to_cleanup.append(record)
+            elif not dest_exists and record.deadtime:
+                # 如果有强制标记，忽视时间限制，直接清理
+                # 否则，目标文件不存在且已超过过期时间，需要清理
+                if force or record.deadtime <= current_time:
+                    records_to_cleanup.append(record)
             else:
                 # 文件都存在或未超过过期时间，不需要清理，重置状态
                 record.deleted = False
                 record.deadtime = None
-            self.session.commit()
+                self.session.commit()
 
         return records_to_cleanup
 

@@ -137,16 +137,17 @@ class TransmissionClient(BaseDownloadClient, metaclass=Singleton):
             torrents_info.append(info)
         return torrents_info
 
-    def searchByName(self, name: str) -> List[torrent_info]:
+    def searchByName(self, name: str, cached_torrents: Optional[List[torrent_info]] = None) -> List[torrent_info]:
         """Search torrents by name
 
         Args:
             name: Torrent name to search for
+            cached_torrents: Optional list of pre-fetched torrents to search through
 
         Returns:
             List[T]: List of matching torrent objects
         """
-        torrents = self.getTorrents(fields=self.fields)
+        torrents = cached_torrents if cached_torrents is not None else self.getTorrents(fields=self.fields)
         results = []
         for i in torrents:
             if i.name == name:
@@ -166,15 +167,40 @@ class TransmissionClient(BaseDownloadClient, metaclass=Singleton):
             return path
         return path.replace(self.dest_path, self.source_path)
 
-    def searchByPath(self, path: str) -> List[torrent_info]:
-        """ 逐级搜索种子(最多3次)
+    def searchByPathFromTorrents(self, path: str, cached_torrents: List[torrent_info]) -> List[torrent_info]:
+        """搜索路径对应的种子，使用预先获取的种子列表
 
         Args:
             path: Path to search for
+            cached_torrents: List of pre-fetched torrents to search through
 
         Returns:
-            List[T]: List of matching torrent objects
+            List[torrent_info]: List of matching torrent objects
         """
+        path = self.map_path(path)
+        retry = 3
+        for i in range(retry):
+            name = os.path.basename(path)
+            tt = self.searchByName(name, cached_torrents)
+            if len(tt):
+                return tt
+            else:
+                path = os.path.dirname(path)
+        return []
+
+    def searchByPath(self, path: str, cached_torrents: Optional[List[torrent_info]] = None) -> List[torrent_info]:
+        """逐级搜索种子(最多3次)
+
+        Args:
+            path: Path to search for
+            cached_torrents: Optional list of pre-fetched torrents to search through
+
+        Returns:
+            List[torrent_info]: List of matching torrent objects
+        """
+        if cached_torrents is not None:
+            return self.searchByPathFromTorrents(path, cached_torrents)
+            
         path = self.map_path(path)
         retry = 3
         for i in range(retry):

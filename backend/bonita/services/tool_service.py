@@ -76,17 +76,17 @@ class ToolService:
             message="sync emby watch history success"
         )
 
-    def cleanup_data(self, delete_files: bool) -> schemas.Response:
+    def cleanup_data(self, force_flag: bool) -> schemas.Response:
         """清理下载器、转移记录和实际文件
 
         Args:
-            delete_files: 是否删除文件
+            force_flag: 是否强制删除文件
 
         Returns:
             schemas.Response: 操作响应
         """
         logger.info("Check and cleanup data")
-        records_to_cleanup = self.record_service.get_records_to_cleanup()
+        records_to_cleanup = self.record_service.get_records_to_cleanup(force_flag)
         logger.info(f"Found {len(records_to_cleanup)} records to cleanup")
         # 如果没有需要清理的记录，直接返回成功
         if not records_to_cleanup:
@@ -98,6 +98,8 @@ class ToolService:
         # 初始化Transmission客户端
         transmission_client = TransmissionClient()
         transmission_settings = self.setting_service.get_transmission_settings()
+        all_torrents = []
+        
         if transmission_settings.get("enabled"):
             # 初始化Transmission客户端
             transmission_url = transmission_settings.get("transmission_host", "")
@@ -112,6 +114,10 @@ class ToolService:
                 source_path=transmission_source_path,
                 dest_path=transmission_dest_path
             )
+            
+            # 预先获取所有种子，避免重复查询
+            all_torrents = transmission_client.getTorrents(fields=transmission_client.fields)
+            logger.info(f"Fetched {len(all_torrents)} torrents from Transmission")
         else:
             logger.warning("Transmission is not enabled, skipping torrent cleanup")
 
@@ -121,11 +127,12 @@ class ToolService:
         # 处理每条记录
         for record in records_to_cleanup:
             try:
+                self.record_service.delete_records([record.id], True)
                 # 查找对应的种子
                 if transmission_settings.get("enabled") and record.srcpath:
-                    torrents = transmission_client.searchByPath(record.srcpath)
+                    torrents = transmission_client.searchByPath(record.srcpath, cached_torrents=all_torrents)
                     # 如果找到匹配的种子且需要删除种子文件
-                    if torrents and delete_files:
+                    if torrents:
                         for torrent in torrents:
                             # 检查种子目录是否还存在视频文件
                             torrent_directory = torrent.downloadDir
@@ -137,10 +144,6 @@ class ToolService:
                             logger.info(f"Deleting torrent: {torrent.name}")
                             transmission_client.deleteTorrent(torrent.id, delete=True)
                             deleted_count += 1
-                    # 如果找到匹配的种子但不需要删除文件，只记录日志
-                    elif torrents:
-                        for torrent in torrents:
-                            logger.info(f"Found matching torrent: {torrent.name} (not deleting)")
             except Exception as e:
                 logger.error(f"Error processing record {record.id}: {str(e)}")
 
