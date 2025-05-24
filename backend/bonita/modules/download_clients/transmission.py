@@ -154,7 +154,7 @@ class TransmissionClient(BaseDownloadClient, metaclass=Singleton):
                 results.append(i)
         return results
 
-    def map_path(self, path: str) -> str:
+    def map_path(self, path: str, inverse: bool = False) -> str:
         """Maps path between Docker container and host
 
         Args:
@@ -165,7 +165,10 @@ class TransmissionClient(BaseDownloadClient, metaclass=Singleton):
         """
         if not self.source_path or not self.dest_path:
             return path
-        return path.replace(self.dest_path, self.source_path)
+        if inverse:
+            return path.replace(self.source_path, self.dest_path)
+        else:
+            return path.replace(self.dest_path, self.source_path)
 
     def searchByPathFromTorrents(self, path: str, cached_torrents: List[torrent_info]) -> List[torrent_info]:
         """搜索路径对应的种子，使用预先获取的种子列表

@@ -1,4 +1,5 @@
 import logging
+import os
 from sqlalchemy.orm import Session
 
 from bonita import schemas
@@ -135,7 +136,8 @@ class ToolService:
                     if torrents:
                         for torrent in torrents:
                             # 检查种子目录是否还存在视频文件
-                            torrent_directory = torrent.downloadDir
+                            downfolder = os.path.join(torrent.downloadDir, torrent.name)
+                            torrent_directory = transmission_client.map_path(downfolder, inverse=True)
                             if torrent_directory and has_video_files(torrent_directory):
                                 logger.warning(
                                     f"Skipping deletion of torrent with video files: {torrent.name} at {torrent_directory}")
