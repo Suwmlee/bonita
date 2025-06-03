@@ -12,6 +12,9 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
 
@@ -27,6 +30,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v3
         with:
+          context: .
+          file: ./docker/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: suwmlee/bonita:${{ github.event.inputs.publish_tag }}

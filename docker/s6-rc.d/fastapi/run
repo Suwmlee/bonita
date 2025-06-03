@@ -1,0 +1,6 @@
+#!/usr/bin/with-contenv bash
+
+cd /app/backend
+
+echo "[fastapi] 启动 FastAPI 服务"
+exec s6-setuidgid bonita uvicorn bonita.main:app --host 0.0.0.0 --port 8000 
