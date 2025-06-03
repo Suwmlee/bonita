@@ -22,14 +22,14 @@ ENV PGID=0
 ENV S6_BEHAVIOUR_IF_STAGE2_FAILS=2
 ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
 
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime &&
-    echo $TZ >/etc/timezone
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
+    echo $TZ > /etc/timezone
 
 # 安装 s6-overlay
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
-RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz &&
-    tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz &&
+RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz && \
+    tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz && \
     rm -rf /tmp/*
 
 WORKDIR /app/backend
@@ -44,16 +44,16 @@ COPY ../backend/ .
 COPY --from=frontend-build /app/frontend/dist /app/frontend/dist
 
 # 安装精简版nginx
-RUN apt-get update &&
-    apt-get install -y --no-install-recommends nginx curl &&
-    apt-get clean &&
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends nginx curl && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 # 创建应用用户和相关目录
-RUN groupadd -g 1000 bonita &&
-    useradd -u 1000 -g bonita -d /app -s /bin/bash bonita &&
-    mkdir -p /var/log/nginx /var/lib/nginx /var/run &&
-    mkdir -p /var/lib/nginx/body /var/lib/nginx/fastcgi /var/lib/nginx/proxy /var/lib/nginx/scgi /var/lib/nginx/uwsgi &&
+RUN groupadd -g 1000 bonita && \
+    useradd -u 1000 -g bonita -d /app -s /bin/bash bonita && \
+    mkdir -p /var/log/nginx /var/lib/nginx /var/run && \
+    mkdir -p /var/lib/nginx/body /var/lib/nginx/fastcgi /var/lib/nginx/proxy /var/lib/nginx/scgi /var/lib/nginx/uwsgi && \
     chown -R bonita:bonita /app /var/log/nginx /var/lib/nginx /var/run
 
 # 复制nginx配置
