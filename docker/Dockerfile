@@ -28,9 +28,13 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
 # 安装 s6-overlay
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
-RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends xz-utils && \
+    tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz && \
     tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz && \
-    rm -rf /tmp/*
+    rm -rf /tmp/* && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/backend
 
@@ -57,11 +61,11 @@ RUN groupadd -g 1000 bonita && \
     chown -R bonita:bonita /app /var/log/nginx /var/lib/nginx /var/run
 
 # 复制nginx配置
-COPY nginx.conf /etc/nginx/nginx.conf
+COPY ../docker/nginx.conf /etc/nginx/nginx.conf
 
 # 复制 s6-overlay 配置文件
-COPY --chmod=755 cont-init.d /etc/cont-init.d/
-COPY --chmod=755 s6-rc.d /etc/s6-overlay/s6-rc.d/
+COPY --chmod=755 ../docker/cont-init.d /etc/cont-init.d/
+COPY --chmod=755 ../docker/s6-rc.d /etc/s6-overlay/s6-rc.d/
 
 EXPOSE 12346
 
