@@ -1,0 +1,31 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+PUID=${PUID:-911}
+PGID=${PGID:-911}
+
+groupmod -o -g "$PGID" tomoki
+usermod -o -u "$PUID" tomoki
+
+echo "
+-------------------------------------
+ /$$                           /$$   /$$              
+| $$                          |__/  | $$              
+| $$$$$$$   /$$$$$$  /$$$$$$$  /$$ /$$$$$$    /$$$$$$ 
+| $$__  $$ /$$__  $$| $$__  $$| $$|_  $$_/   |____  $$
+| $$  \ $$| $$  \ $$| $$  \ $$| $$  | $$      /$$$$$$$
+| $$  | $$| $$  | $$| $$  | $$| $$  | $$ /$$ /$$__  $$
+| $$$$$$$/|  $$$$$$/| $$  | $$| $$  |  $$$$/|  $$$$$$$
+|_______/  \______/ |__/  |__/|__/   \___/   \_______/
+
+Starting with
+User uid:    $(id -u tomoki)
+User gid:    $(id -g tomoki)
+-------------------------------------
+"
+
+chown tomoki:tomoki /config
+chown tomoki:tomoki /app
+
+chown -R tomoki /app/backend/data
+chmod -R u+rwx /app/backend/data

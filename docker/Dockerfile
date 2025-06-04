@@ -19,8 +19,7 @@ ENV MAX_CONCURRENCY=5
 ENV PUID=0
 ENV PGID=0
 # s6-overlay 环境变量
-ENV S6_BEHAVIOUR_IF_STAGE2_FAILS=2
-ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
+ENV S6_KEEP_ENV=1
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
     echo $TZ > /etc/timezone
@@ -54,18 +53,17 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # 创建应用用户和相关目录
-RUN groupadd -g 1000 bonita && \
-    useradd -u 1000 -g bonita -d /app -s /bin/bash bonita && \
-    mkdir -p /var/log/nginx /var/lib/nginx /var/run && \
-    mkdir -p /var/lib/nginx/body /var/lib/nginx/fastcgi /var/lib/nginx/proxy /var/lib/nginx/scgi /var/lib/nginx/uwsgi && \
-    chown -R bonita:bonita /app /var/log/nginx /var/lib/nginx /var/run
+RUN echo "**** create tomoki user and make folders ****" && \
+    groupmod -g 1000 users && \
+    useradd -u 911 -U -d /config -s /bin/false tomoki && \
+    usermod -G users tomoki && \
+    mkdir /config
 
 # 复制nginx配置
 COPY ../docker/nginx.conf /etc/nginx/nginx.conf
 
 # 复制 s6-overlay 配置文件
-COPY --chmod=755 ../docker/cont-init.d /etc/cont-init.d/
-COPY --chmod=755 ../docker/s6-rc.d /etc/s6-overlay/s6-rc.d/
+COPY ../docker/s6-rc.d /etc/s6-overlay/s6-rc.d/
 
 EXPOSE 12346
 
