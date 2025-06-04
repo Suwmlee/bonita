@@ -1,4 +1,4 @@
 #!/usr/bin/with-contenv bash
 
 echo "[nginx] 启动 Nginx 服务"
-exec s6-setuidgid bonita nginx -g "daemon off;" 
+exec s6-setuidgid bonita nginx -g "daemon off;"

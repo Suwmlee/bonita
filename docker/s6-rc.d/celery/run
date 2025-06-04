@@ -13,4 +13,4 @@ exec s6-setuidgid bonita celery -A bonita.worker.celery worker \
     --pool threads \
     --concurrency ${MAX_CONCURRENCY} \
     --events \
-    --loglevel DEBUG 
+    --loglevel DEBUG
