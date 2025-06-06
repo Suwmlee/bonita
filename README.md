@@ -22,4 +22,4 @@
 
 ### 部署
 
-详细参考 [Bonita](https://bonita.starunits.net/zh/guide/)
+参考 [Bonita](https://bonita.starunits.net/zh/guide/)
