@@ -92,7 +92,7 @@ async def update_metadata(
 
     update_dict = metadata.model_dump(exclude_unset=True)
     if update_dict.get("cover") and update_dict["cover"].startswith(("http://", "https://")):
-        update_dict["cover"] = process_cached_file(session, update_dict["cover"], update_dict["number"])
+        process_cached_file(session, update_dict["cover"], update_dict["number"])
 
     db_metadata.update(session, update_dict)
     session.commit()
