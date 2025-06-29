@@ -128,18 +128,20 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     logger.info(f"[-] ignore {original_file.full_path}")
                     continue
                 record.task_id = task_info.id
-                record.success = False
+                record.success = None
                 if task_info.sc_enabled:
                     logger.info(f"[-] need scraping")
                     scraping_conf = session.query(ScrapingConfig).filter(ScrapingConfig.id == task_info.sc_id).first()
                     if not scraping_conf:
                         logger.info(f"[-] scraping config not found")
+                        record.success = False
                         continue
                     scraping_task = celery_scrapping.apply(args=[original_file.full_path, scraping_conf.to_dict()])
                     with allow_join_result():
                         metabase_json = scraping_task.get()
                     if not metabase_json:
                         logger.error(f"[-] scraping failed {original_file.full_path}")
+                        record.success = False
                         continue
                     metamixed = schemas.MetadataMixed.model_validate(metabase_json)
 
