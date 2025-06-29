@@ -261,6 +261,7 @@ export default {
       itemsPerPage: "每页显示",
       totalRecords: "总计 {count} 条记录",
       name: "名称",
+      status: "状态",
       path: "路径",
       destPath: "目标路径",
       season: "季",

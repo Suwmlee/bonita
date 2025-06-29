@@ -272,6 +272,7 @@ export default {
       itemsPerPage: "Items per page",
       totalRecords: "Total {count} records",
       name: "Name",
+      status: "Status",
       path: "Path",
       destPath: "Destination Path",
       season: "Season",

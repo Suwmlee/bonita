@@ -14,6 +14,7 @@ class TransferRecordBase(BaseModel):
     srcfolder: str
     task_id: int
 
+    success: Optional[bool] = False
     ignored: bool = False
     locked: bool = False
     deleted: bool = False

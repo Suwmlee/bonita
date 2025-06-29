@@ -2606,6 +2606,18 @@ export const $TransferRecordPublic = {
             type: 'integer',
             title: 'Task Id'
         },
+        success: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Success',
+            default: false
+        },
         ignored: {
             type: 'boolean',
             title: 'Ignored',

@@ -16,8 +16,10 @@ class TransRecords(Base):
     srcfolder = Column(String, default='')
     task_id = Column(Integer, default=0, server_default='0', comment='任务ID')
 
-    ignored = Column(Boolean, default=False)
-    locked = Column(Boolean, default=False)
+    success = Column(Boolean, default=False, comment='是否成功')
+    ignored = Column(Boolean, default=False, comment='是否忽略')
+    locked = Column(Boolean, default=False, comment='是否锁定')
+
     deleted = Column(Boolean, default=False, comment='实际目标路径文件已经删除')
     srcdeleted = Column(Boolean, default=False, server_default='0', comment='实际源文件已经删除')
 

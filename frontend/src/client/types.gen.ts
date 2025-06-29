@@ -410,6 +410,7 @@ export type TransferRecordPublic = {
     srcpath: string;
     srcfolder: string;
     task_id: number;
+    success?: boolean | null;
     ignored?: boolean;
     locked?: boolean;
     deleted?: boolean;

@@ -128,6 +128,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     logger.info(f"[-] ignore {original_file.full_path}")
                     continue
                 record.task_id = task_info.id
+                record.success = False
                 if task_info.sc_enabled:
                     logger.info(f"[-] need scraping")
                     scraping_conf = session.query(ScrapingConfig).filter(ScrapingConfig.id == task_info.sc_id).first()
@@ -161,7 +162,6 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                             os.remove(record.destpath)
                     # 更新
                     record.destpath = destpath
-                    record.deleted = False
                     logger.info(f"[-] scraping transfer end")
                 else:
                     logger.info(f"[-] start transfer")
@@ -187,8 +187,10 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     record.top_folder = target_file.top_folder
                     record.second_folder = target_file.second_folder
                     record.destpath = target_file.full_path
-                    record.deleted = False
                     logger.info(f"[-] transfer end")
+                # 更新 record 状态
+                record.deleted = False
+                record.success = True
         except Exception as e:
             logger.error(e)
         finally:

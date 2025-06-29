@@ -83,11 +83,11 @@ const headers = [
     sortable: true,
   },
   {
-    title: t("pages.records.path"),
+    title: t("pages.records.status"),
     align: "center" as "start" | "center" | "end",
-    key: "transfer_record.srcpath",
-    width: 200,
-    sortable: true,
+    key: "transfer_record.success",
+    width: 100,
+    sortable: false,
   },
   {
     title: t("pages.records.destPath"),
@@ -423,7 +423,7 @@ onMounted(() => {
         <tr :class="{ 'deleted-row': item.transfer_record.deleted || item.transfer_record.srcdeleted }">
           <td><v-checkbox v-model="selected" :value="item.transfer_record.id" multiple hide-details></v-checkbox></td>
           <td>
-            <v-tooltip :text="item.transfer_record.srcname">
+            <v-tooltip :text="item.transfer_record.srcpath">
               <template v-slot:activator="{ props }">
                 <span v-bind="props" class="text-truncate d-inline-block" style="max-width: 230px">
                   {{ item.transfer_record.srcname }}
@@ -432,14 +432,17 @@ onMounted(() => {
             </v-tooltip>
           </td>
           <td>
-            <v-tooltip :text="item.transfer_record.srcpath">
-              <template v-slot:activator="{ props }">
-                <span v-bind="props" class="text-truncate d-inline-block" style="max-width: 180px"
-                  :class="{ 'text-decoration-line-through': item.transfer_record.srcdeleted }">
-                  {{ item.transfer_record.srcpath }}
-                </span>
-              </template>
-            </v-tooltip>
+            <v-chip 
+              v-if="item.transfer_record.success !== null"
+              :color="item.transfer_record.success ? 'success' : 'error'" 
+              variant="flat" 
+              size="small"
+              class="status-chip">
+              <v-icon 
+                :icon="item.transfer_record.success ? 'bx-check' : 'bx-x'" 
+                size="small">
+              </v-icon>
+            </v-chip>
           </td>
           <td>
             <v-tooltip :text="item.transfer_record.destpath || ''">
@@ -540,6 +543,13 @@ onMounted(() => {
 .v-chip.tag-chip .v-chip__content {
   padding: 0;
   line-height: 20px;
+}
+
+.status-chip {
+  min-width: 32px;
+  width: 32px;
+  height: 24px;
+  justify-content: center;
 }
 
 .max-w-xs {
