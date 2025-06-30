@@ -78,32 +78,38 @@ onBeforeUnmount(() => {
             <div v-if="runningTasksWithDetails.length === 0" class="text-center pa-4">
               <p class="text-subtitle-1">{{ t('pages.dashboard.noRunningTasks') }}</p>
             </div>
-            <VTable v-else>
-              <thead>
-                <tr>
-                  <th>{{ t('pages.dashboard.taskName') }}</th>
-                  <th>{{ t('pages.dashboard.status') }}</th>
-                  <th>{{ t('pages.dashboard.source') }}</th>
-                  <th>{{ t('pages.dashboard.destination') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="task in runningTasksWithDetails" :key="task.task_id">
-                  <td>{{ task.name || task.details?.name || task.task_type || t('pages.dashboard.unknownTask') }}</td>
-                  <td>
-                    <VChip 
-                      :color="taskStore.getStatusColor(task.status)" 
-                      size="small" 
-                      class="mr-2"
-                    >
-                      {{ taskStore.getStatusText(task.status) }}
-                    </VChip>
-                  </td>
-                  <td>{{ task.details?.source_folder || task.detail || '-' }}</td>
-                  <td>{{ task.details?.output_folder || '-' }}</td>
-                </tr>
-              </tbody>
-            </VTable>
+            <div v-else>
+              <VTable class="active-tasks-table">
+                <thead>
+                  <tr>
+                    <th>{{ t('pages.dashboard.taskName') }}</th>
+                    <th>{{ t('pages.dashboard.status') }}</th>
+                    <th>{{ t('pages.dashboard.source') }}</th>
+                    <th>{{ t('pages.dashboard.destination') }}</th>
+                  </tr>
+                </thead>
+              </VTable>
+              <div class="active-tasks-container">
+                <VTable class="active-tasks-table">
+                  <tbody>
+                    <tr v-for="task in runningTasksWithDetails" :key="task.task_id">
+                      <td>{{ task.name || task.details?.name || task.task_type || t('pages.dashboard.unknownTask') }}</td>
+                      <td>
+                        <VChip 
+                          :color="taskStore.getStatusColor(task.status)" 
+                          size="small" 
+                          class="mr-2"
+                        >
+                          {{ taskStore.getStatusText(task.status) }}
+                        </VChip>
+                      </td>
+                      <td>{{ task.details?.source_folder || task.detail || '-' }}</td>
+                      <td>{{ task.details?.output_folder || '-' }}</td>
+                    </tr>
+                  </tbody>
+                </VTable>
+              </div>
+            </div>
           </VCardText>
         </VCard>
       </VCol>
@@ -114,43 +120,49 @@ onBeforeUnmount(() => {
             <div v-if="historicalTasksWithDetails.length === 0" class="text-center pa-4">
               <p class="text-subtitle-1">{{ t('pages.dashboard.noHistoricalTasks') }}</p>
             </div>
-            <VTable v-else>
-              <thead>
-                <tr>
-                  <th>{{ t('pages.dashboard.taskName') }}</th>
-                  <th>{{ t('pages.dashboard.status') }}</th>
-                  <th>{{ t('pages.dashboard.source') }}</th>
-                  <th>{{ t('pages.dashboard.errorMessage') }}</th>
-                  <th>{{ t('pages.dashboard.completedTime') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="task in historicalTasksWithDetails" :key="task.task_id">
-                  <td>{{ task.name || task.details?.name || task.task_type || t('pages.dashboard.unknownTask') }}</td>
-                  <td>
-                    <VChip 
-                      :color="taskStore.getStatusColor(task.status)" 
-                      size="small" 
-                      class="mr-2"
-                    >
-                      {{ taskStore.getStatusText(task.status) }}
-                    </VChip>
-                  </td>
-                  <td>{{ task.details?.source_folder || task.detail || '-' }}</td>
-                  <td>
-                    <span v-if="task.error_message" class="text-error text-caption">
-                      {{ task.error_message }}
-                    </span>
-                    <span v-else class="text-caption">-</span>
-                  </td>
-                  <td>
-                    <span class="text-caption">
-                      {{ new Date(task.updatetime || task.created_at || '').toLocaleString() }}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </VTable>
+            <div v-else>
+              <VTable class="historical-tasks-table">
+                <thead>
+                  <tr>
+                    <th>{{ t('pages.dashboard.taskName') }}</th>
+                    <th>{{ t('pages.dashboard.status') }}</th>
+                    <th>{{ t('pages.dashboard.source') }}</th>
+                    <th>{{ t('pages.dashboard.errorMessage') }}</th>
+                    <th>{{ t('pages.dashboard.completedTime') }}</th>
+                  </tr>
+                </thead>
+              </VTable>
+              <div class="historical-tasks-container">
+                <VTable class="historical-tasks-table">
+                  <tbody>
+                    <tr v-for="task in historicalTasksWithDetails" :key="task.task_id">
+                      <td>{{ task.name || task.details?.name || task.task_type || t('pages.dashboard.unknownTask') }}</td>
+                      <td>
+                        <VChip 
+                          :color="taskStore.getStatusColor(task.status)" 
+                          size="small" 
+                          class="mr-2"
+                        >
+                          {{ taskStore.getStatusText(task.status) }}
+                        </VChip>
+                      </td>
+                      <td>{{ task.details?.source_folder || task.detail || '-' }}</td>
+                      <td>
+                        <span v-if="task.error_message" class="text-error text-caption">
+                          {{ task.error_message }}
+                        </span>
+                        <span v-else class="text-caption">-</span>
+                      </td>
+                      <td>
+                        <span class="text-caption">
+                          {{ new Date(task.updatetime || task.created_at || '').toLocaleString() }}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </VTable>
+              </div>
+            </div>
           </VCardText>
         </VCard>
       </VCol>
@@ -161,5 +173,97 @@ onBeforeUnmount(() => {
 <style scoped>
 .v-table {
   border-radius: 4px;
+}
+
+.historical-tasks-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.historical-tasks-table thead th:nth-child(1),
+.historical-tasks-table tbody td:nth-child(1) {
+  width: 25%;
+}
+
+.historical-tasks-table thead th:nth-child(2),
+.historical-tasks-table tbody td:nth-child(2) {
+  width: 15%;
+}
+
+.historical-tasks-table thead th:nth-child(3),
+.historical-tasks-table tbody td:nth-child(3) {
+  width: 20%;
+}
+
+.historical-tasks-table thead th:nth-child(4),
+.historical-tasks-table tbody td:nth-child(4) {
+  width: 25%;
+}
+
+.historical-tasks-table thead th:nth-child(5),
+.historical-tasks-table tbody td:nth-child(5) {
+  width: 15%;
+}
+
+.active-tasks-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.active-tasks-table thead th:nth-child(1),
+.active-tasks-table tbody td:nth-child(1) {
+  width: 30%;
+}
+
+.active-tasks-table thead th:nth-child(2),
+.active-tasks-table tbody td:nth-child(2) {
+  width: 20%;
+}
+
+.active-tasks-table thead th:nth-child(3),
+.active-tasks-table tbody td:nth-child(3) {
+  width: 25%;
+}
+
+.active-tasks-table thead th:nth-child(4),
+.active-tasks-table tbody td:nth-child(4) {
+  width: 25%;
+}
+
+.active-tasks-container {
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+}
+
+.active-tasks-table:first-child {
+  border-radius: 4px 4px 0 0;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.active-tasks-container .active-tasks-table {
+  border: none;
+  margin-bottom: 0;
+}
+
+.historical-tasks-container {
+  max-height: calc(100vh - 550px);
+  min-height: 200px;
+  overflow-y: auto;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+}
+
+.historical-tasks-table:first-child {
+  border-radius: 4px 4px 0 0;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.historical-tasks-container .historical-tasks-table {
+  border: none;
+  margin-bottom: 0;
 }
 </style>

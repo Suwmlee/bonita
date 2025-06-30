@@ -179,14 +179,13 @@ export const useTaskStore = defineStore("task-store", {
               .values(),
           )
 
-          // Sort completed tasks by update time (newest first) and keep only top 10
+          // Sort completed tasks by update time (newest first)
           const sortedCompletedTasks = completedTasksOnly
             .sort((a, b) => {
               const timeA = new Date(a.updatetime || a.created_at || 0).getTime()
               const timeB = new Date(b.updatetime || b.created_at || 0).getTime()
               return timeB - timeA // Newest first
             })
-            .slice(0, 10) // Keep only top 10
 
           // 使用通用函数为任务添加name属性
           this.runningTasks = this.addTaskNames(uniqueRunningTasks)

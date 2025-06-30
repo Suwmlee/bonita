@@ -1,11 +1,10 @@
-import json
 import logging
 from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from bonita import schemas, main
 from bonita.api.deps import SessionDep
-from bonita.db.models.task import TransferConfig, CeleryTask
+from bonita.db.models.task import TransferConfig
 from bonita.celery_tasks.tasks import celery_transfer_entry, celery_transfer_group
 from bonita.services.celery_service import CeleryTaskService
 from bonita.core.enums import TaskStatusEnum
@@ -49,12 +48,15 @@ async def run_transfer_task(
 
 
 @router.get("/status", response_model=list[schemas.TaskStatus])
-def get_all_tasks_status(session: SessionDep) -> Any:
+def get_all_tasks_status(
+    session: SessionDep, 
+    limit: int = 100
+) -> Any:
     """ 获取所有任务状态
     """
     celery_service = CeleryTaskService(session)
-    # 获取所有活跃任务（进行中和等待中的任务）
-    active_tasks = celery_service.get_all_tasks()
+    # 获取任务（按创建时间倒序，限制数量）
+    active_tasks = celery_service.get_all_tasks(limit=limit)
 
     all_tasks = []
     for task in active_tasks:
