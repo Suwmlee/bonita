@@ -9,6 +9,7 @@ from bonita.services.record_service import RecordService
 from bonita.services.setting_service import SettingService
 from bonita.modules.download_clients.transmission import TransmissionClient
 from bonita.utils.filehelper import has_video_files
+from bonita.core.enums import TaskStatusEnum
 
 logger = logging.getLogger(__name__)
 
@@ -37,13 +38,20 @@ class ToolService:
             return schemas.TaskStatus(
                 id=task.id,
                 name="import nfo",
-                status='ACTIVE'
+                status=TaskStatusEnum.PENDING,
+                task_type='ImportNFO',
+                progress=0.0,
+                step='任务已启动'
             )
         else:
             return schemas.TaskStatus(
                 id=None,
                 name="import nfo",
-                status='FAILED'
+                status=TaskStatusEnum.FAILURE,
+                task_type='ImportNFO',
+                progress=0.0,
+                step='参数错误',
+                error_message='缺少必要参数'
             )
 
     def emby_scan(self, folder_args: schemas.ToolArgsParam) -> schemas.TaskStatus:
@@ -60,7 +68,11 @@ class ToolService:
         return schemas.TaskStatus(
             id=None,
             name="emby scan",
-            status='FAILED'
+            status=TaskStatusEnum.FAILURE,
+            task_type='EmbyScan',
+            progress=0.0,
+            step='功能未实现',
+            error_message='该功能尚未实现'
         )
 
     def sync_emby_watch_history(self) -> schemas.Response:

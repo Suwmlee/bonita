@@ -5,8 +5,10 @@ from fastapi import APIRouter, HTTPException
 
 from bonita import schemas, main
 from bonita.api.deps import SessionDep
-from bonita.db.models.task import TransferConfig
+from bonita.db.models.task import TransferConfig, CeleryTask
 from bonita.celery_tasks.tasks import celery_transfer_entry, celery_transfer_group
+from bonita.services.celery_service import CeleryTaskService
+from bonita.core.enums import TaskStatusEnum
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -25,51 +27,46 @@ async def run_transfer_task(
         raise HTTPException(status_code=404, detail="Task not found")
     task_dict = task_conf.to_dict()
 
+    task_type = 'TransferAll'
+    detail = id
     if path_param.path:
         # 如果提供了path参数，针对指定路径运行任务
+        task_type = 'TransferGroup'
+        detail = path_param.path.strip()
         task = celery_transfer_group.delay(task_dict, path_param.path.strip(), True)
     else:
         task = celery_transfer_entry.delay(task_dict)
     return schemas.TaskStatus(id=task.id,
                               name=task_conf.name,
-                              transfer_config=task_conf.id,
-                              scraping_config=task_conf.sc_id if task_conf.sc_enabled else 0,
-                              status='ACTIVE')
+                              status=TaskStatusEnum.PENDING,
+                              task_type=task_type,
+                              detail=str(detail),
+                              progress=0.0,
+                              step='任务已启动')
 
 
 @router.get("/status", response_model=list[schemas.TaskStatus])
-def get_all_tasks_status() -> Any:
+def get_all_tasks_status(session: SessionDep) -> Any:
     """ 获取所有任务状态
     """
-    inspector = main.celery.control.inspect()
-    active_tasks = inspector.active() or {}
+    celery_service = CeleryTaskService(session)
+    # 获取所有活跃任务（进行中和等待中的任务）
+    active_tasks = celery_service.get_active_tasks()
 
     all_tasks = []
-    # 处理活跃任务
-    for worker, tasks in active_tasks.items():
-        for task in tasks:
-            args = task.get('args', [])
-            task_id = 0
-            task_scid = 0
-            try:
-                if isinstance(args, list) and len(args) > 0:
-                    # transferConfig是第一个参数
-                    first_arg = args[0]
-                    if isinstance(first_arg, dict):
-                        if 'id' in first_arg and 'sc_id' in first_arg:
-                            task_id = first_arg['id']
-                            if first_arg['sc_enabled']:
-                                task_scid = first_arg['sc_id']
-            except Exception as e:
-                print(f"Error extracting task info: {str(e)}")
-
-            all_tasks.append(schemas.TaskStatus(
-                id=task['id'],
-                name=task['name'],
-                transfer_config=task_id,
-                scraping_config=task_scid,
-                status='ACTIVE',
-                detail=json.dumps(args)
-            ))
+    for task in active_tasks:
+        all_tasks.append(schemas.TaskStatus(
+            id=task.task_id,
+            name=task.task_type or "unknown",
+            status=task.status,  # 直接传入枚举对象
+            detail=task.detail,  # 保持原有的detail内容
+            task_type=task.task_type,
+            progress=task.progress,
+            step=task.step,
+            result=task.result,
+            error_message=task.error_message,
+            created_at=task.created_at,
+            updatetime=task.updatetime
+        ))
 
     return all_tasks

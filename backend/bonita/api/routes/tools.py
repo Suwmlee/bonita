@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from bonita import schemas
 from bonita.api.deps import SessionDep
 from bonita.services.tool_service import ToolService
+from bonita.core.enums import TaskStatusEnum
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -21,7 +22,11 @@ async def run_import_nfo(
     else:
         return schemas.TaskStatus(id=None,
                                   name="import nfo",
-                                  status='FAILED')
+                                  status=TaskStatusEnum.FAILURE,
+                                  task_type='ImportNFO',
+                                  progress=0.0,
+                                  step='参数错误',
+                                  error_message='缺少必要参数')
 
 
 @router.get("/embyscan", response_model=schemas.TaskStatus)

@@ -1,19 +1,26 @@
 from typing import List, Optional
+from datetime import datetime
 from pydantic import BaseModel
 
 from bonita.utils.filehelper import OperationMethod
+from bonita.core.enums import TaskStatusEnum
 
 
 class TaskBase(BaseModel):
     id: str
     name: Optional[str] = None
-    transfer_config: Optional[int] = None
-    scraping_config: Optional[int] = None
 
 
 class TaskStatus(TaskBase):
-    status: Optional[str] = None
+    status: Optional[TaskStatusEnum] = None
     detail: Optional[str] = None
+    task_type: Optional[str] = None
+    progress: Optional[float] = None
+    step: Optional[str] = None
+    result: Optional[str] = None
+    error_message: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updatetime: Optional[datetime] = None
 
 
 class TransferConfigBase(BaseModel):

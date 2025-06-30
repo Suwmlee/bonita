@@ -4,7 +4,7 @@ import logging
 from sqlalchemy.orm import Session
 
 from bonita.db.models.task import CeleryTask
-from bonita.core.enums import TaskStatus
+from bonita.core.enums import TaskStatusEnum
 from bonita.db import SessionFactory
 
 
@@ -30,14 +30,14 @@ class CeleryTaskService:
         task = CeleryTask(
             task_id=task_id,
             task_type=task_type,
-            status=TaskStatus.PENDING,
+            status=TaskStatusEnum.PENDING,
             progress=0.0,
         )
         self.session.add(task)
         self.session.commit()
         return task
 
-    def update_task_progress(self, task_id: str, progress: float, step: str = "", status: TaskStatus = TaskStatus.PROGRESS) -> Optional[CeleryTask]:
+    def update_task_progress(self, task_id: str, progress: float, step: str = "", status: TaskStatusEnum = TaskStatusEnum.PROGRESS) -> Optional[CeleryTask]:
         """更新任务进度"""
         task = self.session.query(CeleryTask).filter(CeleryTask.task_id == task_id).first()
         if task:
@@ -55,12 +55,12 @@ class CeleryTaskService:
             self.session.commit()
         return task
 
-    def complete_task(self, task_id: str, result: Optional[Dict[str, Any]] = None, status: TaskStatus = TaskStatus.SUCCESS) -> Optional[CeleryTask]:
+    def complete_task(self, task_id: str, result: Optional[Dict[str, Any]] = None, status: TaskStatusEnum = TaskStatusEnum.SUCCESS) -> Optional[CeleryTask]:
         """完成任务"""
         task = self.session.query(CeleryTask).filter(CeleryTask.task_id == task_id).first()
         if task:
             task.status = status
-            task.progress = 100.0 if status == TaskStatus.SUCCESS else task.progress
+            task.progress = 100.0 if status == TaskStatusEnum.SUCCESS else task.progress
             if result:
                 task.result = str(result)
             self.session.commit()
@@ -70,7 +70,7 @@ class CeleryTaskService:
         """标记任务失败"""
         task = self.session.query(CeleryTask).filter(CeleryTask.task_id == task_id).first()
         if task:
-            task.status = TaskStatus.FAILURE
+            task.status = TaskStatusEnum.FAILURE
             task.error_message = error_message
             self.session.commit()
         return task
@@ -79,7 +79,7 @@ class CeleryTaskService:
         """撤销任务"""
         task = self.session.query(CeleryTask).filter(CeleryTask.task_id == task_id).first()
         if task:
-            task.status = TaskStatus.REVOKED
+            task.status = TaskStatusEnum.REVOKED
             self.session.commit()
         return task
 
@@ -90,7 +90,7 @@ class CeleryTaskService:
     def get_active_tasks(self) -> List[CeleryTask]:
         """获取活跃的任务(进行中的任务)"""
         return self.session.query(CeleryTask).filter(
-            CeleryTask.status.in_([TaskStatus.PENDING, TaskStatus.PROGRESS])
+            CeleryTask.status.in_([TaskStatusEnum.PENDING, TaskStatusEnum.PROGRESS])
         ).order_by(CeleryTask.created_at.desc()).all()
 
     def get_all_tasks(self, limit: int = 100, offset: int = 0) -> List[CeleryTask]:
@@ -104,7 +104,7 @@ class CeleryTaskService:
         cutoff_date = datetime.now() - timedelta(days=days)
         deleted_count = self.session.query(CeleryTask).filter(
             CeleryTask.created_at < cutoff_date,
-            CeleryTask.status.in_([TaskStatus.SUCCESS, TaskStatus.FAILURE, TaskStatus.REVOKED])
+            CeleryTask.status.in_([TaskStatusEnum.SUCCESS, TaskStatusEnum.FAILURE, TaskStatusEnum.REVOKED])
         ).delete()
         self.session.commit()
         return deleted_count

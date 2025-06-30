@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class TaskStatus(str, Enum):
+class TaskStatusEnum(str, Enum):
     """任务状态枚举"""
     PENDING = "PENDING"       # 等待中
     PROGRESS = "PROGRESS"     # 进行中

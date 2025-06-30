@@ -1,10 +1,9 @@
-
 from datetime import datetime
 from sqlalchemy import Column, Enum, Integer, String, Boolean, DateTime, Float, Text
 
 from bonita.db import Base
 from bonita.utils.filehelper import OperationMethod
-from bonita.core.enums import TaskStatus
+from bonita.core.enums import TaskStatusEnum
 
 
 class TransferConfig(Base):
@@ -45,7 +44,7 @@ class CeleryTask(Base):
     task_id = Column(String, unique=True, index=True, comment="Celery任务ID")
     task_type = Column(String, default="", comment="任务类型")
     detail = Column(String, default="", comment="任务详情")
-    status = Column(Enum(TaskStatus), default=TaskStatus.PENDING, comment="任务状态")
+    status = Column(Enum(TaskStatusEnum), default=TaskStatusEnum.PENDING, comment="任务状态")
     progress = Column(Float, default=0.0, comment="进度百分比 (0-100)")
     step = Column(String, default="", comment="当前步骤描述")
     result = Column(String, comment="任务结果")
