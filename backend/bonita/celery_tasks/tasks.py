@@ -24,6 +24,8 @@ from bonita.utils.downloader import process_cached_file, update_cache_from_local
 from bonita.utils.filehelper import cleanFolderWithoutSuffix, findAllFilesWithSuffix, video_type
 from bonita.utils.http import get_active_proxy
 from bonita.modules.media_service.emby import EmbyService
+from bonita.celery_tasks.decorators import manage_celery_task
+from bonita.services.celery_service import TaskProgressTracker
 
 
 # 创建信号量，最多允许X任务同时执行
@@ -35,25 +37,34 @@ logger = logging.getLogger(__name__)
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='transfer:all')
+@manage_celery_task("文件转移任务")
 def celery_transfer_entry(self, task_json):
     """ 转移任务入口
     """
-    self.update_state(state="PROGRESS", meta={"progress": 0, "step": "transfer task: start"})
+    task_id = self.request.id
+    progress_tracker = TaskProgressTracker(task_id, 100)
+    
+    progress_tracker.set_progress(5, "初始化转移任务")
     task_info = schemas.TransferConfigPublic(**task_json)
     logger.info(f"transfer task {task_info.id}: start")
     # 获取 source 文件夹下所有顶层文件/文件夹
+    progress_tracker.set_progress(15, "扫描源文件夹")
     dirs = os.scandir(task_info.source_folder)
 
     # 创建转移任务组
+    progress_tracker.set_progress(25, "创建转移任务组")
     transfer_group = group(celery_transfer_group.s(task_json, os.path.join(
         task_info.source_folder, single_folder)) for single_folder in dirs)
 
     # 先执行所有转移任务
+    progress_tracker.set_progress(35, "执行转移任务")
     transfer_result = transfer_group.apply_async()
 
     # 使用 allow_join_result 上下文管理器等待转移任务完成
+    progress_tracker.set_progress(50, "等待转移任务完成")
     with allow_join_result():
         done_list = transfer_result.get()
+        progress_tracker.set_progress(70, "处理转移结果")
         if isinstance(done_list, list):
             flat_done_list = []
             for sublist in done_list:
@@ -68,30 +79,39 @@ def celery_transfer_entry(self, task_json):
         logger.info(f"Transfer task {task_info.id} completed with {len(done_list)} files transferred")
 
         # 转移完成后，判断是否执行清理任务或扫描任务
+        progress_tracker.set_progress(85, "执行后续任务")
         if task_info.clean_others:
             celery_clean_others.apply_async(args=[task_info.output_folder, done_list])
         if task_info.auto_watch:
             celery_emby_scan.apply_async(args=[task_json])
+            
+    progress_tracker.complete("转移任务完成")
 
     return True
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='transfer:group')
+@manage_celery_task("文件组转移")
 def celery_transfer_group(self, task_json, full_path, isEntry=False):
     """ 对 group/folder 内所有关联文件进行转移
     """
     with semaphore:
-        self.update_state(state="PROGRESS", meta={"progress": 0, "step": "celery_transfer_pool: start"})
+        task_id = self.request.id
+        progress_tracker = TaskProgressTracker(task_id, 100)
+        progress_tracker.set_progress(5, "开始处理文件组")
         logger.info(f"transfer group start {full_path}")
         if not os.path.exists(full_path):
             logger.info(f"[!] Transfer not found {full_path}")
             return []
+        
+        progress_tracker.set_progress(15, "解析任务配置")
         task_info = schemas.TransferConfigPublic(**task_json)
         is_series = False
         if task_info.content_type == 2:
             is_series = True
 
+        progress_tracker.set_progress(25, "扫描待处理文件")
         waiting_list = []
         if os.path.isdir(full_path):
             escape_folders = [fo.strip() for fo in task_info.escape_folder.split(',')]
@@ -109,10 +129,16 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
             waiting_list.append(tf)
 
         logger.info(f"[+] Transfer check {full_path}")
+        progress_tracker.set_progress(40, f"开始处理 {len(waiting_list)} 个文件")
         try:
             session = SessionFactory()
             done_list = []
-            for original_file in waiting_list:
+            total_files = len(waiting_list)
+            for idx, original_file in enumerate(waiting_list):
+                # 更新当前文件处理进度
+                if total_files > 0:
+                    file_progress = 40 + (50 * idx // total_files)
+                    progress_tracker.set_progress(file_progress, f"处理文件 {idx+1}/{total_files}: {original_file.filename if hasattr(original_file, 'filename') else 'unknown'}")
                 if not isinstance(original_file, BasicFileInfo):
                     continue
                 record = session.query(TransRecords).filter(TransRecords.srcpath == original_file.full_path).first()
@@ -199,6 +225,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
             session.commit()
             session.close()
 
+        progress_tracker.set_progress(95, "处理后续任务")
         if isEntry and task_info.auto_watch:
             try:
                 logger.info(f"[+] group task: start emby scan")
@@ -207,6 +234,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                 logger.error(f"[!] group task: emby scan failed")
                 logger.error(e)
 
+        progress_tracker.complete(f"文件组转移完成，处理了 {len(done_list)} 个文件")
         logger.info(f"transfer group end {full_path}")
         return done_list
 
@@ -214,7 +242,6 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='scraping:single')
 def celery_scrapping(self, file_path, scraping_dict):
-    self.update_state(state="PROGRESS", meta={"progress": 0, "step": "scraping task: start"})
     logger.info(f"[+] scraping task: start")
     try:
         session = SessionFactory()
@@ -302,7 +329,6 @@ def celery_scrapping(self, file_path, scraping_dict):
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='clean:clean_others')
 def celery_clean_others(self, root_path, done_list):
-    self.update_state(state="PROGRESS", meta={"progress": 0, "step": "clean others: start"})
     logger.info(f"[+] clean others task for {root_path}: start")
 
     cleaned_files = []
@@ -322,7 +348,6 @@ def celery_clean_others(self, root_path, done_list):
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='emby:scan')
 def celery_emby_scan(self, task_json):
-    self.update_state(state="PROGRESS", meta={"progress": 0, "step": "emby scan: start"})
     logger.info(f"[+] emby scan: start")
     try:
         emby_service = EmbyService()
@@ -337,7 +362,6 @@ def celery_emby_scan(self, task_json):
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='import:nfo')
 def celery_import_nfo(self, folder_path, option):
-    self.update_state(state="PROGRESS", meta={"progress": 0, "step": "import nfo: start"})
     logger.info(f"[+] import nfo: start")
     try:
         metadata_list = load_all_NFO_from_folder(folder_path)
