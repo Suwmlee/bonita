@@ -56,20 +56,9 @@ function handleFileSelected(path: string): void {
   }
 }
 
-// Create a computed map of running task statuses for reactivity
-const runningTasksMap = computed(() => {
-  const map = new Map()
-  for (const task of taskStore.runningTasks) {
-    if (task.transfer_config !== 0) {
-      map.set(task.transfer_config, true)
-    }
-  }
-  return map
-})
-
 // Reactive method to check if a task is running
 const isTaskRunning = computed(() => {
-  return (taskId: number) => runningTasksMap.value.has(taskId)
+  return (taskId: number) => taskStore.isTaskRunning(taskId)
 })
 
 async function initial() {

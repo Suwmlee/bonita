@@ -331,13 +331,23 @@ export type TaskPathParam = {
 };
 
 export type TaskStatus = {
-    id: string;
+    task_id: string;
     name?: string | null;
-    transfer_config?: number | null;
-    scraping_config?: number | null;
-    status?: string | null;
+    status: TaskStatusEnum;
     detail?: string | null;
+    task_type?: string | null;
+    progress?: number | null;
+    step?: string | null;
+    result?: string | null;
+    error_message?: string | null;
+    created_at?: string | null;
+    updatetime?: string | null;
 };
+
+/**
+ * 任务状态枚举
+ */
+export type TaskStatusEnum = 'PENDING' | 'PROGRESS' | 'SUCCESS' | 'FAILURE' | 'REVOKED';
 
 export type Token = {
     access_token: string;

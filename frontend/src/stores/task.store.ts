@@ -1,6 +1,7 @@
 import { TaskConfigService, TaskService } from "@/client"
 import type {
   TaskStatus,
+  TaskStatusEnum,
   TransferConfigCreate,
   TransferConfigPublic,
 } from "@/client/types.gen"
@@ -11,6 +12,7 @@ export const useTaskStore = defineStore("task-store", {
   state: () => ({
     allTasks: [] as TransferConfigPublic[],
     runningTasks: [] as TaskStatus[],
+    historicalTasks: [] as TaskStatus[],
     showDialog: false,
     editTask: undefined as TransferConfigPublic | undefined,
     pollingInterval: null as number | null,
@@ -88,7 +90,7 @@ export const useTaskStore = defineStore("task-store", {
 
       // Check if the task is already in the runningTasks array
       const existingTaskIndex = this.runningTasks.findIndex(
-        (runningTask) => runningTask.id === task.id,
+        (runningTask) => runningTask.task_id === task.task_id,
       )
 
       if (existingTaskIndex !== -1) {
@@ -125,24 +127,70 @@ export const useTaskStore = defineStore("task-store", {
       }
       return task
     },
+    // 为TransferAll类型的任务添加name属性
+    addTaskNames(tasks: TaskStatus[]): TaskStatus[] {
+      return tasks.map(task => {
+        if (task.task_type === "TransferAll" && task.detail) {
+          const taskConfigId = parseInt(task.detail)
+          const taskConfig = this.allTasks.find(config => config.id === taskConfigId)
+          if (taskConfig) {
+            return {
+              ...task,
+              name: taskConfig.name
+            }
+          }
+        }
+        return task
+      })
+    },
     async getRunningTasks() {
       try {
         const response = await TaskService.getAllTasksStatus()
         if (response && Array.isArray(response)) {
-          // Remove duplicates by keeping only the first occurrence of each transfer_config
-          // Use a Map to track unique transfer_config values
-          const uniqueTasks = Array.from(
-            response
+          // Filter running tasks (PENDING and PROGRESS status)
+          const runningTasksOnly = response.filter((task) => 
+            task.status === 'PENDING' || task.status === 'PROGRESS'
+          )
+
+          // Filter completed tasks (SUCCESS, FAILURE, REVOKED status)
+          const completedTasksOnly = response.filter((task) => 
+            task.status === 'SUCCESS' || task.status === 'FAILURE' || task.status === 'REVOKED'
+          )
+
+          // Create a map for deduplication of running tasks
+          const uniqueRunningTasks = Array.from(
+            runningTasksOnly
               .reduce((map, task) => {
-                if (task.transfer_config && !map.has(task.transfer_config)) {
-                  map.set(task.transfer_config, task)
+                let uniqueKey: string
+                
+                if (task.task_type === "TransferAll" && task.detail) {
+                  // For TransferAll, use the detail (task config ID) as unique key
+                  uniqueKey = `TransferAll_${task.detail}`
+                } else {
+                  // For other types, use the task ID
+                  uniqueKey = task.task_id
+                }
+                
+                if (!map.has(uniqueKey)) {
+                  map.set(uniqueKey, task)
                 }
                 return map
               }, new Map())
               .values(),
           )
 
-          this.runningTasks = uniqueTasks
+          // Sort completed tasks by update time (newest first) and keep only top 10
+          const sortedCompletedTasks = completedTasksOnly
+            .sort((a, b) => {
+              const timeA = new Date(a.updatetime || a.created_at || 0).getTime()
+              const timeB = new Date(b.updatetime || b.created_at || 0).getTime()
+              return timeB - timeA // Newest first
+            })
+            .slice(0, 10) // Keep only top 10
+
+          // 使用通用函数为任务添加name属性
+          this.runningTasks = this.addTaskNames(uniqueRunningTasks)
+          this.historicalTasks = this.addTaskNames(sortedCompletedTasks)
         }
         return this.runningTasks
       } catch (error) {
@@ -171,7 +219,46 @@ export const useTaskStore = defineStore("task-store", {
       }
     },
     isTaskRunning(taskId: number): boolean {
-      return this.runningTasks.some((task) => task.transfer_config === taskId)
+      return this.runningTasks.some((task) => {
+        // Only TransferAll type tasks match with task config
+        return task.task_type === "TransferAll" && 
+               task.detail && 
+               parseInt(task.detail) === taskId
+      })
+    },
+    // Helper method to get status color
+    getStatusColor(status: TaskStatusEnum | null | undefined): string {
+      switch (status) {
+        case 'PENDING':
+          return 'warning'
+        case 'PROGRESS':
+          return 'info'
+        case 'SUCCESS':
+          return 'success'
+        case 'FAILURE':
+          return 'error'
+        case 'REVOKED':
+          return 'secondary'
+        default:
+          return 'primary'
+      }
+    },
+    // Helper method to get status text
+    getStatusText(status: TaskStatusEnum | null | undefined): string {
+      switch (status) {
+        case 'PENDING':
+          return '等待中'
+        case 'PROGRESS':
+          return '进行中'
+        case 'SUCCESS':
+          return '成功'
+        case 'FAILURE':
+          return '失败'
+        case 'REVOKED':
+          return '已取消'
+        default:
+          return '未知'
+      }
     },
   },
 })

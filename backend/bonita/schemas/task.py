@@ -6,13 +6,10 @@ from bonita.utils.filehelper import OperationMethod
 from bonita.core.enums import TaskStatusEnum
 
 
-class TaskBase(BaseModel):
-    id: str
+class TaskStatus(BaseModel):
+    task_id: str
     name: Optional[str] = None
-
-
-class TaskStatus(TaskBase):
-    status: Optional[TaskStatusEnum] = None
+    status: TaskStatusEnum
     detail: Optional[str] = None
     task_type: Optional[str] = None
     progress: Optional[float] = None

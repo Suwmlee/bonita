@@ -2186,9 +2186,9 @@ export const $TaskPathParam = {
 
 export const $TaskStatus = {
     properties: {
-        id: {
+        task_id: {
             type: 'string',
-            title: 'Id'
+            title: 'Task Id'
         },
         name: {
             anyOf: [
@@ -2201,38 +2201,8 @@ export const $TaskStatus = {
             ],
             title: 'Name'
         },
-        transfer_config: {
-            anyOf: [
-                {
-                    type: 'integer'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Transfer Config'
-        },
-        scraping_config: {
-            anyOf: [
-                {
-                    type: 'integer'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Scraping Config'
-        },
         status: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Status'
+            '$ref': '#/components/schemas/TaskStatusEnum'
         },
         detail: {
             anyOf: [
@@ -2244,11 +2214,97 @@ export const $TaskStatus = {
                 }
             ],
             title: 'Detail'
+        },
+        task_type: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Task Type'
+        },
+        progress: {
+            anyOf: [
+                {
+                    type: 'number'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Progress'
+        },
+        step: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Step'
+        },
+        result: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Result'
+        },
+        error_message: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Error Message'
+        },
+        created_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Created At'
+        },
+        updatetime: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Updatetime'
         }
     },
     type: 'object',
-    required: ['id'],
+    required: ['task_id', 'status'],
     title: 'TaskStatus'
+} as const;
+
+export const $TaskStatusEnum = {
+    type: 'string',
+    enum: ['PENDING', 'PROGRESS', 'SUCCESS', 'FAILURE', 'REVOKED'],
+    title: 'TaskStatusEnum',
+    description: '任务状态枚举'
 } as const;
 
 export const $Token = {

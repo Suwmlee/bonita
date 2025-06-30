@@ -40,7 +40,5 @@ def manage_celery_task(task_type: str):
                 with CeleryTaskService() as task_service:
                     task_service.fail_task(task_id, error_message)
 
-                raise
-
         return wrapper
     return decorator

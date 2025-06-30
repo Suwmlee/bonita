@@ -1,5 +1,6 @@
 import logging
 import os
+import uuid
 from sqlalchemy.orm import Session
 
 from bonita import schemas
@@ -36,7 +37,7 @@ class ToolService:
         if folder_path and option:
             task = celery_import_nfo.delay(folder_path, option)
             return schemas.TaskStatus(
-                id=task.id,
+                task_id=task.id,
                 name="import nfo",
                 status=TaskStatusEnum.PENDING,
                 task_type='ImportNFO',
@@ -45,7 +46,7 @@ class ToolService:
             )
         else:
             return schemas.TaskStatus(
-                id=None,
+                task_id=str(uuid.uuid4()),
                 name="import nfo",
                 status=TaskStatusEnum.FAILURE,
                 task_type='ImportNFO',
@@ -66,7 +67,7 @@ class ToolService:
         logger.info("Run emby scan")
         # 目前这个功能尚未实现，返回失败状态
         return schemas.TaskStatus(
-            id=None,
+            task_id=str(uuid.uuid4()),
             name="emby scan",
             status=TaskStatusEnum.FAILURE,
             task_type='EmbyScan',

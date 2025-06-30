@@ -1,4 +1,5 @@
 import logging
+import uuid
 from fastapi import APIRouter
 
 from bonita import schemas
@@ -20,7 +21,7 @@ async def run_import_nfo(
     if folder_args.arg1 and folder_args.arg2:
         return tool_service.import_nfo(folder_args.arg1, folder_args.arg2)
     else:
-        return schemas.TaskStatus(id=None,
+        return schemas.TaskStatus(task_id=str(uuid.uuid4()),
                                   name="import nfo",
                                   status=TaskStatusEnum.FAILURE,
                                   task_type='ImportNFO',
