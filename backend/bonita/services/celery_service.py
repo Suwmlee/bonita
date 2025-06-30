@@ -47,6 +47,14 @@ class CeleryTaskService:
             self.session.commit()
         return task
 
+    def update_task_name(self, task_id: str, task_name: str) -> Optional[CeleryTask]:
+        """更新任务名称"""
+        task = self.session.query(CeleryTask).filter(CeleryTask.task_id == task_id).first()
+        if task:
+            task.task_name = task_name
+            self.session.commit()
+        return task
+
     def complete_task(self, task_id: str, result: Optional[Dict[str, Any]] = None, status: TaskStatus = TaskStatus.SUCCESS) -> Optional[CeleryTask]:
         """完成任务"""
         task = self.session.query(CeleryTask).filter(CeleryTask.task_id == task_id).first()
@@ -155,3 +163,11 @@ class TaskProgressTracker:
     def complete(self, step: str = "任务完成"):
         """完成任务"""
         CeleryTaskService.update_progress(self.task_id, 100.0, step)
+
+    def update_name(self, task_name: str):
+        """更新任务名称"""
+        try:
+            with CeleryTaskService() as task_service:
+                task_service.update_task_name(self.task_id, task_name)
+        except Exception as e:
+            logger.error(f"Failed to update task name: {e}")

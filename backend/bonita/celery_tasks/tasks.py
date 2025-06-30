@@ -46,6 +46,10 @@ def celery_transfer_entry(self, task_json):
     
     progress_tracker.set_progress(5, "初始化转移任务")
     task_info = schemas.TransferConfigPublic(**task_json)
+    
+    # 更新任务名称，包含任务配置名称和ID
+    progress_tracker.update_name(f"文件转移任务：{task_info.name} (ID: {task_info.id})")
+    
     logger.info(f"transfer task {task_info.id}: start")
     # 获取 source 文件夹下所有顶层文件/文件夹
     progress_tracker.set_progress(15, "扫描源文件夹")
@@ -100,6 +104,10 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
         task_id = self.request.id
         progress_tracker = TaskProgressTracker(task_id, 100)
         progress_tracker.set_progress(5, "开始处理文件组")
+        
+        # 更新任务名称，包含文件路径
+        progress_tracker.update_name(f"文件组转移：{full_path}")
+        
         logger.info(f"transfer group start {full_path}")
         if not os.path.exists(full_path):
             logger.info(f"[!] Transfer not found {full_path}")
