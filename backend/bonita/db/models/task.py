@@ -43,7 +43,8 @@ class CeleryTask(Base):
     """
     id = Column(Integer, primary_key=True, index=True)
     task_id = Column(String, unique=True, index=True, comment="Celery任务ID")
-    task_name = Column(String, index=True, comment="任务名称")
+    task_type = Column(String, default="", comment="任务类型")
+    detail = Column(String, default="", comment="任务详情")
     status = Column(Enum(TaskStatus), default=TaskStatus.PENDING, comment="任务状态")
     progress = Column(Float, default=0.0, comment="进度百分比 (0-100)")
     step = Column(String, default="", comment="当前步骤描述")

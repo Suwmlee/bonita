@@ -25,11 +25,11 @@ class CeleryTaskService:
         if self._should_close_session:
             self.session.close()
 
-    def create_task(self, task_id: str, task_name: str) -> CeleryTask:
+    def create_task(self, task_id: str, task_type: str) -> CeleryTask:
         """创建新任务记录"""
         task = CeleryTask(
             task_id=task_id,
-            task_name=task_name,
+            task_type=task_type,
             status=TaskStatus.PENDING,
             progress=0.0,
         )
@@ -47,11 +47,11 @@ class CeleryTaskService:
             self.session.commit()
         return task
 
-    def update_task_name(self, task_id: str, task_name: str) -> Optional[CeleryTask]:
-        """更新任务名称"""
+    def update_task_detail(self, task_id: str, detail: str) -> Optional[CeleryTask]:
+        """更新任务详情"""
         task = self.session.query(CeleryTask).filter(CeleryTask.task_id == task_id).first()
         if task:
-            task.task_name = task_name
+            task.detail = detail
             self.session.commit()
         return task
 
@@ -87,12 +87,6 @@ class CeleryTaskService:
         """获取任务信息"""
         return self.session.query(CeleryTask).filter(CeleryTask.task_id == task_id).first()
 
-    def get_tasks_by_name(self, task_name: str, limit: int = 100) -> List[CeleryTask]:
-        """根据任务名称获取任务列表"""
-        return self.session.query(CeleryTask).filter(
-            CeleryTask.task_name == task_name
-        ).order_by(CeleryTask.created_at.desc()).limit(limit).all()
-
     def get_active_tasks(self) -> List[CeleryTask]:
         """获取活跃的任务(进行中的任务)"""
         return self.session.query(CeleryTask).filter(
@@ -127,17 +121,13 @@ class CeleryTaskService:
             logger.error(f"Failed to update task progress: {e}")
 
     @staticmethod
-    def update_step(task_id: str, step: str):
-        """
-        更新任务步骤的便捷函数
-        """
+    def update_detail(task_id: str, detail: str):
+        """更新任务详情"""
         try:
             with CeleryTaskService() as task_service:
-                task = task_service.get_task(task_id)
-                if task:
-                    task_service.update_task_progress(task_id, task.progress, step)
+                task_service.update_task_detail(task_id, detail)
         except Exception as e:
-            logger.error(f"Failed to update task step: {e}")
+            logger.error(f"Failed to update task detail: {e}")
 
 
 class TaskProgressTracker:
@@ -164,10 +154,6 @@ class TaskProgressTracker:
         """完成任务"""
         CeleryTaskService.update_progress(self.task_id, 100.0, step)
 
-    def update_name(self, task_name: str):
-        """更新任务名称"""
-        try:
-            with CeleryTaskService() as task_service:
-                task_service.update_task_name(self.task_id, task_name)
-        except Exception as e:
-            logger.error(f"Failed to update task name: {e}")
+    def update_detail(self, detail: str):
+        """更新任务路径"""
+        CeleryTaskService.update_detail(self.task_id, detail)

@@ -37,19 +37,16 @@ logger = logging.getLogger(__name__)
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='transfer:all')
-@manage_celery_task("文件转移任务")
+@manage_celery_task("TransferAll")
 def celery_transfer_entry(self, task_json):
     """ 转移任务入口
     """
     task_id = self.request.id
     progress_tracker = TaskProgressTracker(task_id, 100)
-    
     progress_tracker.set_progress(5, "初始化转移任务")
     task_info = schemas.TransferConfigPublic(**task_json)
-    
-    # 更新任务名称，包含任务配置名称和ID
-    progress_tracker.update_name(f"文件转移任务：{task_info.name} (ID: {task_info.id})")
-    
+    progress_tracker.update_detail(task_info.id)
+
     logger.info(f"transfer task {task_info.id}: start")
     # 获取 source 文件夹下所有顶层文件/文件夹
     progress_tracker.set_progress(15, "扫描源文件夹")
@@ -88,7 +85,7 @@ def celery_transfer_entry(self, task_json):
             celery_clean_others.apply_async(args=[task_info.output_folder, done_list])
         if task_info.auto_watch:
             celery_emby_scan.apply_async(args=[task_json])
-            
+
     progress_tracker.complete("转移任务完成")
 
     return True
@@ -96,7 +93,7 @@ def celery_transfer_entry(self, task_json):
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='transfer:group')
-@manage_celery_task("文件组转移")
+@manage_celery_task("TransferGroup")
 def celery_transfer_group(self, task_json, full_path, isEntry=False):
     """ 对 group/folder 内所有关联文件进行转移
     """
@@ -104,15 +101,13 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
         task_id = self.request.id
         progress_tracker = TaskProgressTracker(task_id, 100)
         progress_tracker.set_progress(5, "开始处理文件组")
-        
-        # 更新任务名称，包含文件路径
-        progress_tracker.update_name(f"文件组转移：{full_path}")
-        
+        progress_tracker.update_detail(full_path)
+
         logger.info(f"transfer group start {full_path}")
         if not os.path.exists(full_path):
             logger.info(f"[!] Transfer not found {full_path}")
             return []
-        
+
         progress_tracker.set_progress(15, "解析任务配置")
         task_info = schemas.TransferConfigPublic(**task_json)
         is_series = False
@@ -146,7 +141,8 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                 # 更新当前文件处理进度
                 if total_files > 0:
                     file_progress = 40 + (50 * idx // total_files)
-                    progress_tracker.set_progress(file_progress, f"处理文件 {idx+1}/{total_files}: {original_file.filename if hasattr(original_file, 'filename') else 'unknown'}")
+                    progress_tracker.set_progress(
+                        file_progress, f"处理文件 {idx+1}/{total_files}: {original_file.filename if hasattr(original_file, 'filename') else 'unknown'}")
                 if not isinstance(original_file, BasicFileInfo):
                     continue
                 record = session.query(TransRecords).filter(TransRecords.srcpath == original_file.full_path).first()

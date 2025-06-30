@@ -8,7 +8,7 @@ from bonita.services.celery_service import CeleryTaskService
 logger = logging.getLogger(__name__)
 
 
-def manage_celery_task(task_name: str):
+def manage_celery_task(task_type: str):
     """
     Celery任务管理装饰器
     自动创建任务记录、更新进度、处理异常
@@ -20,7 +20,7 @@ def manage_celery_task(task_name: str):
 
             # 创建任务记录
             with CeleryTaskService() as task_service:
-                task_service.create_task(task_id, task_name)
+                task_service.create_task(task_id, task_type)
 
             try:
                 # 执行原始任务
