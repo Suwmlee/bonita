@@ -293,3 +293,13 @@ def is_video_file(filepath: str) -> bool:
     if not is_video:
         logger.debug(f"File {filepath} is not a video file")
     return is_video
+
+def sanitize_path(name: str) -> str:
+    """
+    清理字符串，使其可以作为合法的文件名或目录名。
+    将Windows和Linux/macOS上非法的字符替换为下划线。
+    """
+    if not name:
+        return ""
+    # 替换在路径中非法的字符
+    return re.sub(r'[\\/:*?"<>|]', '_', name)
