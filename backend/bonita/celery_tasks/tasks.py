@@ -21,7 +21,7 @@ from bonita.modules.scraping.scraping import add_mark, process_nfo_file, process
 from bonita.utils.fileinfo import BasicFileInfo, TargetFileInfo
 from bonita.modules.transfer.transfer import transSingleFile, transferfile
 from bonita.utils.downloader import process_cached_file, update_cache_from_local
-from bonita.utils.filehelper import cleanFolderWithoutSuffix, findAllFilesWithSuffix, video_type
+from bonita.utils.filehelper import cleanFolderWithoutSuffix, findAllFilesWithSuffix, sanitize_path, video_type
 from bonita.utils.http import get_active_proxy
 from bonita.modules.media_service.emby import EmbyService
 from bonita.celery_tasks.decorators import manage_celery_task
@@ -308,8 +308,8 @@ def celery_scrapping(self, file_path, scraping_dict):
             shorttitle = metadata_mixed.title[0:maxlen]
             extra_folder = extra_folder.replace(metadata_mixed.title, shorttitle)
             extra_name = extra_name.replace(metadata_mixed.title, shorttitle)
-        metadata_mixed.extra_folder = extra_folder
-        metadata_mixed.extra_filename = extra_name
+        metadata_mixed.extra_folder = sanitize_path(extra_folder)
+        metadata_mixed.extra_filename = sanitize_path(extra_name)
 
         # 将 extrainfo.tag 中的标签添加到 metadata_base.tag 中，过滤重复的标签
         existing_tags = set(metadata_mixed.tag.split(", "))
