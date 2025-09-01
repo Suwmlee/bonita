@@ -11,7 +11,7 @@ RUN npm run build
 FROM python:3.12-slim-bullseye AS backend-build
 
 # s6-overlay 版本
-ARG S6_OVERLAY_VERSION=3.1.6.2
+ARG S6_OVERLAY_VERSION=3.2.1.0
 
 ENV TZ=Asia/Shanghai
 ENV MAX_CONCURRENCY=5
