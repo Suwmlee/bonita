@@ -6,6 +6,7 @@ from scrapinglib import search
 from PIL import Image
 import xml.etree.ElementTree as ET
 
+from bonita.utils.filehelper import sanitize_path
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,18 @@ def scraping(number, sources=None, specifiedsource="", specifiedurl="", proxy=No
                        specifiedSource=specifiedsource,
                        specifiedUrl=specifiedurl,
                        proxies=proxy)
+    # Return if blank dict returned (data not found)
+    if not json_data or json_data.get('title') == '':
+        return None
+    json_data['title'] = sanitize_path(json_data['title'])
+    # 如果 actor 是空字符串或空列表，填补为“佚名”
+    try:
+        actor_value = json_data.get('actor')
+        if (isinstance(actor_value, str) and actor_value.strip() == '') or \
+            (isinstance(actor_value, list) and len(actor_value) == 0):
+            json_data['actor'] = '佚名'
+    except Exception:
+        pass
     return json_data
 
 
