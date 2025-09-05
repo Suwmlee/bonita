@@ -288,6 +288,14 @@ def celery_scrapping(self, file_path, scraping_dict):
             if not json_data or json_data.get('title') == '':
                 logger.error(f"[-] scraping failed {file_path}")
                 return None
+            # 如果 actor 是空字符串或空列表，填补为“佚名”
+            try:
+                actor_value = json_data.get('actor')
+                if (isinstance(actor_value, str) and actor_value.strip() == '') or \
+                   (isinstance(actor_value, list) and len(actor_value) == 0):
+                    json_data['actor'] = '佚名'
+            except Exception:
+                pass
             # 数据转换
             metadata_base = schemas.MetadataBase(**json_data)
             metadata_base.number = metadata_base.number.upper()
