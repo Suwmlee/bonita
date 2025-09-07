@@ -112,7 +112,7 @@ const itemsPerPage = computed({
 const totalPages = computed(() =>
   Math.ceil(totalItems.value / itemsPerPage.value),
 )
-const itemsPerPageOptions = [24, 48, 96]
+const itemsPerPageOptions = [20, 40, 80]
 
 // Function to extract media type, hasNumber from combined selection
 function getMediaTypeValue(): string | undefined {
@@ -184,14 +184,10 @@ async function cleanMediaItems() {
 
 const formatDateTime = (dateStr: string | null | undefined) => {
   if (!dateStr) return ""
-  return new Date(dateStr).toLocaleString("zh-CN", {
+  return new Date(dateStr).toLocaleDateString("zh-CN", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
   })
 }
 
@@ -335,48 +331,48 @@ onMounted(() => {
       <div class="custom-grid">
         <div v-for="item in mediaItemStore.allMediaItems" :key="item.id" class="grid-item">
           <VCard class="media-card d-flex flex-column" @click="showEditDialog(item)">
-            <!-- Card with poster as background -->
-            <div class="poster-background" :style="{ backgroundImage: `url(${getPosterUrl(item)})` }">
-              <!-- Content overlay with gradient -->
-              <div class="content-overlay">
-                <!-- Title at the top -->
-                <div class="media-title">
-                  <span>{{ item.title }}</span>
-                </div>
-
-                <!-- Info at the bottom -->
-                <div class="media-info">
-                  <div v-if="item.number" class="mb-2 d-flex align-center">
-                    <VIcon icon="bx-hash" size="small" class="me-1" />
-                    <span class="text-truncate">{{ item.number }}</span>
+            <div class="poster-wrapper">
+              <!-- Poster as background -->
+              <div class="poster-background" :style="{ backgroundImage: `url(${getPosterUrl(item)})` }">
+                <!-- Content overlay with gradient (keep info at bottom) -->
+                <div class="content-overlay">
+                  <!-- Watched status icon at top-right -->
+                  <div class="watched-badge">
+                    <VIcon
+                      :icon="item.userdata?.watched ? 'bx-check-circle' : 'bx-time'"
+                      size="23"
+                      :color="item.userdata?.watched ? 'success' : 'warning'"
+                    />
                   </div>
-
-                  <div class="mb-2 d-flex align-center">
-                    <VIcon icon="bx-film" size="small" class="me-1" />
-                    <span>{{ item.media_type === 'movie' ? t('pages.mediaitem.movie') : t('pages.mediaitem.tvshow')
-                    }}</span>
-                  </div>
-
-                  <div class="mb-2 d-flex align-center">
-                    <VIcon icon="bx-calendar" size="small" class="me-1" />
-                    <span>{{ formatDateTime(item.updatetime) }}</span>
-                  </div>
-
-                  <div class="d-flex align-center">
-                    <VIcon :icon="item.userdata?.watched ? 'bx-check-circle' : 'bx-time'" size="small" class="me-1"
-                      :color="item.userdata?.watched ? 'success' : 'warning'" />
-                    <span>{{ item.userdata?.watched ? t('pages.mediaitem.watched') : t('pages.mediaitem.unwatched')
-                    }}</span>
-                  </div>
-
-                  <div class="d-flex align-center mt-1">
-                    <VIcon :icon="item.userdata?.favorite ? 'bx-heart' : 'bx-heart-circle'" size="small" class="me-1"
-                      :color="item.userdata?.favorite ? 'error' : 'grey'" />
-                    <span>{{ item.userdata?.favorite ? t('pages.mediaitem.favorite') : t('pages.mediaitem.notFavorite')
-                    }}</span>
+                  <!-- Info at the bottom -->
+                  <div class="media-info">
+                    <div class="media-info-row">
+                      <div class="media-info-left">
+                        <div v-if="item.number" class="d-flex align-center">
+                          <VIcon icon="bx-hash" size="small" class="me-1" />
+                          <span class="text-truncate">{{ item.number }}</span>
+                        </div>
+                        <div class="d-flex align-center">
+                          <VIcon icon="bx-calendar" size="small" class="me-1" />
+                          <span>{{ formatDateTime(item.updatetime) }}</span>
+                        </div>
+                      </div>
+                      <div class="media-info-right">
+                        <VIcon :icon="item.userdata?.favorite ? 'bx-heart' : 'bx-heart-circle'" size="23"
+                          :color="item.userdata?.favorite ? 'error' : 'grey'" />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+            </div>
+            <div class="card-title">
+              <VTooltip location="top" open-delay="300">
+                <template #activator="{ props }">
+                  <span class="text-truncate" v-bind="props">{{ item.title }}</span>
+                </template>
+                <span>{{ item.title }}</span>
+              </VTooltip>
             </div>
           </VCard>
         </div>
@@ -424,48 +420,46 @@ onMounted(() => {
 /* Custom Grid Layout */
 .custom-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   width: 100%;
 }
 
 @media (min-width: 600px) {
   .custom-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 900px) {
   .custom-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 1200px) {
   .custom-grid {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 1600px) {
   .custom-grid {
-    grid-template-columns: repeat(8, 1fr);
+    grid-template-columns: repeat(10, minmax(0, 1fr));
   }
 }
 
 .grid-item {
   width: 100%;
+  min-width: 0;
 }
 
 /* Media Card Styling */
 .media-card {
-  aspect-ratio: 2/3;
   transition: transform 0.2s;
   cursor: pointer;
   overflow: hidden;
   position: relative;
-  height: 100%;
-  min-height: 220px;
 }
 
 .media-card:hover {
@@ -474,6 +468,12 @@ onMounted(() => {
 }
 
 /* Poster Background Styling */
+.poster-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2/3;
+}
+
 .poster-background {
   position: absolute;
   top: 0;
@@ -499,21 +499,16 @@ onMounted(() => {
   justify-content: space-between;
   padding: 10px;
   overflow: hidden;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 0%, transparent 30%, transparent 70%, rgba(0, 0, 0, 0.8) 100%);
+  background: linear-gradient(to bottom, transparent 0%, transparent 70%, rgba(0, 0, 0, 0.85) 100%);
 }
 
-.media-title {
-  font-weight: bold;
-  font-size: 1.2rem;
-  margin-bottom: 4px;
-  line-height: 1.2;
-  max-height: 30%;
+.card-title {
+  padding: 6px 8px 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  color: #ffffff;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+  text-overflow: ellipsis;
 }
 
 .media-info {
@@ -526,6 +521,50 @@ onMounted(() => {
   border-radius: 4px;
   background-color: rgba(0, 0, 0, 0.4);
   font-size: 0.75rem;
+}
+
+.status-row {
+  gap: 8px;
+}
+
+/* Bottom info left-right layout */
+.media-info-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.media-info-left {
+  display: grid;
+  grid-auto-rows: min-content;
+  row-gap: 4px;
+}
+
+.media-info-right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 999px;
+  background-color: rgba(0, 0, 0, 0.45);
+}
+
+/* Watched badge at top-right of poster */
+.watched-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 27px;
+  height: 27px;
+  border-radius: 999px;
+  background-color: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+  pointer-events: none;
 }
 
 /* 分页样式 */

@@ -130,7 +130,7 @@ onMounted(() => {
           </VCardText>
 
           <VCardText v-if="item.cover" class="d-flex justify-center">
-            <VImg :src="getImageUrl(item.cover)" height="150" contain />
+            <VImg :src="getImageUrl(item.cover)" height="200" contain />
           </VCardText>
         </VCard>
       </VCol>
