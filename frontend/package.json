@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "biome check --write --unsafe --no-errors-on-unmatched --files-ignore-unknown=true ./",
     "build:icons": "tsx src/plugins/iconify/build-icons.ts",
-    "generate-client": "openapi-ts"
+    "generate-client": "node modify-openapi-operationids.js && openapi-ts"
   },
   "dependencies": {
     "@mdi/font": "6.2.95",

@@ -117,6 +117,9 @@ export default {
     dashboard: {
       title: "Dashboard",
       activeTasks: "Active Tasks",
+      cleanupRunning: "Cleanup",
+      cleanupSuccess: "Running tasks cleanup completed",
+      cleanupFailed: "Failed to cleanup running tasks",
       noRunningTasks: "No tasks currently running",
       historicalTasks: "Task History",
       noHistoricalTasks: "No historical tasks",

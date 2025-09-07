@@ -6,7 +6,9 @@ import type {
   TransferConfigPublic,
 } from "@/client/types.gen"
 import { defineStore } from "pinia"
+import { useToastStore } from "./toast.store"
 import { useConfirmationStore } from "./confirmation.store"
+import { i18n } from "@/plugins/i18n"
 
 export const useTaskStore = defineStore("task-store", {
   state: () => ({
@@ -195,6 +197,22 @@ export const useTaskStore = defineStore("task-store", {
       } catch (error) {
         console.error("Error getting running tasks:", error)
         return []
+      }
+    },
+    async cleanupRunningTasks() {
+      try {
+        const toast = useToastStore()
+        const res = await TaskService.cleanupRunningTasks()
+        // 简单认为调用成功即提示
+        toast.success(i18n.global.t('pages.dashboard.cleanupSuccess') as string)
+        // 立即刷新列表
+        await this.getRunningTasks()
+        return res
+      } catch (error) {
+        console.error("Error cleaning up running tasks:", error)
+        const toast = useToastStore()
+        toast.error(i18n.global.t('pages.dashboard.cleanupFailed') as string)
+        throw error
       }
     },
     startPollingTasks(frequency?: number) {

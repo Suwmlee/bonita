@@ -63,6 +63,11 @@ onMounted(() => {
 onBeforeUnmount(() => {
   taskStore.stopPollingTasks() // Clean up polling when component is unmounted
 })
+
+// 清理进行中的任务
+async function onCleanupRunningTasksClick() {
+  await taskStore.cleanupRunningTasks()
+}
 </script>
 
 <template>
@@ -75,6 +80,16 @@ onBeforeUnmount(() => {
       <VCol cols="12">
         <VCard :title="t('pages.dashboard.activeTasks')">
           <VCardText>
+            <div class="d-flex justify-end mb-4">
+              <VBtn
+                color="warning"
+                variant="tonal"
+                :disabled="runningTasksWithDetails.length === 0"
+                @click="onCleanupRunningTasksClick"
+              >
+                {{ t('pages.dashboard.cleanupRunning') }}
+              </VBtn>
+            </div>
             <div v-if="runningTasksWithDetails.length === 0" class="text-center pa-4">
               <p class="text-subtitle-1">{{ t('pages.dashboard.noRunningTasks') }}</p>
             </div>

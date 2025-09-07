@@ -117,6 +117,9 @@ export default {
     dashboard: {
       title: "仪表盘",
       activeTasks: "活动任务",
+      cleanupRunning: "清理",
+      cleanupSuccess: "清理进行中的任务已完成",
+      cleanupFailed: "清理进行中的任务失败",
       noRunningTasks: "当前没有运行中的任务",
       historicalTasks: "历史任务",
       noHistoricalTasks: "暂无历史任务",

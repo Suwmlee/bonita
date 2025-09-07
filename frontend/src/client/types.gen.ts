@@ -588,7 +588,13 @@ export type RunTransferTaskData = {
 
 export type RunTransferTaskResponse = TaskStatus;
 
+export type GetAllTasksStatusData = {
+    limit?: number;
+};
+
 export type GetAllTasksStatusResponse = Array<TaskStatus>;
+
+export type CleanupRunningTasksResponse = Response;
 
 export type GetAllTaskConfigsData = {
     limit?: number;
@@ -1017,11 +1023,26 @@ export type $OpenApiTs = {
     };
     '/api/v1/tasks/status': {
         get: {
+            req: GetAllTasksStatusData;
             res: {
                 /**
                  * Successful Response
                  */
                 200: Array<TaskStatus>;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/tasks/cleanup/running': {
+        post: {
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
             };
         };
     };

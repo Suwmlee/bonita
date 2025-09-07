@@ -8,6 +8,7 @@ from bonita.db.models.task import TransferConfig
 from bonita.celery_tasks.tasks import celery_transfer_entry, celery_transfer_group
 from bonita.services.celery_service import CeleryTaskService
 from bonita.core.enums import TaskStatusEnum
+from bonita.schemas.response import Response
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -75,3 +76,12 @@ def get_all_tasks_status(
         ))
 
     return all_tasks
+
+
+@router.post("/cleanup/running", response_model=Response)
+def cleanup_running_tasks(session: SessionDep) -> Any:
+    """ 清理当前进行中的任务，批量标记为失败
+    """
+    celery_service = CeleryTaskService(session)
+    updated = celery_service.fail_active_tasks("被清理为失败")
+    return Response(success=True, message="已标记失败", data={"updated": updated})
