@@ -14,7 +14,7 @@ FROM python:3.12-slim-bullseye AS backend-build
 ARG S6_OVERLAY_VERSION=3.2.1.0
 
 ENV TZ=Asia/Shanghai
-ENV MAX_CONCURRENCY=5
+ENV MAX_CONCURRENCY=1
 # 添加用户配置环境变量
 ENV PUID=0
 ENV PGID=0
