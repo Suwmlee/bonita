@@ -24,8 +24,10 @@ from bonita.utils.downloader import process_cached_file, update_cache_from_local
 from bonita.utils.filehelper import cleanFolderWithoutSuffix, findAllFilesWithSuffix, video_type
 from bonita.utils.http import get_active_proxy
 from bonita.modules.media_service.emby import EmbyService
+from bonita.modules.media_service.sync import sync_emby_history
 from bonita.celery_tasks.decorators import manage_celery_task
 from bonita.services.celery_service import TaskProgressTracker
+from bonita.services.setting_service import SettingService
 
 
 # 创建信号量，最多允许X任务同时执行
@@ -450,3 +452,65 @@ def celery_import_nfo(self, folder_path, option):
     except Exception as e:
         logger.error(f"[!] import nfo failed: {str(e)}")
     return True
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
+             name='watch_history:sync')
+def celery_sync_watch_history(self, sources=None, days=30, limit=100):
+    """
+    同步观看历史的Celery任务
+
+    Args:
+        sources: 需要同步的媒体来源列表，None表示全部启用来源
+        days: 历史同步天数，预留参数
+        limit: 单次同步的数据量限制，预留参数
+    """
+    logger.info(f"[+] watch history sync: start, sources={sources}, days={days}, limit={limit}")
+    session = SessionFactory()
+    requested_sources = sources
+    if not requested_sources:
+        requested_sources = ["emby"]
+    elif isinstance(requested_sources, str):
+        requested_sources = [requested_sources]
+    else:
+        requested_sources = list(requested_sources)
+
+    synced_sources = []
+
+    try:
+        setting_service = SettingService(session)
+
+        if "emby" in requested_sources:
+            emby_settings = setting_service.get_emby_settings()
+            if emby_settings.get("enabled"):
+                emby_service = EmbyService()
+                if not emby_service.is_initialized:
+                    try:
+                        from bonita.core.service import init_emby
+                        init_emby()
+                    except Exception as init_error:
+                        logger.error(f"Error initializing Emby service: {init_error}")
+                if emby_service.is_initialized:
+                    sync_emby_history(session)
+                    synced_sources.append("emby")
+                else:
+                    logger.warning("Emby service is not initialized, skipping watch history sync")
+            else:
+                logger.info("Emby watch history sync disabled, skipping")
+
+        unsupported_sources = set(requested_sources) - {"emby"}
+        for source in unsupported_sources:
+            logger.info(f"Watch history sync for source '{source}' is not implemented yet")
+
+        logger.info(f"[+] watch history sync: finished, synced_sources={synced_sources}")
+        return {
+            "requested_sources": requested_sources,
+            "synced_sources": synced_sources,
+            "days": days,
+            "limit": limit
+        }
+    except Exception as e:
+        logger.error(f"Error during watch history sync: {str(e)}")
+        raise
+    finally:
+        session.close()

@@ -20,4 +20,4 @@ echo "FastAPI服务已启动，数据库初始化完成"
 
 # 启动Celery
 echo "启动Celery worker..."
-exec s6-setuidgid tomoki celery -A bonita.worker.celery worker --pool threads --concurrency $MAX_CONCURRENCY --events --loglevel DEBUG
+exec s6-setuidgid tomoki celery -A bonita.worker.celery worker --pool threads --concurrency $MAX_CONCURRENCY --events --loglevel DEBUG --beat

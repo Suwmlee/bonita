@@ -13,7 +13,7 @@ pip install -r requirements.txt
 uvicorn bonita.main:app --host 0.0.0.0 --port 8000  --reload
 
 # 启动 worker，采用 threads 适用简单I/O，设置并发数为 5，同时启用事件机制
-celery --app bonita.worker.celery worker --pool threads --concurrency 5 --events --loglevel DEBUG
+celery --app bonita.worker.celery worker --pool threads --concurrency 5 --events --loglevel DEBUG --beat
 
 # 注册的任务列表
 celery --app bonita.worker.celery inspect registered
@@ -61,7 +61,8 @@ alembic downgrade -1
         "threads",
         "--concurrency",
         "5",
-        "--events"
+        "--events",
+        "--beat"
       ]
     }
   ],
