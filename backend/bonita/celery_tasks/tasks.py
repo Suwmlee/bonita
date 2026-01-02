@@ -398,6 +398,11 @@ def celery_import_nfo(self, folder_path, option):
         for nfo_dict in metadata_list:
             nfo_data = nfo_dict['nfo']
             cover_path = nfo_dict['cover_path']
+
+            # 确保 actor 字段不为空
+            if not nfo_data.get('actor') or nfo_data.get('actor', '').strip() == '':
+                nfo_data['actor'] = '佚名'
+
             try:
                 metadata_base = schemas.MetadataBase(**nfo_data)
                 # 如果 title 中包含 number，则删除 number

@@ -6,6 +6,8 @@ from datetime import date, datetime
 class MetadataBase(BaseModel):
     number: str
     title: str
+    actor: str
+    cover: str
     studio: Optional[str] = None
     release: Optional[date] = None
     year: Optional[int] = None
@@ -16,9 +18,7 @@ class MetadataBase(BaseModel):
     country: Optional[str] = None
     outline: Optional[str] = None
     director: Optional[str] = None
-    actor: Optional[str] = None
     actor_photo: Optional[str] = None
-    cover: str
     cover_small: Optional[str] = None
     extrafanart: Optional[str] = None
     trailer: Optional[str] = None

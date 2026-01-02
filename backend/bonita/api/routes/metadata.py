@@ -25,6 +25,12 @@ async def create_metadata(
         创建的元数据
     """
     metadata_dict = metadata_in.model_dump()
+
+    # 确保 actor 字段不为空
+    actor_value = metadata_dict.get('actor')
+    if not actor_value or (isinstance(actor_value, str) and actor_value.strip() == ''):
+        metadata_dict['actor'] = '佚名'
+
     if metadata_dict.get("cover") and metadata_dict["cover"].startswith(("http://", "https://")):
         metadata_dict["cover"] = process_cached_file(session, metadata_dict["cover"], metadata_dict["number"])
 

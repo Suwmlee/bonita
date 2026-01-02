@@ -404,6 +404,8 @@ export default {
         validation: {
           numberRequired: "Number is required",
           titleRequired: "Title is required",
+          actorRequired: "Actor is required",
+          coverRequired: "Cover is required",
         },
         uploadCover: "Upload Cover",
         selectImage: "Select Image",

@@ -389,6 +389,8 @@ export default {
         validation: {
           numberRequired: "编号不能为空",
           titleRequired: "标题不能为空",
+          actorRequired: "演员不能为空",
+          coverRequired: "封面不能为空",
         },
         uploadCover: "上传封面",
         selectImage: "选择图片",

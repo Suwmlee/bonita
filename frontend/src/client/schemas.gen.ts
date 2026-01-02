@@ -798,6 +798,14 @@ export const $MetadataBase = {
             type: 'string',
             title: 'Title'
         },
+        actor: {
+            type: 'string',
+            title: 'Actor'
+        },
+        cover: {
+            type: 'string',
+            title: 'Cover'
+        },
         studio: {
             anyOf: [
                 {
@@ -909,17 +917,6 @@ export const $MetadataBase = {
             ],
             title: 'Director'
         },
-        actor: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Actor'
-        },
         actor_photo: {
             anyOf: [
                 {
@@ -930,10 +927,6 @@ export const $MetadataBase = {
                 }
             ],
             title: 'Actor Photo'
-        },
-        cover: {
-            type: 'string',
-            title: 'Cover'
         },
         cover_small: {
             anyOf: [
@@ -1059,7 +1052,7 @@ export const $MetadataBase = {
         }
     },
     type: 'object',
-    required: ['number', 'title', 'cover'],
+    required: ['number', 'title', 'actor', 'cover'],
     title: 'MetadataBase'
 } as const;
 
@@ -1092,6 +1085,14 @@ export const $MetadataCreate = {
             type: 'string',
             title: 'Title'
         },
+        actor: {
+            type: 'string',
+            title: 'Actor'
+        },
+        cover: {
+            type: 'string',
+            title: 'Cover'
+        },
         studio: {
             anyOf: [
                 {
@@ -1203,17 +1204,6 @@ export const $MetadataCreate = {
             ],
             title: 'Director'
         },
-        actor: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Actor'
-        },
         actor_photo: {
             anyOf: [
                 {
@@ -1224,10 +1214,6 @@ export const $MetadataCreate = {
                 }
             ],
             title: 'Actor Photo'
-        },
-        cover: {
-            type: 'string',
-            title: 'Cover'
         },
         cover_small: {
             anyOf: [
@@ -1353,7 +1339,7 @@ export const $MetadataCreate = {
         }
     },
     type: 'object',
-    required: ['number', 'title', 'cover'],
+    required: ['number', 'title', 'actor', 'cover'],
     title: 'MetadataCreate',
     description: '用于创建元数据的模型'
 } as const;
@@ -1367,6 +1353,14 @@ export const $MetadataPublic = {
         title: {
             type: 'string',
             title: 'Title'
+        },
+        actor: {
+            type: 'string',
+            title: 'Actor'
+        },
+        cover: {
+            type: 'string',
+            title: 'Cover'
         },
         studio: {
             anyOf: [
@@ -1479,17 +1473,6 @@ export const $MetadataPublic = {
             ],
             title: 'Director'
         },
-        actor: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Actor'
-        },
         actor_photo: {
             anyOf: [
                 {
@@ -1500,10 +1483,6 @@ export const $MetadataPublic = {
                 }
             ],
             title: 'Actor Photo'
-        },
-        cover: {
-            type: 'string',
-            title: 'Cover'
         },
         cover_small: {
             anyOf: [
@@ -1633,7 +1612,7 @@ export const $MetadataPublic = {
         }
     },
     type: 'object',
-    required: ['number', 'title', 'cover', 'id'],
+    required: ['number', 'title', 'actor', 'cover', 'id'],
     title: 'MetadataPublic'
 } as const;
 

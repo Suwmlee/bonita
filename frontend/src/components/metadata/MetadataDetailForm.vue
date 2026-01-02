@@ -84,6 +84,20 @@ function validateForm() {
     formValid.value = false
   }
 
+  if (!currentMetadata.value.actor?.trim()) {
+    formErrors.value.actor = t(
+      "components.metadata.form.validation.actorRequired",
+    )
+    formValid.value = false
+  }
+
+  if (!currentMetadata.value.cover?.trim()) {
+    formErrors.value.cover = t(
+      "components.metadata.form.validation.coverRequired",
+    )
+    formValid.value = false
+  }
+
   return formValid.value
 }
 
@@ -304,10 +318,10 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="actor">{{ t('components.metadata.form.actor') }}</label>
+            <label for="actor">{{ t('components.metadata.form.actor') }} <span class="text-error">*</span></label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField v-model="currentMetadata.actor" />
+            <VTextField v-model="currentMetadata.actor" :error-messages="formErrors.actor" required />
           </VCol>
         </VRow>
       </VCol>
@@ -326,11 +340,11 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
-            <label for="cover">{{ t('components.metadata.form.cover') }}</label>
+            <label for="cover">{{ t('components.metadata.form.cover') }} <span class="text-error">*</span></label>
           </VCol>
           <VCol cols="12" md="9">
             <div class="d-flex align-center">
-              <VTextField v-model="currentMetadata.cover" class="flex-grow-1 mr-2" />
+              <VTextField v-model="currentMetadata.cover" :error-messages="formErrors.cover" required class="flex-grow-1 mr-2" />
               <VBtn :loading="isUploading" :disabled="isUploading" color="primary" @click="selectCoverImage"
                 variant="outlined" size="small">
                 <VIcon icon="bx-upload" class="mr-1" />

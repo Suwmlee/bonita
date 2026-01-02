@@ -148,6 +148,8 @@ export type MediaItemWithWatches = {
 export type MetadataBase = {
     number: string;
     title: string;
+    actor: string;
+    cover: string;
     studio?: string | null;
     release?: string | null;
     year?: number | null;
@@ -158,9 +160,7 @@ export type MetadataBase = {
     country?: string | null;
     outline?: string | null;
     director?: string | null;
-    actor?: string | null;
     actor_photo?: string | null;
-    cover: string;
     cover_small?: string | null;
     extrafanart?: string | null;
     trailer?: string | null;
@@ -185,6 +185,8 @@ export type MetadataCollection = {
 export type MetadataCreate = {
     number: string;
     title: string;
+    actor: string;
+    cover: string;
     studio?: string | null;
     release?: string | null;
     year?: number | null;
@@ -195,9 +197,7 @@ export type MetadataCreate = {
     country?: string | null;
     outline?: string | null;
     director?: string | null;
-    actor?: string | null;
     actor_photo?: string | null;
-    cover: string;
     cover_small?: string | null;
     extrafanart?: string | null;
     trailer?: string | null;
@@ -214,6 +214,8 @@ export type MetadataCreate = {
 export type MetadataPublic = {
     number: string;
     title: string;
+    actor: string;
+    cover: string;
     studio?: string | null;
     release?: string | null;
     year?: number | null;
@@ -224,9 +226,7 @@ export type MetadataPublic = {
     country?: string | null;
     outline?: string | null;
     director?: string | null;
-    actor?: string | null;
     actor_photo?: string | null;
-    cover: string;
     cover_small?: string | null;
     extrafanart?: string | null;
     trailer?: string | null;
