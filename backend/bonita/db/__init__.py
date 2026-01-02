@@ -1,13 +1,36 @@
 
 from typing import Generator
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, event
 from sqlalchemy.orm import sessionmaker, Session, declared_attr, as_declarative
 
 from bonita.core.config import settings
 from bonita.utils.filehelper import OperationMethod
 
-engine = create_engine(settings.SQLALCHEMY_DATABASE_URI,
-                       connect_args={"check_same_thread": False})
+engine = create_engine(
+    settings.SQLALCHEMY_DATABASE_URI,
+    connect_args={"check_same_thread": False},
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,
+)
+
+
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_conn, connection_record):
+    """
+    在每个SQLite连接建立时设置PRAGMA优化参数
+    - WAL模式：提升并发性能，允许读写同时进行
+    - synchronous=NORMAL：在WAL模式下安全且更快
+    - cache_size：增加缓存大小（负数表示KB）
+    - temp_store：使用内存存储临时表
+    """
+    cursor = dbapi_conn.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    cursor.execute("PRAGMA cache_size=-10000")
+    cursor.execute("PRAGMA temp_store=MEMORY")
+    cursor.execute("PRAGMA busy_timeout=5000")
+    cursor.close()
 
 SessionFactory = sessionmaker(bind=engine, autoflush=False)
 
