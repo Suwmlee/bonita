@@ -769,6 +769,10 @@ export type RunEmbyScanData = {
 
 export type RunEmbyScanResponse = TaskStatus;
 
+export type SyncEmbyWatchHistoryData = {
+    requestBody: ToolArgsParam;
+};
+
 export type SyncEmbyWatchHistoryResponse = Response;
 
 export type CleanupDataData = {
@@ -1406,11 +1410,16 @@ export type $OpenApiTs = {
     };
     '/api/v1/tools/sync/emby': {
         post: {
+            req: SyncEmbyWatchHistoryData;
             res: {
                 /**
                  * Successful Response
                  */
                 200: Response;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
             };
         };
     };

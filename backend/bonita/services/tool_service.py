@@ -76,18 +76,21 @@ class ToolService:
             error_message='该功能尚未实现'
         )
 
-    def sync_emby_watch_history(self) -> schemas.Response:
+    def sync_emby_watch_history(self, force: bool = False) -> schemas.Response:
         """同步Emby观看历史
+
+        Args:
+            force: 是否强制覆盖本地数据（包括喜爱标记），默认为False
 
         Returns:
             schemas.Response: 操作响应
         """
-        logger.info("Sync emby watch history")
-        sync_emby_history(self.session)
+        logger.info(f"Sync emby watch history, force={force}")
+        sync_emby_history(self.session, force=force)
 
         return schemas.Response(
             success=True,
-            message="sync emby watch history success"
+            message=f"sync emby watch history success (force={'enabled' if force else 'disabled'})"
         )
 
     def cleanup_data(self, force_flag: bool) -> schemas.Response:

@@ -42,11 +42,19 @@ async def run_emby_scan(
 
 @router.post("/sync/emby", response_model=schemas.Response)
 async def sync_emby_watch_history(
-        session: SessionDep):
+        session: SessionDep,
+        params: schemas.ToolArgsParam):
     """ 同步emby watch history
+    
+    Args:
+        arg1: 是否强制覆盖本地喜爱标记 ("true"/"false")，默认为false
     """
+    force = False
+    if params and params.arg1:
+        force = params.arg1.lower() == "true"
+    
     tool_service = ToolService(session)
-    return tool_service.sync_emby_watch_history()
+    return tool_service.sync_emby_watch_history(force=force)
 
 
 @router.post("/cleanup", response_model=schemas.Response)

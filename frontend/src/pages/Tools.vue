@@ -14,6 +14,7 @@ const isCleaningMediaItems = ref(false)
 const isCleaningData = ref(false)
 const updateOption = ref("ignore")
 const forceCleanupOption = ref(false)
+const forceUpdateEmby = ref(false)
 
 const importNfoData = async () => {
   if (!nfoFolder.value) {
@@ -34,7 +35,7 @@ const importNfoData = async () => {
 const syncEmbyWatchHistory = async () => {
   isSyncingEmby.value = true
   try {
-    await toolStore.syncEmbyWatchHistory()
+    await toolStore.syncEmbyWatchHistory(forceUpdateEmby.value)
   } finally {
     isSyncingEmby.value = false
   }
@@ -115,6 +116,16 @@ const cleanupData = async () => {
         </VCardSubtitle>
         <VCardText>
           <VRow>
+            <VCol cols="12">
+              <VRow no-gutters>
+                <VCol cols="12" md="3" class="row-label">
+                  <label for="forceUpdateEmby">{{ t('pages.tools.syncEmby.forceUpdate') }}</label>
+                </VCol>
+                <VCol cols="12" md="9">
+                  <VCheckbox v-model="forceUpdateEmby" hide-details />
+                </VCol>
+              </VRow>
+            </VCol>
             <VCol cols="12" class="mb-3">
               <VBtn color="primary" block :loading="isSyncingEmby" @click="syncEmbyWatchHistory">
                 {{ t('pages.tools.syncEmby.startSync') }}

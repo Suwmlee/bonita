@@ -12,13 +12,12 @@ from bonita.modules.scraping.number_parser import get_number
 logger = logging.getLogger(__name__)
 
 
-def sync_emby_history(session):
+def sync_emby_history(session, force=False):
     """Syncs watch history from Emby
 
     Args:
         session: Database session
-        days (int): Number of days of history to fetch
-        limit (int): Maximum number of items to fetch
+        force (bool): 是否强制覆盖本地数据（包括喜爱标记）
 
     Returns:
         tuple: (new_records, updated_records)
@@ -38,7 +37,7 @@ def sync_emby_history(session):
         for library_id, library_items in watched_items.items():
             for item in library_items["movies"]:
                 try:
-                    convert_emby_watched_items(session, item)
+                    convert_emby_watched_items(session, item, force=force)
                 except Exception as e:
                     logger.error(f"Error converting Emby watched item: {e}")
                     continue
@@ -52,8 +51,13 @@ def sync_emby_history(session):
         raise
 
 
-def convert_emby_watched_items(session, item):
+def convert_emby_watched_items(session, item, force=False):
     """Convert Emby watched items to a list of dictionaries
+    
+    Args:
+        session: Database session
+        item: Emby item data
+        force: 是否强制覆盖本地数据（包括喜爱标记）
     """
     # Extract item data
     item_id = item.get("Id", "")
@@ -162,21 +166,32 @@ def convert_emby_watched_items(session, item):
 
     existing_record = session.query(WatchHistory).filter(WatchHistory.media_item_id == media_item.id).first()
     if existing_record:
+        # 处理喜爱标记：以app记录为准，除非强制模式
+        final_favorite = existing_record.favorite
+        if force:
+            final_favorite = is_favorite
+        else:
+            if existing_record.favorite:
+                final_favorite = True
+            else:
+                final_favorite = is_favorite
+
         # 检查existing_record是否有实际变化
         has_record_changes = (
             existing_record.watched != watched or
             existing_record.watch_count != watch_count or
-            existing_record.favorite != is_favorite or
+            existing_record.favorite != final_favorite or
             existing_record.play_progress != play_progress or
             existing_record.duration != duration
         )
         if has_record_changes:
             existing_record.watched = watched
             existing_record.watch_count = watch_count
-            existing_record.favorite = is_favorite
+            existing_record.favorite = final_favorite
             existing_record.play_progress = play_progress
             existing_record.duration = duration
             session.commit()
+            logger.debug(f"Updated watch history for media_item {media_item.id}, favorite: {existing_record.favorite} -> {final_favorite}")
     else:
         new_record = WatchHistory(
             media_item_id=media_item.id,
@@ -187,3 +202,4 @@ def convert_emby_watched_items(session, item):
             duration=duration,
         )
         new_record.create(session)
+        logger.debug(f"Created new watch history for media_item {media_item.id}, favorite: {is_favorite}")

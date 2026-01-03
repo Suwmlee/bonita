@@ -175,6 +175,7 @@ export default {
         title: "Sync Emby Watch History",
         subtitle:
           "Synchronize watch history from Emby server to local database",
+        forceUpdate: "Force Update",
         startSync: "Start Sync",
       },
       cleanup: {

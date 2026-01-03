@@ -172,6 +172,7 @@ export default {
       syncEmby: {
         title: "同步Emby观看历史",
         subtitle: "从Emby服务器同步观看历史到本地数据库",
+        forceUpdate: "强制更新",
         startSync: "开始同步",
       },
       cleanup: {

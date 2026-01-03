@@ -40,12 +40,16 @@ export const useToolStore = defineStore("tool-store", {
       }
     },
 
-    async syncEmbyWatchHistory() {
+    async syncEmbyWatchHistory(forceUpdate = false) {
       this.syncEmbyInProgress = true
       try {
         const toastStore = useToastStore()
 
-        const response = await ToolsService.syncEmbyWatchHistory()
+        const response = await ToolsService.syncEmbyWatchHistory({
+          requestBody: {
+            arg1: forceUpdate ? "true" : "false",
+          },
+        })
         toastStore.success("Emby观看历史同步成功")
         return response
       } catch (error) {
