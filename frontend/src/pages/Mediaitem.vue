@@ -148,7 +148,7 @@ async function searchMediaItems() {
   try {
     await mediaItemStore.getMediaItems(
       searchQuery.value,
-      undefined,
+      1,
       undefined,
       getMediaTypeValue(),
       sortField.value || undefined,

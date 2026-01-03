@@ -17,7 +17,7 @@ const totalItems = computed(() => metadataStore.totalCount)
 const itemsPerPage = computed({
   get: () => metadataStore.itemsPerPage,
   set: async (value) => {
-    await metadataStore.getMetadata(searchQuery.value, 1, value) // Reset to page 1 when changing items per page
+    await metadataStore.getMetadata(searchQuery.value, 1, value)
   },
 })
 const totalPages = computed(() =>
@@ -45,7 +45,7 @@ function getImageUrl(path: string) {
 async function searchMetadata() {
   isSearching.value = true
   try {
-    await metadataStore.getMetadata(searchQuery.value)
+    await metadataStore.getMetadata(searchQuery.value, 1)
   } finally {
     isSearching.value = false
   }
@@ -72,7 +72,7 @@ const formatDateTime = (dateStr: string | null | undefined) => {
 // Watch for changes in search query
 watch(searchQuery, async (newValue) => {
   if (newValue === "") {
-    await metadataStore.getMetadata() // Reset to all metadata when search is cleared
+    await metadataStore.getMetadata("", 1)
   } else {
     await searchMetadata()
   }
