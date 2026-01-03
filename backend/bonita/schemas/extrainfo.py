@@ -7,6 +7,7 @@ class ExtraInfoBase(BaseModel):
     number: str
     tag: Optional[str] = None
     partNumber: int = 0
+    crop: Optional[bool] = True
     specifiedsource: Optional[str] = None
     specifiedurl: Optional[str] = None
 

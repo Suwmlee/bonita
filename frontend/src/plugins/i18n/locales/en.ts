@@ -446,6 +446,8 @@ export default {
         tagsPlaceholder: "Separate multiple tags with commas",
         tagsHint: "Example: Chinese subtitles, cracked",
         partNumber: "Part Number",
+        crop: "Crop Poster",
+        cropPoster: "Crop Poster",
         specifiedSource: "Specified Source",
         specifiedUrl: "Specified URL",
         save: "Save",

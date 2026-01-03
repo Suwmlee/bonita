@@ -215,6 +215,15 @@ async function applyTopFolderToAll() {
 
         <VRow no-gutters class="mb-4">
           <VCol cols="12" md="3" class="row-label">
+            <label>{{ t('components.record.form.crop') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VCheckbox v-model="currentExtraInfo.crop" :label="t('components.record.form.cropPoster')" />
+          </VCol>
+        </VRow>
+
+        <VRow no-gutters class="mb-4">
+          <VCol cols="12" md="3" class="row-label">
             <label>{{ t('components.record.form.specifiedSource') }}</label>
           </VCol>
           <VCol cols="12" md="9">

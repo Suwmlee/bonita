@@ -28,6 +28,7 @@ export type ExtraInfoPublic = {
     number?: string | null;
     tag?: string | null;
     partNumber?: number | null;
+    crop?: boolean;
     specifiedsource?: string | null;
     specifiedurl?: string | null;
     id?: number | null;

@@ -147,6 +147,11 @@ export const $ExtraInfoPublic = {
             ],
             title: 'Partnumber'
         },
+        crop: {
+            type: 'boolean',
+            title: 'Crop',
+            default: true
+        },
         specifiedsource: {
             anyOf: [
                 {

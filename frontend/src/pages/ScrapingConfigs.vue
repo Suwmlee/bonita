@@ -29,7 +29,7 @@ onMounted(() => {
   <div>
 
     <p class="text-xl mb-6">
-      Scraping Configs
+      {{ $t('pages.scraping.title') }}
     </p>
 
     <VRow>

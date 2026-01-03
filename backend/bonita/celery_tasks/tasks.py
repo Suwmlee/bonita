@@ -186,10 +186,10 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                         output_folder = base_output
                     if not os.path.exists(output_folder):
                         os.makedirs(output_folder)
-                    # 写入NFO文件
+                    # 更新NFO文件/cover
                     process_nfo_file(output_folder, metamixed.extra_filename, metamixed.__dict__)
                     cache_cover_filepath = process_cached_file(session, metamixed.cover, metamixed.number)
-                    pics = process_cover(cache_cover_filepath, output_folder, metamixed.extra_filename)
+                    pics = process_cover(cache_cover_filepath, output_folder, metamixed.extra_filename, crop=metamixed.extra_crop)
                     if scraping_conf.watermark_enabled:
                         add_mark(pics, metamixed.tag, scraping_conf.watermark_location, scraping_conf.watermark_size)
                     # 移动
@@ -334,6 +334,13 @@ def celery_scrapping(self, file_path, scraping_dict):
 
         metadata_mixed.extra_folder = extra_folder
         metadata_mixed.extra_filename = extra_name
+        if extrainfo.crop is None:
+            if metadata_mixed.number.startswith('FC2'):
+                extrainfo.crop = False
+            else:
+                extrainfo.crop = True
+            extrainfo.update(session)
+        metadata_mixed.extra_crop = extrainfo.crop
 
         # 将 extrainfo.tag 中的标签添加到 metadata_base.tag 中，过滤重复的标签
         existing_tags = set(metadata_mixed.tag.split(", ")) if metadata_mixed.tag else set()

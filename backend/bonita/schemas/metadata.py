@@ -68,6 +68,7 @@ class MetadataMixed(MetadataBase):
     extra_filename: Optional[str] = None
     extra_folder: Optional[str] = None
     extra_part: Optional[int] = None
+    extra_crop: Optional[bool] = True
 
     class Config:
         from_attributes = True

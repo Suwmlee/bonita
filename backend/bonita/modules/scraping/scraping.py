@@ -143,11 +143,12 @@ def process_nfo_file(output_folder, prefilename, metadata_dict):
         return False
 
 
-def process_cover(tmp_cover_path, output_folder, prefilename):
+def process_cover(tmp_cover_path, output_folder, prefilename, crop=True):
     """ 处理封面
     :param tmp_cover_path: 临时图片
     :param output_folder: 输出目录
     :param prefilename: 文件名前缀
+    :param crop: 是否需要裁切 poster，默认为 True
     :return: 需要添加水印的图片
     """
     fanartpath = os.path.join(output_folder, prefilename + '-fanart.jpg')
@@ -155,7 +156,10 @@ def process_cover(tmp_cover_path, output_folder, prefilename):
     posterpath = os.path.join(output_folder, prefilename + '-poster.jpg')
     shutil.copyfile(tmp_cover_path, fanartpath)
     shutil.copyfile(tmp_cover_path, thumbpath)
-    crop_poster(tmp_cover_path, posterpath)
+    if crop:
+        crop_poster(tmp_cover_path, posterpath)
+    else:
+        shutil.copyfile(tmp_cover_path, posterpath)
     return [thumbpath, posterpath]
 
 

@@ -430,6 +430,8 @@ export default {
         tagsPlaceholder: "用逗号分隔多个标签",
         tagsHint: "例如：中文字幕,破解",
         partNumber: "部分编号",
+        crop: "裁切海报",
+        cropPoster: "裁切海报",
         specifiedSource: "指定来源",
         specifiedUrl: "指定URL",
         save: "保存",
