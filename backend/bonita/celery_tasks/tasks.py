@@ -264,9 +264,17 @@ def celery_scrapping(self, file_path, scraping_dict):
         if not extrainfo:
             extrainfo = ExtraInfo(filepath=file_path)
             extrainfo.number = fileNumInfo.num
+            if extrainfo.number.startswith('FC2'):
+                extrainfo.crop = False
             extrainfo.partNumber = int(fileNumInfo.part.replace("-CD", "")) if fileNumInfo.part else 0
             extrainfo.tag = ', '.join(map(str, fileNumInfo.tags()))
             extrainfo.create(session)
+        else:
+            if extrainfo.crop is None:
+                if extrainfo.number.startswith('FC2'):
+                    extrainfo.crop = False
+                else:
+                    extrainfo.crop = True
         # 处理指定源/强制从网站更新
         metadata_record = None
         if extrainfo.specifiedurl:
@@ -334,11 +342,6 @@ def celery_scrapping(self, file_path, scraping_dict):
 
         metadata_mixed.extra_folder = extra_folder
         metadata_mixed.extra_filename = extra_name
-        if extrainfo.crop is None:
-            if metadata_mixed.number.startswith('FC2'):
-                extrainfo.crop = False
-            else:
-                extrainfo.crop = True
         metadata_mixed.extra_crop = extrainfo.crop
 
         # 将 extrainfo.tag 中的标签添加到 metadata_base.tag 中，过滤重复的标签
