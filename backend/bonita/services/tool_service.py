@@ -1,5 +1,4 @@
 import logging
-import os
 import uuid
 from sqlalchemy.orm import Session
 
@@ -8,8 +7,6 @@ from bonita.celery_tasks.tasks import celery_import_nfo
 from bonita.modules.media_service.sync import sync_emby_history
 from bonita.services.record_service import RecordService
 from bonita.services.setting_service import SettingService
-from bonita.modules.download_clients.transmission import TransmissionClient
-from bonita.utils.filehelper import has_video_files
 from bonita.core.enums import TaskStatusEnum
 
 logger = logging.getLogger(__name__)
@@ -105,6 +102,7 @@ class ToolService:
         logger.info("Check and cleanup data")
         records_to_cleanup = self.record_service.get_records_to_cleanup(force_flag)
         logger.info(f"Found {len(records_to_cleanup)} records to cleanup")
+
         # 如果没有需要清理的记录，直接返回成功
         if not records_to_cleanup:
             return schemas.Response(
@@ -112,60 +110,19 @@ class ToolService:
                 message="No records need to be cleaned up"
             )
 
-        # 初始化Transmission客户端
-        transmission_client = TransmissionClient()
-        transmission_settings = self.setting_service.get_transmission_settings()
-        all_torrents = []
-        
-        if transmission_settings.get("enabled"):
-            # 初始化Transmission客户端
-            transmission_url = transmission_settings.get("transmission_host", "")
-            transmission_username = transmission_settings.get("transmission_username", "")
-            transmission_password = transmission_settings.get("transmission_password", "")
-            transmission_source_path = transmission_settings.get("transmission_source_path", "")
-            transmission_dest_path = transmission_settings.get("transmission_dest_path", "")
-            transmission_client.initialize(
-                url=transmission_url,
-                username=transmission_username,
-                password=transmission_password,
-                source_path=transmission_source_path,
-                dest_path=transmission_dest_path
+        # 提取记录ID列表
+        record_ids = [record.id for record in records_to_cleanup]
+
+        # 删除记录（force=True 会自动删除种子）
+        try:
+            success, message, _, _ = self.record_service.delete_records(record_ids, force=True)
+            return schemas.Response(
+                success=success,
+                message=f"Cleanup completed. {message}"
             )
-            
-            # 预先获取所有种子，避免重复查询
-            all_torrents = transmission_client.getTorrents(fields=transmission_client.fields)
-            logger.info(f"Fetched {len(all_torrents)} torrents from Transmission")
-        else:
-            logger.warning("Transmission is not enabled, skipping torrent cleanup")
-
-        # 统计信息
-        deleted_count = 0
-        skipped_count = 0
-        # 处理每条记录
-        for record in records_to_cleanup:
-            try:
-                self.record_service.delete_records([record.id], True)
-                # 查找对应的种子
-                if transmission_settings.get("enabled") and record.srcpath:
-                    torrents = transmission_client.searchByPath(record.srcpath, cached_torrents=all_torrents)
-                    # 如果找到匹配的种子且需要删除种子文件
-                    if torrents:
-                        for torrent in torrents:
-                            # 检查种子目录是否还存在视频文件
-                            downfolder = os.path.join(torrent.downloadDir, torrent.name)
-                            torrent_directory = transmission_client.map_path(downfolder, inverse=True)
-                            if torrent_directory and has_video_files(torrent_directory):
-                                logger.warning(
-                                    f"Skipping deletion of torrent with video files: {torrent.name} at {torrent_directory}")
-                                skipped_count += 1
-                                continue
-                            logger.info(f"Deleting torrent: {torrent.name}")
-                            transmission_client.deleteTorrent(torrent.id, delete=True)
-                            deleted_count += 1
-            except Exception as e:
-                logger.error(f"Error processing record {record.id}: {str(e)}")
-
-        return schemas.Response(
-            success=True,
-            message=f"Cleanup completed. Deleted {deleted_count} torrents, skipped {skipped_count} torrents with video files."
-        )
+        except Exception as e:
+            logger.error(f"Error during cleanup: {str(e)}")
+            return schemas.Response(
+                success=False,
+                message=f"Cleanup failed: {str(e)}"
+            )

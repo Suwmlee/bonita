@@ -8,7 +8,7 @@ from bonita import schemas
 from bonita.api.deps import SessionDep
 from bonita.services.setting_service import SettingService
 from bonita.modules.media_service.emby import EmbyService
-from bonita.modules.download_clients.transmission import TransmissionClient
+from bonita.modules.downloader.transmission import TransmissionClient
 
 router = APIRouter()
 

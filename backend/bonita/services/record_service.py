@@ -1,4 +1,5 @@
 import os
+import logging
 from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -8,12 +9,22 @@ from bonita.db.models.record import TransRecords
 from bonita.db.models.extrainfo import ExtraInfo
 from bonita.utils.filehelper import cleanFilebyFilter, cleanFolderWithoutSuffix, video_type
 
+logger = logging.getLogger(__name__)
+
 
 class RecordService:
     """转移记录服务，提供对转移记录的业务逻辑操作"""
 
     def __init__(self, session: Session):
         self.session = session
+        self._downloader_service = None  # 延迟导入避免循环依赖
+
+    def _get_downloader_service(self):
+        """延迟导入 DownloaderService 避免循环依赖"""
+        if self._downloader_service is None:
+            from bonita.services.downloader_service import DownloaderService
+            self._downloader_service = DownloaderService(self.session)
+        return self._downloader_service
 
     def get_records(
         self,
@@ -137,12 +148,16 @@ class RecordService:
 
         return True, f"成功更新 {records_count} 条记录的 top_folder 从 '{old_top_folder}' 到 '{new_top_folder}'", records_count
 
-    def delete_records(self, record_ids: List[int], force: bool = False) -> Tuple[bool, str, int, List[int]]:
+    def delete_records(
+        self,
+        record_ids: List[int],
+        force: bool = False
+    ) -> Tuple[bool, str, int, List[int]]:
         """删除记录
 
         Args:
             record_ids: 记录ID列表
-            force: 是否强制删除源文件
+            force: 是否强制删除源文件和 Transmission 种子
 
         Returns:
             Tuple[bool, str, int, List[int]]: 成功状态、消息、成功删除数和失败ID列表
@@ -152,6 +167,7 @@ class RecordService:
 
         deleted_count = 0
         failed_ids = []
+        records_for_torrent_deletion = []
 
         for record_id in record_ids:
             transfer_record, extra_info = self.get_record_by_id(record_id)
@@ -159,6 +175,10 @@ class RecordService:
             if not transfer_record:
                 failed_ids.append(record_id)
                 continue
+
+            # 如果需要强制删除，保存记录用于后续删除种子
+            if force and transfer_record.srcpath:
+                records_for_torrent_deletion.append(transfer_record)
 
             # 默认删除目标路径的文件
             self._clean_files(transfer_record.destpath)
@@ -187,12 +207,28 @@ class RecordService:
 
             deleted_count += 1
 
+        # 如果强制删除，尝试删除 Transmission 种子
+        torrent_info_msg = ""
+        if force and records_for_torrent_deletion:
+            try:
+                downloader_service = self._get_downloader_service()
+                if downloader_service.initialize_transmission():
+                    deleted_torrents, skipped_torrents = downloader_service.delete_torrents_by_records(
+                        records_for_torrent_deletion,
+                        check_video_files=True
+                    )
+                    torrent_info_msg = f"，删除种子 {deleted_torrents} 个，跳过 {skipped_torrents} 个"
+                    logger.info(f"Deleted {deleted_torrents} torrents, skipped {skipped_torrents} torrents")
+            except Exception as e:
+                logger.error(f"删除种子失败: {str(e)}")
+                torrent_info_msg = f"，种子删除失败: {str(e)}"
+
         success = deleted_count > 0
 
         if failed_ids:
-            message = f"已删除 {deleted_count} 条记录。无法删除ID: {failed_ids}"
+            message = f"已删除 {deleted_count} 条记录{torrent_info_msg}。无法删除ID: {failed_ids}"
         else:
-            message = f"成功删除 {deleted_count} 条记录"
+            message = f"成功删除 {deleted_count} 条记录{torrent_info_msg}"
 
         return success, message, deleted_count, failed_ids
 

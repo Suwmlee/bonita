@@ -4,7 +4,7 @@ import logging
 from typing import List, Any, Union, Optional
 
 from bonita.utils.singleton import Singleton
-from bonita.modules.download_clients.base_client import BaseDownloadClient, torrent_info
+from bonita.modules.downloader.base_client import BaseDownloadClient, torrent_info
 
 logger = logging.getLogger(__name__)
 

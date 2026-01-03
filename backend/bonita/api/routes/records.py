@@ -111,7 +111,7 @@ async def delete_records(
     Args:
         session: 数据库会话
         record_ids: 要删除的记录ID列表
-        force: 是否强制删除，如果为True则同时删除关联的文件
+        force: 是否强制删除，如果为True则同时删除关联的文件和Transmission种子
 
     Returns:
         删除操作的结果
