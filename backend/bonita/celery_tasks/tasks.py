@@ -177,7 +177,13 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                         continue
                     metamixed = schemas.MetadataMixed.model_validate(metabase_json)
 
+                    # 验证结果路径在 output_folder 下，例如：extra_folder 不能"/"开头导致join失败
                     output_folder = os.path.abspath(os.path.join(task_info.output_folder, metamixed.extra_folder))
+                    base_output = os.path.abspath(task_info.output_folder)
+                    if not output_folder.startswith(base_output):
+                        logger.error(f"[!] Security check failed: output_folder '{output_folder}' is outside base folder '{base_output}'")
+                        logger.error(f"[!] Using base folder instead")
+                        output_folder = base_output
                     if not os.path.exists(output_folder):
                         os.makedirs(output_folder)
                     # 写入NFO文件
@@ -310,14 +316,32 @@ def celery_scrapping(self, file_path, scraping_dict):
             shorttitle = metadata_mixed.title[0:maxlen]
             extra_folder = extra_folder.replace(metadata_mixed.title, shorttitle)
             extra_name = extra_name.replace(metadata_mixed.title, shorttitle)
+
+        # 清理和验证生成的路径
+        # 移除路径中的非法字符
+        illegal_chars = ['<', '>', ':', '"', '|', '?', '*']
+        for char in illegal_chars:
+            extra_folder = extra_folder.replace(char, '_')
+            extra_name = extra_name.replace(char, '_')
+        # 确保路径不为空且不是绝对路径
+        extra_folder = extra_folder.strip()
+        if not extra_folder or extra_folder.startswith('/') or extra_folder.startswith('\\'):
+            extra_folder = metadata_mixed.actor if metadata_mixed.actor else '未分类'
+        # 移除路径开头的斜杠和点
+        extra_folder = extra_folder.lstrip('/\\.')
+        # 替换路径遍历字符
+        extra_folder = extra_folder.replace('..', '_')
+
         metadata_mixed.extra_folder = extra_folder
         metadata_mixed.extra_filename = extra_name
 
         # 将 extrainfo.tag 中的标签添加到 metadata_base.tag 中，过滤重复的标签
-        existing_tags = set(metadata_mixed.tag.split(", "))
-        new_tags = set(extrainfo.tag.split(", "))
+        existing_tags = set(metadata_mixed.tag.split(", ")) if metadata_mixed.tag else set()
+        new_tags = set(extrainfo.tag.split(", ")) if extrainfo.tag else set()
         combined_tags = existing_tags.union(new_tags)
-        metadata_mixed.tag = ", ".join(combined_tags)
+        # 过滤掉空字符串
+        combined_tags = {tag for tag in combined_tags if tag.strip()}
+        metadata_mixed.tag = ", ".join(combined_tags) if combined_tags else ''
         # 更新文件名称，part -C -CD1
         if extrainfo.partNumber:
             metadata_mixed.extra_filename += f"-CD{extrainfo.partNumber}"
