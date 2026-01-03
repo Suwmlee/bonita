@@ -801,9 +801,10 @@ export class MediaitemService {
     /**
      * Get Media Item
      * 获取单个媒体项详情
+     * 包含观看历史信息
      * @param data The data for the request.
      * @param data.mediaId
-     * @returns MediaItemInDB Successful Response
+     * @returns MediaItemWithWatches Successful Response
      * @throws ApiError
      */
     public static getMediaItem(data: GetMediaItemData): CancelablePromise<GetMediaItemResponse> {
@@ -822,10 +823,11 @@ export class MediaitemService {
     /**
      * Update Media Item
      * 更新媒体项
+     * 支持更新媒体项基础信息和观看历史信息
      * @param data The data for the request.
      * @param data.mediaId
      * @param data.requestBody
-     * @returns MediaItemInDB Successful Response
+     * @returns MediaItemWithWatches Successful Response
      * @throws ApiError
      */
     public static updateMediaItem(data: UpdateMediaItemData): CancelablePromise<UpdateMediaItemResponse> {

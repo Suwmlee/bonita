@@ -33,6 +33,7 @@ class MediaItemUpdate(BaseModel):
     """
     更新MediaItem时的属性
     """
+    # 媒体项基础属性
     media_type: Optional[str] = None
     title: Optional[str] = None
     original_title: Optional[str] = None
@@ -43,6 +44,14 @@ class MediaItemUpdate(BaseModel):
     season_number: Optional[int] = None
     episode_number: Optional[int] = None
     series_id: Optional[int] = None
+    
+    # 观看历史相关属性（可选，如果提供则更新对应的WatchHistory记录）
+    watched: Optional[bool] = None
+    favorite: Optional[bool] = None
+    play_progress: Optional[float] = None
+    duration: Optional[int] = None
+    has_rating: Optional[bool] = None
+    user_rating: Optional[float] = None
 
 
 class MediaItemInDB(MediaItemBase):

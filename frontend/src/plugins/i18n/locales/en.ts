@@ -330,8 +330,7 @@ export default {
       tvshow: "TV Show",
       allWatched: "All Status",
       allItems: "All Items",
-      hasNumber: "Has Number",
-      noNumber: "No Number",
+      hasNumber: "Number",
       imdbId: "IMDB ID",
       tmdbId: "TMDB ID",
       tvdbId: "TVDB ID",
@@ -346,6 +345,8 @@ export default {
       sortTitle: "Title",
       sortUpdatetime: "Update Time",
       sortCreatetime: "Create Time",
+      typeMovie: "Movie",
+      typeTvshow: "TV Series",
     },
     logs: {
       title: "System Logs",

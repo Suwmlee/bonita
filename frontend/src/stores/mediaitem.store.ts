@@ -1,6 +1,5 @@
 import {
   type MediaItemCreate,
-  type MediaItemInDB,
   type MediaItemWithWatches,
   MediaitemService,
 } from "@/client"
@@ -109,6 +108,13 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
             season_number: data.season_number,
             episode_number: data.episode_number,
             series_id: data.series_id,
+            // 观看数据字段（从 userdata 中提取）
+            watched: data.userdata?.watched,
+            favorite: data.userdata?.favorite,
+            play_progress: data.userdata?.play_progress,
+            duration: data.userdata?.duration,
+            has_rating: data.userdata?.has_rating,
+            user_rating: data.userdata?.user_rating,
           },
         })
 
@@ -176,7 +182,7 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
     },
 
     // Update media item by ID
-    updateMediaItemById(id: number, newValue: Partial<MediaItemInDB>) {
+    updateMediaItemById(id: number, newValue: Partial<MediaItemWithWatches>) {
       const index = this.allMediaItems.findIndex(
         (mediaItem) => mediaItem.id === id,
       )

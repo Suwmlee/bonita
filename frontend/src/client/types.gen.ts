@@ -123,6 +123,12 @@ export type MediaItemUpdate = {
     season_number?: number | null;
     episode_number?: number | null;
     series_id?: number | null;
+    watched?: boolean | null;
+    favorite?: boolean | null;
+    play_progress?: number | null;
+    duration?: number | null;
+    has_rating?: boolean | null;
+    user_rating?: number | null;
 };
 
 /**
@@ -740,14 +746,14 @@ export type GetMediaItemData = {
     mediaId: number;
 };
 
-export type GetMediaItemResponse = MediaItemInDB;
+export type GetMediaItemResponse = MediaItemWithWatches;
 
 export type UpdateMediaItemData = {
     mediaId: number;
     requestBody: MediaItemUpdate;
 };
 
-export type UpdateMediaItemResponse = MediaItemInDB;
+export type UpdateMediaItemResponse = MediaItemWithWatches;
 
 export type DeleteMediaItemData = {
     mediaId: number;
@@ -1334,7 +1340,7 @@ export type $OpenApiTs = {
                 /**
                  * Successful Response
                  */
-                200: MediaItemInDB;
+                200: MediaItemWithWatches;
                 /**
                  * Validation Error
                  */
@@ -1347,7 +1353,7 @@ export type $OpenApiTs = {
                 /**
                  * Successful Response
                  */
-                200: MediaItemInDB;
+                200: MediaItemWithWatches;
                 /**
                  * Validation Error
                  */

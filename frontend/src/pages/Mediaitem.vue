@@ -191,6 +191,17 @@ const formatDateTime = (dateStr: string | null | undefined) => {
   })
 }
 
+// 获取媒体类型的显示文本
+const getMediaTypeLabel = (mediaType: string) => {
+  if (mediaType === "movie") {
+    return t("pages.mediaitem.typeMovie")
+  }
+  if (mediaType === "tvshow") {
+    return t("pages.mediaitem.typeTvshow")
+  }
+  return mediaType
+}
+
 // 处理海报URL的函数
 const getPosterUrl = (item: MediaItemWithWatches): string => {
   const baseUrl = `${OpenAPI.BASE}/api/v1/resource/poster?`
@@ -352,9 +363,9 @@ onMounted(() => {
                           <VIcon icon="bx-hash" size="small" class="me-1" />
                           <span class="text-truncate">{{ item.number }}</span>
                         </div>
-                        <div class="d-flex align-center">
-                          <VIcon icon="bx-calendar" size="small" class="me-1" />
-                          <span>{{ formatDateTime(item.updatetime) }}</span>
+                        <div v-else class="d-flex align-center">
+                          <VIcon icon="bx-category" size="small" class="me-1" />
+                          <span>{{ getMediaTypeLabel(item.media_type) }}</span>
                         </div>
                       </div>
                       <div class="media-info-right">

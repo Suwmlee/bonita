@@ -136,18 +136,50 @@ async def get_media_items(
     return schemas.MediaItemCollection(data=items, count=count)
 
 
-@router.get("/{media_id}", response_model=schemas.MediaItemInDB)
+@router.get("/{media_id}", response_model=schemas.MediaItemWithWatches)
 async def get_media_item(
     media_id: int,
     session: SessionDep
 ) -> Any:
     """
     获取单个媒体项详情
+    包含观看历史信息
     """
     media_item = session.query(MediaItem).filter(MediaItem.id == media_id).first()
     if not media_item:
         raise HTTPException(status_code=404, detail="媒体项不存在")
-    return media_item
+    
+    # 查询观看历史信息
+    watch_history = session.query(WatchHistory).filter(
+        WatchHistory.media_item_id == media_id
+    ).first()
+    
+    # 构建MediaItemWithWatches响应
+    item_dict = schemas.MediaItemInDB.model_validate(media_item)
+    
+    if watch_history:
+        userdata = schemas.UserWatchData(
+            favorite=watch_history.favorite or False,
+            watched=watch_history.watched or False,
+            total_plays=watch_history.watch_count or 0,
+            play_progress=watch_history.play_progress,
+            duration=watch_history.duration,
+            has_rating=watch_history.has_rating or False,
+            user_rating=watch_history.rating,
+            last_played=watch_history.updatetime,
+            watch_updatetime=watch_history.updatetime
+        )
+    else:
+        userdata = schemas.UserWatchData(
+            favorite=False,
+            watched=False,
+            total_plays=0
+        )
+    
+    return schemas.MediaItemWithWatches(
+        **item_dict.model_dump(),
+        userdata=userdata
+    )
 
 
 @router.post("/", response_model=schemas.MediaItemInDB)
@@ -165,7 +197,7 @@ async def create_media_item(
     return media_item
 
 
-@router.put("/{media_id}", response_model=schemas.MediaItemInDB)
+@router.put("/{media_id}", response_model=schemas.MediaItemWithWatches)
 async def update_media_item(
     media_id: int,
     media_item_in: schemas.MediaItemUpdate,
@@ -173,19 +205,83 @@ async def update_media_item(
 ) -> Any:
     """
     更新媒体项
+    支持更新媒体项基础信息和观看历史信息
     """
     media_item = session.query(MediaItem).filter(MediaItem.id == media_id).first()
     if not media_item:
         raise HTTPException(status_code=404, detail="媒体项不存在")
 
     update_data = media_item_in.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
+    
+    # 分离观看历史相关的字段
+    watch_fields = ['watched', 'favorite', 'play_progress', 'duration', 'has_rating', 'user_rating']
+    watch_data = {k: v for k, v in update_data.items() if k in watch_fields}
+    media_data = {k: v for k, v in update_data.items() if k not in watch_fields}
+    
+    # 更新媒体项基础信息
+    for field, value in media_data.items():
         setattr(media_item, field, value)
-
-    session.add(media_item)
+    
+    # 如果有观看历史相关的更新，处理WatchHistory表
+    if watch_data:
+        # 查找或创建WatchHistory记录
+        watch_history = session.query(WatchHistory).filter(
+            WatchHistory.media_item_id == media_id
+        ).first()
+        
+        if not watch_history:
+            # 创建新的观看历史记录
+            watch_history = WatchHistory(media_item_id=media_id)
+            session.add(watch_history)
+        
+        # 更新观看历史字段
+        if 'watched' in watch_data:
+            watch_history.watched = watch_data['watched']
+        if 'favorite' in watch_data:
+            watch_history.favorite = watch_data['favorite']
+        if 'play_progress' in watch_data:
+            watch_history.play_progress = watch_data['play_progress']
+        if 'duration' in watch_data:
+            watch_history.duration = watch_data['duration']
+        if 'has_rating' in watch_data:
+            watch_history.has_rating = watch_data['has_rating']
+        if 'user_rating' in watch_data:
+            watch_history.rating = watch_data['user_rating']
+    
     session.commit()
     session.refresh(media_item)
-    return media_item
+    
+    # 查询观看历史信息，构建返回结果
+    watch_history = session.query(WatchHistory).filter(
+        WatchHistory.media_item_id == media_id
+    ).first()
+    
+    # 构建MediaItemWithWatches响应
+    item_dict = schemas.MediaItemInDB.model_validate(media_item)
+    
+    if watch_history:
+        userdata = schemas.UserWatchData(
+            favorite=watch_history.favorite or False,
+            watched=watch_history.watched or False,
+            total_plays=watch_history.watch_count or 0,
+            play_progress=watch_history.play_progress,
+            duration=watch_history.duration,
+            has_rating=watch_history.has_rating or False,
+            user_rating=watch_history.rating,
+            last_played=watch_history.updatetime,
+            watch_updatetime=watch_history.updatetime
+        )
+    else:
+        userdata = schemas.UserWatchData(
+            favorite=False,
+            watched=False,
+            total_plays=0
+        )
+    
+    return schemas.MediaItemWithWatches(
+        **item_dict.model_dump(),
+        userdata=userdata
+    )
 
 
 @router.delete("/{media_id}")
