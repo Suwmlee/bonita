@@ -339,7 +339,6 @@ def celery_scrapping(self, file_path, scraping_dict):
                 extrainfo.crop = False
             else:
                 extrainfo.crop = True
-            extrainfo.update(session)
         metadata_mixed.extra_crop = extrainfo.crop
 
         # 将 extrainfo.tag 中的标签添加到 metadata_base.tag 中，过滤重复的标签
