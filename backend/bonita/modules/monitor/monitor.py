@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta
 from threading import Lock
 from pathlib import Path
-from typing import Dict, Literal
+from typing import Dict, Literal, Optional
 from watchdog.events import FileSystemEvent
 from watchdog.observers import Observer, ObserverType
 
@@ -12,7 +12,8 @@ from bonita.db.models.record import TransRecords
 from bonita.db.models.task import TransferConfig
 from bonita.utils.filehelper import is_video_file
 from bonita.utils.singleton import Singleton
-from bonita.modules.monitor.handler import MonitorHandler
+from bonita.modules.monitor.event_handler import FileEventHandler
+from bonita.modules.monitor.polling_handler import PollingHandler
 from bonita.celery_tasks.tasks import celery_transfer_group
 
 logger = logging.getLogger(__name__)
@@ -21,12 +22,27 @@ logger = logging.getLogger(__name__)
 class MonitorService(metaclass=Singleton):
     """
     File monitoring service that integrates with FastAPI lifecycle events.
+    Supports both event-based (watchdog) and polling-based monitoring.
+
+    For SMB/CIFS network drives, use polling mode by setting:
+    MONITOR_USE_POLLING=true in environment or settings
     """
 
     def __init__(self):
         self._monitors: Dict[str, Dict[str, ObserverType]] = {}
         self._is_running: bool = False
         self._lock = Lock()
+
+        # 检查是否使用轮询模式（适用于网络挂载文件夹）
+        self._use_polling = getattr(settings, 'MONITOR_USE_POLLING', True)
+        self._polling_interval = getattr(settings, 'MONITOR_POLLING_INTERVAL', 10)
+        self._polling_handler: Optional[PollingHandler] = None
+
+        if self._use_polling:
+            logger.info(f"MonitorService will use POLLING mode (interval: {self._polling_interval}s)")
+            self._polling_handler = PollingHandler(polling_interval=self._polling_interval)
+        else:
+            logger.info("MonitorService will use EVENT-BASED mode (watchdog)")
 
     def start(self) -> None:
         """Start the monitoring service - can be called from FastAPI startup event"""
@@ -35,7 +51,15 @@ class MonitorService(metaclass=Singleton):
                 logger.warning("MonitorService is already running")
                 return
             self._is_running = True
-        logger.info("MonitorService started")
+
+        if self._use_polling:
+            # 使用轮询模式
+            self._polling_handler.start()
+        else:
+            # 使用事件监听模式
+            logger.info("MonitorService started (event-based)")
+
+        # 统一加载监控配置
         self._load_monitoring_config()
 
     def stop(self) -> None:
@@ -43,9 +67,14 @@ class MonitorService(metaclass=Singleton):
         if not self._is_running:
             return
 
-        for folder_path in list(self._monitors.keys()):
-            for task_id in list(self._monitors[folder_path].keys()):
-                self._stop_monitoring(folder_path, task_id)
+        if self._use_polling:
+            # 停止轮询服务
+            self._polling_handler.stop()
+        else:
+            # 停止事件监听服务
+            for folder_path in list(self._monitors.keys()):
+                for task_id in list(self._monitors[folder_path].keys()):
+                    self._stop_monitoring(folder_path, task_id)
 
         self._is_running = False
         logger.info("MonitorService stopped")
@@ -69,6 +98,17 @@ class MonitorService(metaclass=Singleton):
             logger.warning("Cannot add directory - MonitorService is not running")
             return
 
+        if self._use_polling:
+            # 使用轮询模式，传递回调函数
+            self._polling_handler.start_monitoring_directory(
+                folder_path,
+                task_id,
+                folder_type,
+                callback_func=self.handle_file_event
+            )
+            return
+
+        # 使用事件监听模式
         if not Path(folder_path).is_dir():
             logger.error(f"Directory not found: {folder_path}")
             return
@@ -80,7 +120,7 @@ class MonitorService(metaclass=Singleton):
             logger.debug(f"Task {task_id} is already monitoring {folder_path}")
             return
 
-        event_handler = MonitorHandler(callback_func=self.handle_file_event, task_id=task_id, folder_type=folder_type)
+        event_handler = FileEventHandler(callback_func=self.handle_file_event, task_id=task_id, folder_type=folder_type)
         observer = Observer()
         observer.schedule(event_handler, folder_path, recursive=True)
         observer.start()
@@ -94,6 +134,12 @@ class MonitorService(metaclass=Singleton):
             logger.warning("Cannot remove directory - MonitorService is not running")
             return
 
+        if self._use_polling:
+            # 使用轮询模式
+            self._polling_handler.stop_monitoring_directory(folder_path, task_id)
+            return
+
+        # 使用事件监听模式
         self._stop_monitoring(folder_path, task_id)
 
     def _stop_monitoring(self, folder_path: str, task_id: str) -> None:

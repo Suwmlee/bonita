@@ -2,7 +2,7 @@ from typing import Callable, Literal
 from watchdog.events import FileSystemEventHandler
 
 
-class MonitorHandler(FileSystemEventHandler):
+class FileEventHandler(FileSystemEventHandler):
     """File system event handler that monitors file changes and triggers corresponding tasks"""
 
     def __init__(self, callback_func: Callable, task_id: str, folder_type: Literal["source", "output"]):

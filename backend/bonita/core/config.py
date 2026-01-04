@@ -76,6 +76,12 @@ class Settings(BaseSettings):
     # 是否开放注册
     USERS_OPEN_REGISTRATION: bool = False
 
+    # 文件监控设置
+    # 是否使用轮询模式（推荐用于 SMB/CIFS 网络挂载文件夹）
+    MONITOR_USE_POLLING: bool = False
+    # 轮询间隔（秒）
+    MONITOR_POLLING_INTERVAL: int = 30
+
     @classmethod
     def settings_customise_sources(
         cls,
