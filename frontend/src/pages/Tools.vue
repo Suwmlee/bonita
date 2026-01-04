@@ -14,6 +14,7 @@ const isCleaningMediaItems = ref(false)
 const isCleaningData = ref(false)
 const updateOption = ref("ignore")
 const forceCleanupOption = ref(false)
+const syncDirection = ref<"from_emby" | "to_emby">("from_emby")
 const forceUpdateEmby = ref(false)
 
 const importNfoData = async () => {
@@ -35,7 +36,7 @@ const importNfoData = async () => {
 const syncEmbyWatchHistory = async () => {
   isSyncingEmby.value = true
   try {
-    await toolStore.syncEmbyWatchHistory(forceUpdateEmby.value)
+    await toolStore.syncEmbyWatchHistory(syncDirection.value, forceUpdateEmby.value)
   } finally {
     isSyncingEmby.value = false
   }
@@ -116,6 +117,20 @@ const cleanupData = async () => {
         </VCardSubtitle>
         <VCardText>
           <VRow>
+            <VCol cols="12">
+              <VRow no-gutters>
+                <VCol cols="12" md="3" class="row-label">
+                  <label for="syncDirection">{{ t('pages.tools.syncEmby.direction') }}</label>
+                </VCol>
+                <VCol cols="12" md="9">
+                  <VRadioGroup v-model="syncDirection" inline hide-details>
+                    <VRadio value="from_emby" :label="t('pages.tools.syncEmby.fromEmby')" />
+                    <VRadio value="to_emby" :label="t('pages.tools.syncEmby.toEmby')" />
+                  </VRadioGroup>
+                </VCol>
+              </VRow>
+            </VCol>
+
             <VCol cols="12">
               <VRow no-gutters>
                 <VCol cols="12" md="3" class="row-label">

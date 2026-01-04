@@ -12,42 +12,54 @@ from bonita.modules.scraping.number_parser import get_number
 logger = logging.getLogger(__name__)
 
 
-def sync_emby_history(session, force=False):
-    """Syncs watch history from Emby
+def sync_emby_history(session, direction="from_emby", force=False):
+    """同步 Emby 和 Bonita 之间的观看记录
 
     Args:
         session: Database session
-        force (bool): 是否强制覆盖本地数据（包括喜爱标记）
+        direction (str): 同步方向
+            - "from_emby": 从 Emby 同步到 Bonita（默认）
+            - "to_emby": 从 Bonita 回写到 Emby
+        force (bool): 是否强制覆盖数据
+            - direction="from_emby" 时：是否强制覆盖本地数据（包括喜爱标记）
+            - direction="to_emby" 时：当前未使用
 
     Returns:
-        tuple: (new_records, updated_records)
+        None
     """
     try:
-        # Fetch watch history
         emby_service = EmbyService()
         if not emby_service.is_initialized:
             logger.info("EmbyService未初始化，跳过同步")
             return
-        watched_items = emby_service.get_user_all_items()
 
-        if not watched_items:
-            logger.info("No watch history found on Emby")
-            return
+        if direction == "to_emby":
+            # Bonita → Emby: 将本地观看记录回写到 Emby
+            logger.info("开始回写本地观看记录到 Emby")
+            write_back_to_emby(session, emby_service)
+        else:
+            # Emby → Bonita: 从 Emby 同步观看记录到本地（默认）
+            logger.info(f"开始从 Emby 同步观看记录到本地 (force={force})")
+            watched_items = emby_service.get_user_all_items()
 
-        for library_id, library_items in watched_items.items():
-            for item in library_items["movies"]:
-                try:
-                    convert_emby_watched_items(session, item, force=force)
-                except Exception as e:
-                    logger.error(f"Error converting Emby watched item: {e}")
-                    continue
-            # for item in library_items["episodes"]:
-            #     convert_emby_watched_items(session, item)
+            if not watched_items:
+                logger.info("Emby 中没有找到观看记录")
+                return
+
+            for library_id, library_items in watched_items.items():
+                for item in library_items["movies"]:
+                    try:
+                        convert_emby_watched_items(session, item, force=force)
+                    except Exception as e:
+                        logger.error(f"Error converting Emby watched item: {e}")
+                        continue
+                # for item in library_items["episodes"]:
+                #     convert_emby_watched_items(session, item, force=force)
 
         return
 
     except Exception as e:
-        logger.error(f"Error syncing from Emby: {e}")
+        logger.error(f"Error syncing Emby history: {e}")
         raise
 
 
@@ -203,3 +215,109 @@ def convert_emby_watched_items(session, item, force=False):
         )
         new_record.create(session)
         logger.debug(f"Created new watch history for media_item {media_item.id}, favorite: {is_favorite}")
+
+
+def write_back_to_emby(session, emby_service):
+    """将本地观看记录回写到 Emby（仅针对有 number 的项目）
+    
+    Args:
+        session: Database session
+        emby_service: EmbyService 实例
+    """
+    try:
+        if not emby_service or not emby_service.is_initialized:
+            logger.info("EmbyService 未初始化，跳过回写")
+            return
+
+        # 只获取有 number 的观看记录
+        watch_histories = session.query(WatchHistory, MediaItem).join(
+            MediaItem, WatchHistory.media_item_id == MediaItem.id
+        ).filter(MediaItem.number.isnot(None)).all()
+
+        if not watch_histories:
+            logger.info("没有找到需要回写的观看记录（仅处理有 number 的项目）")
+            return
+
+        # 获取 Emby 中的所有项目
+        watched_items = emby_service.get_user_all_items()
+        if not watched_items:
+            logger.info("Emby 中没有找到任何项目")
+            return
+
+        # 建立 filepath 到 emby item 的映射
+        emby_items_by_path = {}
+        for library_id, library_items in watched_items.items():
+            for item in library_items.get("movies", []):
+                filepath = item.get("Path")
+                if filepath:
+                    emby_items_by_path[filepath] = item
+            for item in library_items.get("episodes", []):
+                filepath = item.get("Path")
+                if filepath:
+                    emby_items_by_path[filepath] = item
+
+        updated_count = 0
+        for watch_history, media_item in watch_histories:
+            try:
+                # 通过 number 找到对应的文件路径
+                number = media_item.number
+                if not number:
+                    continue
+
+                # 查找转移记录获取目标路径
+                trans_record = session.query(TransRecords).join(
+                    ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath
+                ).filter(ExtraInfo.number == number).first()
+
+                if not trans_record or not trans_record.destpath:
+                    logger.debug(f"找不到 number {number} 的转移记录")
+                    continue
+
+                destpath = trans_record.destpath
+                emby_item = emby_items_by_path.get(destpath)
+
+                if not emby_item:
+                    logger.debug(f"在 Emby 中找不到文件路径: {destpath}")
+                    continue
+
+                # 获取 emby 中的当前状态
+                item_id = emby_item.get("Id")
+                user_data = emby_item.get("UserData", {})
+                emby_watched = user_data.get("Played", False)
+                emby_favorite = user_data.get("IsFavorite", False)
+
+                # 比较状态并更新
+                need_update = False
+                
+                # 处理观看状态
+                if watch_history.watched and not emby_watched:
+                    logger.info(f"标记 Emby 中的项目为已观看: {media_item.title} (number: {number})")
+                    emby_service.mark_as_played(item_id)
+                    need_update = True
+                elif not watch_history.watched and emby_watched:
+                    logger.info(f"标记 Emby 中的项目为未观看: {media_item.title} (number: {number})")
+                    emby_service.mark_as_unplayed(item_id)
+                    need_update = True
+                
+                # 处理喜爱状态
+                if watch_history.favorite and not emby_favorite:
+                    logger.info(f"标记 Emby 中的项目为喜爱: {media_item.title} (number: {number})")
+                    emby_service.mark_as_favorite(item_id)
+                    need_update = True
+                elif not watch_history.favorite and emby_favorite:
+                    logger.info(f"取消 Emby 中的项目喜爱: {media_item.title} (number: {number})")
+                    emby_service.unmark_as_favorite(item_id)
+                    need_update = True
+
+                if need_update:
+                    updated_count += 1
+
+            except Exception as e:
+                logger.error(f"回写 Emby 记录时出错 (media_item: {media_item.title}, number: {media_item.number}): {e}")
+                continue
+
+        logger.info(f"回写完成，共更新 {updated_count} 条记录")
+
+    except Exception as e:
+        logger.error(f"回写到 Emby 时出错: {e}")
+        raise

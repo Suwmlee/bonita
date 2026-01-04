@@ -171,7 +171,10 @@ export default {
       },
       syncEmby: {
         title: "同步Emby观看历史",
-        subtitle: "从Emby服务器同步观看历史到本地数据库",
+        subtitle: "在Emby服务器和本地数据库之间同步观看历史",
+        direction: "同步方向",
+        fromEmby: "从Emby同步到本地",
+        toEmby: "从本地回写到Emby",
         forceUpdate: "强制更新",
         startSync: "开始同步",
       },

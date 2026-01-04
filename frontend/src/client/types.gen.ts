@@ -23,12 +23,20 @@ export type EmbySettings = {
     enabled?: boolean | null;
 };
 
+/**
+ * Emby 同步参数
+ */
+export type EmbySyncParam = {
+    direction?: SyncDirection;
+    force?: boolean;
+};
+
 export type ExtraInfoPublic = {
     filepath?: string | null;
     number?: string | null;
     tag?: string | null;
     partNumber?: number | null;
-    crop?: boolean;
+    crop?: boolean | null;
     specifiedsource?: string | null;
     specifiedurl?: string | null;
     id?: number | null;
@@ -332,6 +340,11 @@ export type StatusResponse = {
     status: string;
     version: string;
 };
+
+/**
+ * Emby 同步方向枚举
+ */
+export type SyncDirection = 'from_emby' | 'to_emby';
 
 export type TaskPathParam = {
     path?: string | null;
@@ -777,7 +790,7 @@ export type RunEmbyScanData = {
 export type RunEmbyScanResponse = TaskStatus;
 
 export type SyncEmbyWatchHistoryData = {
-    requestBody: ToolArgsParam;
+    requestBody: EmbySyncParam;
 };
 
 export type SyncEmbyWatchHistoryResponse = Response;

@@ -174,7 +174,10 @@ export default {
       syncEmby: {
         title: "Sync Emby Watch History",
         subtitle:
-          "Synchronize watch history from Emby server to local database",
+          "Synchronize watch history between Emby server and local database",
+        direction: "Sync Direction",
+        fromEmby: "From Emby to Local",
+        toEmby: "From Local to Emby",
         forceUpdate: "Force Update",
         startSync: "Start Sync",
       },

@@ -43,18 +43,19 @@ async def run_emby_scan(
 @router.post("/sync/emby", response_model=schemas.Response)
 async def sync_emby_watch_history(
         session: SessionDep,
-        params: schemas.ToolArgsParam):
-    """ 同步emby watch history
+        params: schemas.EmbySyncParam):
+    """ 同步 Emby 和 Bonita 之间的观看记录
     
     Args:
-        arg1: 是否强制覆盖本地喜爱标记 ("true"/"false")，默认为false
+        params: Emby 同步参数
+            - direction: 同步方向 ("from_emby" 或 "to_emby")，默认为 "from_emby"
+                * "from_emby": 从 Emby 同步到 Bonita（默认）
+                * "to_emby": 从 Bonita 回写到 Emby（仅处理有 number 的项目）
+            - force: 是否强制覆盖数据，默认为 false
+                * direction="from_emby" 时：是否强制覆盖本地数据（包括喜爱标记）
     """
-    force = False
-    if params and params.arg1:
-        force = params.arg1.lower() == "true"
-    
     tool_service = ToolService(session)
-    return tool_service.sync_emby_watch_history(force=force)
+    return tool_service.sync_emby_watch_history(direction=params.direction.value, force=params.force)
 
 
 @router.post("/cleanup", response_model=schemas.Response)

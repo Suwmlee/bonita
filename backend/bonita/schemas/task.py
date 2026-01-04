@@ -1,6 +1,7 @@
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel
+from enum import Enum
+from pydantic import BaseModel, Field
 
 from bonita.utils.filehelper import OperationMethod
 from bonita.core.enums import TaskStatusEnum
@@ -74,3 +75,19 @@ class ToolArgsParam(BaseModel):
     arg1: Optional[str] = None
     arg2: Optional[str] = None
     arg3: Optional[str] = None
+
+
+class SyncDirection(str, Enum):
+    """
+    Emby 同步方向枚举
+    """
+    FROM_EMBY = "from_emby"
+    TO_EMBY = "to_emby"
+
+
+class EmbySyncParam(BaseModel):
+    """
+    Emby 同步参数
+    """
+    direction: SyncDirection = Field(default=SyncDirection.FROM_EMBY)
+    force: bool = Field(default=False)

@@ -101,6 +101,27 @@ export const $EmbySettings = {
     description: 'Emby settings schema'
 } as const;
 
+export const $EmbySyncParam = {
+    properties: {
+        direction: {
+            allOf: [
+                {
+                    '$ref': '#/components/schemas/SyncDirection'
+                }
+            ],
+            default: 'from_emby'
+        },
+        force: {
+            type: 'boolean',
+            title: 'Force',
+            default: false
+        }
+    },
+    type: 'object',
+    title: 'EmbySyncParam',
+    description: 'Emby 同步参数'
+} as const;
+
 export const $ExtraInfoPublic = {
     properties: {
         filepath: {
@@ -148,7 +169,14 @@ export const $ExtraInfoPublic = {
             title: 'Partnumber'
         },
         crop: {
-            type: 'boolean',
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
             title: 'Crop',
             default: true
         },
@@ -2214,6 +2242,13 @@ export const $StatusResponse = {
     type: 'object',
     required: ['status', 'version'],
     title: 'StatusResponse'
+} as const;
+
+export const $SyncDirection = {
+    type: 'string',
+    enum: ['from_emby', 'to_emby'],
+    title: 'SyncDirection',
+    description: 'Emby 同步方向枚举'
 } as const;
 
 export const $TaskPathParam = {

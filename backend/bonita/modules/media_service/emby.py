@@ -290,14 +290,34 @@ class EmbyService(metaclass=Singleton):
         """Mark an item as unplayed
         """
         if not user_id:
-            user_id = self.get_user_id()
+            user_id = self.emby_user_id
         return self._make_request('delete', f'/emby/Users/{user_id}/PlayedItems/{item_id}')
+
+    def mark_as_favorite(self, item_id, user_id=None):
+        """Mark an item as favorite
+        Args:
+            item_id (str): ID of the item to mark
+            user_id (str, optional): User ID, uses configured user if None
+        """
+        if not user_id:
+            user_id = self.emby_user_id
+        return self._make_request('post', f'/emby/Users/{user_id}/FavoriteItems/{item_id}')
+
+    def unmark_as_favorite(self, item_id, user_id=None):
+        """Remove an item from favorites
+        Args:
+            item_id (str): ID of the item to unmark
+            user_id (str, optional): User ID, uses configured user if None
+        """
+        if not user_id:
+            user_id = self.emby_user_id
+        return self._make_request('delete', f'/emby/Users/{user_id}/FavoriteItems/{item_id}')
 
     def update_playback_position(self, item_id, position_ticks, user_id=None):
         """Update playback position for an item
         """
         if not user_id:
-            user_id = self.get_user_id()
+            user_id = self.emby_user_id
         data = {
             "PlaybackPositionTicks": position_ticks
         }

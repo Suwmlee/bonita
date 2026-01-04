@@ -2,6 +2,7 @@ import { ToolsService } from "@/client"
 import type {
   CleanupDataResponse,
   RunImportNfoResponse,
+  SyncDirection,
   ToolArgsParam,
 } from "@/client/types.gen"
 import { defineStore } from "pinia"
@@ -40,14 +41,15 @@ export const useToolStore = defineStore("tool-store", {
       }
     },
 
-    async syncEmbyWatchHistory(forceUpdate = false) {
+    async syncEmbyWatchHistory(direction: SyncDirection = "from_emby", force = false) {
       this.syncEmbyInProgress = true
       try {
         const toastStore = useToastStore()
 
         const response = await ToolsService.syncEmbyWatchHistory({
           requestBody: {
-            arg1: forceUpdate ? "true" : "false",
+            direction,
+            force,
           },
         })
         toastStore.success("Emby观看历史同步成功")
