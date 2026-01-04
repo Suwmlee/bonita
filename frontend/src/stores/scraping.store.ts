@@ -3,6 +3,7 @@ import type {
   ScrapingConfigCreate,
   ScrapingConfigPublic,
 } from "@/client/types.gen"
+import { i18n } from "@/plugins/i18n"
 import { defineStore } from "pinia"
 import { useConfirmationStore } from "./confirmation.store"
 
@@ -62,8 +63,8 @@ export const useScrapingStore = defineStore("scraping-store", {
 
       try {
         const confirmed = await confirmationStore.confirmDelete(
-          "Delete Scraping Setting",
-          "Are you sure you want to delete this scraping setting? This action cannot be undone.",
+          i18n.global.t("pages.scraping.confirmDeleteTitle") as string,
+          i18n.global.t("pages.scraping.confirmDeleteMessage") as string,
         )
 
         if (confirmed) {

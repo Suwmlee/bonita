@@ -3,6 +3,7 @@ import {
   type MetadataPublic,
   MetadataService,
 } from "@/client"
+import { i18n } from "@/plugins/i18n"
 import { defineStore } from "pinia"
 import { useConfirmationStore } from "./confirmation.store"
 
@@ -142,8 +143,8 @@ export const useMetadataStore = defineStore("metadata-store", {
     async confirmDeleteMetadata(id: number) {
       const confirmationStore = useConfirmationStore()
       const confirmed = await confirmationStore.confirmDelete(
-        "Delete Metadata",
-        "Are you sure you want to delete this metadata? This action cannot be undone.",
+        i18n.global.t("pages.metadata.confirmDeleteTitle") as string,
+        i18n.global.t("pages.metadata.confirmDeleteMessage") as string,
       )
 
       if (confirmed) {

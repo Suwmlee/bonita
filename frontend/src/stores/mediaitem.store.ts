@@ -3,6 +3,7 @@ import {
   type MediaItemWithWatches,
   MediaitemService,
 } from "@/client"
+import { i18n } from "@/plugins/i18n"
 import { defineStore } from "pinia"
 import { useConfirmationStore } from "./confirmation.store"
 import { useToastStore } from "./toast.store"
@@ -123,12 +124,12 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
           this.showDialog = false
 
           const toastStore = useToastStore()
-          toastStore.success("Media item updated successfully")
+          toastStore.success(i18n.global.t("pages.mediaitem.updateSuccess") as string)
         }
       } catch (error) {
         console.error("Error updating media item:", error)
         const toastStore = useToastStore()
-        toastStore.error("Failed to update media item")
+        toastStore.error(i18n.global.t("pages.mediaitem.updateFailed") as string)
       } finally {
         this.isLoading = false
       }
@@ -170,12 +171,12 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
           await this.getMediaItems()
 
           const toastStore = useToastStore()
-          toastStore.success("Media item created successfully")
+          toastStore.success(i18n.global.t("pages.mediaitem.createSuccess") as string)
         }
       } catch (error) {
         console.error("Error creating media item:", error)
         const toastStore = useToastStore()
-        toastStore.error("Failed to create media item")
+        toastStore.error(i18n.global.t("pages.mediaitem.createFailed") as string)
       } finally {
         this.isLoading = false
       }
@@ -201,8 +202,8 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
     async confirmDeleteMediaItem(id: number) {
       const confirmationStore = useConfirmationStore()
       const confirmed = await confirmationStore.confirmDelete(
-        "Delete Media Item",
-        "Are you sure you want to delete this media item? This action cannot be undone.",
+        i18n.global.t("pages.mediaitem.confirmDeleteTitle") as string,
+        i18n.global.t("pages.mediaitem.confirmDeleteMessage") as string,
       )
 
       if (confirmed) {
@@ -224,12 +225,12 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
           )
 
           const toastStore = useToastStore()
-          toastStore.success("Media item deleted successfully")
+          toastStore.success(i18n.global.t("pages.mediaitem.deleteSuccess") as string)
         }
       } catch (error) {
         console.error("Error deleting media item:", error)
         const toastStore = useToastStore()
-        toastStore.error("Failed to delete media item")
+        toastStore.error(i18n.global.t("pages.mediaitem.deleteFailed") as string)
       } finally {
         this.isLoading = false
       }
@@ -246,12 +247,12 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
           await this.getMediaItems()
 
           const toastStore = useToastStore()
-          toastStore.success("Media items cleaned successfully")
+          toastStore.success(i18n.global.t("pages.mediaitem.cleanSuccess") as string)
         }
       } catch (error) {
         console.error("Error cleaning media items:", error)
         const toastStore = useToastStore()
-        toastStore.error("Failed to clean media items")
+        toastStore.error(i18n.global.t("pages.mediaitem.cleanFailed") as string)
       } finally {
         this.isLoading = false
       }

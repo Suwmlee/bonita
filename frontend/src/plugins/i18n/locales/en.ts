@@ -140,6 +140,8 @@ export default {
       delete: "Delete",
       directoryHint:
         "Enter specific directory to run, or leave empty to run entire task",
+      confirmDeleteTitle: "Delete Task",
+      confirmDeleteMessage: "Are you sure you want to delete this task? This action cannot be undone.",
     },
     metadata: {
       title: "Metadata",
@@ -157,6 +159,8 @@ export default {
       totalItems: "Total {count} items",
       editMetadata: "Edit Metadata",
       addMetadata: "Add Metadata",
+      confirmDeleteTitle: "Delete Metadata",
+      confirmDeleteMessage: "Are you sure you want to delete this metadata? This action cannot be undone.",
     },
     tools: {
       title: "Tools",
@@ -174,10 +178,10 @@ export default {
       syncEmby: {
         title: "Sync Emby Watch History",
         subtitle:
-          "Synchronize watch history between Emby server and local database",
+          "Synchronize watch history between Emby server and Bonita",
         direction: "Sync Direction",
-        fromEmby: "From Emby to Local",
-        toEmby: "From Local to Emby",
+        fromEmby: "From Emby to Bonita",
+        toEmby: "From Bonita to Emby",
         forceUpdate: "Force Update",
         startSync: "Start Sync",
       },
@@ -188,6 +192,14 @@ export default {
         forceOption: "Force Delete",
         startCleanup: "Start Cleanup",
       },
+      nfoImportSuccess: "NFO import started",
+      nfoImportFailed: "NFO import failed",
+      nfoImportFailedWithDetail: "NFO import failed: {detail}",
+      nfoImportFailedUnknown: "NFO import failed: Unknown error",
+      embySuccess: "Emby watch history synchronized successfully",
+      embyFailed: "Failed to sync Emby watch history: Unknown error",
+      cleanupSuccess: "Data cleanup completed successfully",
+      cleanupFailed: "Failed to cleanup data: Unknown error",
     },
     serviceSettings: {
       title: "Service Settings",
@@ -311,6 +323,8 @@ export default {
       title: "Scraping Configuration",
       edit: "Edit Configuration",
       add: "Add Configuration",
+      confirmDeleteTitle: "Delete Scraping Setting",
+      confirmDeleteMessage: "Are you sure you want to delete this scraping setting? This action cannot be undone.",
     },
     mediaitem: {
       title: "Media Items",
@@ -350,6 +364,16 @@ export default {
       sortCreatetime: "Create Time",
       typeMovie: "Movie",
       typeTvshow: "TV Series",
+      updateSuccess: "Media item updated successfully",
+      updateFailed: "Failed to update media item",
+      createSuccess: "Media item created successfully",
+      createFailed: "Failed to create media item",
+      deleteSuccess: "Media item deleted successfully",
+      deleteFailed: "Failed to delete media item",
+      cleanSuccess: "Media items cleaned successfully",
+      cleanFailed: "Failed to clean media items",
+      confirmDeleteTitle: "Delete Media Item",
+      confirmDeleteMessage: "Are you sure you want to delete this media item? This action cannot be undone.",
     },
     logs: {
       title: "System Logs",

@@ -5,6 +5,7 @@ import type {
   SyncDirection,
   ToolArgsParam,
 } from "@/client/types.gen"
+import { i18n } from "@/plugins/i18n"
 import { defineStore } from "pinia"
 import { useTaskStore } from "./task.store"
 import { useToastStore } from "./toast.store"
@@ -26,9 +27,13 @@ export const useToolStore = defineStore("tool-store", {
         })
         // Check status
         if (!response || response.status === "FAILED") {
-          toastStore.error(`NFO导入失败: ${response.detail || "未知错误"}`)
+          toastStore.error(
+            i18n.global.t("pages.tools.nfoImportFailedWithDetail", {
+              detail: response.detail || i18n.global.t("common.unknown"),
+            }) as string,
+          )
         } else {
-          toastStore.success("开始导入NFO信息")
+          toastStore.success(i18n.global.t("pages.tools.nfoImportSuccess") as string)
           taskStore.addOrUpdateRunningTask(response)
         }
         return response
@@ -36,7 +41,9 @@ export const useToolStore = defineStore("tool-store", {
         console.error("Error importing NFO:", error)
         const toastStore = useToastStore()
         toastStore.error(
-          error instanceof Error ? error.message : "NFO导入失败: 未知错误",
+          error instanceof Error
+            ? error.message
+            : (i18n.global.t("pages.tools.nfoImportFailedUnknown") as string),
         )
       }
     },
@@ -52,7 +59,7 @@ export const useToolStore = defineStore("tool-store", {
             force,
           },
         })
-        toastStore.success("Emby观看历史同步成功")
+        toastStore.success(i18n.global.t("pages.tools.embySuccess") as string)
         return response
       } catch (error) {
         console.error("Error syncing Emby watch history:", error)
@@ -60,7 +67,7 @@ export const useToolStore = defineStore("tool-store", {
         toastStore.error(
           error instanceof Error
             ? error.message
-            : "Emby观看历史同步失败: 未知错误",
+            : (i18n.global.t("pages.tools.embyFailed") as string),
         )
       } finally {
         this.syncEmbyInProgress = false
@@ -77,13 +84,15 @@ export const useToolStore = defineStore("tool-store", {
             arg1: forceDelete ? "true" : "false",
           },
         })
-        toastStore.success("清理数据成功")
+        toastStore.success(i18n.global.t("pages.tools.cleanupSuccess") as string)
         return response
       } catch (error) {
         console.error("Error cleaning data:", error)
         const toastStore = useToastStore()
         toastStore.error(
-          error instanceof Error ? error.message : "清理数据失败: 未知错误",
+          error instanceof Error
+            ? error.message
+            : (i18n.global.t("pages.tools.cleanupFailed") as string),
         )
       } finally {
         this.cleaningInProgress = false

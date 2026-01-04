@@ -70,8 +70,8 @@ export const useTaskStore = defineStore("task-store", {
 
       try {
         const confirmed = await confirmationStore.confirmDelete(
-          "Delete Task",
-          "Are you sure you want to delete this task? This action cannot be undone.",
+          i18n.global.t("pages.task.confirmDeleteTitle") as string,
+          i18n.global.t("pages.task.confirmDeleteMessage") as string,
         )
 
         if (confirmed) {
