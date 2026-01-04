@@ -181,26 +181,20 @@ def convert_emby_watched_items(session, item, force=False):
 
     existing_record = session.query(WatchHistory).filter(WatchHistory.media_item_id == media_item.id).first()
     if existing_record:
-        # 处理喜爱标记：以app记录为准，除非强制模式
-        final_favorite = existing_record.favorite
-        if force:
-            final_favorite = is_favorite
-        else:
-            if existing_record.favorite:
-                final_favorite = True
-            else:
-                final_favorite = is_favorite
+        # 处理观看/喜爱状态：本地记录优先级更高，除非强制模式
+        final_watched = watched if force else (existing_record.watched or watched)
+        final_favorite = is_favorite if force else (existing_record.favorite or is_favorite)
 
         # 检查existing_record是否有实际变化
         has_record_changes = (
-            existing_record.watched != watched or
+            existing_record.watched != final_watched or
             existing_record.watch_count != watch_count or
             existing_record.favorite != final_favorite or
             existing_record.play_progress != play_progress or
             existing_record.duration != duration
         )
         if has_record_changes:
-            existing_record.watched = watched
+            existing_record.watched = final_watched
             existing_record.watch_count = watch_count
             existing_record.favorite = final_favorite
             existing_record.play_progress = play_progress
