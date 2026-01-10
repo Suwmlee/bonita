@@ -1,9 +1,21 @@
 import os
 
 from celery import Celery
+from celery.signals import after_setup_logger, after_setup_task_logger
 # load tasks
 from bonita.celery_tasks import tasks
 from bonita.core.config import settings
+
+
+@after_setup_logger.connect
+def setup_worker_logger(logger, *args, **kwargs):
+    logger.setLevel(settings.LOGGING_LEVEL)
+
+
+@after_setup_task_logger.connect
+def setup_task_logger(logger, *args, **kwargs):
+    logger.setLevel(settings.LOGGING_LEVEL)
+
 
 def create_celery():
     """
@@ -21,9 +33,9 @@ def create_celery():
     celery.conf.update(worker_send_task_events=False)
     celery.conf.update(worker_prefetch_multiplier=1)
     celery.conf.update(broker_connection_retry_on_startup=True)  # 启动时重试代理连接
-    celery.conf.update(worker_log_format=settings.LOGGING_FORMAT)  # 日志格式
-    celery.conf.update(worker_task_log_format=settings.LOGGING_FORMAT)  # 任务日志格式
-    celery.conf.update(worker_logfile=settings.LOGGING_LOCATION)  # 日志文件路径
+    celery.conf.update(worker_log_format=settings.LOGGING_FORMAT)
+    celery.conf.update(worker_task_log_format=settings.LOGGING_FORMAT)
+    celery.conf.update(worker_logfile=settings.LOGGING_LOCATION)
 
     # Set up scheduled tasks
     celery.conf.beat_schedule = {

@@ -30,39 +30,52 @@ def sync_emby_history(session, direction="from_emby", force=False):
     try:
         emby_service = EmbyService()
         if not emby_service.is_initialized:
-            logger.info("EmbyService未初始化，跳过同步")
+            logger.warning("  ⊘ Emby服务未初始化")
             return
 
         # 统一获取 Emby 中的所有项目
+        logger.info(f"  → 获取Emby媒体项目...")
         watched_items = emby_service.get_user_all_items()
         if not watched_items:
-            logger.info("Emby 中没有找到任何项目")
+            logger.info("  ⊘ Emby 中没有媒体项目")
             return
 
+        total_items = sum(len(lib.get("movies", [])) for lib in watched_items.values())
+        logger.info(f"  找到 {total_items} 个媒体项目")
+        
+        processed = 0
+        synced = 0
         for library_id, library_items in watched_items.items():
             for item in library_items.get("movies", []):
                 try:
+                    processed += 1
                     if direction == "to_emby":
-                        sync_item_to_emby(session, emby_service, item, force)
+                        result = sync_item_to_emby(session, emby_service, item, force)
+                        if result:
+                            synced += 1
                     else:
                         convert_emby_watched_items(session, item, force)
+                        synced += 1
                 except Exception as e:
-                    logger.error(f"Error processing sync Emby item: {e}")
+                    logger.error(f"  ✗ 处理项目失败: {e}")
                     continue
-            # for item in library_items.get("episodes", []):
-            #     try:
-            #         if direction == "to_emby":
-            #             sync_item_to_emby(session, emby_service, item)
-            #         else:
-            #             convert_emby_watched_items(session, item, force=force)
-            #     except Exception as e:
-            #         logger.error(f"Error processing Emby item: {e}")
-            #         continue
+        
+        logger.info(f"  ✓ 同步完成 - 处理:{processed} 同步:{synced}")
+        
+        # for item in library_items.get("episodes", []):
+        #     try:
+        #         if direction == "to_emby":
+        #             sync_item_to_emby(session, emby_service, item)
+        #         else:
+        #             convert_emby_watched_items(session, item, force=force)
+        #     except Exception as e:
+        #         logger.error(f"  ✗ 处理剧集失败: {e}")
+        #         continue
 
         return
 
     except Exception as e:
-        logger.error(f"Error syncing Emby history: {e}")
+        logger.error(f"  ✗ Emby同步失败: {e}")
         raise
 
 
@@ -145,6 +158,7 @@ def convert_emby_watched_items(session, item, force=False):
                 tvdb_id=tvdb_id,
             )
             media_item.create(session)
+            logger.debug(f"    ✓ 创建媒体项: {title}")
     else:
         filepath = item.get("Path")
         # Extract number from filepath - first try database, then fallback to parsing
@@ -163,7 +177,7 @@ def convert_emby_watched_items(session, item, force=False):
         ).filter(Metadata.number == number).first()
 
         if not meta_and_item or not meta_and_item[0]:
-            logger.debug(f"No metadata found for number: {number}")
+            logger.debug(f"    ⊘ 未找到元数据: {number}")
             return None
         meta = meta_and_item[0]
         media_item = meta_and_item[1]
@@ -178,6 +192,7 @@ def convert_emby_watched_items(session, item, force=False):
                 number=number,
             )
             media_item.create(session)
+            logger.debug(f"    ✓ 创建媒体项: {meta.title} ({number})")
 
     existing_record = session.query(WatchHistory).filter(WatchHistory.media_item_id == media_item.id).first()
     if existing_record:
@@ -200,6 +215,7 @@ def convert_emby_watched_items(session, item, force=False):
             existing_record.play_progress = play_progress
             existing_record.duration = duration
             session.commit()
+            logger.debug(f"    ✓ 更新观看记录: {title}")
     else:
         new_record = WatchHistory(
             media_item_id=media_item.id,
@@ -210,6 +226,7 @@ def convert_emby_watched_items(session, item, force=False):
             duration=duration,
         )
         new_record.create(session)
+        logger.debug(f"    ✓ 创建观看记录: {title}")
 
 
 def sync_item_to_emby(session, emby_service, item, force=False):
@@ -259,19 +276,28 @@ def sync_item_to_emby(session, emby_service, item, force=False):
     emby_favorite = user_data.get("IsFavorite", False)
 
     # 处理观看状态
+    updated = False
     if watch_history.watched and not emby_watched:
         emby_service.mark_as_played(item_id)
+        logger.info(f"    ✓ 标记为已观看: {media_item.title} ({number})")
+        updated = True
     elif not watch_history.watched and emby_watched:
         if force:
             # force 模式：以 bonita 为准，将 emby 标记为未观看
-            logger.info(f"标记 Emby 中的项目为未观看 (force): {media_item.title} (number: {number})")
             emby_service.mark_as_unplayed(item_id)
+            logger.info(f"    ✓ 标记为未观看: {media_item.title} ({number})")
+            updated = True
 
     # 处理喜爱状态
     if watch_history.favorite and not emby_favorite:
         emby_service.mark_as_favorite(item_id)
+        logger.info(f"    ♥ 标记为喜爱: {media_item.title} ({number})")
+        updated = True
     elif not watch_history.favorite and emby_favorite:
         if force:
             # force 模式：以 bonita 为准，取消 emby 的喜爱
-            logger.info(f"取消 Emby 中的项目喜爱 (force): {media_item.title} (number: {number})")
             emby_service.unmark_as_favorite(item_id)
+            logger.info(f"    ✓ 取消喜爱: {media_item.title} ({number})")
+            updated = True
+    
+    return updated

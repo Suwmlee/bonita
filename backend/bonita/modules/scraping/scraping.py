@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 def scraping(number, sources=None, specifiedsource="", specifiedurl="", proxy=None):
     """ 开始刮削
     """
+    logger.info(f"        → 搜索元数据: {number}")
     json_data = search(number,
                        sources=sources,
                        specifiedSource=specifiedsource,
@@ -22,6 +23,7 @@ def scraping(number, sources=None, specifiedsource="", specifiedurl="", proxy=No
                        proxies=proxy)
     # Return if blank dict returned (data not found)
     if not json_data or json_data.get('title') == '':
+        logger.warning(f"        ⊘ 未找到元数据")
         return None
     json_data['title'] = sanitize_path(json_data['title'])
     # 确保 actor 字段不为空，如果为空则设置为"佚名"
@@ -30,6 +32,7 @@ def scraping(number, sources=None, specifiedsource="", specifiedurl="", proxy=No
        (isinstance(actor_value, str) and actor_value.strip() == '') or \
        (isinstance(actor_value, list) and len(actor_value) == 0):
         json_data['actor'] = '佚名'
+    logger.info(f"        ✓ 元数据获取成功: {json_data.get('title', 'N/A')}")
     return json_data
 
 
@@ -136,11 +139,10 @@ def process_nfo_file(output_folder, prefilename, metadata_dict):
             print("  <website>" + detailurl + "</website>", file=code)
             print("  <source>" + site + "</source>", file=code)
             print("</movie>", file=code)
-            logger.info("[+]Wrote!            " + nfo_path)
+            logger.info(f"        ✓ NFO: {os.path.basename(nfo_path)}")
             return True
     except Exception as e:
-        logger.error("[-]Write NFO Failed!")
-        logger.error(e)
+        logger.error(f"        ✗ NFO写入失败: {e}")
         return False
 
 
@@ -159,8 +161,10 @@ def process_cover(tmp_cover_path, output_folder, prefilename, crop=True):
     shutil.copyfile(tmp_cover_path, thumbpath)
     if crop:
         crop_poster(tmp_cover_path, posterpath)
+        logger.info(f"        ✓ 封面: {os.path.basename(posterpath)} (已裁剪)")
     else:
         shutil.copyfile(tmp_cover_path, posterpath)
+        logger.info(f"        ✓ 封面: {os.path.basename(posterpath)}")
     return [thumbpath, posterpath]
 
 
@@ -198,13 +202,11 @@ def crop_poster(tmp_file, posterpath):
                 line = 0
             img2 = img.crop((w - width2 - line, 0, w, h))
             img2.save(posterpath)
-            logger.debug('[+]Image Cutted!     ' + posterpath)
         else:
             # 复制封面
             shutil.copyfile(tmp_file, posterpath)
-            logger.debug('[+]Image Copyed!     ' + posterpath)
-    except:
-        logger.info('[-]Cover cut failed!')
+    except Exception as e:
+        logger.error(f"        ✗ 封面裁剪失败: {e}")
 
 
 def add_mark(pics, meta_tags, count, size):
@@ -227,7 +229,7 @@ def add_mark(pics, meta_tags, count, size):
         return
     for pic in pics:
         add_mark_thread(pic, mark_type, count, size)
-        logger.debug('[+]Image Add Mark:   ' + ', '.join(map(str, mark_type)))
+    logger.debug(f"        ✓ 水印: {', '.join(mark_type)}")
 
 
 def add_mark_thread(pic_path, marks, count, size):
@@ -345,13 +347,14 @@ def parse_NFO_from_file(nfo_path):
 
         return NFOdata_dict
     except Exception as e:
-        logger.error(f"[-] parse nfo failed: {nfo_path} {str(e)}")
+        logger.error(f"  ✗ NFO解析失败 {os.path.basename(nfo_path)}: {str(e)}")
         return NFOdata_dict
 
 
 def load_all_NFO_from_folder(folder_path):
     """ 从文件夹中加载所有 NFO
     """
+    logger.info(f"  扫描 NFO 文件...")
     NFOdata_list = []
     # 遍历目录及其子目录下的所有文件
     for root, dirs, files in os.walk(folder_path):
@@ -390,4 +393,5 @@ def load_all_NFO_from_folder(folder_path):
                     dict_data['nfo'] = nfodata
                     dict_data['cover_path'] = cover_path
                     NFOdata_list.append(dict_data)
+    logger.info(f"  ✓ 扫描完成，找到 {len(NFOdata_list)} 个 NFO 文件")
     return NFOdata_list

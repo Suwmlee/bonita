@@ -49,7 +49,8 @@ def celery_transfer_entry(self, task_json):
     task_info = schemas.TransferConfigPublic(**task_json)
     progress_tracker.update_detail(task_info.id)
 
-    logger.info(f"transfer task {task_info.id}: start")
+    logger.info(f"## [转移任务] START - ID:{task_info.id} | 源:{task_info.source_folder} → 目标:{task_info.output_folder}")
+    
     # 获取 source 文件夹下所有顶层文件/文件夹
     progress_tracker.set_progress(15, "扫描源文件夹")
     dirs = os.scandir(task_info.source_folder)
@@ -79,16 +80,19 @@ def celery_transfer_entry(self, task_json):
         # 剔除 done_list 中的重复项
         if done_list:
             done_list = list(set(done_list))
-        logger.info(f"Transfer task {task_info.id} completed with {len(done_list)} files transferred")
+        logger.info(f"  ✓ 转移完成 - 共处理 {len(done_list)} 个文件")
 
         # 转移完成后，判断是否执行清理任务或扫描任务
         progress_tracker.set_progress(85, "执行后续任务")
         if task_info.clean_others:
+            logger.info(f"  → 触发清理任务")
             celery_clean_others.apply_async(args=[task_info.output_folder, done_list])
         if task_info.auto_watch:
+            logger.info(f"  → 触发媒体库扫描")
             celery_emby_scan.apply_async(args=[task_json])
 
     progress_tracker.complete("转移任务完成")
+    logger.info(f"## [转移任务] END - ID:{task_info.id}")
 
     return True
 
@@ -105,9 +109,9 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
         progress_tracker.set_progress(5, "开始处理文件组")
         progress_tracker.update_detail(full_path)
 
-        logger.info(f"transfer group start {full_path}")
+        logger.info(f"  ▸ [文件组] {full_path}")
         if not os.path.exists(full_path):
-            logger.info(f"[!] Transfer not found {full_path}")
+            logger.warning(f"    ✗ 路径不存在")
             return []
 
         progress_tracker.set_progress(15, "解析任务配置")
@@ -127,13 +131,13 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                 waiting_list.append(tf)
         else:
             if not os.path.splitext(full_path)[1].lower() in video_type:
-                logger.info(f"[!] Transfer failed {full_path}")
+                logger.warning(f"    ✗ 非视频文件，跳过")
                 return []
             tf = BasicFileInfo(full_path)
             tf.set_root_folder(task_info.source_folder)
             waiting_list.append(tf)
 
-        logger.info(f"[+] Transfer check {full_path}")
+        logger.info(f"    找到 {len(waiting_list)} 个文件")
         progress_tracker.set_progress(40, f"开始处理 {len(waiting_list)} 个文件")
         try:
             session = SessionFactory()
@@ -147,6 +151,9 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                         file_progress, f"处理文件 {idx+1}/{total_files}: {original_file.filename if hasattr(original_file, 'filename') else 'unknown'}")
                 if not isinstance(original_file, BasicFileInfo):
                     continue
+                
+                logger.info(f"    [{idx+1}/{total_files}] {original_file.filename}")
+                
                 record = session.query(TransRecords).filter(TransRecords.srcpath == original_file.full_path).first()
                 if not record:
                     record = TransRecords()
@@ -157,22 +164,22 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                 if record.srcdeleted:
                     record.srcdeleted = False
                 if record.ignored:
-                    logger.info(f"[-] ignore {original_file.full_path}")
+                    logger.info(f"      ⊘ 已忽略")
                     continue
                 record.task_id = task_info.id
                 record.success = None
                 if task_info.sc_enabled:
-                    logger.info(f"[-] need scraping")
+                    logger.info(f"      → 刮削模式")
                     scraping_conf = session.query(ScrapingConfig).filter(ScrapingConfig.id == task_info.sc_id).first()
                     if not scraping_conf:
-                        logger.info(f"[-] scraping config not found")
+                        logger.error(f"      ✗ 刮削配置未找到")
                         record.success = False
                         continue
                     scraping_task = celery_scrapping.apply(args=[original_file.full_path, scraping_conf.to_dict()])
                     with allow_join_result():
                         metabase_json = scraping_task.get()
                     if not metabase_json:
-                        logger.error(f"[-] scraping failed {original_file.full_path}")
+                        logger.error(f"      ✗ 刮削失败")
                         record.success = False
                         continue
                     metamixed = schemas.MetadataMixed.model_validate(metabase_json)
@@ -181,8 +188,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     output_folder = os.path.abspath(os.path.join(task_info.output_folder, metamixed.extra_folder))
                     base_output = os.path.abspath(task_info.output_folder)
                     if not output_folder.startswith(base_output):
-                        logger.error(f"[!] Security check failed: output_folder '{output_folder}' is outside base folder '{base_output}'")
-                        logger.error(f"[!] Using base folder instead")
+                        logger.error(f"      ✗ 安全检查失败，使用基础目录")
                         output_folder = base_output
                     if not os.path.exists(output_folder):
                         os.makedirs(output_folder)
@@ -202,9 +208,9 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                             os.remove(record.destpath)
                     # 更新
                     record.destpath = destpath
-                    logger.info(f"[-] scraping transfer end")
+                    logger.info(f"      ✓ 刮削转移完成")
                 else:
-                    logger.info(f"[-] start transfer")
+                    logger.info(f"      → 直接转移")
                     target_file = TargetFileInfo(task_info.output_folder)
                     if record.top_folder:
                         target_file.force_update_top_folder(record.top_folder)
@@ -227,7 +233,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     record.top_folder = target_file.top_folder
                     record.second_folder = target_file.second_folder
                     record.destpath = target_file.full_path
-                    logger.info(f"[-] transfer end")
+                    logger.info(f"      ✓ 直接转移完成")
                 # 更新 record 状态
                 record.deleted = False
                 record.success = True
@@ -240,21 +246,19 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
         progress_tracker.set_progress(95, "处理后续任务")
         if isEntry and task_info.auto_watch:
             try:
-                logger.info(f"[+] group task: start emby scan")
                 celery_emby_scan.apply(args=[task_json])
             except Exception as e:
-                logger.error(f"[!] group task: emby scan failed")
-                logger.error(e)
+                logger.error(f"    ✗ Emby 扫描失败: {e}")
 
         progress_tracker.complete(f"文件组转移完成，处理了 {len(done_list)} 个文件")
-        logger.info(f"transfer group end {full_path}")
+        logger.info(f"  ▸ [文件组] 完成 - {len(done_list)} 个文件")
         return done_list
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='scraping:single')
 def celery_scrapping(self, file_path, scraping_dict):
-    logger.info(f"[+] scraping task: start")
+    logger.info(f"    ▸ [刮削] {os.path.basename(file_path)}")
     try:
         session = SessionFactory()
         scraping_conf = schemas.ScrapingConfigPublic(**scraping_dict)
@@ -289,10 +293,11 @@ def celery_scrapping(self, file_path, scraping_dict):
             metadata_record = session.query(Metadata).filter(
                 Metadata.number == extrainfo.number).order_by(Metadata.id.desc()).first()
         if metadata_record:
-            logger.info(f"[-] find existing metadata: {metadata_record.number}")
+            logger.info(f"      ✓ 使用缓存: {metadata_record.number}")
             metadata_mixed = schemas.MetadataMixed(**metadata_record.to_dict())
         else:
             # 如果没有找到任何记录，则从网络抓取
+            logger.info(f"      → 网络抓取: {extrainfo.number}")
             proxy = get_active_proxy(session)
             json_data = scraping(extrainfo.number,
                                  scraping_conf.scraping_sites,
@@ -302,7 +307,7 @@ def celery_scrapping(self, file_path, scraping_dict):
                                  )
             # Return if blank dict returned (data not found)
             if not json_data:
-                logger.error(f"[-] scraping failed {file_path}")
+                logger.error(f"      ✗ 抓取失败")
                 return None
             # 数据转换
             metadata_base = schemas.MetadataBase(**json_data)
@@ -368,7 +373,7 @@ def celery_scrapping(self, file_path, scraping_dict):
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='clean:clean_others')
 def celery_clean_others(self, root_path, done_list):
-    logger.info(f"[+] clean others task for {root_path}: start")
+    logger.info(f"## [清理任务] START - {root_path}")
 
     cleaned_files = []
     dest_list = findAllFilesWithSuffix(root_path, video_type)
@@ -376,32 +381,33 @@ def celery_clean_others(self, root_path, done_list):
         if dest not in done_list:
             cleaned_files.append(dest)
     for torm in cleaned_files:
-        logger.info(f"[!] remove other file: [{torm}]")
+        logger.info(f"  ✗ 删除: {os.path.basename(torm)}")
         os.remove(torm)
     cleanFolderWithoutSuffix(root_path, video_type)
 
-    logger.info(f"Clean others completed. Removed {len(cleaned_files)} files")
+    logger.info(f"## [清理任务] END - 删除 {len(cleaned_files)} 个文件")
     return cleaned_files
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='emby:scan')
 def celery_emby_scan(self, task_json):
-    logger.info(f"[+] emby scan: start")
+    logger.info(f"## [Emby扫描] START")
     try:
         emby_service = EmbyService()
         if not emby_service.is_initialized:
             from bonita.core.service import init_emby
             init_emby()
         emby_service.trigger_library_scan()
+        logger.info(f"## [Emby扫描] END")
     except Exception as e:
-        logger.error(f"Error during Emby library scan: {str(e)}")
+        logger.error(f"## [Emby扫描] ✗ 失败: {str(e)}")
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='import:nfo')
 def celery_import_nfo(self, folder_path, option):
-    logger.info(f"[+] import nfo: start")
+    logger.info(f"## [NFO导入] START - {folder_path}")
     try:
         metadata_list = load_all_NFO_from_folder(folder_path)
         # 过滤有效的nfo信息
@@ -426,8 +432,7 @@ def celery_import_nfo(self, folder_path, option):
 
         # 用过滤后的列表替换原始列表
         metadata_list = filtered_metadata_list
-        logger.info(
-            f"[+] import nfo: filtered {len(title_to_metadata)} titles from {len(filtered_metadata_list)} NFO files")
+        logger.info(f"  找到 {len(filtered_metadata_list)} 个有效 NFO 文件")
         for nfo_dict in metadata_list:
             nfo_data = nfo_dict['nfo']
             cover_path = nfo_dict['cover_path']
@@ -442,8 +447,7 @@ def celery_import_nfo(self, folder_path, option):
                 if metadata_base.number in metadata_base.title:
                     metadata_base.title = metadata_base.title.replace(metadata_base.number, '').strip(' -')
             except Exception as e:
-                logger.info(f"[!] convert nfo failed: {nfo_data}")
-                logger.error(f"[!] convert nfo failed: {str(e)}")
+                logger.error(f"  ✗ NFO转换失败: {str(e)}")
                 continue
             if metadata_base.site == "" and metadata_base.detailurl:
                 # 从detailurl中提取域名作为site
@@ -483,12 +487,13 @@ def celery_import_nfo(self, folder_path, option):
                 metadata_db = Metadata(**filter_dict)
                 metadata_db.create(session)
             except Exception as e:
-                logger.error(f"[!] import nfo {nfo_dict['nfo_path']} failed: {str(e)}")
+                logger.error(f"  ✗ 导入失败 {os.path.basename(nfo_dict['nfo_path'])}: {str(e)}")
                 continue
             finally:
                 session.close()
+        logger.info(f"## [NFO导入] END")
     except Exception as e:
-        logger.error(f"[!] import nfo failed: {str(e)}")
+        logger.error(f"## [NFO导入] ✗ 失败: {str(e)}")
     return True
 
 
@@ -503,7 +508,7 @@ def celery_sync_watch_history(self, sources=None, days=30, limit=100):
         days: 历史同步天数，预留参数
         limit: 单次同步的数据量限制，预留参数
     """
-    logger.info(f"[+] watch history sync: start, sources={sources}, days={days}, limit={limit}")
+    logger.info(f"## [观看历史同步] START - 来源:{sources}")
     session = SessionFactory()
     requested_sources = sources
     if not requested_sources:
@@ -527,20 +532,21 @@ def celery_sync_watch_history(self, sources=None, days=30, limit=100):
                         from bonita.core.service import init_emby
                         init_emby()
                     except Exception as init_error:
-                        logger.error(f"Error initializing Emby service: {init_error}")
+                        logger.error(f"  ✗ Emby 初始化失败: {init_error}")
                 if emby_service.is_initialized:
                     sync_emby_history(session)
                     synced_sources.append("emby")
+                    logger.info(f"  ✓ Emby 同步完成")
                 else:
-                    logger.warning("Emby service is not initialized, skipping watch history sync")
+                    logger.warning(f"  ⊘ Emby 服务未初始化")
             else:
-                logger.info("Emby watch history sync disabled, skipping")
+                logger.info(f"  ⊘ Emby 同步已禁用")
 
         unsupported_sources = set(requested_sources) - {"emby"}
         for source in unsupported_sources:
-            logger.info(f"Watch history sync for source '{source}' is not implemented yet")
+            logger.info(f"  ⊘ {source} 暂未支持")
 
-        logger.info(f"[+] watch history sync: finished, synced_sources={synced_sources}")
+        logger.info(f"## [观看历史同步] END - 已同步:{synced_sources}")
         return {
             "requested_sources": requested_sources,
             "synced_sources": synced_sources,
@@ -548,7 +554,7 @@ def celery_sync_watch_history(self, sources=None, days=30, limit=100):
             "limit": limit
         }
     except Exception as e:
-        logger.error(f"Error during watch history sync: {str(e)}")
+        logger.error(f"## [观看历史同步] ✗ 失败: {str(e)}")
         raise
     finally:
         session.close()
