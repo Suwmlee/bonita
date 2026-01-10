@@ -1,6 +1,7 @@
 import ast
 import os
 import logging
+import re
 import shutil
 from scrapinglib import search
 from PIL import Image
@@ -161,6 +162,25 @@ def process_cover(tmp_cover_path, output_folder, prefilename, crop=True):
     else:
         shutil.copyfile(tmp_cover_path, posterpath)
     return [thumbpath, posterpath]
+
+
+def need_crop(number: str) -> bool:
+    """ 判断是否需要裁切封面
+    """
+    no_crop_prefixes = [
+        'FC2', 'HEYZO', 'SIRO', 'SUKE', 'NTK', 'SCUTE',
+        'MKD', 'GANA', 'MIUM', 'MAAN', 'GACHI', 'ARA'
+    ]
+    number_upper = number.upper()
+    for prefix in no_crop_prefixes:
+        if number_upper.startswith(prefix.upper()):
+            return False
+    if re.match(r'^\d{6}[-_]\d+$', number):
+        return False
+    if re.match(r'^N\d{4}$', number_upper):
+        return False
+
+    return True
 
 
 def crop_poster(tmp_file, posterpath):

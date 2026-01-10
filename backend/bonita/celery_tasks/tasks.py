@@ -17,7 +17,7 @@ from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
 from bonita.db.models.scraping import ScrapingConfig
 from bonita.modules.scraping.number_parser import FileNumInfo
-from bonita.modules.scraping.scraping import add_mark, process_nfo_file, process_cover, scraping, load_all_NFO_from_folder
+from bonita.modules.scraping.scraping import add_mark, need_crop, process_nfo_file, process_cover, scraping, load_all_NFO_from_folder
 from bonita.utils.fileinfo import BasicFileInfo, TargetFileInfo
 from bonita.modules.transfer.transfer import transSingleFile, transferfile
 from bonita.utils.downloader import process_cached_file, update_cache_from_local
@@ -264,17 +264,17 @@ def celery_scrapping(self, file_path, scraping_dict):
         if not extrainfo:
             extrainfo = ExtraInfo(filepath=file_path)
             extrainfo.number = fileNumInfo.num
-            if extrainfo.number.startswith('FC2'):
+            if not need_crop(extrainfo.number):
                 extrainfo.crop = False
             extrainfo.partNumber = int(fileNumInfo.part.replace("-CD", "")) if fileNumInfo.part else 0
             extrainfo.tag = ', '.join(map(str, fileNumInfo.tags()))
             extrainfo.create(session)
         else:
             if extrainfo.crop is None:
-                if extrainfo.number.startswith('FC2'):
-                    extrainfo.crop = False
-                else:
+                if need_crop(extrainfo.number):
                     extrainfo.crop = True
+                else:
+                    extrainfo.crop = False
         # 处理指定源/强制从网站更新
         metadata_record = None
         if extrainfo.specifiedurl:
