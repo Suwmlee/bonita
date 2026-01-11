@@ -290,8 +290,6 @@ def is_video_file(filepath: str) -> bool:
     """Check if the file is a video file"""
     ext = os.path.splitext(filepath)[1].lower()
     is_video = ext in video_type
-    if not is_video:
-        logger.debug(f"File {filepath} is not a video file")
     return is_video
 
 def sanitize_path(name: str) -> str:

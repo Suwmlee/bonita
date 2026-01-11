@@ -170,7 +170,7 @@ def convert_emby_watched_items(session, item, force=False):
             number = result[1].number
         else:
             number = get_number(filepath)
-        if not number:
+        if not number and number != '':
             return None
         meta_and_item = session.query(Metadata, MediaItem).outerjoin(
             MediaItem, MediaItem.number == Metadata.number
@@ -192,7 +192,7 @@ def convert_emby_watched_items(session, item, force=False):
                 number=number,
             )
             media_item.create(session)
-            logger.debug(f"    ✓ 创建媒体项: {meta.title} ({number})")
+            logger.info(f"    ✓ 创建媒体项: {meta.title} ({number})")
 
     existing_record = session.query(WatchHistory).filter(WatchHistory.media_item_id == media_item.id).first()
     if existing_record:
@@ -215,7 +215,7 @@ def convert_emby_watched_items(session, item, force=False):
             existing_record.play_progress = play_progress
             existing_record.duration = duration
             session.commit()
-            logger.debug(f"    ✓ 更新观看记录: {title}")
+            logger.info(f"    ✓ 更新观看记录: {title}")
     else:
         new_record = WatchHistory(
             media_item_id=media_item.id,
@@ -226,7 +226,7 @@ def convert_emby_watched_items(session, item, force=False):
             duration=duration,
         )
         new_record.create(session)
-        logger.debug(f"    ✓ 创建观看记录: {title}")
+        logger.info(f"    ✓ 创建观看记录: {title}")
 
 
 def sync_item_to_emby(session, emby_service, item, force=False):
