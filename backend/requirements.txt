@@ -5,7 +5,7 @@ pydantic[email]==2.8.2
 python-jose==3.4.0
 sqlalchemy==2.0.32
 bcrypt==4.2.0
-python-multipart==0.0.20
+python-multipart==0.0.22
 alembic==1.13.2
 celery==5.4.0
 redis==5.0.8
