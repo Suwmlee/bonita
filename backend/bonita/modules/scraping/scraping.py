@@ -265,7 +265,7 @@ def add_to_pic(pic_path, img_pic, size, count, mode):
     scroll_high = int(img_pic.height / size)
     scroll_wide = int(scroll_high * img_subt.width / img_subt.height)
     img_subt = img_subt.resize((scroll_wide, scroll_high), Image.Resampling.LANCZOS)
-    r, g, b, a = img_subt.split()  # 获取颜色通道，保持png的透明性
+    r, g, b, a = img_subt.split()
     # 封面四个角的位置
     pos = [
         {'x': img_pic.width - scroll_wide, 'y': 0},
@@ -274,6 +274,8 @@ def add_to_pic(pic_path, img_pic, size, count, mode):
         {'x': img_pic.width - scroll_wide, 'y': img_pic.height - scroll_high},
     ]
     img_pic.paste(img_subt, (pos[count]['x'], pos[count]['y']), mask=a)
+    if img_pic.mode == 'RGBA':
+        img_pic = img_pic.convert('RGB')
     img_pic.save(pic_path, quality=95)
 
 
