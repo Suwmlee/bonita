@@ -84,7 +84,6 @@ class EmbyService(metaclass=Singleton):
         if expected_status_codes is None:
             expected_status_codes = [200, 204]
         try:
-            logger.debug(f"[-] Emby request: {method.upper()} {url}")
             # Use the session for better performance with connection pooling
             response = requests.request(
                 method=method.lower(),
@@ -98,7 +97,6 @@ class EmbyService(metaclass=Singleton):
                 if response.status_code == 204 or not response.text:
                     return True
                 result = response.json() if response.text else True
-                logger.debug(f"[+] Emby response: {response.status_code}")
                 return result
             else:
                 logger.error(f"Failed Emby API request. Status code: {response.status_code}")
@@ -348,7 +346,6 @@ class EmbyService(metaclass=Singleton):
                     if (imdb_id and provider_ids.get("Imdb") == imdb_id) or \
                        (tmdb_id and provider_ids.get("Tmdb") == str(tmdb_id)):
                         matched_item = item
-                        logger.debug(f"Found matching item with ID: {item['Id']}")
                         break
             if not matched_item:
                 return None

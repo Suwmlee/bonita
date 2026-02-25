@@ -3,6 +3,7 @@ import shutil
 import requests
 import hashlib
 import mimetypes
+from PIL import Image
 from sqlalchemy.orm import Session
 
 from bonita.core.config import settings
@@ -71,6 +72,21 @@ def update_cache_from_local(session: Session, source_path: str, folder: str, url
     return cache_path
 
 
+def _convert_gif_to_jpg(gif_path: str) -> str:
+    """ 将 GIF 文件转换为 JPG，取第一帧，删除原 GIF 文件
+    :return: 转换后的 JPG 文件路径
+    """
+    jpg_path = os.path.splitext(gif_path)[0] + '.jpg'
+    img = Image.open(gif_path)
+    img.seek(0)
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
+    img.save(jpg_path, 'JPEG', quality=95)
+    img.close()
+    os.remove(gif_path)
+    return jpg_path
+
+
 def get_file_extension(response):
     """ 根据 HTTP 头中的 Content-Type 获取文件扩展名
     :param response: HTTP 响应对象
@@ -127,5 +143,9 @@ def download_file(url, download_dir, proxy=None):
     with open(download_path, 'wb') as file:
         for chunk in response.iter_content(chunk_size=8192):
             file.write(chunk)
+
+    # GIF 转换为 JPG
+    if download_path.lower().endswith('.gif'):
+        download_path = _convert_gif_to_jpg(download_path)
 
     return download_path
