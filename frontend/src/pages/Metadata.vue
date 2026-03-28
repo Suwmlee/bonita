@@ -2,7 +2,6 @@
 import type { MetadataPublic } from "@/client"
 import { OpenAPI } from "@/client"
 import MetadataDetailDialog from "@/components/metadata/MetadataDetailDialog.vue"
-import MetadataImportDialog from "@/components/metadata/MetadataImportDialog.vue"
 import { useMetadataStore } from "@/stores/metadata.store"
 import { computed, onMounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
@@ -95,11 +94,8 @@ onMounted(() => {
       <VCol cols="12" sm="10" md="8" lg="6" xl="4" class="d-flex align-center">
         <VTextField v-model="searchQuery" :placeholder="t('pages.metadata.search')" clearable hide-details
           prepend-inner-icon="bx-search" :loading="isSearching" variant="outlined" density="comfortable" class="mr-2" />
-        <VBtn color="primary" @click="showAddDialog" prepend-icon="bx-plus" class="mr-2">
+        <VBtn color="primary" @click="showAddDialog" prepend-icon="bx-plus">
           {{ t('pages.metadata.addNew') }}
-        </VBtn>
-        <VBtn color="secondary" variant="tonal" @click="metadataStore.showImportDialog = true" prepend-icon="bx-import">
-          {{ t('pages.metadata.importJson') }}
         </VBtn>
       </VCol>
     </VRow>
@@ -169,10 +165,8 @@ onMounted(() => {
       </VCol>
     </VRow>
 
-    <!-- Metadata edit dialog -->
+    <!-- Metadata add/edit dialog -->
     <MetadataDetailDialog />
-    <!-- JSON import dialog -->
-    <MetadataImportDialog />
   </div>
 </template>
 

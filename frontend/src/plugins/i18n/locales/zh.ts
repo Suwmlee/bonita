@@ -160,6 +160,7 @@ export default {
       confirmDeleteTitle: "删除元数据",
       confirmDeleteMessage: "您确定要删除此元数据吗？此操作无法撤销。",
       importJson: "导入 JSON",
+      addManual: "手动填写",
     },
     tools: {
       title: "工具",

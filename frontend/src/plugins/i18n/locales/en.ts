@@ -162,6 +162,7 @@ export default {
       confirmDeleteTitle: "Delete Metadata",
       confirmDeleteMessage: "Are you sure you want to delete this metadata? This action cannot be undone.",
       importJson: "Import JSON",
+      addManual: "Manual Entry",
     },
     tools: {
       title: "Tools",

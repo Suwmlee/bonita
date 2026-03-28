@@ -58,6 +58,13 @@ export default defineConfig({
       ),
     },
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        silenceDeprecations: ["legacy-js-api", "if-function"],
+      },
+    },
+  },
   build: {
     chunkSizeWarningLimit: 5000,
   },
