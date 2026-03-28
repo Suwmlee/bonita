@@ -19,7 +19,6 @@ def process_cached_file(session: Session, url: str, folder) -> str:
     :return: 缓存的文件路径
     """
     cache_downloads_cover = session.query(Downloads).filter(Downloads.url == url).first()
-    # TODO 文件过期
     if not cache_downloads_cover:
         # 数据库中没有记录，下载并添加记录
         # 获取代理设置

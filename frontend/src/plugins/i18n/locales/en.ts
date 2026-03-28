@@ -161,6 +161,7 @@ export default {
       addMetadata: "Add Metadata",
       confirmDeleteTitle: "Delete Metadata",
       confirmDeleteMessage: "Are you sure you want to delete this metadata? This action cannot be undone.",
+      importJson: "Import JSON",
     },
     tools: {
       title: "Tools",
@@ -402,6 +403,19 @@ export default {
       dialog: {
         editTitle: "Edit Metadata",
         addTitle: "Add Metadata",
+      },
+      importDialog: {
+        title: "Import Metadata from JSON",
+        description: "Paste JSON data below or upload a JSON file. Supports a single object {} or an array of objects [{}].",
+        selectFile: "Select JSON File",
+        jsonLabel: "JSON Data",
+        placeholder: '{ "number": "ABC-001", "title": "...", "actor": "...", "cover": "..." }',
+        previewCount: "Detected {count} item(s) to import",
+        import: "Import",
+        invalidJson: "Invalid JSON format, please check and try again",
+        emptyInput: "Please enter JSON data or select a file",
+        resultSuccess: "Successfully imported {count} item(s)",
+        resultFailed: ", {count} item(s) failed",
       },
       form: {
         number: "Number",

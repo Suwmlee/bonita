@@ -11,6 +11,7 @@ export const useMetadataStore = defineStore("metadata-store", {
   state: () => ({
     allMetadata: [] as MetadataPublic[],
     showDialog: false,
+    showImportDialog: false,
     editMetadata: undefined as MetadataPublic | undefined,
     totalCount: 0,
     currentPage: 1,
@@ -75,6 +76,57 @@ export const useMetadataStore = defineStore("metadata-store", {
         this.updateMetadataById(data.id, metadata)
         this.showDialog = false
       }
+    },
+    // Method to import metadata from JSON (single object or array)
+    async importFromJson(
+      jsonData: Partial<MetadataPublic> | Partial<MetadataPublic>[],
+    ): Promise<{ success: number; failed: number }> {
+      const items = Array.isArray(jsonData) ? jsonData : [jsonData]
+      let success = 0
+      let failed = 0
+
+      for (const item of items) {
+        try {
+          const metadataCreate: MetadataCreate = {
+            number: item.number || "",
+            title: item.title || "",
+            studio: item.studio,
+            release: item.release,
+            year: item.year,
+            runtime: item.runtime,
+            genre: item.genre,
+            rating: item.rating,
+            language: item.language,
+            country: item.country,
+            outline: item.outline,
+            director: item.director,
+            actor: item.actor,
+            actor_photo: item.actor_photo,
+            cover: item.cover,
+            cover_small: item.cover_small,
+            extrafanart: item.extrafanart,
+            trailer: item.trailer,
+            tag: item.tag,
+            label: item.label,
+            series: item.series,
+            userrating: item.userrating,
+            uservotes: item.uservotes,
+            detailurl: item.detailurl,
+            site: item.site,
+          }
+          await MetadataService.createMetadata({ requestBody: metadataCreate })
+          success++
+        } catch {
+          failed++
+        }
+      }
+
+      if (success > 0) {
+        await this.getMetadata()
+        this.showImportDialog = false
+      }
+
+      return { success, failed }
     },
     // Method to add new metadata
     async addMetadata(data: Partial<MetadataPublic>) {

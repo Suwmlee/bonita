@@ -159,6 +159,7 @@ export default {
       addMetadata: "添加元数据",
       confirmDeleteTitle: "删除元数据",
       confirmDeleteMessage: "您确定要删除此元数据吗？此操作无法撤销。",
+      importJson: "导入 JSON",
     },
     tools: {
       title: "工具",
@@ -387,6 +388,19 @@ export default {
       dialog: {
         editTitle: "编辑元数据",
         addTitle: "添加元数据",
+      },
+      importDialog: {
+        title: "从 JSON 导入元数据",
+        description: "在下方粘贴 JSON 数据或上传 JSON 文件。支持单个对象 {} 或对象数组 [{}]。",
+        selectFile: "选择 JSON 文件",
+        jsonLabel: "JSON 数据",
+        placeholder: '{ "number": "ABC-001", "title": "...", "actor": "...", "cover": "..." }',
+        previewCount: "检测到 {count} 条记录待导入",
+        import: "导入",
+        invalidJson: "JSON 格式无效，请检查后重试",
+        emptyInput: "请输入 JSON 数据或选择文件",
+        resultSuccess: "成功导入 {count} 条记录",
+        resultFailed: "，{count} 条失败",
       },
       form: {
         number: "编号",

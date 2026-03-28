@@ -32,7 +32,7 @@ async def create_metadata(
         metadata_dict['actor'] = '佚名'
 
     if metadata_dict.get("cover") and metadata_dict["cover"].startswith(("http://", "https://")):
-        metadata_dict["cover"] = process_cached_file(session, metadata_dict["cover"], metadata_dict["number"])
+        process_cached_file(session, metadata_dict["cover"], metadata_dict["number"])
 
     db_metadata = Metadata(**metadata_dict)
     db_metadata.create(session)
