@@ -130,7 +130,7 @@ async function handleImport() {
         </VCardText>
 
         <!-- JSON 导入 -->
-        <VCardText v-else style="flex: 1; overflow-y: auto;">
+        <VCardText v-if="activeTab === 'import'" style="flex: 1; overflow-y: auto;">
           <p class="text-body-2 text-medium-emphasis mb-4">
             {{ t('components.metadata.importDialog.description') }}
           </p>

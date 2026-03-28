@@ -392,10 +392,10 @@ export default {
       },
       importDialog: {
         title: "从 JSON 导入元数据",
-        description: "在下方粘贴 JSON 数据或上传 JSON 文件。支持单个对象 {} 或对象数组 [{}]。",
+        description: "在下方粘贴 JSON 数据或上传 JSON 文件，支持导入单个对象或对象数组。",
         selectFile: "选择 JSON 文件",
         jsonLabel: "JSON 数据",
-        placeholder: '{ "number": "ABC-001", "title": "...", "actor": "...", "cover": "..." }',
+        placeholder: '"number": "ABC-001", "title": "...", "actor": "...", "cover": "..."',
         previewCount: "检测到 {count} 条记录待导入",
         import: "导入",
         invalidJson: "JSON 格式无效，请检查后重试",

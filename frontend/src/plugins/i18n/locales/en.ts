@@ -407,10 +407,10 @@ export default {
       },
       importDialog: {
         title: "Import Metadata from JSON",
-        description: "Paste JSON data below or upload a JSON file. Supports a single object {} or an array of objects [{}].",
+        description: "Paste JSON data below or upload a JSON file. Supports a single object or an array of objects.",
         selectFile: "Select JSON File",
         jsonLabel: "JSON Data",
-        placeholder: '{ "number": "ABC-001", "title": "...", "actor": "...", "cover": "..." }',
+        placeholder: '"number": "ABC-001", "title": "...", "actor": "...", "cover": "..."',
         previewCount: "Detected {count} item(s) to import",
         import: "Import",
         invalidJson: "Invalid JSON format, please check and try again",
