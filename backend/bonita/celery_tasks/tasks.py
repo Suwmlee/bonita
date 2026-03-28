@@ -53,12 +53,13 @@ def celery_transfer_entry(self, task_json):
     
     # 获取 source 文件夹下所有顶层文件/文件夹
     progress_tracker.set_progress(15, "扫描源文件夹")
-    dirs = os.scandir(task_info.source_folder)
+    escape_folders = set([fo.strip() for fo in task_info.escape_folder.split(',')] if task_info.escape_folder else [])
+    dirs = [entry for entry in os.scandir(task_info.source_folder) if entry.name not in escape_folders]
+    logger.info(f"  扫描到 {len(dirs)} 个顶层条目（已排除文件夹: {escape_folders}）")
 
     # 创建转移任务组
     progress_tracker.set_progress(25, "创建转移任务组")
-    transfer_group = group(celery_transfer_group.s(task_json, os.path.join(
-        task_info.source_folder, single_folder)) for single_folder in dirs)
+    transfer_group = group(celery_transfer_group.s(task_json, entry.path) for entry in dirs)
 
     # 先执行所有转移任务
     progress_tracker.set_progress(35, "执行转移任务")
@@ -123,7 +124,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
         progress_tracker.set_progress(25, "扫描待处理文件")
         waiting_list = []
         if os.path.isdir(full_path):
-            escape_folders = [fo.strip() for fo in task_info.escape_folder.split(',')]
+            escape_folders = [fo.strip() for fo in task_info.escape_folder.split(',')] if task_info.escape_folder else []
             allvideo_list = findAllFilesWithSuffix(full_path, video_type, escape_folders)
             for video in allvideo_list:
                 tf = BasicFileInfo(video)
@@ -136,6 +137,21 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
             tf = BasicFileInfo(full_path)
             tf.set_root_folder(task_info.source_folder)
             waiting_list.append(tf)
+
+        # 排除文件名包含指定文字的文件
+        if task_info.escape_literals:
+            escape_lits = [lit.strip() for lit in task_info.escape_literals.split(',') if lit.strip()]
+            if escape_lits:
+                before_count = len(waiting_list)
+                waiting_list = [tf for tf in waiting_list if not any(lit in tf.filename for lit in escape_lits)]
+                logger.info(f"    排除含指定文字的文件: {before_count - len(waiting_list)} 个 (规则: {escape_lits})")
+
+        # 排除小于指定大小的文件（单位MB，0表示不排除）
+        if task_info.escape_size and task_info.escape_size > 0:
+            min_size_bytes = task_info.escape_size * 1024 * 1024
+            before_count = len(waiting_list)
+            waiting_list = [tf for tf in waiting_list if os.path.getsize(tf.full_path) >= min_size_bytes]
+            logger.info(f"    排除小于 {task_info.escape_size}MB 的文件: {before_count - len(waiting_list)} 个")
 
         logger.info(f"    找到 {len(waiting_list)} 个文件")
         progress_tracker.set_progress(40, f"开始处理 {len(waiting_list)} 个文件")
