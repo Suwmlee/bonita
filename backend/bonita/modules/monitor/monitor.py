@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime, timedelta
 from threading import Lock
 from pathlib import Path
@@ -183,14 +184,43 @@ class MonitorService(metaclass=Singleton):
             logger.info(f"Trigger task for file: {filepath}, task_id: {task_id}")
             with SessionFactory() as session:
                 task_info = session.query(TransferConfig).filter(TransferConfig.id == task_id).first()
-                if task_info:
-                    # TODO: 环境不同可能存在丢失情况...
-                    if not celery_transfer_group.app.conf.broker_url:
-                        celery_transfer_group.app.conf.broker_url = settings.CELERY_BROKER_URL
-                        logger.info(f"Set broker_url to: {celery_transfer_group.app.conf.broker_url}")
-                    celery_transfer_group.delay(task_info.to_dict(), filepath, True)
-                else:
+                if not task_info:
                     logger.warning(f"No task config found for task_id: {task_id}")
+                    return
+
+                filename = os.path.basename(filepath)
+
+                # 检查 escape_folder：仅判断 source 目录的直接下一级目录名
+                if task_info.escape_folder:
+                    escape_folders = {fo.strip() for fo in task_info.escape_folder.split(',') if fo.strip()}
+                    try:
+                        relative = Path(filepath).relative_to(task_info.source_folder)
+                        top_dir = relative.parts[0] if len(relative.parts) > 1 else None
+                        if top_dir and top_dir in escape_folders:
+                            logger.info(f"  ⊘ 文件在排除文件夹 [{top_dir}] 中，跳过: {filepath}")
+                            return
+                    except ValueError:
+                        pass
+
+                # 检查 escape_literals：文件名是否包含排除文字
+                if task_info.escape_literals:
+                    escape_lits = [lit.strip() for lit in task_info.escape_literals.split(',') if lit.strip()]
+                    if any(lit in filename for lit in escape_lits):
+                        logger.info(f"  ⊘ 文件名包含排除文字，跳过: {filepath}")
+                        return
+
+                # 检查 escape_size：文件是否小于指定大小（单位 MB，0 表示不排除）
+                if task_info.escape_size and task_info.escape_size > 0:
+                    min_size_bytes = task_info.escape_size * 1024 * 1024
+                    if os.path.getsize(filepath) < min_size_bytes:
+                        logger.info(f"  ⊘ 文件小于 {task_info.escape_size}MB，跳过: {filepath}")
+                        return
+
+                # TODO: 环境不同可能存在丢失情况...
+                if not celery_transfer_group.app.conf.broker_url:
+                    celery_transfer_group.app.conf.broker_url = settings.CELERY_BROKER_URL
+                    logger.info(f"Set broker_url to: {celery_transfer_group.app.conf.broker_url}")
+                celery_transfer_group.delay(task_info.to_dict(), filepath, True)
         except Exception as e:
             logger.error(f"Task execution failed: {e}")
 
