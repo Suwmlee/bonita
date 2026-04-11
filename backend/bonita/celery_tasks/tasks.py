@@ -219,6 +219,12 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     used_sources = {metamixed.site} if metamixed.site else set()
                     extrafanart_list = []
 
+                    # 收集首次刮削拿到的 extrafanart
+                    raw_ef = metamixed.extrafanart or ''
+                    if raw_ef:
+                        ef_items = raw_ef.split(',') if isinstance(raw_ef, str) else raw_ef
+                        extrafanart_list = [u.strip() for u in ef_items if u.strip()]
+
                     while retry_count < max_retries:
                         try:
                             cache_cover_filepath = process_cached_file(session, cover_url, metamixed.number)
@@ -229,14 +235,12 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                             if retry_count >= max_retries:
                                 break
                             # 用其他源重新刮削获取封面 URL
-                            remaining_sources = [
-                                s for s in (scraping_conf.scraping_sites.split(',') if scraping_conf.scraping_sites else [])
-                                if s.strip() not in used_sources
-                            ]
+                            all_sources = scraping_conf.scraping_sites.split(',') if scraping_conf.scraping_sites else []
+                            remaining_sources = [s.strip() for s in all_sources if s.strip() and s.strip() not in used_sources]
                             if not remaining_sources:
                                 logger.warning(f"      ⊘ 没有可用源可继续尝试")
                                 break
-                            # 指定第一个未用过的源，保留其他参数
+                            # 指定第一个未用过的源重新刮削
                             fallback_json = scraping(
                                 metamixed.number,
                                 sources=','.join(remaining_sources[:1]),
@@ -248,14 +252,14 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                                 new_site = fallback_json.get('source', '')
                                 if new_site:
                                     used_sources.add(new_site)
-                                # 收集 extrafanart（无论封面是否成功都收集）
-                                if fallback_json.get('extrafanart'):
-                                    existing = extrafanart_list
-                                    ef = fallback_json['extrafanart']
-                                    if isinstance(ef, list):
-                                        extrafanart_list = existing + [u for u in ef if u not in existing]
-                                    elif ef not in existing:
-                                        extrafanart_list.append(ef)
+                                # 收集 extrafanart
+                                ef_raw = fallback_json.get('extrafanart')
+                                if ef_raw:
+                                    ef_items = ef_raw.split(',') if isinstance(ef_raw, str) else ef_raw
+                                    for u in ef_items:
+                                        u = u.strip()
+                                        if u and u not in extrafanart_list:
+                                            extrafanart_list.append(u)
                                 new_cover = fallback_json.get('cover')
                                 if new_cover and new_cover != cover_url:
                                     cover_url = new_cover
