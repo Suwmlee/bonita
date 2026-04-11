@@ -212,6 +212,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     process_nfo_file(output_folder, metamixed.extra_filename, metamixed.__dict__)
 
                     # 尝试下载封面，最多重试5次
+                    proxy = get_active_proxy(session)
                     cache_cover_filepath = None
                     cover_url = metamixed.cover
                     retry_count = 0
