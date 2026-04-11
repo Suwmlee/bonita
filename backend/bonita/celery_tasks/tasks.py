@@ -277,9 +277,15 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                         except Exception as e:
                             logger.warning(f"      ⊘ extrafanart 下载失败: {e}")
 
-                    # 更新 metadata_mixed 中的 cover 为实际使用的 URL
+                    # 更新 metadata_mixed 中的 cover 为实际使用的 URL，同时回写数据库
                     if cover_url:
                         metamixed.cover = cover_url
+                        metadata_record = session.query(Metadata).filter(
+                            Metadata.number == metamixed.number
+                        ).order_by(Metadata.id.desc()).first()
+                        if metadata_record:
+                            metadata_record.cover = cover_url
+                            session.commit()
 
                     # 有封面则处理封面图片，否则跳过
                     pics = []
