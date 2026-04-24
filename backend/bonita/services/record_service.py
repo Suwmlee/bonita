@@ -1,5 +1,6 @@
 import os
 import logging
+from threading import Thread
 from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -180,8 +181,8 @@ class RecordService:
             if force and transfer_record.srcpath:
                 records_for_torrent_deletion.append(transfer_record)
 
-            # 默认删除目标路径的文件
-            self._clean_files(transfer_record.destpath)
+            dest_path = transfer_record.destpath
+            src_path = transfer_record.srcpath
 
             # 删除关联的额外信息
             if extra_info:
@@ -189,9 +190,11 @@ class RecordService:
 
             if force:
                 # 如果强制删除，那么也删除源文件和记录
-                self._clean_files(transfer_record.srcpath)
                 self.session.delete(transfer_record)
                 self.session.commit()
+                # 文件系统操作放到后台线程，避免网络挂载路径阻塞请求
+                self._clean_files_async(dest_path)
+                self._clean_files_async(src_path)
             else:
                 # 清除状态，可以重新转移
                 reset_dict = {
@@ -204,6 +207,8 @@ class RecordService:
                     'deadtime': datetime.now() + timedelta(days=7)
                 }
                 self.update_record(transfer_record, reset_dict)
+                # 文件系统操作放到后台线程，避免网络挂载路径阻塞请求
+                self._clean_files_async(dest_path)
 
             deleted_count += 1
 
@@ -294,6 +299,17 @@ class RecordService:
                 self.session.commit()
 
         return records_to_cleanup
+
+    def _clean_files_async(self, file_path: str) -> None:
+        """在后台守护线程中异步清理文件，避免网络挂载路径阻塞请求
+
+        Args:
+            file_path: 文件路径
+        """
+        if not file_path:
+            return
+        t = Thread(target=self._clean_files, args=(file_path,), daemon=True)
+        t.start()
 
     def _clean_files(self, file_path: str) -> None:
         """清理文件及相关文件

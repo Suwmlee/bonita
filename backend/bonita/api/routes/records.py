@@ -9,7 +9,7 @@ router = APIRouter()
 
 
 @router.get("/all", response_model=schemas.RecordsPublic)
-async def get_records(
+def get_records(
     session: SessionDep,
     skip: int = 0,
     limit: int = 100,
@@ -47,7 +47,7 @@ async def get_records(
 
 
 @router.put("/record", response_model=schemas.RecordPublic)
-async def update_record(session: SessionDep, record: schemas.RecordPublic) -> Any:
+def update_record(session: SessionDep, record: schemas.RecordPublic) -> Any:
     """ 更新记录信息 包含 ExtraInfo
     """
     record_service = RecordService(session)
@@ -68,7 +68,7 @@ async def update_record(session: SessionDep, record: schemas.RecordPublic) -> An
 
 
 @router.put("/update-top-folder", response_model=schemas.Response)
-async def update_top_folder(
+def update_top_folder(
     session: SessionDep,
     srcfolder: str,
     old_top_folder: str,
@@ -101,7 +101,7 @@ async def update_top_folder(
 
 
 @router.delete("/records", response_model=schemas.Response)
-async def delete_records(
+def delete_records(
     session: SessionDep,
     record_ids: List[int],
     force: bool = False
@@ -126,7 +126,7 @@ async def delete_records(
 
 
 @router.get("/transrecords", response_model=schemas.TransferRecordsPublic)
-async def get_trans_records(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
+def get_trans_records(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
     record_service = RecordService(session)
     trans_records, count = record_service.get_trans_records(skip, limit)
 
