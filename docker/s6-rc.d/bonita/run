@@ -1,20 +1,29 @@
 #!/bin/sh
 
-# 启动nginx
-nginx
-
 # 启动FastAPI，确保数据库初始化完成
 cd /app/backend
 
 echo "启动FastAPI服务..."
-exec s6-setuidgid tomoki uvicorn bonita.main:app --host 0.0.0.0 --port 8000 &
+# 将uvicorn的输出重定向到s6日志，方便排查启动错误
+s6-setuidgid tomoki uvicorn bonita.main:app --host 0.0.0.0 --port 8000 >/proc/1/fd/1 2>&1 &
 UVICORN_PID=$!
 
-# 等待FastAPI启动完成
+# 等待FastAPI启动完成（数据库初始化可能需要一些时间）
 echo "等待FastAPI服务启动和数据库初始化..."
-until $(curl -X GET --output /dev/null --silent --fail http://localhost:8000/api/v1/status/health); do
+MAX_WAIT=120
+WAITED=0
+until curl -X GET --output /dev/null --silent --fail --max-time 5 http://localhost:8000/api/v1/status/health; do
+  if ! kill -0 $UVICORN_PID 2>/dev/null; then
+    echo "FastAPI进程已退出，启动失败，请查看上方uvicorn错误日志"
+    exit 1
+  fi
+  if [ $WAITED -ge $MAX_WAIT ]; then
+    echo "等待FastAPI超时（${MAX_WAIT}秒），启动失败"
+    exit 1
+  fi
   printf "."
   sleep 2
+  WAITED=$((WAITED + 2))
 done
 echo "FastAPI服务已启动，数据库初始化完成"
 
