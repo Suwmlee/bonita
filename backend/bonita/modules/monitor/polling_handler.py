@@ -1,9 +1,8 @@
 import logging
 import hashlib
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, Literal, Set, Optional, Callable
+from typing import Dict, Literal, Optional, Callable
 from threading import Thread, Lock, Event
 from dataclasses import dataclass
 
@@ -44,10 +43,13 @@ class MonitorTask:
     callback_func: Callable
     last_scan: Optional[datetime] = None
     file_snapshots: Dict[str, FileSnapshot] = None
-    
+    unstable_files: Dict[str, FileSnapshot] = None
+
     def __post_init__(self):
         if self.file_snapshots is None:
             self.file_snapshots = {}
+        if self.unstable_files is None:
+            self.unstable_files = {}
 
 
 class PollingHandler(metaclass=Singleton):
@@ -68,9 +70,6 @@ class PollingHandler(metaclass=Singleton):
         self._polling_thread: Optional[Thread] = None
         self._stop_event = Event()
         self._polling_interval = polling_interval
-        
-        # 文件稳定性检查：文件需要连续2次扫描保持不变才认为是稳定的
-        self._unstable_files: Dict[str, FileSnapshot] = {}  # 不稳定的文件（正在写入中）
 
     def start(self) -> None:
         """启动监控服务"""
@@ -208,20 +207,20 @@ class PollingHandler(metaclass=Singleton):
         # 检测新增和变化的文件
         for filepath, snapshot in current_snapshots.items():
             if filepath not in old_snapshots:
-                # 新文件 - 加入稳定性检查队列
-                self._is_file_stable(filepath, snapshot)
-            elif filepath in self._unstable_files:
+                # 新文件 - 加入稳定性检查队列（首次发现直接进入不稳定队列）
+                if self._is_file_stable(filepath, snapshot, task.unstable_files):
+                    # 极少数情况：首次发现就已稳定（_unstable_files 被外部预热时），直接触发
+                    self._handle_file_created(task, snapshot)
+            elif filepath in task.unstable_files:
                 # 文件在不稳定列表中，继续检查是否已稳定
-                if self._is_file_stable(filepath, snapshot):
+                if self._is_file_stable(filepath, snapshot, task.unstable_files):
                     self._handle_file_created(task, snapshot)
         
         # 检测删除的文件
         for filepath in old_snapshots:
             if filepath not in current_snapshots:
                 self._handle_file_deleted(task, old_snapshots[filepath])
-                # 如果文件在不稳定列表中，也要清理
-                if filepath in self._unstable_files:
-                    del self._unstable_files[filepath]
+                task.unstable_files.pop(filepath, None)
         
         # 更新快照
         task.file_snapshots = current_snapshots
@@ -265,29 +264,34 @@ class PollingHandler(metaclass=Singleton):
             
         return snapshots
 
-    def _is_file_stable(self, filepath: str, snapshot: FileSnapshot) -> bool:
+    def _is_file_stable(
+        self,
+        filepath: str,
+        snapshot: FileSnapshot,
+        unstable_files: Dict[str, FileSnapshot],
+    ) -> bool:
         """
         检查文件是否稳定（已完成写入）
 
-        通过比较连续多次扫描，如果文件大小和修改时间保持不变，则认为稳定
+        通过比较连续多次扫描，如果文件大小和修改时间保持不变，则认为稳定。
+        unstable_files 由调用方（MonitorTask）持有，各 Task 互不干扰。
         """
         if snapshot.is_directory:
             return True  # 目录总是稳定的
 
-        # 检查是否在不稳定列表中
-        if filepath in self._unstable_files:
-            old_snapshot = self._unstable_files[filepath]
+        if filepath in unstable_files:
+            old_snapshot = unstable_files[filepath]
             if old_snapshot.get_hash() == snapshot.get_hash():
                 # 文件在两次扫描间保持不变，认为稳定
-                del self._unstable_files[filepath]
+                del unstable_files[filepath]
                 return True
             else:
                 # 文件仍在变化，更新快照
-                self._unstable_files[filepath] = snapshot
+                unstable_files[filepath] = snapshot
                 return False
         else:
             # 首次发现该文件，标记为不稳定
-            self._unstable_files[filepath] = snapshot
+            unstable_files[filepath] = snapshot
             return False
 
     def _handle_file_created(self, task: MonitorTask, snapshot: FileSnapshot) -> None:
