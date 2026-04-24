@@ -138,16 +138,17 @@ class PollingHandler(metaclass=Singleton):
                 folder_type=folder_type,
                 callback_func=callback_func
             )
-            
-            # 初始化文件快照
-            monitor_task.file_snapshots = self._scan_directory(folder_path)
-            monitor_task.last_scan = datetime.now()
-            
+
+            # 不在注册时做全量扫描，留空快照，第一次轮询时建立基线
+            # 避免文件数量大时阻塞 FastAPI 启动
+            monitor_task.file_snapshots = {}
+            monitor_task.last_scan = None
+
             self._monitor_tasks[key] = monitor_task
-            
+
         logger.info(
             f"Added polling monitor for {folder_path} with task {task_id} as {folder_type} folder "
-            f"(found {len(monitor_task.file_snapshots)} files)"
+            f"(initial scan deferred to first poll)"
         )
 
     def stop_monitoring_directory(self, folder_path: str, task_id: str) -> None:
@@ -192,8 +193,18 @@ class PollingHandler(metaclass=Singleton):
     def _check_directory(self, task: MonitorTask) -> None:
         """检查单个目录的变化"""
         current_snapshots = self._scan_directory(task.folder_path)
+
+        # 第一次轮询：仅建立基线快照，不触发任何事件
+        if task.last_scan is None:
+            task.file_snapshots = current_snapshots
+            task.last_scan = datetime.now()
+            logger.info(
+                f"Initial scan complete for {task.folder_path}: {len(current_snapshots)} files indexed"
+            )
+            return
+
         old_snapshots = task.file_snapshots
-        
+
         # 检测新增和变化的文件
         for filepath, snapshot in current_snapshots.items():
             if filepath not in old_snapshots:
