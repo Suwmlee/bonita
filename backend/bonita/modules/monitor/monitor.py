@@ -35,8 +35,8 @@ class MonitorService(metaclass=Singleton):
         self._lock = Lock()
 
         # 检查是否使用轮询模式（适用于网络挂载文件夹）
-        self._use_polling = getattr(settings, 'MONITOR_USE_POLLING', True)
-        self._polling_interval = getattr(settings, 'MONITOR_POLLING_INTERVAL', 10)
+        self._use_polling = settings.MONITOR_USE_POLLING
+        self._polling_interval = settings.MONITOR_POLLING_INTERVAL
         self._polling_handler: Optional[PollingHandler] = None
 
         if self._use_polling:

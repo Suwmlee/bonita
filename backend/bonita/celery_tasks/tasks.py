@@ -211,12 +211,12 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     # 更新NFO文件/cover
                     process_nfo_file(output_folder, metamixed.extra_filename, metamixed.__dict__)
 
-                    # 尝试下载封面，最多重试5次
+                    # 尝试下载封面，最多重试3次
                     proxy = get_active_proxy(session)
                     cache_cover_filepath = None
                     cover_url = metamixed.cover
                     retry_count = 0
-                    max_retries = 5
+                    max_retries = 3
                     used_sources = {metamixed.site} if metamixed.site else set()
                     extrafanart_list = []
 
@@ -228,7 +228,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
 
                     while retry_count < max_retries:
                         try:
-                            cache_cover_filepath = process_cached_file(session, cover_url, metamixed.number)
+                            cache_cover_filepath = process_cached_file(session, metamixed.cover, metamixed.number)
                             break
                         except Exception as e:
                             retry_count += 1

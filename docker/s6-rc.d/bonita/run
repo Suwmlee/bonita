@@ -10,7 +10,7 @@ UVICORN_PID=$!
 
 # 等待FastAPI启动完成（数据库初始化可能需要一些时间）
 echo "等待FastAPI服务启动和数据库初始化..."
-MAX_WAIT=10
+MAX_WAIT=30
 WAITED=0
 until curl -X GET --output /dev/null --silent --fail --max-time 5 http://localhost:8000/api/v1/status/health; do
   if ! kill -0 $UVICORN_PID 2>/dev/null; then
