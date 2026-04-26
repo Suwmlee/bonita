@@ -134,7 +134,6 @@ include/
 pyvenv.cfg
 
 # Custom
-*.lock
 cache/
 *.log.*
 .cursor/
