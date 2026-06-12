@@ -1,5 +1,4 @@
 import logging
-from logging.handlers import RotatingFileHandler
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from starlette.middleware.cors import CORSMiddleware
@@ -9,6 +8,7 @@ from bonita.core.config import settings
 from bonita.core.db import init_db
 from bonita.core.service import init_service
 from bonita.api.main import api_router
+from bonita.utils.logger import init_log_config
 
 # celery client
 from bonita.worker import celery
@@ -23,7 +23,7 @@ def create_app() -> FastAPI:
         title=settings.PROJECT_NAME,
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
         generate_unique_id_function=custom_generate_unique_id,
-        version=__version__
+        version=__version__,
     )
 
     # Set all CORS enabled origins
@@ -41,26 +41,11 @@ def create_app() -> FastAPI:
     return current_app
 
 
-def log_config():
-    """
-    日志配置
-    """
-    max_log_size = 5 * 1024 * 1024  # 5 MB
-    backup_count = 5
-    formatter = logging.Formatter(settings.LOGGING_FORMAT)
-    handler = RotatingFileHandler(settings.LOGGING_LOCATION, maxBytes=max_log_size,
-                                  backupCount=backup_count, encoding='utf-8')
-    handler.setFormatter(formatter)
-    logging.basicConfig(
-        level=settings.LOGGING_LEVEL,
-        handlers=[handler]
-    )
-
-
 app = create_app()
 app.celery_app = celery
 
-log_config()
+
+init_log_config()
 logger = logging.getLogger(__name__)
 logger.info(f"Bonita version: {__version__}")
 init_db()

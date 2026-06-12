@@ -50,7 +50,7 @@ def celery_transfer_entry(self, task_json):
     progress_tracker.update_detail(task_info.id)
 
     logger.info(f"## [转移任务] START - ID:{task_info.id} | 源:{task_info.source_folder} → 目标:{task_info.output_folder}")
-    
+
     # 获取 source 文件夹下所有顶层文件/文件夹
     progress_tracker.set_progress(15, "扫描源文件夹")
     escape_folders = set([fo.strip() for fo in task_info.escape_folder.split(',')] if task_info.escape_folder else [])
@@ -167,9 +167,9 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                         file_progress, f"处理文件 {idx+1}/{total_files}: {original_file.filename if hasattr(original_file, 'filename') else 'unknown'}")
                 if not isinstance(original_file, BasicFileInfo):
                     continue
-                
+
                 logger.info(f"    [{idx+1}/{total_files}] {original_file.filename}")
-                
+
                 record = session.query(TransRecords).filter(TransRecords.srcpath == original_file.full_path).first()
                 if not record:
                     record = TransRecords()
