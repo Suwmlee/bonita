@@ -99,16 +99,16 @@ class CeleryTaskService:
             CeleryTask.created_at.desc()
         ).offset(offset).limit(limit).all()
 
-    def fail_active_tasks(self, error_message: str = "被清理为失败") -> int:
+    def revoke_active_tasks(self, error_message: str = "被清理为取消") -> int:
         """
-        将当前处于等待或进行中的任务批量标记为失败。
+        将当前处于等待或进行中的任务批量标记为取消。
 
         返回受影响的任务数量。
         """
         updated_count = self.session.query(CeleryTask).filter(
             CeleryTask.status.in_([TaskStatusEnum.PENDING, TaskStatusEnum.PROGRESS])
         ).update({
-            CeleryTask.status: TaskStatusEnum.FAILURE,
+            CeleryTask.status: TaskStatusEnum.REVOKED,
             CeleryTask.error_message: error_message,
             CeleryTask.updatetime: datetime.now(),
         }, synchronize_session=False)

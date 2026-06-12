@@ -2,7 +2,7 @@ import logging
 from typing import Any
 from fastapi import APIRouter, HTTPException
 
-from bonita import schemas, main
+from bonita import schemas
 from bonita.api.deps import SessionDep
 from bonita.db.models.task import TransferConfig
 from bonita.celery_tasks.tasks import celery_transfer_entry, celery_transfer_group
@@ -50,7 +50,7 @@ async def run_transfer_task(
 
 @router.get("/status", response_model=list[schemas.TaskStatus])
 def get_all_tasks_status(
-    session: SessionDep, 
+    session: SessionDep,
     limit: int = 100
 ) -> Any:
     """ 获取所有任务状态
@@ -80,8 +80,8 @@ def get_all_tasks_status(
 
 @router.post("/cleanup/running", response_model=Response)
 def cleanup_running_tasks(session: SessionDep) -> Any:
-    """ 清理当前进行中的任务，批量标记为失败
+    """ 清理当前进行中的任务，批量标记为取消
     """
     celery_service = CeleryTaskService(session)
-    updated = celery_service.fail_active_tasks("被清理为失败")
-    return Response(success=True, message="已标记失败", data={"updated": updated})
+    updated = celery_service.revoke_active_tasks("被清理为取消")
+    return Response(success=True, message="已标记取消", data={"updated": updated})
