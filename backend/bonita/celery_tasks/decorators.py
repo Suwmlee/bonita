@@ -2,6 +2,7 @@ from functools import wraps
 from typing import Callable
 import logging
 
+from bonita.core.enums import TaskStatusEnum
 from bonita.services.celery_service import CeleryTaskService
 
 
@@ -12,6 +13,9 @@ def manage_celery_task(task_type: str):
     """
     Celery任务管理装饰器
     自动创建任务记录、更新进度、处理异常
+
+    则在创建记录后检查父任务状态：若父任务已被清理（REVOKED），
+    当前任务直接标记为 REVOKED 并跳过执行。
     """
     def decorator(func: Callable) -> Callable:
         @wraps(func)
@@ -21,6 +25,17 @@ def manage_celery_task(task_type: str):
             # 创建任务记录
             with CeleryTaskService() as task_service:
                 task_service.create_task(task_id, task_type)
+
+                # 若存在父任务且父任务已被清理，跳过执行
+                if self.request.parent_id:
+                    parent = task_service.get_task(self.request.parent_id)
+                    if parent and parent.status == TaskStatusEnum.REVOKED:
+                        task_service.revoke_task(task_id)
+                        logger.info(
+                            f"Task {task_id} ({task_type}) skipped: "
+                            f"parent {self.request.parent_id} has been revoked"
+                        )
+                        return []
 
             try:
                 # 执行原始任务
