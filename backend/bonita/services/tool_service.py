@@ -1,5 +1,6 @@
 import logging
 import uuid
+from typing import Optional
 from sqlalchemy.orm import Session
 
 from bonita import schemas
@@ -71,6 +72,39 @@ class ToolService:
             progress=0.0,
             step='功能未实现',
             error_message='该功能尚未实现'
+        )
+
+    def sync_record_path(
+        self,
+        old_prefix: str,
+        new_prefix: str,
+        task_id: Optional[int] = None
+    ) -> schemas.Response:
+        """批量替换转移记录的源路径前缀
+
+        Args:
+            old_prefix: 旧路径前缀
+            new_prefix: 新路径前缀
+            task_id: 可选，仅更新指定任务的记录
+
+        Returns:
+            schemas.Response: 操作响应
+        """
+        logger.info(
+            f"Sync trans records path prefix: '{old_prefix}' -> '{new_prefix}', task_id={task_id}"
+        )
+        success, message, updated_records, updated_extrainfo = self.record_service.update_src_path_prefix(
+            old_prefix=old_prefix,
+            new_prefix=new_prefix,
+            task_id=task_id
+        )
+        return schemas.Response(
+            success=success,
+            message=message,
+            data={
+                "updated_records": updated_records,
+                "updated_extrainfo": updated_extrainfo
+            }
         )
 
     def sync_emby_watch_history(self, direction: str = "from_emby", force: bool = False) -> schemas.Response:

@@ -4,6 +4,7 @@ import type {
   RunImportNfoResponse,
   SyncDirection,
   ToolArgsParam,
+  TransRecordsPathSyncParam,
 } from "@/client/types.gen"
 import { i18n } from "@/plugins/i18n"
 import { defineStore } from "pinia"
@@ -71,6 +72,34 @@ export const useToolStore = defineStore("tool-store", {
         )
       } finally {
         this.syncEmbyInProgress = false
+      }
+    },
+
+    async syncRecordPath(params: TransRecordsPathSyncParam) {
+      try {
+        const toastStore = useToastStore()
+
+        const response = await ToolsService.syncRecordPath({
+          requestBody: params,
+        })
+        if (response.success === false) {
+          toastStore.error(
+            i18n.global.t("pages.tools.syncRecordPathFailedWithDetail", {
+              detail: response.message || i18n.global.t("common.unknown"),
+            }) as string,
+          )
+        } else {
+          toastStore.success(i18n.global.t("pages.tools.syncRecordPathSuccess") as string)
+        }
+        return response
+      } catch (error) {
+        console.error("Error syncing record path:", error)
+        const toastStore = useToastStore()
+        toastStore.error(
+          error instanceof Error
+            ? error.message
+            : (i18n.global.t("pages.tools.syncRecordPathFailed") as string),
+        )
       }
     },
 

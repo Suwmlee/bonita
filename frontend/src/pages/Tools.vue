@@ -16,6 +16,10 @@ const updateOption = ref("ignore")
 const forceCleanupOption = ref(false)
 const syncDirection = ref<"from_emby" | "to_emby">("from_emby")
 const forceUpdateEmby = ref(false)
+const oldPrefix = ref("")
+const newPrefix = ref("")
+const recordPathTaskId = ref("")
+const isSyncingRecordPath = ref(false)
 
 const importNfoData = async () => {
   if (!nfoFolder.value) {
@@ -48,6 +52,26 @@ const cleanMediaItems = async () => {
     await mediaItemStore.cleanMediaItems()
   } finally {
     isCleaningMediaItems.value = false
+  }
+}
+
+const syncRecordPath = async () => {
+  if (!oldPrefix.value || !newPrefix.value) {
+    alert(t("pages.tools.syncRecordPath.prefixRequired"))
+    return
+  }
+  isSyncingRecordPath.value = true
+  try {
+    const taskId = recordPathTaskId.value.trim()
+      ? Number.parseInt(recordPathTaskId.value.trim())
+      : null
+    await toolStore.syncRecordPath({
+      old_prefix: oldPrefix.value,
+      new_prefix: newPrefix.value,
+      task_id: Number.isNaN(taskId) ? null : taskId,
+    })
+  } finally {
+    isSyncingRecordPath.value = false
   }
 }
 
@@ -152,6 +176,57 @@ const cleanupData = async () => {
               </VBtn>
             </VCol>
           </VRow>
+        </VCardText>
+      </VCard>
+
+      <VCard class="mb-6">
+        <VCardTitle>{{ t('pages.tools.syncRecordPath.title') }}</VCardTitle>
+        <VCardSubtitle class="text-wrap">
+          {{ t('pages.tools.syncRecordPath.subtitle') }}
+        </VCardSubtitle>
+        <VCardText>
+          <VForm :loading="isSyncingRecordPath">
+            <VRow>
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="oldPrefix">{{ t('pages.tools.syncRecordPath.oldPrefix') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField v-model="oldPrefix" :placeholder="t('pages.tools.syncRecordPath.oldPrefixPlaceholder')" variant="outlined" />
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="newPrefix">{{ t('pages.tools.syncRecordPath.newPrefix') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField v-model="newPrefix" :placeholder="t('pages.tools.syncRecordPath.newPrefixPlaceholder')" variant="outlined" />
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="recordPathTaskId">{{ t('pages.tools.syncRecordPath.taskId') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField v-model="recordPathTaskId" :placeholder="t('pages.tools.syncRecordPath.taskIdPlaceholder')" variant="outlined" type="number" clearable />
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VBtn color="primary" block :loading="isSyncingRecordPath" @click="syncRecordPath">
+                  {{ t('pages.tools.syncRecordPath.startSync') }}
+                </VBtn>
+              </VCol>
+            </VRow>
+          </VForm>
         </VCardText>
       </VCard>
 

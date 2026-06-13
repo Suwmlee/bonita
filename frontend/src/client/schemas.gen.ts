@@ -2450,6 +2450,37 @@ export const $ToolArgsParam = {
     description: '工具参数请求'
 } as const;
 
+export const $TransRecordsPathSyncParam = {
+    properties: {
+        old_prefix: {
+            type: 'string',
+            title: 'Old Prefix',
+            description: '旧路径前缀'
+        },
+        new_prefix: {
+            type: 'string',
+            title: 'New Prefix',
+            description: '新路径前缀'
+        },
+        task_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Task Id',
+            description: '可选，仅更新指定任务的记录'
+        }
+    },
+    type: 'object',
+    required: ['old_prefix', 'new_prefix'],
+    title: 'TransRecordsPathSyncParam',
+    description: '转移记录路径批量替换参数'
+} as const;
+
 export const $TransferConfigCreate = {
     properties: {
         name: {

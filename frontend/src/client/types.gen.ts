@@ -383,6 +383,24 @@ export type ToolArgsParam = {
     arg3?: string | null;
 };
 
+/**
+ * 转移记录路径批量替换参数
+ */
+export type TransRecordsPathSyncParam = {
+    /**
+     * 旧路径前缀
+     */
+    old_prefix: string;
+    /**
+     * 新路径前缀
+     */
+    new_prefix: string;
+    /**
+     * 可选，仅更新指定任务的记录
+     */
+    task_id?: number | null;
+};
+
 export type TransferConfigCreate = {
     name: string;
     description: string;
@@ -788,6 +806,12 @@ export type RunEmbyScanData = {
 };
 
 export type RunEmbyScanResponse = TaskStatus;
+
+export type SyncRecordPathData = {
+    requestBody: TransRecordsPathSyncParam;
+};
+
+export type SyncRecordPathResponse = Response;
 
 export type SyncEmbyWatchHistoryData = {
     requestBody: EmbySyncParam;
@@ -1421,6 +1445,21 @@ export type $OpenApiTs = {
                  * Successful Response
                  */
                 200: TaskStatus;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/tools/records/path': {
+        post: {
+            req: SyncRecordPathData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
                 /**
                  * Validation Error
                  */

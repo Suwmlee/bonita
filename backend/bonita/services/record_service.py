@@ -149,6 +149,102 @@ class RecordService:
 
         return True, f"成功更新 {records_count} 条记录的 top_folder 从 '{old_top_folder}' 到 '{new_top_folder}'", records_count
 
+    def _replace_path_prefix(self, path: str, old_prefix: str, new_prefix: str) -> str:
+        """将路径中的旧前缀替换为新前缀"""
+        if not path or not path.startswith(old_prefix):
+            return path
+        return new_prefix + path[len(old_prefix):]
+
+    def update_src_path_prefix(
+        self,
+        old_prefix: str,
+        new_prefix: str,
+        task_id: Optional[int] = None
+    ) -> Tuple[bool, str, int, int]:
+        """批量替换转移记录的源路径前缀
+
+        同时更新关联的 ExtraInfo.filepath，以保持自定义内容关联。
+
+        Args:
+            old_prefix: 旧路径前缀
+            new_prefix: 新路径前缀
+            task_id: 可选，仅更新指定任务的记录
+
+        Returns:
+            Tuple[bool, str, int, int]: 成功状态、消息、更新的记录数和更新的 ExtraInfo 数
+        """
+        old_prefix = old_prefix.rstrip("/")
+        new_prefix = new_prefix.rstrip("/")
+
+        if not old_prefix:
+            return False, "旧路径前缀不能为空", 0, 0
+
+        if old_prefix == new_prefix:
+            return False, "新旧路径前缀相同，无需更新", 0, 0
+
+        query = self.session.query(TransRecords).filter(
+            or_(
+                TransRecords.srcpath == old_prefix,
+                TransRecords.srcpath.startswith(f"{old_prefix}/")
+            )
+        )
+        if task_id is not None:
+            query = query.filter(TransRecords.task_id == task_id)
+
+        records = query.all()
+        if not records:
+            scope = f" (task_id={task_id})" if task_id is not None else ""
+            return False, f"没有找到 srcpath 以 '{old_prefix}' 开头的记录{scope}", 0, 0
+
+        updated_records = 0
+        updated_extrainfo = 0
+        skipped = 0
+
+        for record in records:
+            old_srcpath = record.srcpath
+            new_srcpath = self._replace_path_prefix(old_srcpath, old_prefix, new_prefix)
+
+            existing_record = self.session.query(TransRecords).filter(
+                TransRecords.srcpath == new_srcpath,
+                TransRecords.id != record.id
+            ).first()
+            if existing_record:
+                skipped += 1
+                continue
+
+            extra_info = self.session.query(ExtraInfo).filter(ExtraInfo.filepath == old_srcpath).first()
+            if extra_info:
+                existing_extra = self.session.query(ExtraInfo).filter(
+                    ExtraInfo.filepath == new_srcpath,
+                    ExtraInfo.id != extra_info.id
+                ).first()
+                if existing_extra:
+                    skipped += 1
+                    continue
+                extra_info.filepath = new_srcpath
+                updated_extrainfo += 1
+
+            record.srcpath = new_srcpath
+            record.srcfolder = self._replace_path_prefix(record.srcfolder, old_prefix, new_prefix)
+            record.updatetime = datetime.now()
+            updated_records += 1
+
+        if updated_records == 0:
+            return False, f"未更新任何记录（跳过 {skipped} 条冲突记录）", 0, 0
+
+        self.session.commit()
+
+        message = (
+            f"成功将路径前缀从 '{old_prefix}' 替换为 '{new_prefix}'，"
+            f"更新 {updated_records} 条转移记录"
+        )
+        if updated_extrainfo:
+            message += f"，同步更新 {updated_extrainfo} 条 ExtraInfo"
+        if skipped:
+            message += f"，跳过 {skipped} 条冲突记录"
+
+        return True, message, updated_records, updated_extrainfo
+
     def delete_records(
         self,
         record_ids: List[int],

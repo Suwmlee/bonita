@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetAllTasksStatusData, GetAllTasksStatusResponse, CleanupRunningTasksResponse, GetAllTaskConfigsData, GetAllTaskConfigsResponse, CreateTaskConfigData, CreateTaskConfigResponse, UpdateTaskConfigData, UpdateTaskConfigResponse, DeleteTaskConfigData, DeleteTaskConfigResponse, GetAllConfigsData, GetAllConfigsResponse, CreateConfigData, CreateConfigResponse, UpdateConfigData, UpdateConfigResponse, DeleteConfigData, DeleteConfigResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, UpdateTopFolderData, UpdateTopFolderResponse, DeleteRecordsData, DeleteRecordsResponse, GetTransRecordsData, GetTransRecordsResponse, CreateMetadataData, CreateMetadataResponse, GetMetadataData, GetMetadataResponse, UpdateMetadataData, UpdateMetadataResponse, DeleteMetadataData, DeleteMetadataResponse, GetMediaItemsData, GetMediaItemsResponse, CreateMediaItemData, CreateMediaItemResponse, GetMediaItemData, GetMediaItemResponse, UpdateMediaItemData, UpdateMediaItemResponse, DeleteMediaItemData, DeleteMediaItemResponse, CleanMediaItemResponse, RunImportNfoData, RunImportNfoResponse, RunEmbyScanData, RunEmbyScanResponse, SyncEmbyWatchHistoryData, SyncEmbyWatchHistoryResponse, CleanupDataData, CleanupDataResponse, GetProxySettingsResponse, UpdateProxySettingsData, UpdateProxySettingsResponse, GetEmbySettingsResponse, UpdateEmbySettingsData, UpdateEmbySettingsResponse, TestEmbyConnectionData, TestEmbyConnectionResponse, GetJellyfinSettingsResponse, UpdateJellyfinSettingsData, UpdateJellyfinSettingsResponse, TestJellyfinConnectionData, TestJellyfinConnectionResponse, GetTransmissionSettingsResponse, UpdateTransmissionSettingsData, UpdateTransmissionSettingsResponse, TestTransmissionConnectionData, TestTransmissionConnectionResponse, GetImageByQueryData, GetImageByQueryResponse, UploadImageData, UploadImageResponse, GetPosterData, GetPosterResponse, ListDirectoryData, ListDirectoryResponse, HealthCheckResponse } from './types.gen';
+import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetAllTasksStatusData, GetAllTasksStatusResponse, CleanupRunningTasksResponse, GetAllTaskConfigsData, GetAllTaskConfigsResponse, CreateTaskConfigData, CreateTaskConfigResponse, UpdateTaskConfigData, UpdateTaskConfigResponse, DeleteTaskConfigData, DeleteTaskConfigResponse, GetAllConfigsData, GetAllConfigsResponse, CreateConfigData, CreateConfigResponse, UpdateConfigData, UpdateConfigResponse, DeleteConfigData, DeleteConfigResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, UpdateTopFolderData, UpdateTopFolderResponse, DeleteRecordsData, DeleteRecordsResponse, GetTransRecordsData, GetTransRecordsResponse, CreateMetadataData, CreateMetadataResponse, GetMetadataData, GetMetadataResponse, UpdateMetadataData, UpdateMetadataResponse, DeleteMetadataData, DeleteMetadataResponse, GetMediaItemsData, GetMediaItemsResponse, CreateMediaItemData, CreateMediaItemResponse, GetMediaItemData, GetMediaItemResponse, UpdateMediaItemData, UpdateMediaItemResponse, DeleteMediaItemData, DeleteMediaItemResponse, CleanMediaItemResponse, RunImportNfoData, RunImportNfoResponse, RunEmbyScanData, RunEmbyScanResponse, SyncRecordPathData, SyncRecordPathResponse, SyncEmbyWatchHistoryData, SyncEmbyWatchHistoryResponse, CleanupDataData, CleanupDataResponse, GetProxySettingsResponse, UpdateProxySettingsData, UpdateProxySettingsResponse, GetEmbySettingsResponse, UpdateEmbySettingsData, UpdateEmbySettingsResponse, TestEmbyConnectionData, TestEmbyConnectionResponse, GetJellyfinSettingsResponse, UpdateJellyfinSettingsData, UpdateJellyfinSettingsResponse, TestJellyfinConnectionData, TestJellyfinConnectionResponse, GetTransmissionSettingsResponse, UpdateTransmissionSettingsData, UpdateTransmissionSettingsResponse, TestTransmissionConnectionData, TestTransmissionConnectionResponse, GetImageByQueryData, GetImageByQueryResponse, UploadImageData, UploadImageResponse, GetPosterData, GetPosterResponse, ListDirectoryData, ListDirectoryResponse, HealthCheckResponse } from './types.gen';
 
 export class LoginService {
     /**
@@ -274,7 +274,7 @@ export class TaskService {
     
     /**
      * Cleanup Running Tasks
-     * 清理当前进行中的任务，批量标记为失败
+     * 清理当前进行中的任务，批量标记为取消
      * @returns Response Successful Response
      * @throws ApiError
      */
@@ -916,6 +916,35 @@ export class ToolsService {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/tools/embyscan',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Sync Record Path
+     * 批量替换转移记录源路径前缀
+     *
+     * 当任务更改了源文件路径后，可通过此接口将历史转移记录的路径前缀批量替换为新路径，
+     * 同时同步更新关联的 ExtraInfo，避免自定义内容失效。
+     *
+     * Args:
+     * params: 路径替换参数
+     * - old_prefix: 旧路径前缀
+     * - new_prefix: 新路径前缀
+     * - task_id: 可选，仅更新指定任务的记录
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns Response Successful Response
+     * @throws ApiError
+     */
+    public static syncRecordPath(data: SyncRecordPathData): CancelablePromise<SyncRecordPathResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/tools/records/path',
             body: data.requestBody,
             mediaType: 'application/json',
             errors: {

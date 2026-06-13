@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 from bonita.schemas.extrainfo import ExtraInfoPublic
@@ -61,3 +61,10 @@ class RecordPublic(BaseModel):
 class RecordsPublic(BaseModel):
     data: List[RecordPublic]
     count: int
+
+
+class TransRecordsPathSyncParam(BaseModel):
+    """转移记录路径批量替换参数"""
+    old_prefix: str = Field(..., description="旧路径前缀")
+    new_prefix: str = Field(..., description="新路径前缀")
+    task_id: Optional[int] = Field(default=None, description="可选，仅更新指定任务的记录")
