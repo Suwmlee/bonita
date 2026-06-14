@@ -713,8 +713,7 @@ export type UpdateTopFolderResponse = Response;
 
 export type UpdateSeasonData = {
     newSeason: number;
-    oldSeason: number;
-    srcfolder: string;
+    srcpath: string;
 };
 
 export type UpdateSeasonResponse = Response;

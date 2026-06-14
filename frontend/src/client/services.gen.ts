@@ -565,19 +565,17 @@ export class RecordService {
      * Update Season
      * 更新 season
      *
-     * 更新源文件夹上层目录相同且 season 相同的所有记录的 season 字段
+     * 更新源文件上层目录相同的所有记录的 season 和 isepisode 字段
      *
      * Args:
      * session: 数据库会话
-     * srcfolder: 源文件夹路径
-     * old_season: 原来的 season 值
+     * srcpath: 源文件路径
      * new_season: 新的 season 值
      *
      * Returns:
      * 更新操作的结果
      * @param data The data for the request.
-     * @param data.srcfolder
-     * @param data.oldSeason
+     * @param data.srcpath
      * @param data.newSeason
      * @returns Response Successful Response
      * @throws ApiError
@@ -587,8 +585,7 @@ export class RecordService {
             method: 'PUT',
             url: '/api/v1/records/update-season',
             query: {
-                srcfolder: data.srcfolder,
-                old_season: data.oldSeason,
+                srcpath: data.srcpath,
                 new_season: data.newSeason
             },
             errors: {

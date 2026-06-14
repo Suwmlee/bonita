@@ -504,7 +504,7 @@ export default {
         topFolderMissingData: "源文件夹或顶层文件夹值缺失",
         seasonUpdateSuccess: "成功更新所有匹配记录的季数",
         seasonUpdateError: "更新季数失败，请重试",
-        seasonMissingData: "源文件夹或季数值缺失",
+        seasonMissingData: "源文件路径或季数值缺失",
         taskId: "任务ID",
         selectTask: "选择任务",
       },

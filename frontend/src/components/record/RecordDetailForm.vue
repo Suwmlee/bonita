@@ -28,11 +28,9 @@ const { updateRecord } = props as {
 const currentTransferRecord = ref<any>()
 const currentExtraInfo = ref<any>()
 const originalTopFolder = ref<string | null | undefined>("")
-const originalSeason = ref<number | null | undefined>(-1)
 currentTransferRecord.value = { ...updateRecord.transfer_record }
 currentExtraInfo.value = { ...updateRecord.extra_info }
 originalTopFolder.value = currentTransferRecord.value.top_folder
-originalSeason.value = currentTransferRecord.value.season
 
 onMounted(async () => {
   if (!taskStore.allTasks.length) {
@@ -51,18 +49,17 @@ async function handleSubmit() {
 async function applySeasonToAll() {
   try {
     if (
-      currentTransferRecord.value.srcfolder !== undefined &&
+      currentTransferRecord.value.srcpath !== undefined &&
       currentTransferRecord.value.season !== undefined
     ) {
       const response = await RecordService.updateSeason({
-        srcfolder: currentTransferRecord.value.srcfolder,
-        oldSeason: originalSeason.value ?? -1,
+        srcpath: currentTransferRecord.value.srcpath,
         newSeason: Number(currentTransferRecord.value.season),
       })
 
       if (response?.success) {
         toastStore.success(t("components.record.form.seasonUpdateSuccess"))
-        originalSeason.value = Number(currentTransferRecord.value.season)
+        currentTransferRecord.value.isepisode = true
       } else {
         const errorMessage =
           response?.message || t("components.record.form.seasonUpdateError")

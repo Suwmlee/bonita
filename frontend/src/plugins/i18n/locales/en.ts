@@ -522,7 +522,7 @@ export default {
         seasonUpdateSuccess:
           "Season updated successfully for all matching records",
         seasonUpdateError: "Failed to update season, please try again",
-        seasonMissingData: "Source folder or season value is missing",
+        seasonMissingData: "Source path or season value is missing",
         taskId: "Task ID",
         selectTask: "Select a task",
       },
