@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetAllTasksStatusData, GetAllTasksStatusResponse, CleanupRunningTasksResponse, GetAllTaskConfigsData, GetAllTaskConfigsResponse, CreateTaskConfigData, CreateTaskConfigResponse, UpdateTaskConfigData, UpdateTaskConfigResponse, DeleteTaskConfigData, DeleteTaskConfigResponse, GetAllConfigsData, GetAllConfigsResponse, CreateConfigData, CreateConfigResponse, UpdateConfigData, UpdateConfigResponse, DeleteConfigData, DeleteConfigResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, UpdateTopFolderData, UpdateTopFolderResponse, DeleteRecordsData, DeleteRecordsResponse, GetTransRecordsData, GetTransRecordsResponse, CreateMetadataData, CreateMetadataResponse, GetMetadataData, GetMetadataResponse, UpdateMetadataData, UpdateMetadataResponse, DeleteMetadataData, DeleteMetadataResponse, GetMediaItemsData, GetMediaItemsResponse, CreateMediaItemData, CreateMediaItemResponse, GetMediaItemData, GetMediaItemResponse, UpdateMediaItemData, UpdateMediaItemResponse, DeleteMediaItemData, DeleteMediaItemResponse, CleanMediaItemResponse, RunImportNfoData, RunImportNfoResponse, RunEmbyScanData, RunEmbyScanResponse, SyncRecordPathData, SyncRecordPathResponse, SyncEmbyWatchHistoryData, SyncEmbyWatchHistoryResponse, CleanupDataData, CleanupDataResponse, GetProxySettingsResponse, UpdateProxySettingsData, UpdateProxySettingsResponse, GetEmbySettingsResponse, UpdateEmbySettingsData, UpdateEmbySettingsResponse, TestEmbyConnectionData, TestEmbyConnectionResponse, GetJellyfinSettingsResponse, UpdateJellyfinSettingsData, UpdateJellyfinSettingsResponse, TestJellyfinConnectionData, TestJellyfinConnectionResponse, GetTransmissionSettingsResponse, UpdateTransmissionSettingsData, UpdateTransmissionSettingsResponse, TestTransmissionConnectionData, TestTransmissionConnectionResponse, GetImageByQueryData, GetImageByQueryResponse, UploadImageData, UploadImageResponse, GetPosterData, GetPosterResponse, ListDirectoryData, ListDirectoryResponse, HealthCheckResponse } from './types.gen';
+import type { LoginAccessTokenData, LoginAccessTokenResponse, ReadUsersData, ReadUsersResponse, CreateUserData, CreateUserResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, RegisterUserData, RegisterUserResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse, RunTransferTaskData, RunTransferTaskResponse, GetAllTasksStatusData, GetAllTasksStatusResponse, CleanupRunningTasksResponse, GetAllTaskConfigsData, GetAllTaskConfigsResponse, CreateTaskConfigData, CreateTaskConfigResponse, UpdateTaskConfigData, UpdateTaskConfigResponse, DeleteTaskConfigData, DeleteTaskConfigResponse, GetAllConfigsData, GetAllConfigsResponse, CreateConfigData, CreateConfigResponse, UpdateConfigData, UpdateConfigResponse, DeleteConfigData, DeleteConfigResponse, GetRecordsData, GetRecordsResponse, UpdateRecordData, UpdateRecordResponse, UpdateTopFolderData, UpdateTopFolderResponse, UpdateSeasonData, UpdateSeasonResponse, DeleteRecordsData, DeleteRecordsResponse, GetTransRecordsData, GetTransRecordsResponse, CreateMetadataData, CreateMetadataResponse, GetMetadataData, GetMetadataResponse, UpdateMetadataData, UpdateMetadataResponse, DeleteMetadataData, DeleteMetadataResponse, GetMediaItemsData, GetMediaItemsResponse, CreateMediaItemData, CreateMediaItemResponse, GetMediaItemData, GetMediaItemResponse, UpdateMediaItemData, UpdateMediaItemResponse, DeleteMediaItemData, DeleteMediaItemResponse, CleanMediaItemResponse, RunImportNfoData, RunImportNfoResponse, RunEmbyScanData, RunEmbyScanResponse, SyncRecordPathData, SyncRecordPathResponse, SyncEmbyWatchHistoryData, SyncEmbyWatchHistoryResponse, CleanupDataData, CleanupDataResponse, GetProxySettingsResponse, UpdateProxySettingsData, UpdateProxySettingsResponse, GetEmbySettingsResponse, UpdateEmbySettingsData, UpdateEmbySettingsResponse, TestEmbyConnectionData, TestEmbyConnectionResponse, GetJellyfinSettingsResponse, UpdateJellyfinSettingsData, UpdateJellyfinSettingsResponse, TestJellyfinConnectionData, TestJellyfinConnectionResponse, GetTransmissionSettingsResponse, UpdateTransmissionSettingsData, UpdateTransmissionSettingsResponse, TestTransmissionConnectionData, TestTransmissionConnectionResponse, GetImageByQueryData, GetImageByQueryResponse, UploadImageData, UploadImageResponse, GetPosterData, GetPosterResponse, ListDirectoryData, ListDirectoryResponse, HealthCheckResponse } from './types.gen';
 
 export class LoginService {
     /**
@@ -554,6 +554,42 @@ export class RecordService {
                 srcfolder: data.srcfolder,
                 old_top_folder: data.oldTopFolder,
                 new_top_folder: data.newTopFolder
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Season
+     * 更新 season
+     *
+     * 更新源文件夹上层目录相同且 season 相同的所有记录的 season 字段
+     *
+     * Args:
+     * session: 数据库会话
+     * srcfolder: 源文件夹路径
+     * old_season: 原来的 season 值
+     * new_season: 新的 season 值
+     *
+     * Returns:
+     * 更新操作的结果
+     * @param data The data for the request.
+     * @param data.srcfolder
+     * @param data.oldSeason
+     * @param data.newSeason
+     * @returns Response Successful Response
+     * @throws ApiError
+     */
+    public static updateSeason(data: UpdateSeasonData): CancelablePromise<UpdateSeasonResponse> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/v1/records/update-season',
+            query: {
+                srcfolder: data.srcfolder,
+                old_season: data.oldSeason,
+                new_season: data.newSeason
             },
             errors: {
                 422: 'Validation Error'

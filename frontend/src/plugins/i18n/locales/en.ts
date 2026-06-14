@@ -519,6 +519,10 @@ export default {
           "Top folder updated successfully for all matching records",
         topFolderUpdateError: "Failed to update top folder, please try again",
         topFolderMissingData: "Source folder or top folder value is missing",
+        seasonUpdateSuccess:
+          "Season updated successfully for all matching records",
+        seasonUpdateError: "Failed to update season, please try again",
+        seasonMissingData: "Source folder or season value is missing",
         taskId: "Task ID",
         selectTask: "Select a task",
       },
@@ -549,7 +553,7 @@ export default {
         scrapingHint:
           'If you cannot find the desired configuration here, please add it in "Scraping" section',
         enabled: "Enabled",
-        optimizeName: "Optimize Name",
+        optimizeName: "Optimize Folder",
         failedFolder: "Failed Folder",
         escapeFolder: "Escape Folder",
         escapeLiterals: "Escape Literals",

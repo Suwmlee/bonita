@@ -149,6 +149,55 @@ class RecordService:
 
         return True, f"成功更新 {records_count} 条记录的 top_folder 从 '{old_top_folder}' 到 '{new_top_folder}'", records_count
 
+    @staticmethod
+    def _season_to_second_folder(season: int) -> str:
+        if season == 0:
+            return "Specials"
+        if season > 0:
+            return f"Season {season}"
+        return ""
+
+    def update_season(self, srcfolder: str, old_season: int, new_season: int) -> Tuple[bool, str, int]:
+        """批量更新 season
+
+        更新源文件夹上层目录相同且 season 相同的所有记录
+
+        Args:
+            srcfolder: 源文件夹
+            old_season: 旧的 season 值
+            new_season: 新的 season 值
+
+        Returns:
+            Tuple[bool, str, int]: 成功状态、消息和更新的记录数
+        """
+        parent_srcfolder = os.path.dirname(srcfolder.rstrip("/"))
+        if not parent_srcfolder:
+            return False, "无法确定源文件夹的上层目录", 0
+
+        parent_prefix = f"{parent_srcfolder}/"
+        query = self.session.query(TransRecords).filter(
+            TransRecords.season == old_season,
+            TransRecords.srcfolder.like(f"{parent_prefix}%"),
+            ~TransRecords.srcfolder.like(f"{parent_prefix}%/%"),
+        )
+
+        records_count = query.count()
+        if records_count == 0:
+            return False, (
+                f"没有找到匹配的记录: 上层目录={parent_srcfolder}, season={old_season}"
+            ), 0
+
+        update_values = {"season": new_season, "updatetime": datetime.now()}
+        if new_season > -1:
+            update_values["second_folder"] = self._season_to_second_folder(new_season)
+
+        query.update(update_values)
+        self.session.commit()
+
+        return True, (
+            f"成功更新 {records_count} 条记录的 season 从 {old_season} 到 {new_season}"
+        ), records_count
+
     def _replace_path_prefix(self, path: str, old_prefix: str, new_prefix: str) -> str:
         """将路径中的旧前缀替换为新前缀"""
         if not path or not path.startswith(old_prefix):

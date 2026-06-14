@@ -100,6 +100,39 @@ def update_top_folder(
     )
 
 
+@router.put("/update-season", response_model=schemas.Response)
+def update_season(
+    session: SessionDep,
+    srcfolder: str,
+    old_season: int,
+    new_season: int
+) -> Any:
+    """更新 season
+
+    更新源文件夹上层目录相同且 season 相同的所有记录的 season 字段
+
+    Args:
+        session: 数据库会话
+        srcfolder: 源文件夹路径
+        old_season: 原来的 season 值
+        new_season: 新的 season 值
+
+    Returns:
+        更新操作的结果
+    """
+    record_service = RecordService(session)
+    success, message, _ = record_service.update_season(
+        srcfolder=srcfolder,
+        old_season=old_season,
+        new_season=new_season
+    )
+
+    return schemas.Response(
+        success=success,
+        message=message
+    )
+
+
 @router.delete("/records", response_model=schemas.Response)
 def delete_records(
     session: SessionDep,

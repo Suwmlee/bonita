@@ -153,8 +153,8 @@ def transferfile(original_file: BasicFileInfo,
 
     if not target_file.forced_top_folder:
         target_file.top_folder = original_file.top_folder
-        _handle_group_naming(original_file, target_file, file_list)
         if optimize_name_tag:
+            _handle_group_naming(original_file, target_file, file_list)
             target_file.top_folder = _simplify_folder_name(original_file.top_folder)
 
     # 当前设置类型是剧集

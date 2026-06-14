@@ -28,9 +28,11 @@ const { updateRecord } = props as {
 const currentTransferRecord = ref<any>()
 const currentExtraInfo = ref<any>()
 const originalTopFolder = ref<string | null | undefined>("")
+const originalSeason = ref<number | null | undefined>(-1)
 currentTransferRecord.value = { ...updateRecord.transfer_record }
 currentExtraInfo.value = { ...updateRecord.extra_info }
 originalTopFolder.value = currentTransferRecord.value.top_folder
+originalSeason.value = currentTransferRecord.value.season
 
 onMounted(async () => {
   if (!taskStore.allTasks.length) {
@@ -44,6 +46,35 @@ async function handleSubmit() {
     extra_info: currentExtraInfo.value,
   }
   recordStore.updateRecord(data)
+}
+
+async function applySeasonToAll() {
+  try {
+    if (
+      currentTransferRecord.value.srcfolder !== undefined &&
+      currentTransferRecord.value.season !== undefined
+    ) {
+      const response = await RecordService.updateSeason({
+        srcfolder: currentTransferRecord.value.srcfolder,
+        oldSeason: originalSeason.value ?? -1,
+        newSeason: Number(currentTransferRecord.value.season),
+      })
+
+      if (response?.success) {
+        toastStore.success(t("components.record.form.seasonUpdateSuccess"))
+        originalSeason.value = Number(currentTransferRecord.value.season)
+      } else {
+        const errorMessage =
+          response?.message || t("components.record.form.seasonUpdateError")
+        toastStore.error(errorMessage)
+      }
+    } else {
+      toastStore.error(t("components.record.form.seasonMissingData"))
+    }
+  } catch (error) {
+    console.error("Season update failed:", error)
+    toastStore.error(t("components.record.form.seasonUpdateError"))
+  }
 }
 
 async function applyTopFolderToAll() {
@@ -141,9 +172,12 @@ async function applyTopFolderToAll() {
             <VCol cols="12" md="3" class="row-label">
               <label>{{ t('components.record.form.season') }}</label>
             </VCol>
-            <VCol cols="12" md="9">
-              <VTextField v-model="currentTransferRecord.season" type="number"
+            <VCol cols="12" md="9" class="d-flex align-center gap-2">
+              <VTextField v-model="currentTransferRecord.season" type="number" class="flex-grow-1"
                 :rules="[v => v >= -1 || t('components.record.form.seasonRule')]" />
+              <VBtn color="primary" size="small" @click="applySeasonToAll">
+                {{ t('components.record.form.applyAll') }}
+              </VBtn>
             </VCol>
           </VRow>
 

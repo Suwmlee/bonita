@@ -711,6 +711,14 @@ export type UpdateTopFolderData = {
 
 export type UpdateTopFolderResponse = Response;
 
+export type UpdateSeasonData = {
+    newSeason: number;
+    oldSeason: number;
+    srcfolder: string;
+};
+
+export type UpdateSeasonResponse = Response;
+
 export type DeleteRecordsData = {
     force?: boolean;
     requestBody: Array<(number)>;
@@ -1243,6 +1251,21 @@ export type $OpenApiTs = {
     '/api/v1/records/update-top-folder': {
         put: {
             req: UpdateTopFolderData;
+            res: {
+                /**
+                 * Successful Response
+                 */
+                200: Response;
+                /**
+                 * Validation Error
+                 */
+                422: HTTPValidationError;
+            };
+        };
+    };
+    '/api/v1/records/update-season': {
+        put: {
+            req: UpdateSeasonData;
             res: {
                 /**
                  * Successful Response
