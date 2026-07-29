@@ -4,3 +4,7 @@ allowBuilds:
   core-js: true
   esbuild: true
   vue-demi: true
+
+overrides:
+  postcss: '>=8.5.18'
+  js-yaml: '>=4.3.0'
