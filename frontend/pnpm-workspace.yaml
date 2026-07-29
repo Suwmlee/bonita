@@ -1,0 +1,6 @@
+allowBuilds:
+  '@biomejs/biome': true
+  '@parcel/watcher': true
+  core-js: true
+  esbuild: true
+  vue-demi: true

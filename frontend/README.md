@@ -11,10 +11,11 @@ nvm ls
 nvm install 20
 nvm use 20
 
-# 安装依赖
-npm install
+# 安装依赖 (使用 pnpm)
+corepack enable
+pnpm install
 
-npm run dev
+pnpm dev
 ```
 
 ### 更新 .env
@@ -35,5 +36,5 @@ http://localhost:8000/api/v1/openapi.json
 ```sh
 node modify-openapi-operationids.js
 
-npm run generate-client
+pnpm run generate-client
 ```

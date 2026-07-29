@@ -1,11 +1,15 @@
 # 构建前端
 FROM node:20-slim AS frontend-build
 WORKDIR /app/frontend
-COPY ../frontend/package*.json ./
-RUN npm install
+
+# 通过 corepack 安装与 package.json#packageManager 一致的 pnpm 版本
+RUN corepack enable && corepack prepare pnpm@11.17.0 --activate
+
+COPY ../frontend/package.json ../frontend/pnpm-lock.yaml ../frontend/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY ../frontend/ .
-RUN npm run build:icons
-RUN npm run build
+RUN pnpm run build:icons
+RUN pnpm run build
 
 # 构建 Bonita with s6-overlay
 FROM python:3.12-slim-bullseye AS backend-build
