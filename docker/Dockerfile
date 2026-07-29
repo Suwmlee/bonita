@@ -1,5 +1,5 @@
 # 构建前端
-FROM node:20-slim AS frontend-build
+FROM node:22-slim AS frontend-build
 WORKDIR /app/frontend
 
 # 通过 corepack 安装与 package.json#packageManager 一致的 pnpm 版本

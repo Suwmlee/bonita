@@ -8,8 +8,8 @@
 nvm ls
 
 # 安装并使用
-nvm install 20
-nvm use 20
+nvm install 22
+nvm use 22
 
 # 安装依赖 (使用 pnpm)
 corepack enable
