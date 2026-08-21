@@ -8,3 +8,4 @@ allowBuilds:
 overrides:
   postcss: '>=8.5.18'
   js-yaml: '>=4.3.0'
+  nanoid: '^3.3.18'
