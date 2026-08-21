@@ -18,6 +18,9 @@ video_filter = set(['*.mp4', '*.avi', '*.rmvb', '*.wmv', '*.strm',
 ext_filter = set(['*.ass', '*.srt', '*.sub', '*.ssa', '*.smi', '*.idx', '*.sup',
                   '*.psb', '*.usf', '*.xss', '*.ssf', '*.rt', '*.lrc', '*.sbv', '*.vtt', '*.ttml'])
 
+# 分集标识，如 -EP01，编号固定补零到两位
+RE_PART_MARKER = re.compile(r"[-_]ep\d{2,}(?![a-z0-9])", re.IGNORECASE)
+
 logger = logging.getLogger(__name__)
 
 
@@ -145,15 +148,13 @@ def cleanFilebyFilter(root, filter):
             filename = file.name
             fullpath = file.path
             if file.is_file():
-                if filename.startswith(filter):
-                    # 未分集到分集 重复删除分集内容
-                    if '-CD' in filename.upper():
-                        if '-CD' in filter.upper():
-                            logger.info("clean file [{}]".format(fullpath))
-                            os.remove(fullpath)
-                    else:
-                        logger.info("clean file [{}]".format(fullpath))
-                        os.remove(fullpath)
+                if not filename.startswith(filter):
+                    continue
+                # 未含分集标识的filter不能删除带有分集标识的文件
+                if RE_PART_MARKER.search(filename) and not RE_PART_MARKER.search(filter):
+                    continue
+                logger.info("clean file [{}]".format(fullpath))
+                os.remove(fullpath)
     except Exception as e:
         logger.error(f"[-] cleanFilebyFilter failed {root} {filter}")
         logger.error(e)

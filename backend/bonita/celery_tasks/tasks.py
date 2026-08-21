@@ -14,7 +14,7 @@ from bonita.db.models.extrainfo import ExtraInfo
 from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
 from bonita.db.models.scraping import ScrapingConfig
-from bonita.modules.scraping.number_parser import FileNumInfo
+from bonita.modules.scraping.number_parser import FileNumInfo, format_part_suffix
 from bonita.modules.scraping.scraping import add_mark, need_crop, process_nfo_file, process_cover, scraping, load_all_NFO_from_folder
 from bonita.utils.fileinfo import BasicFileInfo, TargetFileInfo
 from bonita.modules.transfer.transfer import transSingleFile, transferfile
@@ -374,7 +374,7 @@ def celery_scrapping(self, file_path, scraping_dict):
             extrainfo.number = fileNumInfo.num
             if not need_crop(extrainfo.number):
                 extrainfo.crop = False
-            extrainfo.partNumber = int(fileNumInfo.part.replace("-CD", "")) if fileNumInfo.part else 0
+            extrainfo.partNumber = fileNumInfo.partNumber
             extrainfo.tag = ', '.join(map(str, fileNumInfo.tags()))
             extrainfo.create(session)
         else:
@@ -460,9 +460,9 @@ def celery_scrapping(self, file_path, scraping_dict):
         # 过滤掉空字符串
         combined_tags = {tag for tag in combined_tags if tag.strip()}
         metadata_mixed.tag = ", ".join(combined_tags) if combined_tags else ''
-        # 更新文件名称，part -C -CD1
+        # 更新文件名称，part -C -EP01
         if extrainfo.partNumber:
-            metadata_mixed.extra_filename += f"-CD{extrainfo.partNumber}"
+            metadata_mixed.extra_filename += format_part_suffix(extrainfo.partNumber)
             metadata_mixed.extra_part = extrainfo.partNumber
 
         return metadata_mixed

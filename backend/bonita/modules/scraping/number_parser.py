@@ -9,8 +9,9 @@ G_spat = re.compile(
     re.IGNORECASE)
 
 # 预编译常用正则表达式
-RE_CD_PART = re.compile(r"(?:-|_)cd\d{1,2}", re.IGNORECASE | re.X | re.S)
-RE_NUMBER_PART = re.compile(r"(?:-|_)\d{1,2}$", re.IGNORECASE | re.X | re.S)
+# -EP01 是分集命名，编号固定补零到两位
+RE_EPISODE_PART = re.compile(r"(?:-|_)ep(\d{2,})(?![a-z0-9])", re.IGNORECASE)
+RE_NUMBER_PART = re.compile(r"(?:-|_)(\d{1,2})$", re.IGNORECASE | re.X | re.S)
 RE_SP_CHECK = re.compile(r"(?:-|_)sp(?:_|-|$)", re.IGNORECASE | re.X | re.S)
 RE_OUMEI = re.compile(r'[a-zA-Z]+\.\d{2}\.\d{2}\.\d{2}')
 RE_FILENAME = re.compile(r'[\w\-_]+', re.A)
@@ -22,6 +23,21 @@ RE_UNCENSORED_CHECK = re.compile(
     r'[\d-]{4,}|\d{6}_\d{2,3}|(cz|gedo|k|n|red-|se)\d{2,4}|heyzo.+|xxx-av-.+|heydouga-.+|x-art\.\d{2}\.\d{2}\.\d{2}',
     re.I
 )
+
+
+def format_part_suffix(part_number) -> str:
+    """ 生成分集后缀，如 -EP01
+
+    -CD1 需要每部影片独占目录才会被 Emby/Jellyfin 合并，实际命中率低；
+    改用集数形式让每个分片成为独立条目，EP 前缀比单个 E 更不易误匹配
+    """
+    try:
+        part_number = int(part_number)
+    except (TypeError, ValueError):
+        return ''
+    if part_number <= 0:
+        return ''
+    return f"-EP{part_number:02d}"
 
 
 class FileNumInfo():
@@ -42,7 +58,7 @@ class FileNumInfo():
         self.hack_tag = False       # 破解
         self.multipart_tag = False  # 多部分
         self.special = False        # 特典
-        self.part = ''              # 部分编号
+        self.partNumber = 0         # 部分编号
 
         # 检查番号是否存在及是否无码
         if not self.num:
@@ -72,12 +88,19 @@ class FileNumInfo():
         self.originalname = os.path.splitext(basename)[0]
 
         # 检查是否为多部分
-        self.part = self.checkPart(basename)
-        if self.part:
+        self.partNumber = self.checkPart(basename)
+        if self.partNumber:
             self.multipart_tag = True
 
         # 检查是否特典
         self.special = self.checkSp(basename)
+
+    @property
+    def part(self):
+        """ 用于拼接文件名的分集后缀 """
+        if not self.multipart_tag:
+            return ''
+        return format_part_suffix(self.partNumber)
 
     def fixedName(self):
         name = self.num
@@ -95,32 +118,27 @@ class FileNumInfo():
             name += self.part
         return name
 
-    def updateCD(self, cdnum):
+    def updatePart(self, partnum):
         self.multipart_tag = True
-        self.part = '-CD' + str(cdnum)
+        self.partNumber = int(partnum)
 
     def isPartOneOrSingle(self):
-        if not self.multipart_tag or self.part == '-CD1' or self.part == '-CD01':
+        if not self.multipart_tag or self.partNumber == 1:
             return True
         return False
 
     @staticmethod
     def checkPart(filename):
+        """ 解析文件名中的分集编号，非多集文件返回 0 """
         try:
-            if '_cd' in filename or '-cd' in filename:
-                result = RE_CD_PART.findall(filename)
-                if result:
-                    part = str(result[0]).upper().replace('_', '-')
-                    return part
             bname = os.path.splitext(filename)[0]
-            result = RE_NUMBER_PART.findall(bname)
-            if result:
-                part = str(result[0]).upper().replace('_', '-')
-                if 'CD' not in part:
-                    part = part.replace('-', '-CD')
-                return part
-        except:
-            return
+            for regex in (RE_EPISODE_PART, RE_NUMBER_PART):
+                result = regex.search(bname)
+                if result:
+                    return int(result.group(1))
+        except Exception:
+            pass
+        return 0
 
     @staticmethod
     def checkSp(filename):
@@ -170,8 +188,8 @@ def get_number(file_path: str) -> str:
         elif '-' in filename or '_' in filename:  # 普通提取番号 主要处理包含减号-和_的番号
             filename = G_spat.sub("", filename)
             filename = str(re.sub(r"\[\d{4}-\d{1,2}-\d{1,2}\] - ", "", filename))  # 去除文件名中时间
-            filename = re.sub(r"[-_]cd\d{1,2}", "", filename, flags=re.IGNORECASE)
-            if not re.search("-|_", filename):  # 去掉-CD1之后再无-的情况，例如n1012-CD1.wmv
+            filename = re.sub(r"[-_]ep\d{2,}(?![a-z0-9])", "", filename, flags=re.IGNORECASE)
+            if not re.search("-|_", filename):  # 去掉分集后缀之后再无-的情况，例如n1012-EP01.wmv
                 return str(re.search(r'\w+', filename[:filename.find('.')], re.A).group())
             file_number = os.path.splitext(filename)
             filename_match = RE_FILENAME.search(filename)
