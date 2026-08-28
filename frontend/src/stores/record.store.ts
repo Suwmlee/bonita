@@ -2,6 +2,17 @@ import { type RecordPublic, RecordService } from "@/client"
 
 import { defineStore } from "pinia"
 
+const ITEMS_PER_PAGE_KEY = "records-items-per-page"
+const ITEMS_PER_PAGE_OPTIONS = [10, 15, 25, 50, 100]
+
+function loadItemsPerPage(): number {
+  const parsed = Number.parseInt(
+    localStorage.getItem(ITEMS_PER_PAGE_KEY) ?? "",
+    10,
+  )
+  return ITEMS_PER_PAGE_OPTIONS.includes(parsed) ? parsed : 10
+}
+
 export const useRecordStore = defineStore("record-store", {
   state: () => ({
     records: [] as RecordPublic[],
@@ -9,7 +20,7 @@ export const useRecordStore = defineStore("record-store", {
     editRecord: undefined as RecordPublic | undefined,
     totalRecords: 0,
     currentPage: 1,
-    itemsPerPage: 10,
+    itemsPerPage: loadItemsPerPage(),
     loading: false,
   }),
   actions: {
@@ -23,7 +34,7 @@ export const useRecordStore = defineStore("record-store", {
         sortDesc?: boolean
       } = {
         page: 1,
-        itemsPerPage: 10,
+        itemsPerPage: loadItemsPerPage(),
       },
     ) {
       this.loading = true
@@ -43,6 +54,9 @@ export const useRecordStore = defineStore("record-store", {
         this.totalRecords = response.count
         this.currentPage = options.page
         this.itemsPerPage = options.itemsPerPage
+        if (ITEMS_PER_PAGE_OPTIONS.includes(options.itemsPerPage)) {
+          localStorage.setItem(ITEMS_PER_PAGE_KEY, String(options.itemsPerPage))
+        }
 
         return this.records
       } catch (error) {

@@ -30,7 +30,7 @@ const deleteDialog = ref(false)
 const forceDelete = ref(false)
 
 // 分页选项
-const pageSizeOptions = [10, 25, 50, 100]
+const pageSizeOptions = [10, 15, 25, 50, 100]
 
 // 计算下次刷新时间的倒计时
 const refreshCountdown = computed(() => {
@@ -74,77 +74,104 @@ const formatDateTime = (dateStr: string | null | undefined) => {
   })
 }
 
+const formatSeasonEpisode = (
+  season?: number | null,
+  episode?: number | null,
+) => {
+  const hasSeason = season != null && season !== -1
+  const hasEpisode = episode != null && episode !== -1
+  if (!hasSeason && !hasEpisode) return ""
+  const seasonPart = hasSeason ? `S${String(season).padStart(2, "0")}` : ""
+  const episodePart = hasEpisode ? `E${String(episode).padStart(2, "0")}` : ""
+  return `${seasonPart}${episodePart}`
+}
+
 const headers = [
   {
     title: t("pages.records.name"),
-    align: "start" as "start" | "center" | "end",
+    align: "start" as const,
     key: "transfer_record.srcname",
-    width: 250,
+    width: "22%",
+    minWidth: "200",
+    nowrap: true,
     sortable: true,
   },
   {
     title: t("pages.records.status"),
-    align: "center" as "start" | "center" | "end",
+    align: "center" as const,
     key: "transfer_record.success",
-    width: 100,
+    width: "72px",
+    nowrap: true,
     sortable: false,
   },
   {
     title: t("pages.records.destPath"),
-    align: "center" as "start" | "center" | "end",
+    align: "start" as const,
     key: "transfer_record.destpath",
-    width: 200,
+    width: "30%",
+    minWidth: "260",
+    nowrap: true,
     sortable: true,
   },
   {
-    title: t("pages.records.season"),
-    align: "center" as "start" | "center" | "end",
+    title: t("pages.records.seasonEpisode"),
+    align: "start" as const,
     key: "transfer_record.season",
-    width: 100,
-    sortable: true,
-  },
-  {
-    title: t("pages.records.episode"),
-    align: "center" as "start" | "center" | "end",
-    key: "transfer_record.episode",
-    width: 100,
+    width: "88px",
+    nowrap: true,
     sortable: true,
   },
   {
     title: t("pages.records.number"),
-    align: "center" as "start" | "center" | "end",
+    align: "start" as const,
     key: "extra_info.number",
-    width: 100,
+    width: "120px",
+    nowrap: true,
     sortable: false,
   },
   {
     title: t("pages.records.tag"),
-    align: "center" as "start" | "center" | "end",
+    align: "start" as const,
     key: "extra_info.tag",
-    width: 100,
+    width: "160px",
+    nowrap: true,
     sortable: false,
   },
   {
     title: t("pages.records.updateTime"),
-    align: "center" as "start" | "center" | "end",
+    align: "start" as const,
     key: "transfer_record.updatetime",
-    width: 120,
+    width: "170px",
+    nowrap: true,
     sortable: true,
   },
   {
     title: t("pages.records.deadTime"),
-    align: "center" as "start" | "center" | "end",
+    align: "start" as const,
     key: "transfer_record.deadtime",
-    width: 120,
+    width: "170px",
+    nowrap: true,
     sortable: true,
   },
   {
     title: t("common.actions"),
+    align: "start" as const,
     key: "actions",
     sortable: false,
-    width: 100,
+    width: "146px",
+    minWidth: "146",
+    nowrap: true,
+    cellProps: { class: "records-actions-col" },
+    headerProps: { class: "records-actions-col" },
   },
 ]
+
+const getRowProps = ({ item }: { item: any }) => ({
+  class:
+    item.transfer_record.deleted || item.transfer_record.srcdeleted
+      ? "deleted-row"
+      : undefined,
+})
 
 // 默认排序设置
 const sortBy = ref([
@@ -417,67 +444,104 @@ onMounted(() => {
 
     <v-data-table v-model="selected" :headers="headers" :items="recordStore.records" item-value="transfer_record.id"
       show-select :loading="recordStore.loading" :sort-by="sortBy" height="auto" :items-per-page="-1"
-      @update:sort-by="handleSortChange">
-      <!-- 自定义表格行 -->
-      <template v-slot:item="{ item, columns, index }">
-        <tr :class="{ 'deleted-row': item.transfer_record.deleted || item.transfer_record.srcdeleted }">
-          <td><v-checkbox v-model="selected" :value="item.transfer_record.id" multiple hide-details></v-checkbox></td>
-          <td>
-            <v-tooltip :text="item.transfer_record.srcpath">
-              <template v-slot:activator="{ props }">
-                <span v-bind="props" class="text-truncate d-inline-block" style="max-width: 230px">
-                  {{ item.transfer_record.srcname }}
-                </span>
-              </template>
-            </v-tooltip>
-          </td>
-          <td>
-            <v-chip 
-              v-if="item.transfer_record.success !== null"
-              :color="item.transfer_record.success ? 'success' : 'error'" 
-              variant="flat" 
-              size="small"
-              class="status-chip">
-              <v-icon 
-                :icon="item.transfer_record.success ? 'bx-check' : 'bx-x'" 
-                size="small">
-              </v-icon>
-            </v-chip>
-          </td>
-          <td>
-            <v-tooltip :text="item.transfer_record.destpath || ''">
-              <template v-slot:activator="{ props }">
-                <span v-bind="props" class="text-truncate d-inline-block" style="max-width: 180px"
-                  :class="{ 'text-decoration-line-through': item.transfer_record.deleted }">
-                  {{ item.transfer_record.destpath || '' }}
-                </span>
-              </template>
-            </v-tooltip>
-          </td>
-          <td>{{ item.transfer_record.season === -1 ? '' : item.transfer_record.season }}</td>
-          <td>{{ item.transfer_record.episode === -1 ? '' : item.transfer_record.episode }}</td>
-          <td>{{ item.extra_info?.number || '' }}</td>
-          <td>
-            <div v-if="item.extra_info?.tag" class="d-flex gap-1 flex-wrap">
-              <v-chip v-for="tag in item.extra_info.tag.split(',')" :key="tag" :color="getTagColor(tag)" variant="flat"
-                class="tag-chip" size="small">
-                {{ tag.trim() }}
+      :row-props="getRowProps" class="records-table" @update:sort-by="handleSortChange">
+      <template #item.transfer_record.srcname="{ item }">
+        <v-tooltip :text="item.transfer_record.srcpath">
+          <template #activator="{ props }">
+            <div v-bind="props" class="cell-truncate">
+              {{ item.transfer_record.srcname }}
+            </div>
+          </template>
+        </v-tooltip>
+      </template>
+
+      <template #item.transfer_record.success="{ item }">
+        <div class="d-flex align-center justify-center gap-1">
+          <v-tooltip
+            v-if="item.transfer_record.success !== null"
+            :text="item.transfer_record.success ? t('pages.records.success') : t('pages.records.failed')"
+          >
+            <template #activator="{ props }">
+              <v-chip
+                v-bind="props"
+                :color="item.transfer_record.success ? 'success' : 'error'"
+                variant="flat"
+                size="small"
+                class="status-chip"
+              >
+                <v-icon
+                  :icon="item.transfer_record.success ? 'bx-check' : 'bx-x'"
+                  size="small"
+                />
               </v-chip>
+            </template>
+          </v-tooltip>
+          <v-tooltip v-if="item.transfer_record.ignored" :text="t('pages.records.ignored')">
+            <template #activator="{ props }">
+              <v-chip
+                v-bind="props"
+                color="grey"
+                variant="flat"
+                size="small"
+                class="status-chip"
+              >
+                <v-icon icon="bx-minus-circle" size="small" />
+              </v-chip>
+            </template>
+          </v-tooltip>
+        </div>
+      </template>
+
+      <template #item.transfer_record.destpath="{ item }">
+        <v-tooltip :text="item.transfer_record.destpath || ''">
+          <template #activator="{ props }">
+            <div
+              v-bind="props"
+              class="cell-truncate"
+              :class="{ 'text-decoration-line-through': item.transfer_record.deleted }"
+            >
+              {{ item.transfer_record.destpath || '' }}
             </div>
-          </td>
-          <td>{{ formatDateTime(item.transfer_record.updatetime) }}</td>
-          <td>{{ formatDateTime(item.transfer_record.deadtime) }}</td>
-          <td>
-            <div class="d-flex align-center gap-2">
-              <VBtn type="submit" size="small" @click="showSelectedRecord(item)">
-                <VIcon icon="bx-edit-alt" />
-              </VBtn>
-              <VBtn type="submit" size="small" @click="rerunThisRecord(item)">
-                <VIcon icon="bx-refresh" />
-              </VBtn>
-            </div>
-          </td>
-        </tr>
+          </template>
+        </v-tooltip>
+      </template>
+
+      <template #item.transfer_record.season="{ item }">
+        <span class="nowrap-cell">
+          {{ formatSeasonEpisode(item.transfer_record.season, item.transfer_record.episode) }}
+        </span>
+      </template>
+
+      <template #item.extra_info.number="{ item }">
+        <span class="nowrap-cell">{{ item.extra_info?.number || '' }}</span>
+      </template>
+
+      <template #item.extra_info.tag="{ item }">
+        <div v-if="item.extra_info?.tag" class="tag-cell">
+          <v-chip v-for="tag in item.extra_info.tag.split(',')" :key="tag" :color="getTagColor(tag)" variant="flat"
+            class="tag-chip" size="small">
+            {{ tag.trim() }}
+          </v-chip>
+        </div>
+      </template>
+
+      <template #item.transfer_record.updatetime="{ item }">
+        <span class="datetime-cell">{{ formatDateTime(item.transfer_record.updatetime) }}</span>
+      </template>
+
+      <template #item.transfer_record.deadtime="{ item }">
+        <span class="datetime-cell">{{ formatDateTime(item.transfer_record.deadtime) }}</span>
+      </template>
+
+      <template #item.actions="{ item }">
+        <div class="actions-cell">
+          <VBtn size="small" @click="showSelectedRecord(item)">
+            <VIcon icon="bx-edit-alt" />
+          </VBtn>
+          <VBtn size="small" @click="rerunThisRecord(item)">
+            <VIcon icon="bx-refresh" />
+          </VBtn>
+        </div>
       </template>
 
       <!-- 自定义底部分页 -->
@@ -526,10 +590,82 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.text-truncate {
+.records-table :deep(.v-table__wrapper),
+.records-table :deep(.v-data-table__wrapper) {
+  overflow-x: auto !important;
+}
+
+.records-table :deep(table) {
+  table-layout: fixed;
+  width: max(100%, 1400px) !important;
+  min-width: 1400px !important;
+}
+
+.records-table :deep(th:not(.records-actions-col)),
+.records-table :deep(td:not(.records-actions-col)) {
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.records-table :deep(th) {
   white-space: nowrap;
+}
+
+.records-table :deep(th:first-child),
+.records-table :deep(td:first-child) {
+  width: 48px;
+  min-width: 48px;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background-color: rgb(var(--v-theme-surface));
+}
+
+.records-table :deep(.records-actions-col) {
+  width: 146px !important;
+  min-width: 146px !important;
+  max-width: 146px !important;
+  overflow: visible !important;
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background-color: rgb(var(--v-theme-surface));
+  box-shadow: -6px 0 8px -6px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  padding-inline-end: 10px !important;
+}
+
+.records-table :deep(thead th:first-child),
+.records-table :deep(thead .records-actions-col) {
+  z-index: 3;
+}
+
+.actions-cell {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cell-truncate {
+  width: 100%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nowrap-cell,
+.datetime-cell {
+  white-space: nowrap;
+}
+
+.tag-cell {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow: hidden;
 }
 
 .tag-chip {
@@ -538,6 +674,7 @@ onMounted(() => {
   padding: 0 4px;
   min-width: 0;
   min-height: 0;
+  flex: 0 0 auto;
 }
 
 .v-chip.tag-chip .v-chip__content {
@@ -550,13 +687,14 @@ onMounted(() => {
   width: 32px;
   height: 24px;
   justify-content: center;
+  padding-inline: 0;
 }
 
 .max-w-xs {
   max-width: 300px;
 }
 
-.deleted-row {
+.records-table :deep(.deleted-row) {
   color: #9e9e9e;
   opacity: 0.85;
 }
