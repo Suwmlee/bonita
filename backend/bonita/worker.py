@@ -70,6 +70,19 @@ def task_received_cb(request: Request, **options: Any) -> None:
     logger.info(f"TASK_RECEIVED: {request.id} - {request.task}")
 
 
+def _celery_beat_schedule_path() -> str:
+    """Beat 调度文件路径。
+
+    Docker 下写到 /config（启动时会 chown 给 tomoki）；本地开发回落到 ./data。
+    """
+    config_dir = "/config"
+    if os.path.isdir(config_dir) and os.access(config_dir, os.W_OK):
+        return os.path.join(config_dir, "celerybeat-schedule")
+    data_dir = "./data"
+    os.makedirs(data_dir, exist_ok=True)
+    return os.path.join(data_dir, "celerybeat-schedule")
+
+
 def create_celery():
     """
     配置 https://docs.celeryq.dev/en/stable/userguide/configuration.html#general-settings
@@ -77,6 +90,7 @@ def create_celery():
     celery = Celery("bonita")
     celery.conf.broker_url = os.environ.get("CELERY_BROKER_URL", settings.CELERY_BROKER_URL)
     celery.conf.result_backend = os.environ.get("CELERY_RESULT_BACKEND", settings.CELERY_RESULT_BACKEND)
+    celery.conf.beat_schedule_filename = _celery_beat_schedule_path()
 
     celery.conf.update(timezone="Asia/Shanghai")  # 时区
     celery.conf.update(enable_utc=False)  # 关闭UTC时区。默认启动

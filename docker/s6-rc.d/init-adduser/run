@@ -24,7 +24,8 @@ User gid:    $(id -g tomoki)
 -------------------------------------
 "
 
-chown tomoki:tomoki /config
+mkdir -p /config
+chown -R tomoki:tomoki /config
 chown tomoki:tomoki /app
 
 chown -R tomoki /app/backend/data
