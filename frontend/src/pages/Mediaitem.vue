@@ -112,7 +112,7 @@ const itemsPerPage = computed({
 const totalPages = computed(() =>
   Math.ceil(totalItems.value / itemsPerPage.value),
 )
-const itemsPerPageOptions = [20, 40, 80]
+const itemsPerPageOptions = [20, 30, 40, 80]
 
 // Function to extract media type, hasNumber from combined selection
 function getMediaTypeValue(): string | undefined {

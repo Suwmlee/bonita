@@ -8,6 +8,20 @@ import { defineStore } from "pinia"
 import { useConfirmationStore } from "./confirmation.store"
 import { useToastStore } from "./toast.store"
 
+const ITEMS_PER_PAGE_KEY = "mediaitem-items-per-page"
+const ITEMS_PER_PAGE_OPTIONS = [20, 30, 40, 80]
+const DEFAULT_ITEMS_PER_PAGE = 40
+
+function loadItemsPerPage(): number {
+  const parsed = Number.parseInt(
+    localStorage.getItem(ITEMS_PER_PAGE_KEY) ?? "",
+    10,
+  )
+  return ITEMS_PER_PAGE_OPTIONS.includes(parsed)
+    ? parsed
+    : DEFAULT_ITEMS_PER_PAGE
+}
+
 export const useMediaItemStore = defineStore("mediaitem-store", {
   state: () => ({
     allMediaItems: [] as MediaItemWithWatches[],
@@ -15,7 +29,7 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
     editMediaItem: undefined as MediaItemWithWatches | undefined,
     totalCount: 0,
     currentPage: 1,
-    itemsPerPage: 40,
+    itemsPerPage: loadItemsPerPage(),
     isLoading: false,
   }),
   actions: {
@@ -72,6 +86,9 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
         // Update itemsPerPage if it was provided
         if (itemsPerPage !== undefined) {
           this.itemsPerPage = itemsPerPage
+          if (ITEMS_PER_PAGE_OPTIONS.includes(itemsPerPage)) {
+            localStorage.setItem(ITEMS_PER_PAGE_KEY, String(itemsPerPage))
+          }
         }
 
         return this.allMediaItems
