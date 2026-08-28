@@ -141,7 +141,8 @@ export default {
       directoryHint:
         "Enter specific directory to run, or leave empty to run entire task",
       confirmDeleteTitle: "Delete Task",
-      confirmDeleteMessage: "Are you sure you want to delete this task? This action cannot be undone.",
+      confirmDeleteMessage:
+        "Are you sure you want to delete this task? This action cannot be undone.",
     },
     metadata: {
       title: "Metadata",
@@ -160,7 +161,8 @@ export default {
       editMetadata: "Edit Metadata",
       addMetadata: "Add Metadata",
       confirmDeleteTitle: "Delete Metadata",
-      confirmDeleteMessage: "Are you sure you want to delete this metadata? This action cannot be undone.",
+      confirmDeleteMessage:
+        "Are you sure you want to delete this metadata? This action cannot be undone.",
       importJson: "Import JSON",
       addManual: "Manual Entry",
     },
@@ -179,8 +181,7 @@ export default {
       },
       syncEmby: {
         title: "Sync Emby Watch History",
-        subtitle:
-          "Synchronize watch history between Emby server and Bonita",
+        subtitle: "Synchronize watch history between Emby server and Bonita",
         direction: "Sync Direction",
         fromEmby: "From Emby to Bonita",
         toEmby: "From Bonita to Emby",
@@ -203,7 +204,8 @@ export default {
         newPrefix: "New Path Prefix",
         newPrefixPlaceholder: "Example: /mnt/new/movies",
         taskId: "Task ID",
-        taskIdPlaceholder: "Optional, only update records for the specified task",
+        taskIdPlaceholder:
+          "Optional, only update records for the specified task",
         startSync: "Start Sync",
         prefixRequired: "Please enter both old and new path prefixes",
       },
@@ -216,8 +218,10 @@ export default {
       cleanupSuccess: "Data cleanup completed successfully",
       cleanupFailed: "Failed to cleanup data: Unknown error",
       syncRecordPathSuccess: "Transfer record paths synchronized successfully",
-      syncRecordPathFailed: "Failed to sync transfer record paths: Unknown error",
-      syncRecordPathFailedWithDetail: "Failed to sync transfer record paths: {detail}",
+      syncRecordPathFailed:
+        "Failed to sync transfer record paths: Unknown error",
+      syncRecordPathFailedWithDetail:
+        "Failed to sync transfer record paths: {detail}",
     },
     serviceSettings: {
       title: "Service Settings",
@@ -344,7 +348,8 @@ export default {
       edit: "Edit Configuration",
       add: "Add Configuration",
       confirmDeleteTitle: "Delete Scraping Setting",
-      confirmDeleteMessage: "Are you sure you want to delete this scraping setting? This action cannot be undone.",
+      confirmDeleteMessage:
+        "Are you sure you want to delete this scraping setting? This action cannot be undone.",
     },
     mediaitem: {
       title: "Media Items",
@@ -393,7 +398,8 @@ export default {
       cleanSuccess: "Media items cleaned successfully",
       cleanFailed: "Failed to clean media items",
       confirmDeleteTitle: "Delete Media Item",
-      confirmDeleteMessage: "Are you sure you want to delete this media item? This action cannot be undone.",
+      confirmDeleteMessage:
+        "Are you sure you want to delete this media item? This action cannot be undone.",
     },
     logs: {
       title: "System Logs",
@@ -414,7 +420,26 @@ export default {
       reconnect: "Reconnect",
       connecting: "Connecting to log server...",
       disconnected:
-        "Disconnected from log server. Click reconnect to try again.",
+        "Disconnected from log server. Reconnecting automatically...",
+      connected: "Connected",
+      pause: "Pause",
+      resume: "Resume",
+      paused: "Paused",
+      copy: "Copy",
+      copied: "Logs copied to clipboard",
+      copyFailed: "Failed to copy logs",
+      download: "Export",
+      jumpToLatest: "Jump to latest",
+      newLogs: "{count} new logs",
+      confirmClearTitle: "Clear Logs",
+      confirmClearMessage:
+        "Clear the current view and only show logs generated after this. Server log files will not be deleted.",
+      clearedHint: "History cleared. Only new logs are shown.",
+      loadHistory: "Load history",
+      noMatchingLogs: "No logs match the current filters",
+      filteredCount: "Showing {shown} / {total}",
+      levelAll: "All levels",
+      moduleAll: "All modules",
     },
   },
   components: {
@@ -425,10 +450,12 @@ export default {
       },
       importDialog: {
         title: "Import Metadata from JSON",
-        description: "Paste JSON data below or upload a JSON file. Supports a single object or an array of objects.",
+        description:
+          "Paste JSON data below or upload a JSON file. Supports a single object or an array of objects.",
         selectFile: "Select JSON File",
         jsonLabel: "JSON Data",
-        placeholder: '"number": "ABC-001", "title": "...", "actor": "...", "cover": "..."',
+        placeholder:
+          '"number": "ABC-001", "title": "...", "actor": "...", "cover": "..."',
         previewCount: "Detected {count} item(s) to import",
         import: "Import",
         invalidJson: "Invalid JSON format, please check and try again",
