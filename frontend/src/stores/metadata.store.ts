@@ -7,6 +7,20 @@ import { i18n } from "@/plugins/i18n"
 import { defineStore } from "pinia"
 import { useConfirmationStore } from "./confirmation.store"
 
+const ITEMS_PER_PAGE_KEY = "metadata-items-per-page"
+const ITEMS_PER_PAGE_OPTIONS = [12, 24, 48, 96]
+const DEFAULT_ITEMS_PER_PAGE = 24
+
+function loadItemsPerPage(): number {
+  const parsed = Number.parseInt(
+    localStorage.getItem(ITEMS_PER_PAGE_KEY) ?? "",
+    10,
+  )
+  return ITEMS_PER_PAGE_OPTIONS.includes(parsed)
+    ? parsed
+    : DEFAULT_ITEMS_PER_PAGE
+}
+
 export const useMetadataStore = defineStore("metadata-store", {
   state: () => ({
     allMetadata: [] as MetadataPublic[],
@@ -15,7 +29,7 @@ export const useMetadataStore = defineStore("metadata-store", {
     editMetadata: undefined as MetadataPublic | undefined,
     totalCount: 0,
     currentPage: 1,
-    itemsPerPage: 24,
+    itemsPerPage: loadItemsPerPage(),
   }),
   actions: {
     // Combined method for getting all metadata and searching with filter
@@ -54,6 +68,9 @@ export const useMetadataStore = defineStore("metadata-store", {
       // Update itemsPerPage if it was provided
       if (itemsPerPage !== undefined) {
         this.itemsPerPage = itemsPerPage
+        if (ITEMS_PER_PAGE_OPTIONS.includes(itemsPerPage)) {
+          localStorage.setItem(ITEMS_PER_PAGE_KEY, String(itemsPerPage))
+        }
       }
 
       return this.allMetadata
