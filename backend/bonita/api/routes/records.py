@@ -4,6 +4,7 @@ from typing import Any, List
 from bonita import schemas
 from bonita.api.deps import SessionDep
 from bonita.services.record_service import RecordService
+from bonita.services.metadata_service import MetadataService
 
 router = APIRouter()
 
@@ -60,6 +61,10 @@ def update_record(session: SessionDep, record: schemas.RecordPublic) -> Any:
     if extra_info and record.extra_info:
         extra_info_update_dict = record.extra_info.model_dump(exclude_unset=True)
         extra_info.update(session, extra_info_update_dict)
+        if extra_info.number and extra_info.crop is not None:
+            MetadataService(session).sync_crop_by_number(
+                extra_info.number, bool(extra_info.crop)
+            )
     session.commit()
 
     updated_transfer_record_public = schemas.TransferRecordPublic.model_validate(transfer_record)

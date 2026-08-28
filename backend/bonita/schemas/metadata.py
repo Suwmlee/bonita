@@ -8,6 +8,7 @@ class MetadataBase(BaseModel):
     title: str
     actor: str
     cover: str
+    crop: Optional[bool] = True
     studio: Optional[str] = None
     release: Optional[date] = None
     year: Optional[int] = None

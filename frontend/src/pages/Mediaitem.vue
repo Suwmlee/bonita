@@ -221,9 +221,6 @@ const getPosterUrl = (item: MediaItemWithWatches): string => {
     params.append("number", item.number)
   }
 
-  // 添加时间戳防止缓存
-  // params.append('t', Date.now().toString())
-
   return baseUrl + params.toString()
 }
 
@@ -342,36 +339,46 @@ onMounted(() => {
       <div class="custom-grid">
         <div v-for="item in mediaItemStore.allMediaItems" :key="item.id" class="grid-item">
           <VCard class="media-card d-flex flex-column" @click="showEditDialog(item)">
-            <div class="poster-wrapper">
-              <!-- Poster as background -->
-              <div class="poster-background" :style="{ backgroundImage: `url(${getPosterUrl(item)})` }">
-                <!-- Content overlay with gradient (keep info at bottom) -->
-                <div class="content-overlay">
-                  <!-- Watched status icon at top-right -->
-                  <div class="watched-badge">
-                    <VIcon
-                      :icon="item.userdata?.watched ? 'bx-check-circle' : 'bx-time'"
-                      size="23"
-                      :color="item.userdata?.watched ? 'success' : 'warning'"
-                    />
-                  </div>
-                  <!-- Info at the bottom -->
-                  <div class="media-info">
-                    <div class="media-info-row">
-                      <div class="media-info-left">
-                        <div v-if="item.number" class="d-flex align-center">
-                          <VIcon icon="bx-hash" size="small" class="me-1" />
-                          <span class="text-truncate">{{ item.number }}</span>
-                        </div>
-                        <div v-else class="d-flex align-center">
-                          <VIcon icon="bx-category" size="small" class="me-1" />
-                          <span>{{ getMediaTypeLabel(item.media_type) }}</span>
-                        </div>
+            <div class="poster-wrapper" :class="{ 'show-full': !item.crop }">
+              <img
+                v-if="!item.crop"
+                class="poster-fill"
+                :src="getPosterUrl(item)"
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                decoding="async"
+              />
+              <img
+                class="poster-image"
+                :src="getPosterUrl(item)"
+                :alt="item.title"
+                loading="lazy"
+                decoding="async"
+              />
+              <div class="content-overlay">
+                <div class="watched-badge">
+                  <VIcon
+                    :icon="item.userdata?.watched ? 'bx-check-circle' : 'bx-time'"
+                    size="23"
+                    :color="item.userdata?.watched ? 'success' : 'warning'"
+                  />
+                </div>
+                <div class="media-info">
+                  <div class="media-info-row">
+                    <div class="media-info-left">
+                      <div v-if="item.number" class="media-number">
+                        <VIcon icon="bx-hash" size="small" class="media-number-icon" />
+                        <span class="text-truncate" :title="item.number">{{ item.number }}</span>
                       </div>
-                      <div class="media-info-right">
-                        <VIcon :icon="item.userdata?.favorite ? 'bx-heart' : 'bx-heart-circle'" size="23"
-                          :color="item.userdata?.favorite ? 'error' : 'grey'" />
+                      <div v-else class="media-number">
+                        <VIcon icon="bx-category" size="small" class="media-number-icon" />
+                        <span class="text-truncate">{{ getMediaTypeLabel(item.media_type) }}</span>
                       </div>
+                    </div>
+                    <div class="media-info-right">
+                      <VIcon :icon="item.userdata?.favorite ? 'bx-heart' : 'bx-heart-circle'" size="23"
+                        :color="item.userdata?.favorite ? 'error' : 'grey'" />
                     </div>
                   </div>
                 </div>
@@ -478,33 +485,47 @@ onMounted(() => {
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Poster Background Styling */
+/* Poster: 2/3 card. Only crop when metadata.crop is true; otherwise show full. */
 .poster-wrapper {
   position: relative;
   width: 100%;
   aspect-ratio: 2/3;
+  overflow: hidden;
+  background-color: #1a1a1a;
 }
 
-.poster-background {
+.poster-fill,
+.poster-image {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.05);
-  background-size: cover;
-  background-position: right center;
-  display: flex;
-  flex-direction: column;
+  pointer-events: none;
+  user-select: none;
 }
 
-/* Content Overlay Styling */
+.poster-fill {
+  object-fit: cover;
+  object-position: center;
+  filter: blur(20px) saturate(1.1) brightness(0.65);
+  transform: scale(1.2);
+}
+
+.poster-image {
+  object-fit: cover;
+  object-position: right center;
+  z-index: 1;
+}
+
+.poster-wrapper.show-full .poster-image {
+  object-fit: contain;
+  object-position: center;
+}
+
 .content-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -525,6 +546,9 @@ onMounted(() => {
 .media-info {
   margin-top: auto;
   overflow: hidden;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   color: #ffffff;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(2px);
@@ -541,21 +565,41 @@ onMounted(() => {
 /* Bottom info left-right layout */
 .media-info-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  width: 100%;
 }
 
 .media-info-left {
-  display: grid;
-  grid-auto-rows: min-content;
-  row-gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.media-number {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.media-number-icon {
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.media-number .text-truncate {
+  min-width: 0;
+  flex: 1;
 }
 
 .media-info-right {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   width: 27px;
   height: 27px;
   border-radius: 999px;
@@ -634,12 +678,4 @@ onMounted(() => {
   min-width: 0;
 }
 
-/* Adjust spacing for media info items */
-.media-info .d-flex.align-center {
-  margin-bottom: 2px;
-}
-
-.media-info .d-flex.align-center:last-child {
-  margin-bottom: 0;
-}
 </style>

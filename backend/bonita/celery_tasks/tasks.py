@@ -418,6 +418,9 @@ def celery_scrapping(self, file_path, scraping_dict):
             metadata_base.number = metadata_base.number.upper()
             filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
             metadata_record = Metadata(**filter_dict)
+            metadata_record.crop = (
+                bool(extrainfo.crop) if extrainfo.crop is not None else need_crop(extrainfo.number)
+            )
             if scraping_conf.save_metadata:
                 metadata_record.create(session)
             metadata_mixed = schemas.MetadataMixed(**metadata_record.to_dict())
@@ -451,7 +454,9 @@ def celery_scrapping(self, file_path, scraping_dict):
 
         metadata_mixed.extra_folder = extra_folder
         metadata_mixed.extra_filename = extra_name
-        metadata_mixed.extra_crop = extrainfo.crop
+        metadata_mixed.extra_crop = (
+            metadata_record.crop if metadata_record.crop is not None else extrainfo.crop
+        )
 
         # 将 extrainfo.tag 中的标签添加到 metadata_base.tag 中，过滤重复的标签
         existing_tags = set(metadata_mixed.tag.split(", ")) if metadata_mixed.tag else set()
@@ -589,6 +594,8 @@ def celery_import_nfo(self, folder_path, option):
                     update_cache_from_local(session, cover_path, metadata_base.number, metadata_base.cover)
                 filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
                 metadata_db = Metadata(**filter_dict)
+                if metadata_base.number:
+                    metadata_db.crop = need_crop(metadata_base.number)
                 metadata_db.create(session)
             except Exception as e:
                 logger.error(f"  ✗ 导入失败 {os.path.basename(nfo_dict['nfo_path'])}: {str(e)}")

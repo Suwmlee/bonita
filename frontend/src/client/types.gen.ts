@@ -158,6 +158,7 @@ export type MediaItemWithWatches = {
     createtime: string;
     updatetime: string;
     userdata?: UserWatchData | null;
+    crop?: boolean | null;
 };
 
 export type MetadataBase = {
@@ -177,6 +178,7 @@ export type MetadataBase = {
     director?: string | null;
     actor_photo?: string | null;
     cover_small?: string | null;
+    crop?: boolean | null;
     extrafanart?: string | null;
     trailer?: string | null;
     tag?: string | null;
@@ -214,6 +216,7 @@ export type MetadataCreate = {
     director?: string | null;
     actor_photo?: string | null;
     cover_small?: string | null;
+    crop?: boolean | null;
     extrafanart?: string | null;
     trailer?: string | null;
     tag?: string | null;
@@ -243,6 +246,7 @@ export type MetadataPublic = {
     director?: string | null;
     actor_photo?: string | null;
     cover_small?: string | null;
+    crop?: boolean | null;
     extrafanart?: string | null;
     trailer?: string | null;
     tag?: string | null;

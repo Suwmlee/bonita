@@ -99,18 +99,7 @@ async def get_poster(
     number: str = None,
     session: SessionDep = None
 ):
-    """获取海报图片，根据参数选择不同来源
-
-    Args:
-        title: 标题
-        imdb_id: IMDB ID
-        tmdb_id: TMDB ID
-        number: 番号，如果提供则从metadata获取
-        session: 数据库会话
-
-    Returns:
-        FileResponse或RedirectResponse: 图片文件或重定向到Emby图片URL
-    """
+    """获取海报图片。有番号时返回完整的 metadata.cover。"""
     # 如果提供了number，优先从metadata获取cover
     if number:
         try:

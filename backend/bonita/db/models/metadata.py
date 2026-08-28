@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, DateTime, Integer, String, Date, FLOAT, func
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Date, FLOAT
 
 from bonita.db import Base
 
@@ -25,6 +25,7 @@ class Metadata(Base):
     actor_photo = Column(String, default="", comment="演员图片")
     cover = Column(String, default="", comment="封面海报")
     cover_small = Column(String, default="", comment="缩略图")
+    crop = Column(Boolean, default=True, comment="是否裁切poster")
     extrafanart = Column(String, default="", comment="影片橱窗")
     trailer = Column(String, default="", comment="预告")
     tag = Column(String, default="", comment="标签（用于分类）")

@@ -33,7 +33,7 @@ const coverImageUrl = computed(() => {
 })
 
 if (updateMetadata) {
-  currentMetadata.value = { ...updateMetadata }
+  currentMetadata.value = { crop: true, ...updateMetadata }
 } else {
   const createMetadata: Partial<MetadataPublic> = {
     number: "",
@@ -52,6 +52,7 @@ if (updateMetadata) {
     actor_photo: "",
     cover: "",
     cover_small: "",
+    crop: true,
     extrafanart: "",
     trailer: "",
     tag: "",
@@ -364,6 +365,17 @@ async function handleFileUpload(event: Event) {
               <VIcon icon="bx-info-circle" size="small" class="mr-1" />
               Note: Uploading a new image will update the image content while keeping the same URL.
             </div>
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label>{{ t('components.metadata.form.crop') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VCheckbox v-model="currentMetadata.crop" :label="t('components.metadata.form.cropPoster')" />
           </VCol>
         </VRow>
       </VCol>

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from bonita.api.deps import SessionDep
 from bonita.db.models.mediaitem import MediaItem
 from bonita.db.models.watch_history import WatchHistory
+from bonita.services.metadata_service import MetadataService
 from bonita import schemas
 
 router = APIRouter()
@@ -107,6 +108,11 @@ async def get_media_items(
     # 分页
     results = query.offset(skip).limit(limit).all()
 
+    metadata_service = MetadataService(session)
+    crop_map = metadata_service.get_crop_by_numbers(
+        [media_item.number for media_item, *_ in results],
+    )
+
     # 构造结果
     items = []
     for media_item, favorite, watched, total_plays, play_progress, duration, has_rating, rating, watch_updatetime in results:
@@ -125,10 +131,13 @@ async def get_media_items(
             watch_updatetime=watch_updatetime
         )
 
+        crop = metadata_service.resolve_crop(media_item.number, crop_map)
+
         # 创建带有用户数据的媒体项
         item_with_watches = schemas.MediaItemWithWatches(
             **item_dict.model_dump(),
-            userdata=userdata
+            userdata=userdata,
+            crop=crop,
         )
 
         items.append(item_with_watches)
@@ -178,7 +187,8 @@ async def get_media_item(
     
     return schemas.MediaItemWithWatches(
         **item_dict.model_dump(),
-        userdata=userdata
+        userdata=userdata,
+        crop=MetadataService(session).get_crop_by_number(media_item.number),
     )
 
 
@@ -280,7 +290,8 @@ async def update_media_item(
     
     return schemas.MediaItemWithWatches(
         **item_dict.model_dump(),
-        userdata=userdata
+        userdata=userdata,
+        crop=MetadataService(session).get_crop_by_number(media_item.number),
     )
 
 

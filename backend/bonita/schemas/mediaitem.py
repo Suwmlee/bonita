@@ -97,6 +97,7 @@ class MediaItemWithWatches(MediaItemInDB):
     包含观看历史的MediaItem
     """
     userdata: Optional[UserWatchData] = None
+    crop: Optional[bool] = None
 
     class Config:
         from_attributes = True

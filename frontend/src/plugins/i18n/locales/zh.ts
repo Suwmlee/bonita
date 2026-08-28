@@ -438,6 +438,8 @@ export default {
         actorPhoto: "演员照片",
         cover: "封面",
         coverSmall: "小封面",
+        crop: "裁切海报",
+        cropPoster: "裁切海报",
         extraFanart: "额外图片",
         trailer: "预告片",
         tag: "标签",

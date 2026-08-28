@@ -453,6 +453,8 @@ export default {
         actorPhoto: "Actor Photo",
         cover: "Cover",
         coverSmall: "Small Cover",
+        crop: "Crop Poster",
+        cropPoster: "Crop Poster",
         extraFanart: "Extra Fanart",
         trailer: "Trailer",
         tag: "Tag",

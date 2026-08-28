@@ -879,6 +879,17 @@ export const $MediaItemWithWatches = {
                     type: 'null'
                 }
             ]
+        },
+        crop: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Crop'
         }
     },
     type: 'object',
@@ -1037,6 +1048,18 @@ export const $MetadataBase = {
                 }
             ],
             title: 'Cover Small'
+        },
+        crop: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Crop',
+            default: true
         },
         extrafanart: {
             anyOf: [
@@ -1325,6 +1348,18 @@ export const $MetadataCreate = {
             ],
             title: 'Cover Small'
         },
+        crop: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Crop',
+            default: true
+        },
         extrafanart: {
             anyOf: [
                 {
@@ -1593,6 +1628,18 @@ export const $MetadataPublic = {
                 }
             ],
             title: 'Cover Small'
+        },
+        crop: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Crop',
+            default: true
         },
         extrafanart: {
             anyOf: [
