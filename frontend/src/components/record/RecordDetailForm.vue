@@ -240,7 +240,8 @@ async function applyTopFolderToAll() {
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentExtraInfo.partNumber" type="number"
-              :rules="[v => v >= 0 || t('components.record.form.partNumberRule')]" />
+              :rules="[v => v >= 0 || t('components.record.form.partNumberRule')]" 
+              :hint="t('components.record.form.partNumberHint')" persistent-hint />
           </VCol>
         </VRow>
 

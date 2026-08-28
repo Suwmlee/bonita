@@ -1,47 +1,49 @@
 <template>
-  <p class="text-xl mb-6">
-    {{ t('pages.logs.title') }}
-  </p>
-  <v-card class="logs-card" elevation="10">
-    <v-card-title class="d-flex justify-space-between align-center">
-      <div></div>
-      <div class="d-flex refresh-controls">
-        <v-switch v-model="autoScroll" :label="t('pages.logs.autoScroll')" hide-details color="primary" />
-        <v-btn variant="outlined" color="primary" class="action-btn mx-2"
-          @click="reconnectWebSocket">
-          <v-icon start>mdi-refresh</v-icon>
-          {{ t('pages.logs.reconnect') }}
-        </v-btn>
-        <v-btn v-if="isAdmin" variant="outlined" color="error" class="action-btn"
-          @click="clearLogs">
-          <v-icon start>mdi-delete</v-icon>{{ t('pages.logs.clear') }}
-        </v-btn>
-      </div>
-    </v-card-title>
-
-    <v-card-text>
-      <v-alert color="info" icon="mdi-information" variant="tonal" class="mb-3"
-        v-if="wsConnectionStatus !== 'connected'">
-        {{ wsConnectionStatus === 'connecting' ? t('pages.logs.connecting') : t('pages.logs.disconnected') }}
-      </v-alert>
-
-      <!-- 文本形式的日志查看器 -->
-      <div ref="logsContainer" class="logs-container">
-        <div v-if="logStore.logs.length === 0" class="no-logs-message">
-          {{ t('pages.logs.noLogs') }}
+  <div class="logs-page">
+    <p class="text-xl mb-6">
+      {{ t('pages.logs.title') }}
+    </p>
+    <v-card class="logs-card" elevation="10">
+      <v-card-title class="d-flex justify-space-between align-center">
+        <div></div>
+        <div class="d-flex refresh-controls">
+          <v-switch v-model="autoScroll" :label="t('pages.logs.autoScroll')" hide-details color="primary" />
+          <v-btn variant="outlined" color="primary" class="action-btn mx-2"
+            @click="reconnectWebSocket">
+            <v-icon start>mdi-refresh</v-icon>
+            {{ t('pages.logs.reconnect') }}
+          </v-btn>
+          <v-btn v-if="isAdmin" variant="outlined" color="error" class="action-btn"
+            @click="clearLogs">
+            <v-icon start>mdi-delete</v-icon>{{ t('pages.logs.clear') }}
+          </v-btn>
         </div>
-        <div v-else class="logs-text-view">
-          <div v-for="(log, index) in logStore.logs" :key="index" class="log-entry" :class="getLogClass(log.level)">
-            <span class="log-timestamp">{{ formatTimestamp(log.timestamp) }}</span>
-            <span class="log-level" :class="getLevelClass(log.level)">{{ log.level ? log.level.toUpperCase()
-              : 'UNKNOWN' }}</span>
-            <span class="log-module">[{{ log.module || 'unknown' }}]</span>
-            <div class="log-message">{{ log.message || t('common.unknown') }}</div>
+      </v-card-title>
+
+      <v-card-text>
+        <v-alert color="info" icon="mdi-information" variant="tonal" class="mb-3"
+          v-if="wsConnectionStatus !== 'connected'">
+          {{ wsConnectionStatus === 'connecting' ? t('pages.logs.connecting') : t('pages.logs.disconnected') }}
+        </v-alert>
+
+        <!-- 文本形式的日志查看器 -->
+        <div ref="logsContainer" class="logs-container">
+          <div v-if="logStore.logs.length === 0" class="no-logs-message">
+            {{ t('pages.logs.noLogs') }}
+          </div>
+          <div v-else class="logs-text-view">
+            <div v-for="(log, index) in logStore.logs" :key="index" class="log-entry" :class="getLogClass(log.level)">
+              <span class="log-timestamp">{{ formatTimestamp(log.timestamp) }}</span>
+              <span class="log-level" :class="getLevelClass(log.level)">{{ log.level ? log.level.toUpperCase()
+                : 'UNKNOWN' }}</span>
+              <span class="log-module">[{{ log.module || 'unknown' }}]</span>
+              <div class="log-message">{{ log.message || t('common.unknown') }}</div>
+            </div>
           </div>
         </div>
-      </div>
-    </v-card-text>
-  </v-card>
+      </v-card-text>
+    </v-card>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -259,24 +261,38 @@ watch(autoScroll, (newValue) => {
 </script>
 
 <style scoped>
-.logs-card {
-  height: calc(100vh - 120px);
+.logs-page {
   display: flex;
   flex-direction: column;
+  /* 100dvh minus navbar 64px, floating offset 1rem, page padding 3rem */
+  height: calc(100dvh - 64px - 1rem - 3rem);
+  overflow: hidden;
+}
+
+.logs-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.logs-card :deep(.v-card-text) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: 8px;
 }
 
 .logs-container {
-  height: calc(100vh - 200px);
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 4px;
   font-family: 'Consolas', 'Courier New', monospace;
   font-size: 14px;
-}
-
-/* 调整卡片内容区域的内边距 */
-:deep(.v-card-text) {
-  padding-bottom: 8px;
 }
 
 /* 文本形式的日志样式 */
@@ -381,15 +397,6 @@ watch(autoScroll, (newValue) => {
 
 /* 响应式调整 */
 @media (max-width: 768px) {
-  .logs-card {
-    height: auto;
-    min-height: calc(100vh - 150px);
-  }
-
-  .logs-container {
-    height: 60vh;
-  }
-
   .search-input,
   .filter-select,
   .module-input {

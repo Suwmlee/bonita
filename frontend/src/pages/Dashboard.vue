@@ -71,121 +71,155 @@ async function onCleanupRunningTasksClick() {
 </script>
 
 <template>
-  <div>
+  <div class="dashboard-page">
     <p class="text-xl mb-6">
       {{ t('pages.dashboard.title') }}
     </p>
 
-    <VRow>
-      <VCol cols="12">
-        <VCard :title="t('pages.dashboard.activeTasks')">
-          <VCardText>
-            <div class="d-flex justify-end mb-4">
-              <VBtn
-                color="warning"
-                variant="tonal"
-                :disabled="runningTasksWithDetails.length === 0"
-                @click="onCleanupRunningTasksClick"
-              >
-                {{ t('pages.dashboard.cleanupRunning') }}
-              </VBtn>
-            </div>
-            <div v-if="runningTasksWithDetails.length === 0" class="text-center pa-4">
-              <p class="text-subtitle-1">{{ t('pages.dashboard.noRunningTasks') }}</p>
-            </div>
-            <div v-else>
+    <div class="dashboard-body">
+      <VCard :title="t('pages.dashboard.activeTasks')">
+        <VCardText>
+          <div class="d-flex justify-end mb-4">
+            <VBtn
+              color="warning"
+              variant="tonal"
+              :disabled="runningTasksWithDetails.length === 0"
+              @click="onCleanupRunningTasksClick"
+            >
+              {{ t('pages.dashboard.cleanupRunning') }}
+            </VBtn>
+          </div>
+          <div v-if="runningTasksWithDetails.length === 0" class="text-center pa-4">
+            <p class="text-subtitle-1">{{ t('pages.dashboard.noRunningTasks') }}</p>
+          </div>
+          <div v-else>
+            <VTable class="active-tasks-table">
+              <thead>
+                <tr>
+                  <th>{{ t('pages.dashboard.taskName') }}</th>
+                  <th>{{ t('pages.dashboard.status') }}</th>
+                  <th>{{ t('pages.dashboard.source') }}</th>
+                  <th>{{ t('pages.dashboard.destination') }}</th>
+                </tr>
+              </thead>
+            </VTable>
+            <div class="active-tasks-container">
               <VTable class="active-tasks-table">
-                <thead>
-                  <tr>
-                    <th>{{ t('pages.dashboard.taskName') }}</th>
-                    <th>{{ t('pages.dashboard.status') }}</th>
-                    <th>{{ t('pages.dashboard.source') }}</th>
-                    <th>{{ t('pages.dashboard.destination') }}</th>
+                <tbody>
+                  <tr v-for="task in runningTasksWithDetails" :key="task.task_id">
+                    <td>{{ task.name || task.details?.name || task.task_type || t('pages.dashboard.unknownTask') }}</td>
+                    <td>
+                      <VChip 
+                        :color="taskStore.getStatusColor(task.status)" 
+                        size="small" 
+                        class="mr-2"
+                      >
+                        {{ taskStore.getStatusText(task.status) }}
+                      </VChip>
+                    </td>
+                    <td>{{ task.details?.source_folder || task.detail || '-' }}</td>
+                    <td>{{ task.details?.output_folder || '-' }}</td>
                   </tr>
-                </thead>
+                </tbody>
               </VTable>
-              <div class="active-tasks-container">
-                <VTable class="active-tasks-table">
-                  <tbody>
-                    <tr v-for="task in runningTasksWithDetails" :key="task.task_id">
-                      <td>{{ task.name || task.details?.name || task.task_type || t('pages.dashboard.unknownTask') }}</td>
-                      <td>
-                        <VChip 
-                          :color="taskStore.getStatusColor(task.status)" 
-                          size="small" 
-                          class="mr-2"
-                        >
-                          {{ taskStore.getStatusText(task.status) }}
-                        </VChip>
-                      </td>
-                      <td>{{ task.details?.source_folder || task.detail || '-' }}</td>
-                      <td>{{ task.details?.output_folder || '-' }}</td>
-                    </tr>
-                  </tbody>
-                </VTable>
-              </div>
             </div>
-          </VCardText>
-        </VCard>
-      </VCol>
+          </div>
+        </VCardText>
+      </VCard>
 
-      <VCol cols="12">
-        <VCard :title="t('pages.dashboard.historicalTasks')">
-          <VCardText>
-            <div v-if="historicalTasksWithDetails.length === 0" class="text-center pa-4">
-              <p class="text-subtitle-1">{{ t('pages.dashboard.noHistoricalTasks') }}</p>
-            </div>
-            <div v-else>
+      <VCard class="historical-card" :title="t('pages.dashboard.historicalTasks')">
+        <VCardText>
+          <div v-if="historicalTasksWithDetails.length === 0" class="text-center pa-4">
+            <p class="text-subtitle-1">{{ t('pages.dashboard.noHistoricalTasks') }}</p>
+          </div>
+          <div v-else class="historical-tasks-body">
+            <VTable class="historical-tasks-table">
+              <thead>
+                <tr>
+                  <th>{{ t('pages.dashboard.taskName') }}</th>
+                  <th>{{ t('pages.dashboard.status') }}</th>
+                  <th>{{ t('pages.dashboard.source') }}</th>
+                  <th>{{ t('pages.dashboard.errorMessage') }}</th>
+                  <th>{{ t('pages.dashboard.completedTime') }}</th>
+                </tr>
+              </thead>
+            </VTable>
+            <div class="historical-tasks-container">
               <VTable class="historical-tasks-table">
-                <thead>
-                  <tr>
-                    <th>{{ t('pages.dashboard.taskName') }}</th>
-                    <th>{{ t('pages.dashboard.status') }}</th>
-                    <th>{{ t('pages.dashboard.source') }}</th>
-                    <th>{{ t('pages.dashboard.errorMessage') }}</th>
-                    <th>{{ t('pages.dashboard.completedTime') }}</th>
+                <tbody>
+                  <tr v-for="task in historicalTasksWithDetails" :key="task.task_id">
+                    <td>{{ task.name || task.details?.name || task.task_type || t('pages.dashboard.unknownTask') }}</td>
+                    <td>
+                      <VChip 
+                        :color="taskStore.getStatusColor(task.status)" 
+                        size="small" 
+                        class="mr-2"
+                      >
+                        {{ taskStore.getStatusText(task.status) }}
+                      </VChip>
+                    </td>
+                    <td>{{ task.details?.source_folder || task.detail || '-' }}</td>
+                    <td>
+                      <span v-if="task.error_message" class="text-error text-caption">
+                        {{ task.error_message }}
+                      </span>
+                      <span v-else class="text-caption">-</span>
+                    </td>
+                    <td>
+                      <span class="text-caption">
+                        {{ new Date(task.updatetime || task.created_at || '').toLocaleString() }}
+                      </span>
+                    </td>
                   </tr>
-                </thead>
+                </tbody>
               </VTable>
-              <div class="historical-tasks-container">
-                <VTable class="historical-tasks-table">
-                  <tbody>
-                    <tr v-for="task in historicalTasksWithDetails" :key="task.task_id">
-                      <td>{{ task.name || task.details?.name || task.task_type || t('pages.dashboard.unknownTask') }}</td>
-                      <td>
-                        <VChip 
-                          :color="taskStore.getStatusColor(task.status)" 
-                          size="small" 
-                          class="mr-2"
-                        >
-                          {{ taskStore.getStatusText(task.status) }}
-                        </VChip>
-                      </td>
-                      <td>{{ task.details?.source_folder || task.detail || '-' }}</td>
-                      <td>
-                        <span v-if="task.error_message" class="text-error text-caption">
-                          {{ task.error_message }}
-                        </span>
-                        <span v-else class="text-caption">-</span>
-                      </td>
-                      <td>
-                        <span class="text-caption">
-                          {{ new Date(task.updatetime || task.created_at || '').toLocaleString() }}
-                        </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </VTable>
-              </div>
             </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
+          </div>
+        </VCardText>
+      </VCard>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.dashboard-page {
+  display: flex;
+  flex-direction: column;
+  /* 100dvh minus navbar 64px, floating offset 1rem, page padding 3rem */
+  height: calc(100dvh - 64px - 1rem - 3rem);
+  overflow: hidden;
+}
+
+.dashboard-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-height: 0;
+}
+
+.historical-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.historical-card :deep(.v-card-text) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.historical-tasks-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .v-table {
   border-radius: 4px;
 }
@@ -264,8 +298,8 @@ async function onCleanupRunningTasksClick() {
 }
 
 .historical-tasks-container {
-  max-height: calc(100vh - 550px);
-  min-height: 200px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   border-top: none;

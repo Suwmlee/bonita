@@ -504,6 +504,8 @@ export default {
         tagsPlaceholder: "Separate multiple tags with commas",
         tagsHint: "Example: Chinese subtitles, cracked",
         partNumber: "Part Number",
+        partNumberHint:
+          "For multi-part titles, enter the current part (starting from 1); otherwise enter 0",
         crop: "Crop Poster",
         cropPoster: "Crop Poster",
         specifiedSource: "Specified Source",

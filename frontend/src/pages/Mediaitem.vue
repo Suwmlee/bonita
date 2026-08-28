@@ -15,7 +15,7 @@ const { t } = useI18n()
 const sortDropdownOpen = ref(false)
 
 // Media type filter with hasNumber options
-const selectedMediaType = ref<string | null>(null)
+const selectedMediaType = ref<string | null>("number")
 const mediaTypeOptions = [
   { value: null, title: t("pages.mediaitem.mediaType") },
   { value: "movie", title: t("pages.mediaitem.movie") },
@@ -236,7 +236,7 @@ watch(
 )
 
 onMounted(() => {
-  mediaItemStore.getMediaItems()
+  searchMediaItems()
 })
 </script>
 

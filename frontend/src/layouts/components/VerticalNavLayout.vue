@@ -66,7 +66,7 @@ export default defineComponent({
         "div",
         {
           class: [
-            "layout-wrapper layout-nav-type-vertical layout-navbar-static layout-footer-static layout-content-width-fluid",
+            "layout-wrapper layout-nav-type-vertical layout-navbar-static layout-footer-hidden layout-content-width-fluid",
             mdAndDown.value && "layout-overlay-nav",
             route.meta.layoutWrapperClasses,
           ],
