@@ -111,8 +111,8 @@ class ToolService:
         """同步Emby观看历史
 
         Args:
-            direction: 同步方向，"from_emby"（默认）或 "to_emby"
-            force: 是否强制覆盖数据，默认为False
+            direction: 同步方向，"from_emby"（默认）或 "to_emby"（电影、剧集、番号）
+            force: 是否强制覆盖对端已有的已看/收藏状态，默认为 False
 
         Returns:
             schemas.Response: 操作响应

@@ -281,7 +281,7 @@ class EmbyService(metaclass=Singleton):
                 params={
                     "Fields": (
                         "ProviderIds,Path,UserData,SeriesName,SeriesId,"
-                        "IndexNumber,ParentIndexNumber,RunTimeTicks"
+                        "IndexNumber,ParentIndexNumber,RunTimeTicks,ImageTags"
                     ),
                 },
             )
@@ -301,6 +301,119 @@ class EmbyService(metaclass=Singleton):
             "IncludeItemTypes": "Movie,Episode,Series"
         }
         return self._make_request('get', '/emby/Items', params=params)
+
+    def search_boxsets(self, search_term: str = "", limit: int = 50) -> List[Dict[str, Any]]:
+        """列出或搜索 Emby 合集（BoxSet），不写入本地。"""
+        if not self.emby_user_id:
+            return []
+        params = {
+            "Recursive": "True",
+            "IncludeItemTypes": "BoxSet",
+            "Fields": "ChildCount,RecursiveItemCount,ImageTags",
+            "Limit": limit,
+            "SortBy": "SortName",
+            "SortOrder": "Ascending",
+        }
+        if search_term:
+            params["SearchTerm"] = search_term
+        response = self._make_request(
+            "get",
+            f"/Users/{self.emby_user_id}/Items",
+            params=params,
+        )
+        if isinstance(response, dict):
+            return response.get("Items") or []
+        return []
+
+    def get_boxset_items(self, boxset_id: str) -> List[Dict[str, Any]]:
+        """获取合集的直接成员（电影 / 剧 / 集）。"""
+        if not self.emby_user_id or not boxset_id:
+            return []
+        response = self._make_request(
+            "get",
+            f"/Users/{self.emby_user_id}/Items",
+            params={
+                "ParentId": boxset_id,
+                "Recursive": "False",
+                "IncludeItemTypes": "Movie,Episode,Series,Video",
+                "Fields": (
+                    "ProviderIds,Path,SeriesName,SeriesId,"
+                    "IndexNumber,ParentIndexNumber,RunTimeTicks"
+                ),
+            },
+        )
+        if isinstance(response, dict):
+            return response.get("Items") or []
+        return []
+
+    def query_items(
+        self,
+        include_item_types: str,
+        search_term: str = None,
+        provider_id_equals: str = None,
+        parent_id: str = None,
+        limit: int = 25,
+    ) -> List[Dict[str, Any]]:
+        """按类型 / 外部 ID / 关键词查找库内条目。"""
+        if not self.emby_user_id:
+            return []
+        params: Dict[str, Any] = {
+            "Recursive": "True",
+            "IncludeItemTypes": include_item_types,
+            "Fields": (
+                "ProviderIds,Path,SeriesName,SeriesId,"
+                "IndexNumber,ParentIndexNumber"
+            ),
+            "Limit": limit,
+        }
+        if search_term:
+            params["SearchTerm"] = search_term
+        if provider_id_equals:
+            params["AnyProviderIdEquals"] = provider_id_equals
+        if parent_id:
+            params["ParentId"] = parent_id
+        try:
+            response = self._make_request(
+                "get",
+                f"/Users/{self.emby_user_id}/Items",
+                params=params,
+            )
+        except Exception as e:
+            logger.error(f"Error querying Emby items: {e}")
+            return []
+        if isinstance(response, dict):
+            return response.get("Items") or []
+        return []
+
+    def add_items_to_collection(self, collection_id: str, item_ids: List[str]) -> bool:
+        """把条目加入 Emby 合集。"""
+        return self._mutate_collection_items("post", collection_id, item_ids)
+
+    def remove_items_from_collection(self, collection_id: str, item_ids: List[str]) -> bool:
+        """从 Emby 合集移除条目。"""
+        return self._mutate_collection_items("delete", collection_id, item_ids)
+
+    def _mutate_collection_items(self, method: str, collection_id: str, item_ids: List[str]) -> bool:
+        if not collection_id or not item_ids:
+            return True
+        unique_ids = list(dict.fromkeys(item_ids))
+        for offset in range(0, len(unique_ids), 50):
+            chunk = unique_ids[offset:offset + 50]
+            self._make_request(
+                method,
+                f"/emby/Collections/{collection_id}/Items",
+                params={"Ids": ",".join(chunk)},
+            )
+        return True
+
+    def get_item_image_url(self, item_id: str, image_tag: str = None, size: str = "w500") -> str:
+        if not item_id:
+            return None
+        width = size.split("w")[-1]
+        poster_url = f"{self.emby_host}/Items/{item_id}/Images/Primary?maxWidth={width}"
+        if image_tag:
+            poster_url += f"&tag={image_tag}"
+        return poster_url
 
     def mark_as_played(self, item_id, user_id=None):
         """Mark an item as played

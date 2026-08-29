@@ -1,5 +1,6 @@
 import blanklayout from "@/layouts/blank.vue"
 import defaultlayout from "@/layouts/default.vue"
+import CollectionPage from "@/pages/Collection.vue"
 import DashboardPage from "@/pages/Dashboard.vue"
 import LoginPage from "@/pages/Login.vue"
 import LogsPage from "@/pages/Logs.vue"
@@ -28,6 +29,11 @@ export const routes = [
         path: "mediaitems",
         meta: { requiresAuth: true },
         component: MediaitemPage,
+      },
+      {
+        path: "collections",
+        meta: { requiresAuth: true },
+        component: CollectionPage,
       },
       {
         path: "records",

@@ -89,5 +89,11 @@ class EmbySyncParam(BaseModel):
     """
     Emby 同步参数
     """
-    direction: SyncDirection = Field(default=SyncDirection.FROM_EMBY)
-    force: bool = Field(default=False)
+    direction: SyncDirection = Field(
+        default=SyncDirection.FROM_EMBY,
+        description="from_emby: Emby → Bonita；to_emby: Bonita → Emby（电影、剧集、番号）",
+    )
+    force: bool = Field(
+        default=False,
+        description="强制覆盖对端已有的已看/收藏状态",
+    )

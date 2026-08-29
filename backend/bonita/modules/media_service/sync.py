@@ -1,5 +1,7 @@
 import logging
+from datetime import datetime
 
+from bonita.db.models.collection import Collection, CollectionItem
 from bonita.db.models.extrainfo import ExtraInfo
 from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
@@ -715,3 +717,335 @@ def _enrich_webhook_item(item: dict) -> dict:
         if not merged.get(key) and details.get(key) is not None:
             merged[key] = details.get(key)
     return merged
+
+
+_COLLECTION_MEMBER_TYPES = {"Movie", "Video", "Episode", "Series"}
+
+
+def add_and_sync_collection(session, emby_id: str, name: str = None) -> Collection:
+    """将 Emby 合集加入白名单并同步成员。已存在则更新名称后重新同步。"""
+    emby_service = EmbyService()
+    if not emby_service.is_initialized:
+        raise RuntimeError("Emby服务未初始化")
+    collection = session.query(Collection).filter(Collection.emby_id == emby_id).first()
+    if not collection:
+        collection = Collection(
+            emby_id=emby_id,
+            name=(name or "").strip() or emby_id,
+        )
+        collection.create(session)
+    elif name and name.strip() and collection.name in ("", collection.emby_id):
+        collection.name = name.strip()
+        session.commit()
+    _refresh_collection_meta(session, collection, fallback_name=name)
+    return sync_collection_members(session, collection)
+
+
+def _refresh_collection_meta(session, collection: Collection, fallback_name: str = None):
+    emby_service = EmbyService()
+    details = emby_service.get_user_item_details(collection.emby_id)
+    if not isinstance(details, dict) or not details.get("Name"):
+        details = _get_emby_item_details(collection.emby_id) or {}
+    resolved_name = (
+        (details.get("Name") or "").strip()
+        or (fallback_name or "").strip()
+        or collection.name
+        or collection.emby_id
+    )
+    image_tag = (details.get("ImageTags") or {}).get("Primary") if isinstance(details, dict) else None
+    changed = False
+    if resolved_name and collection.name != resolved_name:
+        collection.name = resolved_name
+        changed = True
+    if image_tag and collection.image_tag != image_tag:
+        collection.image_tag = image_tag
+        changed = True
+    if changed:
+        session.commit()
+
+
+def _refresh_member_counts(session, collection: Collection, emby_item_count=None, touch_sync=False):
+    collection.matched_count = session.query(CollectionItem).filter(
+        CollectionItem.collection_id == collection.id
+    ).count()
+    if emby_item_count is not None:
+        collection.item_count = emby_item_count
+    if touch_sync:
+        collection.last_sync_at = datetime.now()
+    session.commit()
+    session.refresh(collection)
+
+
+def sync_collection_members(session, collection: Collection, direction: str = "from_emby") -> Collection:
+    """同步合集成员。from_emby 只新增；to_emby 按 Bonita 回写（含删除）。"""
+    if direction == "to_emby":
+        return sync_collection_to_emby(session, collection)
+    return sync_collection_from_emby(session, collection)
+
+
+def sync_collection_from_emby(session, collection: Collection) -> Collection:
+    """从 Emby 拉取成员：只添加对上的本地媒体项，不删除 Bonita 里已有的成员。"""
+    emby_service = EmbyService()
+    if not emby_service.is_initialized:
+        raise RuntimeError("Emby服务未初始化")
+    _refresh_collection_meta(session, collection)
+    boxset_items = emby_service.get_boxset_items(collection.emby_id)
+    existing = {
+        row.media_item_id: row
+        for row in session.query(CollectionItem).filter(
+            CollectionItem.collection_id == collection.id
+        ).all()
+    }
+    added = 0
+    for item in boxset_items:
+        if item.get("Type") not in _COLLECTION_MEMBER_TYPES:
+            continue
+        media_item = _resolve_media_item(session, item, create=False)
+        if not media_item:
+            continue
+        emby_item_id = item.get("Id")
+        row = existing.get(media_item.id)
+        if row:
+            if emby_item_id and row.emby_item_id != emby_item_id:
+                row.emby_item_id = emby_item_id
+            continue
+        member = CollectionItem(
+            collection_id=collection.id,
+            media_item_id=media_item.id,
+            emby_item_id=emby_item_id,
+        )
+        session.add(member)
+        existing[media_item.id] = member
+        added += 1
+    session.flush()
+    _refresh_member_counts(
+        session,
+        collection,
+        emby_item_count=len(boxset_items),
+        touch_sync=True,
+    )
+    logger.info(
+        f"    ✓ 合集 {collection.name}: 从 Emby 新增 {added} 项, "
+        f"本地 {collection.matched_count} 项, Emby {collection.item_count} 项"
+    )
+    return collection
+
+
+def sync_collection_to_emby(session, collection: Collection) -> Collection:
+    """把 Bonita 合集成员回写到 Emby：补上缺失项，并移除 Bonita 里已删的项。"""
+    emby_service = EmbyService()
+    if not emby_service.is_initialized:
+        raise RuntimeError("Emby服务未初始化")
+    _refresh_collection_meta(session, collection)
+    boxset_items = emby_service.get_boxset_items(collection.emby_id)
+    emby_ids = {item.get("Id") for item in boxset_items if item.get("Id")}
+    members = session.query(CollectionItem).filter(
+        CollectionItem.collection_id == collection.id
+    ).all()
+    wanted_ids = set()
+    unresolved = 0
+    for member in members:
+        if not member.emby_item_id:
+            media_item = session.query(MediaItem).filter(
+                MediaItem.id == member.media_item_id
+            ).first()
+            if media_item:
+                member.emby_item_id = _find_emby_id_for_media_item(
+                    session, emby_service, media_item
+                )
+        if member.emby_item_id:
+            wanted_ids.add(member.emby_item_id)
+        else:
+            unresolved += 1
+            logger.warning(
+                f"    ⊘ 合集 {collection.name}: 无法在 Emby 找到媒体项 {member.media_item_id}"
+            )
+    to_add = [item_id for item_id in wanted_ids if item_id not in emby_ids]
+    to_remove = [item_id for item_id in emby_ids if item_id not in wanted_ids]
+    if to_add:
+        emby_service.add_items_to_collection(collection.emby_id, to_add)
+    if to_remove:
+        emby_service.remove_items_from_collection(collection.emby_id, to_remove)
+    session.flush()
+    boxset_items = emby_service.get_boxset_items(collection.emby_id)
+    _refresh_member_counts(
+        session,
+        collection,
+        emby_item_count=len(boxset_items),
+        touch_sync=True,
+    )
+    logger.info(
+        f"    ✓ 合集 {collection.name}: 回写 Emby 新增 {len(to_add)} 项, "
+        f"移除 {len(to_remove)} 项, 未对上 {unresolved} 项"
+    )
+    return collection
+
+
+def add_collection_members(session, collection: Collection, media_item_ids: list) -> int:
+    """在 Bonita 合集中添加成员，不立刻改 Emby。"""
+    emby_service = EmbyService()
+    existing_ids = {
+        row.media_item_id
+        for row in session.query(CollectionItem.media_item_id).filter(
+            CollectionItem.collection_id == collection.id
+        ).all()
+    }
+    added = 0
+    for media_item_id in dict.fromkeys(media_item_ids):
+        if media_item_id in existing_ids:
+            continue
+        media_item = session.query(MediaItem).filter(MediaItem.id == media_item_id).first()
+        if not media_item:
+            continue
+        emby_item_id = None
+        if emby_service.is_initialized:
+            try:
+                emby_item_id = _find_emby_id_for_media_item(session, emby_service, media_item)
+            except Exception as e:
+                logger.warning(f"    ⊘ 查找 Emby 条目失败 {media_item.title}: {e}")
+        session.add(
+            CollectionItem(
+                collection_id=collection.id,
+                media_item_id=media_item.id,
+                emby_item_id=emby_item_id,
+            )
+        )
+        existing_ids.add(media_item.id)
+        added += 1
+    session.flush()
+    _refresh_member_counts(session, collection)
+    return added
+
+
+def remove_collection_member(session, collection: Collection, media_item_id: int) -> bool:
+    """从 Bonita 合集移除成员，不立刻改 Emby。"""
+    row = session.query(CollectionItem).filter(
+        CollectionItem.collection_id == collection.id,
+        CollectionItem.media_item_id == media_item_id,
+    ).first()
+    if not row:
+        return False
+    session.delete(row)
+    session.flush()
+    _refresh_member_counts(session, collection)
+    return True
+
+
+def _find_emby_id_for_media_item(session, emby_service, media_item: MediaItem) -> str:
+    """根据本地媒体项反查 Emby Item Id。"""
+    if media_item.media_type == "episode":
+        return _find_emby_episode_id(session, emby_service, media_item)
+    include_types = "Series" if media_item.media_type == "tvshow" else "Movie,Video"
+    items = _query_emby_by_providers(emby_service, media_item, include_types)
+    matched = _pick_emby_item(items, media_item)
+    if matched:
+        return matched.get("Id")
+    term = (media_item.number or media_item.title or "").strip()
+    if term:
+        items = emby_service.query_items(include_types, search_term=term)
+        matched = _pick_emby_item(items, media_item)
+        if matched:
+            return matched.get("Id")
+    return None
+
+
+def _find_emby_episode_id(session, emby_service, media_item: MediaItem) -> str:
+    items = _query_emby_by_providers(emby_service, media_item, "Episode")
+    matched = _pick_emby_item(items, media_item)
+    if matched:
+        return matched.get("Id")
+    series = None
+    if media_item.series_id:
+        series = session.query(MediaItem).filter(MediaItem.id == media_item.series_id).first()
+    series_emby_id = None
+    if series:
+        series_emby_id = _find_emby_id_for_media_item(session, emby_service, series)
+    if not series_emby_id and (media_item.original_title or "").strip():
+        series_items = emby_service.query_items(
+            "Series", search_term=media_item.original_title.strip()
+        )
+        series_match = _pick_emby_item(series_items, series or media_item, force_series=True)
+        if series_match:
+            series_emby_id = series_match.get("Id")
+    if series_emby_id:
+        episodes = emby_service.query_items("Episode", parent_id=series_emby_id, limit=500)
+        matched = _pick_emby_item(episodes, media_item)
+        if matched:
+            return matched.get("Id")
+    return None
+
+
+def _query_emby_by_providers(emby_service, media_item: MediaItem, include_types: str):
+    keys = []
+    if media_item.imdb_id:
+        keys.append(f"Imdb.{media_item.imdb_id}")
+    if media_item.tmdb_id:
+        keys.append(f"Tmdb.{media_item.tmdb_id}")
+    if media_item.tvdb_id:
+        keys.append(f"Tvdb.{media_item.tvdb_id}")
+    items = []
+    seen = set()
+    for key in keys:
+        for item in emby_service.query_items(include_types, provider_id_equals=key):
+            item_id = item.get("Id")
+            if item_id and item_id not in seen:
+                seen.add(item_id)
+                items.append(item)
+    return items
+
+
+def _pick_emby_item(items, media_item: MediaItem, force_series=False):
+    if not items:
+        return None
+    if force_series or media_item.media_type == "tvshow":
+        typed = [item for item in items if item.get("Type") == "Series"]
+        items = typed or items
+        title = ((media_item.title if media_item.media_type == "tvshow" else media_item.original_title)
+                 or media_item.title or "").strip().lower()
+        if title:
+            for item in items:
+                if (item.get("Name") or "").strip().lower() == title:
+                    return item
+        return items[0]
+    if media_item.media_type == "episode":
+        season = media_item.season_number
+        episode_no = media_item.episode_number
+        for item in items:
+            if item.get("Type") not in (None, "Episode"):
+                continue
+            if (
+                _as_int(item.get("ParentIndexNumber"), -1) == season
+                and _as_int(item.get("IndexNumber"), -1) == episode_no
+            ):
+                return item
+        return None
+    number = (media_item.number or "").strip().lower()
+    if number:
+        for item in items:
+            name = (item.get("Name") or "").strip().lower()
+            path = (item.get("Path") or "").lower()
+            if number in name or number in path:
+                return item
+    title = (media_item.title or "").strip().lower()
+    if title:
+        for item in items:
+            if (item.get("Name") or "").strip().lower() == title:
+                return item
+    movies = [item for item in items if item.get("Type") in ("Movie", "Video")]
+    return (movies or items)[0]
+
+
+def sync_whitelisted_collections(session, direction: str = "from_emby") -> int:
+    collections = session.query(Collection).all()
+    if not collections:
+        logger.info("  ⊘ 没有要同步的合集")
+        return 0
+    synced = 0
+    for collection in collections:
+        try:
+            sync_collection_members(session, collection, direction=direction)
+            synced += 1
+        except Exception as e:
+            logger.error(f"  ✗ 合集同步失败 {collection.name}: {e}")
+    return synced
+

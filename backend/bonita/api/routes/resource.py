@@ -93,13 +93,27 @@ async def upload_image(
 
 @router.get("/poster")
 async def get_poster(
-    title: str,
+    title: str = "",
     imdb_id: str = None,
     tmdb_id: str = None,
     number: str = None,
+    emby_id: str = None,
+    image_tag: str = None,
     session: SessionDep = None
 ):
     """获取海报图片。有番号时返回完整的 metadata.cover。"""
+    if emby_id:
+        try:
+            emby_service = EmbyService()
+            if emby_service.is_initialized:
+                poster_url = emby_service.get_item_image_url(emby_id, image_tag)
+                if poster_url:
+                    response = RedirectResponse(poster_url, status_code=302)
+                    response.headers["Cache-Control"] = "no-store"
+                    return response
+        except Exception as e:
+            logger.error(f"从Emby获取海报失败: {e}")
+
     # 如果提供了number，优先从metadata获取cover
     if number:
         try:

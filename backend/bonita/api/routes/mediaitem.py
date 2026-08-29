@@ -53,6 +53,48 @@ def _favorited_series_ids(session: Session) -> List[int]:
     return [row[0] for row in rows]
 
 
+def attach_watch_data(session: Session, media_items: List[MediaItem]) -> List[schemas.MediaItemWithWatches]:
+    """给媒体项列表附上观看/收藏和海报用的系列 ID。"""
+    if not media_items:
+        return []
+    ids = [item.id for item in media_items]
+    histories = session.query(WatchHistory).filter(WatchHistory.media_item_id.in_(ids)).all()
+    hist_map = {history.media_item_id: history for history in histories}
+    metadata_service = MetadataService(session)
+    crop_map = metadata_service.get_crop_by_numbers([item.number for item in media_items])
+    series_map = _series_info_map(session, media_items)
+    items = []
+    for media_item in media_items:
+        history = hist_map.get(media_item.id)
+        item_dict = schemas.MediaItemInDB.model_validate(media_item)
+        series_imdb_id, series_tmdb_id = _series_poster_ids(media_item, series_map)
+        series_favorite = bool(
+            media_item.series_id and series_map.get(media_item.series_id, {}).get("favorite")
+        )
+        favorite = bool(history.favorite) if history else False
+        userdata = schemas.UserWatchData(
+            favorite=favorite or series_favorite,
+            watched=(history.watched if history else False) or False,
+            total_plays=(history.watch_count if history else 0) or 0,
+            play_progress=history.play_progress if history else None,
+            duration=history.duration if history else None,
+            has_rating=(history.has_rating if history else False) or False,
+            user_rating=history.rating if history else None,
+            last_played=history.updatetime if history else None,
+            watch_updatetime=history.updatetime if history else None,
+        )
+        items.append(
+            schemas.MediaItemWithWatches(
+                **item_dict.model_dump(),
+                userdata=userdata,
+                crop=metadata_service.resolve_crop(media_item.number, crop_map),
+                series_imdb_id=series_imdb_id,
+                series_tmdb_id=series_tmdb_id,
+            )
+        )
+    return items
+
+
 @router.get("/", response_model=schemas.MediaItemCollection)
 async def get_media_items(
     session: SessionDep,

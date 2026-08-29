@@ -8,4 +8,5 @@ from .extrainfo import *
 from .metadata import *
 from .system import *
 from .mediaitem import *
+from .collection import *
 from .file_browser import *

@@ -8,3 +8,4 @@ from .downloads import Downloads
 from .setting import SystemSetting
 from .watch_history import WatchHistory
 from .mediaitem import MediaItem
+from .collection import Collection, CollectionItem
