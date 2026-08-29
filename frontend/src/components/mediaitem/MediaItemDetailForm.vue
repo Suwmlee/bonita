@@ -56,6 +56,7 @@ async function deleteItem() {
 const mediaTypes = [
   { value: "movie", title: t("pages.mediaitem.movie") },
   { value: "tvshow", title: t("pages.mediaitem.tvshow") },
+  { value: "episode", title: t("pages.mediaitem.episode") },
 ]
 
 // Computed property for watched status
@@ -233,7 +234,7 @@ const favorite = computed({
       </VCol>
 
       <!-- Season Number (for TV shows) -->
-      <VCol v-if="formData.media_type === 'tvshow'" cols="12">
+      <VCol v-if="formData.media_type === 'tvshow' || formData.media_type === 'episode'" cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
             <label for="season_number">{{ t('pages.mediaitem.seasonNumber') }}</label>
@@ -250,7 +251,7 @@ const favorite = computed({
       </VCol>
 
       <!-- Episode Number (for TV shows) -->
-      <VCol v-if="formData.media_type === 'tvshow'" cols="12">
+      <VCol v-if="formData.media_type === 'tvshow' || formData.media_type === 'episode'" cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
             <label for="episode_number">{{ t('pages.mediaitem.episodeNumber') }}</label>

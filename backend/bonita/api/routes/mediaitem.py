@@ -12,6 +12,47 @@ from bonita import schemas
 router = APIRouter()
 
 
+def _series_info_map(session: Session, media_items: List[MediaItem]) -> dict:
+    series_ids = {
+        item.series_id for item in media_items
+        if item.media_type == "episode" and item.series_id
+    }
+    if not series_ids:
+        return {}
+    series_rows = session.query(MediaItem).filter(MediaItem.id.in_(series_ids)).all()
+    favorite_rows = session.query(WatchHistory.media_item_id, WatchHistory.favorite).filter(
+        WatchHistory.media_item_id.in_(series_ids)
+    ).all()
+    favorite_map = {media_item_id: bool(favorite) for media_item_id, favorite in favorite_rows}
+    return {
+        row.id: {
+            "imdb_id": row.imdb_id,
+            "tmdb_id": row.tmdb_id,
+            "favorite": favorite_map.get(row.id, False),
+        }
+        for row in series_rows
+    }
+
+
+def _series_poster_ids(media_item: MediaItem, series_map: dict) -> tuple:
+    if media_item.media_type != "episode" or not media_item.series_id:
+        return None, None
+    series = series_map.get(media_item.series_id)
+    if not series:
+        return None, None
+    return series.get("imdb_id"), series.get("tmdb_id")
+
+
+def _favorited_series_ids(session: Session) -> List[int]:
+    rows = (
+        session.query(WatchHistory.media_item_id)
+        .join(MediaItem, MediaItem.id == WatchHistory.media_item_id)
+        .filter(MediaItem.media_type == "tvshow", WatchHistory.favorite.is_(True))
+        .all()
+    )
+    return [row[0] for row in rows]
+
+
 @router.get("/", response_model=schemas.MediaItemCollection)
 async def get_media_items(
     session: SessionDep,
@@ -73,9 +114,22 @@ async def get_media_items(
             MediaItem.number.ilike(f"%{search}%")
         )
 
-    # 按媒体类型过滤
-    if media_type:
+    # 按媒体类型过滤。电视剧筛选项同时匹配剧集(episode)；父项 tvshow 不出现在列表中。
+    if media_type == "tvshow":
+        query = query.filter(MediaItem.media_type == "episode")
+    elif media_type:
         query = query.filter(MediaItem.media_type == media_type)
+    else:
+        query = query.filter(MediaItem.media_type != "tvshow")
+
+    # 没有季/集号的条目（剧下挂的剧场版、特典等）不在列表展示
+    query = query.filter(
+        (MediaItem.media_type != "episode")
+        | (
+            (MediaItem.season_number >= 0)
+            & (MediaItem.episode_number >= 0)
+        )
+    )
 
     # 按番号状态过滤
     if has_number is not None:
@@ -91,12 +145,30 @@ async def get_media_items(
         else:
             query = query.filter((watch_info.c.watched == 0) | (watch_info.c.watched.is_(None)))
 
-    # 按收藏状态过滤
+    # 按收藏状态过滤。剧集收藏包含：本集收藏，或父剧收藏。
     if favorite is not None:
+        favorited_series_ids = _favorited_series_ids(session)
         if favorite:
-            query = query.filter(watch_info.c.favorite > 0)
+            if favorited_series_ids:
+                query = query.filter(
+                    (watch_info.c.favorite > 0)
+                    | MediaItem.series_id.in_(favorited_series_ids)
+                )
+            else:
+                query = query.filter(watch_info.c.favorite > 0)
         else:
-            query = query.filter((watch_info.c.favorite == 0) | (watch_info.c.favorite.is_(None)))
+            if favorited_series_ids:
+                query = query.filter(
+                    ((watch_info.c.favorite == 0) | watch_info.c.favorite.is_(None))
+                    & (
+                        MediaItem.series_id.is_(None)
+                        | ~MediaItem.series_id.in_(favorited_series_ids)
+                    )
+                )
+            else:
+                query = query.filter(
+                    (watch_info.c.favorite == 0) | watch_info.c.favorite.is_(None)
+                )
 
     # 获取总数
     count = query.count()
@@ -112,15 +184,20 @@ async def get_media_items(
     crop_map = metadata_service.get_crop_by_numbers(
         [media_item.number for media_item, *_ in results],
     )
+    series_map = _series_info_map(session, [media_item for media_item, *_ in results])
 
     # 构造结果
     items = []
     for media_item, favorite, watched, total_plays, play_progress, duration, has_rating, rating, watch_updatetime in results:
         item_dict = schemas.MediaItemInDB.model_validate(media_item)
+        series_imdb_id, series_tmdb_id = _series_poster_ids(media_item, series_map)
+        series_favorite = bool(
+            media_item.series_id and series_map.get(media_item.series_id, {}).get("favorite")
+        )
 
         # 创建用户数据对象
         userdata = schemas.UserWatchData(
-            favorite=favorite or False,
+            favorite=bool(favorite) or series_favorite,
             watched=watched or False,
             total_plays=total_plays or 0,
             play_progress=play_progress,
@@ -138,6 +215,8 @@ async def get_media_items(
             **item_dict.model_dump(),
             userdata=userdata,
             crop=crop,
+            series_imdb_id=series_imdb_id,
+            series_tmdb_id=series_tmdb_id,
         )
 
         items.append(item_with_watches)
@@ -165,10 +244,15 @@ async def get_media_item(
     
     # 构建MediaItemWithWatches响应
     item_dict = schemas.MediaItemInDB.model_validate(media_item)
+    series_map = _series_info_map(session, [media_item])
+    series_imdb_id, series_tmdb_id = _series_poster_ids(media_item, series_map)
+    series_favorite = bool(
+        media_item.series_id and series_map.get(media_item.series_id, {}).get("favorite")
+    )
     
     if watch_history:
         userdata = schemas.UserWatchData(
-            favorite=watch_history.favorite or False,
+            favorite=(watch_history.favorite or False) or series_favorite,
             watched=watch_history.watched or False,
             total_plays=watch_history.watch_count or 0,
             play_progress=watch_history.play_progress,
@@ -180,7 +264,7 @@ async def get_media_item(
         )
     else:
         userdata = schemas.UserWatchData(
-            favorite=False,
+            favorite=series_favorite,
             watched=False,
             total_plays=0
         )
@@ -189,6 +273,8 @@ async def get_media_item(
         **item_dict.model_dump(),
         userdata=userdata,
         crop=MetadataService(session).get_crop_by_number(media_item.number),
+        series_imdb_id=series_imdb_id,
+        series_tmdb_id=series_tmdb_id,
     )
 
 
@@ -268,10 +354,15 @@ async def update_media_item(
     
     # 构建MediaItemWithWatches响应
     item_dict = schemas.MediaItemInDB.model_validate(media_item)
-    
+    series_map = _series_info_map(session, [media_item])
+    series_imdb_id, series_tmdb_id = _series_poster_ids(media_item, series_map)
+    series_favorite = bool(
+        media_item.series_id and series_map.get(media_item.series_id, {}).get("favorite")
+    )
+
     if watch_history:
         userdata = schemas.UserWatchData(
-            favorite=watch_history.favorite or False,
+            favorite=(watch_history.favorite or False) or series_favorite,
             watched=watch_history.watched or False,
             total_plays=watch_history.watch_count or 0,
             play_progress=watch_history.play_progress,
@@ -283,7 +374,7 @@ async def update_media_item(
         )
     else:
         userdata = schemas.UserWatchData(
-            favorite=False,
+            favorite=series_favorite,
             watched=False,
             total_plays=0
         )
@@ -292,6 +383,8 @@ async def update_media_item(
         **item_dict.model_dump(),
         userdata=userdata,
         crop=MetadataService(session).get_crop_by_number(media_item.number),
+        series_imdb_id=series_imdb_id,
+        series_tmdb_id=series_tmdb_id,
     )
 
 

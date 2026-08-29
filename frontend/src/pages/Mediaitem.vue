@@ -238,29 +238,58 @@ const getMediaTypeLabel = (mediaType: string) => {
   if (mediaType === "movie") {
     return t("pages.mediaitem.typeMovie")
   }
-  if (mediaType === "tvshow") {
+  if (mediaType === "tvshow" || mediaType === "episode") {
     return t("pages.mediaitem.typeTvshow")
   }
   return mediaType
+}
+
+const formatSeasonEpisode = (item: MediaItemWithWatches) => {
+  const season = item.season_number
+  const episode = item.episode_number
+  if (season == null || season < 0 || episode == null || episode < 0) {
+    return ""
+  }
+  return `S${String(season).padStart(2, "0")}E${String(episode).padStart(2, "0")}`
+}
+
+const getCardTitle = (item: MediaItemWithWatches) => {
+  if (item.media_type !== "episode") {
+    return item.title
+  }
+  const parts = [item.original_title, formatSeasonEpisode(item), item.title].filter(
+    (part) => part && String(part).trim(),
+  )
+  return parts.join(" ")
 }
 
 // 处理海报URL的函数
 const getPosterUrl = (item: MediaItemWithWatches): string => {
   const baseUrl = `${OpenAPI.BASE}/api/v1/resource/poster?`
   const params = new URLSearchParams()
+  const isEpisode = item.media_type === "episode"
 
-  params.append("title", item.title)
+  params.append(
+    "title",
+    isEpisode ? item.original_title || item.title : item.title,
+  )
 
-  if (item.imdb_id) {
-    params.append("imdb_id", item.imdb_id)
+  const imdbId = isEpisode ? item.series_imdb_id : item.imdb_id
+  if (imdbId) {
+    params.append("imdb_id", imdbId)
   }
 
-  if (item.tmdb_id) {
-    params.append("tmdb_id", item.tmdb_id.toString())
+  const tmdbId = isEpisode ? item.series_tmdb_id : item.tmdb_id
+  if (tmdbId) {
+    params.append("tmdb_id", tmdbId.toString())
   }
 
   if (item.number) {
     params.append("number", item.number)
+  }
+
+  if (item.updatetime) {
+    params.append("t", item.updatetime)
   }
 
   return baseUrl + params.toString()
@@ -416,6 +445,14 @@ onMounted(async () => {
                         <VIcon icon="bx-hash" size="small" class="media-number-icon" />
                         <span class="text-truncate" :title="item.number">{{ item.number }}</span>
                       </div>
+                      <div v-else-if="item.media_type === 'episode' && formatSeasonEpisode(item)" class="media-number">
+                        <VIcon icon="bx-tv" size="small" class="media-number-icon" />
+                        <span class="text-truncate">{{ formatSeasonEpisode(item) }}</span>
+                      </div>
+                      <div v-else-if="item.media_type === 'episode'" class="media-number">
+                        <VIcon icon="bx-tv" size="small" class="media-number-icon" />
+                        <span class="text-truncate">{{ t('pages.mediaitem.typeSpecial') }}</span>
+                      </div>
                       <div v-else class="media-number">
                         <VIcon icon="bx-category" size="small" class="media-number-icon" />
                         <span class="text-truncate">{{ getMediaTypeLabel(item.media_type) }}</span>
@@ -432,9 +469,9 @@ onMounted(async () => {
             <div class="card-title">
               <VTooltip location="top" open-delay="300">
                 <template #activator="{ props }">
-                  <span class="text-truncate" v-bind="props">{{ item.title }}</span>
+                    <span class="text-truncate" v-bind="props">{{ getCardTitle(item) }}</span>
                 </template>
-                <span>{{ item.title }}</span>
+                <span>{{ getCardTitle(item) }}</span>
               </VTooltip>
             </div>
           </VCard>

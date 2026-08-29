@@ -159,6 +159,8 @@ export type MediaItemWithWatches = {
     updatetime: string;
     userdata?: UserWatchData | null;
     crop?: boolean | null;
+    series_imdb_id?: string | null;
+    series_tmdb_id?: string | null;
 };
 
 export type MetadataBase = {

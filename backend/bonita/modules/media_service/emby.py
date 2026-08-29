@@ -159,7 +159,9 @@ class EmbyService(metaclass=Singleton):
 
         result = {
             "movies": [],
-            "episodes": []
+            "series": [],
+            "seasons": [],
+            "episodes": [],
         }
 
         # Get movies
@@ -190,33 +192,36 @@ class EmbyService(metaclass=Singleton):
                     "isPlaceHolder": "false",
                     "IncludeItemTypes": "Series",
                     "Recursive": "True",
-                    "Fields": "ProviderIds,Path,RecursiveItemCount"
+                    "Fields": "ProviderIds,Path,RecursiveItemCount,UserData"
                 }
             )
 
             if isinstance(all_shows, dict) and all_shows.get("Items"):
-                # Filter to shows that have been at least partially
-                matched_shows = []
                 for show in all_shows.get("Items", []):
-                    matched_shows.append(show)
-
-                # For each show, get its episodes
-                for show in matched_shows:
+                    result["series"].append(show)
                     show_id = show.get("Id")
+                    seasons = self._make_request(
+                        'get',
+                        f'/Shows/{show_id}/Seasons',
+                        params={
+                            "userId": user_id,
+                            "Fields": "UserData,ProviderIds,IndexNumber,SeriesName,SeriesId",
+                        }
+                    )
+                    if isinstance(seasons, dict) and seasons.get("Items"):
+                        result["seasons"].extend(seasons.get("Items", []))
                     show_episodes = self._make_request(
                         'get',
                         f'/Shows/{show_id}/Episodes',
                         params={
                             "userId": user_id,
                             "isPlaceHolder": "false",
-                            "Fields": "ProviderIds,Path,DateCreated,UserDataLastPlayedDate"
+                            "Fields": "ProviderIds,Path,DateCreated,UserDataLastPlayedDate,SeriesName,SeriesId,IndexNumber,ParentIndexNumber,RunTimeTicks"
                         }
                     )
 
                     if isinstance(show_episodes, dict) and show_episodes.get("Items"):
-                        # Add episodes to result
-                        for episode in show_episodes.get("Items", []):
-                            result["episodes"].append(episode)
+                        result["episodes"].extend(show_episodes.get("Items", []))
 
         return result
 
@@ -322,38 +327,52 @@ class EmbyService(metaclass=Singleton):
         return self._make_request('post', f'/emby/Users/{user_id}/Items/{item_id}/UserData', data=data)
 
     def get_poster_url(self, title: str, imdb_id: str = None, tmdb_id: int = None, size: str = "w500") -> str:
-        """ 从 Emby 获取海报地址
-        """
+        """从 Emby 获取海报地址。优先按 IMDb/TMDB 匹配电影或剧，再按标题回退。"""
         try:
-            # 如果提供了 IMDb ID 或 TMDB ID，查询 Emby 中的媒体项
-            search_url = "/emby/Items"
             params = {
                 "Recursive": True,
-                "Fields": "ProviderIds",
-                "SearchTerm": title
+                "Fields": "ProviderIds,ImageTags",
+                "SearchTerm": title,
+                "IncludeItemTypes": "Movie,Series",
             }
-            response = self._make_request('get', search_url, params=params)
-            items = response.get("Items", [])
+            response = self._make_request('get', '/emby/Items', params=params)
+            items = response.get("Items", []) if isinstance(response, dict) else []
             if not items:
                 logger.error(f"No items found for title: {title}")
                 return None
+
+            tmdb_str = str(tmdb_id) if tmdb_id else ""
             matched_item = None
-            # 如果提供了 IMDb 或 TMDB ID，优先查找匹配的项
-            if imdb_id or tmdb_id:
+            if imdb_id or tmdb_str:
                 for item in items:
-                    provider_ids = item.get("ProviderIds", {})
-                    # 检查是否匹配 IMDb 或 TMDB ID
+                    provider_ids = item.get("ProviderIds") or {}
                     if (imdb_id and provider_ids.get("Imdb") == imdb_id) or \
-                       (tmdb_id and provider_ids.get("Tmdb") == str(tmdb_id)):
+                       (tmdb_str and str(provider_ids.get("Tmdb") or "") == tmdb_str):
                         matched_item = item
                         break
-            if not matched_item:
-                return None
-            item_id = matched_item["Id"]
-            # 获取海报图片地址
-            image_url = f"{self.emby_host}/Items/{item_id}/Images/Primary?maxWidth={size.split('w')[-1]}"
-            return image_url
 
+            if not matched_item and title:
+                title_lower = title.strip().lower()
+                for item in items:
+                    if (item.get("Name") or "").strip().lower() == title_lower:
+                        matched_item = item
+                        break
+
+            if not matched_item:
+                matched_item = next(
+                    (item for item in items if item.get("Type") == "Series"),
+                    items[0],
+                )
+
+            item_id = matched_item.get("Id")
+            if not item_id:
+                return None
+            width = size.split("w")[-1]
+            poster_url = f"{self.emby_host}/Items/{item_id}/Images/Primary?maxWidth={width}"
+            image_tag = (matched_item.get("ImageTags") or {}).get("Primary")
+            if image_tag:
+                poster_url += f"&tag={image_tag}"
+            return poster_url
         except Exception as e:
             logger.error(f"Error fetching Emby data: {str(e)}")
             return None

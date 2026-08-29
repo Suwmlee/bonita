@@ -98,6 +98,8 @@ class MediaItemWithWatches(MediaItemInDB):
     """
     userdata: Optional[UserWatchData] = None
     crop: Optional[bool] = None
+    series_imdb_id: Optional[str] = None
+    series_tmdb_id: Optional[str] = None
 
     class Config:
         from_attributes = True

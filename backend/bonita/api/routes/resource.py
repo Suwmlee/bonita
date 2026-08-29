@@ -108,7 +108,10 @@ async def get_poster(
                 # 根据cover字段值从Downloads表获取文件路径
                 cache_downloads_cover = session.query(Downloads).filter(Downloads.url == metadata.cover).first()
                 if cache_downloads_cover and os.path.exists(cache_downloads_cover.filepath):
-                    return FileResponse(cache_downloads_cover.filepath)
+                    return FileResponse(
+                        cache_downloads_cover.filepath,
+                        headers={"Cache-Control": "public, max-age=0, must-revalidate"},
+                    )
         except Exception as e:
             logger.error(f"从metadata获取海报失败: {e}")
             # 记录错误但继续尝试其他方法获取海报
@@ -120,7 +123,9 @@ async def get_poster(
         if emby_service.is_initialized:
             poster_url = emby_service.get_poster_url(title, imdb_id, tmdb_id)
             if poster_url:
-                return RedirectResponse(poster_url)
+                response = RedirectResponse(poster_url, status_code=302)
+                response.headers["Cache-Control"] = "no-store"
+                return response
     except Exception as e:
         logger.error(f"从Emby获取海报失败: {e}")
         # 记录错误但继续尝试其他方法获取海报
