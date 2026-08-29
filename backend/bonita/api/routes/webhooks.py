@@ -34,7 +34,7 @@ async def _parse_emby_payload(request: Request) -> Optional[dict[str, Any]]:
 
 @router.post("/emby", response_model=schemas.Response)
 async def emby_webhook(request: Request, session: SessionDep):
-    """接收 Emby Webhooks 插件推送的播放、观看状态和新媒体入库事件。"""
+    """接收 Emby Webhooks 插件推送的播放、观看/收藏状态和新媒体入库事件。"""
     try:
         payload = await _parse_emby_payload(request)
     except Exception as e:

@@ -19,10 +19,10 @@ def sync_emby_history(session, direction="from_emby", force=False):
         session: Database session
         direction (str): 同步方向
             - "from_emby": 从 Emby 同步到 Bonita（默认）
-            - "to_emby": 从 Bonita 回写到 Emby
+            - "to_emby": 从 Bonita 回写到 Emby（电影、剧集、番号）
         force (bool): 是否强制覆盖数据
             - direction="from_emby" 时：是否强制覆盖本地数据（包括喜爱标记）
-            - direction="to_emby" 时：当前未使用
+            - direction="to_emby" 时：是否强制覆盖 Emby 上的已看/收藏状态
 
     Returns:
         None
@@ -558,11 +558,29 @@ def _get_emby_item_details(item_id):
         return None
 
 
+def _get_emby_user_item_details(item_id):
+    if not item_id:
+        return None
+    try:
+        emby_service = EmbyService()
+        if not emby_service.is_initialized:
+            from bonita.core.service import init_emby
+            init_emby()
+        if not emby_service.is_initialized:
+            return None
+        details = emby_service.get_user_item_details(item_id)
+        return details if isinstance(details, dict) else None
+    except Exception as e:
+        logger.warning(f"  ⊘ 获取 Emby 用户条目失败: {e}")
+        return None
+
+
 _WEBHOOK_WATCH_EVENTS = {
     "playback.stop",
     "playback.scrobble",
     "item.markplayed",
     "item.markunplayed",
+    "item.rate",
 }
 _WEBHOOK_LIBRARY_EVENTS = {
     "library.new",
@@ -618,7 +636,20 @@ def handle_emby_webhook_event(session, payload: dict) -> str:
         playback_info = payload.get("PlaybackInfo") or {}
         played_to_completion = bool(playback_info.get("PlayedToCompletion"))
 
-        if event == "item.markunplayed":
+        if event == "item.rate":
+            details = _get_emby_user_item_details(item.get("Id"))
+            user_data_from_emby = details.get("UserData") if isinstance(details, dict) else None
+            if not isinstance(user_data_from_emby, dict):
+                logger.warning(f"  ⊘ item.rate 无法获取收藏状态: {item.get('Name')}")
+                continue
+            item = {**item, **details}
+            item["UserData"] = user_data_from_emby
+            convert_emby_watched_items(session, item, force=True)
+            logger.info(
+                f"  ✓ Webhook 同步收藏: {item.get('Name')} "
+                f"favorite={bool(user_data_from_emby.get('IsFavorite'))}"
+            )
+        elif event == "item.markunplayed":
             user_data["Played"] = False
             convert_emby_watched_items(session, item, force=True)
             logger.info(f"  ✓ Webhook 标记未观看: {item.get('Name')}")

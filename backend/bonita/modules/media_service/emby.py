@@ -266,6 +266,29 @@ class EmbyService(metaclass=Singleton):
             logger.error(f"Error fetching Emby item details: {str(e)}")
             return None
 
+    def get_user_item_details(self, item_id, user_id=None) -> Dict[str, Any]:
+        """按当前用户取条目，带 UserData（已看/收藏）。"""
+        if not item_id:
+            return None
+        if not user_id:
+            user_id = self.emby_user_id
+        if not user_id:
+            return None
+        try:
+            return self._make_request(
+                "get",
+                f"/Users/{user_id}/Items/{item_id}",
+                params={
+                    "Fields": (
+                        "ProviderIds,Path,UserData,SeriesName,SeriesId,"
+                        "IndexNumber,ParentIndexNumber,RunTimeTicks"
+                    ),
+                },
+            )
+        except Exception as e:
+            logger.error(f"Error fetching Emby user item details: {str(e)}")
+            return None
+
     def search_items(self, search_term, limit=50) -> Dict[str, Any]:
         """Search for items in Emby
         Args:
