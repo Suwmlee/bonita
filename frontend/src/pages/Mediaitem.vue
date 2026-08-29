@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MediaItemWithWatches } from "@/client"
-import { OpenAPI, ResourceService } from "@/client"
 import MediaItemDetailDialog from "@/components/mediaitem/MediaItemDetailDialog.vue"
+import { useMediaPoster } from "@/composables/useMediaPoster"
 import { useMediaItemStore } from "@/stores/mediaitem.store"
 import { computed, nextTick, onMounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
@@ -263,69 +263,7 @@ const getCardTitle = (item: MediaItemWithWatches) => {
   return parts.join(" ")
 }
 
-const IMDB_POSTER_CDN = "https://images.metahub.space/poster/medium"
-const posterSrcOverrides = ref<Record<number, string>>({})
-const posterBroken = ref<Record<number, boolean>>({})
-
-function getItemImdbId(item: MediaItemWithWatches): string | null {
-  const raw = item.media_type === "episode" ? item.series_imdb_id : item.imdb_id
-  const id = raw?.trim()
-  if (!id) return null
-  return id.startsWith("tt") ? id : `tt${id}`
-}
-
-function getImdbPosterUrl(imdbId: string): string {
-  return `${IMDB_POSTER_CDN}/${encodeURIComponent(imdbId)}/img`
-}
-
-const getPosterUrl = (item: MediaItemWithWatches): string => {
-  const baseUrl = `${OpenAPI.BASE}/api/v1/resource/poster?`
-  const params = new URLSearchParams()
-  const isEpisode = item.media_type === "episode"
-
-  params.append(
-    "title",
-    isEpisode ? item.original_title || item.title : item.title,
-  )
-
-  const imdbId = isEpisode ? item.series_imdb_id : item.imdb_id
-  if (imdbId) {
-    params.append("imdb_id", imdbId)
-  }
-
-  const tmdbId = isEpisode ? item.series_tmdb_id : item.tmdb_id
-  if (tmdbId) {
-    params.append("tmdb_id", tmdbId.toString())
-  }
-
-  if (item.number) {
-    params.append("number", item.number)
-  }
-
-  if (item.updatetime) {
-    params.append("t", item.updatetime)
-  }
-
-  return baseUrl + params.toString()
-}
-
-function getDisplayPosterUrl(item: MediaItemWithWatches): string {
-  return posterSrcOverrides.value[item.id] || getPosterUrl(item)
-}
-
-function handlePosterError(item: MediaItemWithWatches, event: Event) {
-  const failedSrc = (event.target as HTMLImageElement | null)?.src || ""
-  const imdbId = getItemImdbId(item)
-  const fallback = imdbId ? getImdbPosterUrl(imdbId) : null
-
-  // 本地/Emby 海报失败时，用 IMDb 海报；忽略另一张图上尚未切换的旧地址
-  if (fallback && failedSrc !== fallback) {
-    posterSrcOverrides.value[item.id] = fallback
-    return
-  }
-
-  posterBroken.value[item.id] = true
-}
+const { posterBroken, getDisplayPosterUrl, handlePosterError } = useMediaPoster()
 
 // Watch for changes in filters
 watch(

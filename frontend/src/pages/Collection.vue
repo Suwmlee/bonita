@@ -3,6 +3,7 @@ import type { MediaItemWithWatches } from "@/client"
 import { OpenAPI } from "@/client"
 import type { CollectionPublic, EmbyCollectionCandidate } from "@/client/collection"
 import MediaItemDetailDialog from "@/components/mediaitem/MediaItemDetailDialog.vue"
+import { useMediaPoster } from "@/composables/useMediaPoster"
 import { useCollectionStore } from "@/stores/collection.store"
 import { useMediaItemStore } from "@/stores/mediaitem.store"
 import { computed, onMounted, ref } from "vue"
@@ -11,6 +12,7 @@ import { useI18n } from "vue-i18n"
 const { t } = useI18n()
 const collectionStore = useCollectionStore()
 const mediaItemStore = useMediaItemStore()
+const { posterBroken, getDisplayPosterUrl, handlePosterError } = useMediaPoster()
 
 const showAddDialog = ref(false)
 const showAddMemberDialog = ref(false)
@@ -99,19 +101,6 @@ function getCardTitle(item: MediaItemWithWatches) {
     .filter((part) => part && String(part).trim())
     .join(" ")
 }
-
-function getPosterUrl(item: MediaItemWithWatches) {
-  const params = new URLSearchParams()
-  const isEpisode = item.media_type === "episode"
-  params.append("title", isEpisode ? item.original_title || item.title : item.title)
-  const imdbId = isEpisode ? item.series_imdb_id : item.imdb_id
-  if (imdbId) params.append("imdb_id", imdbId)
-  const tmdbId = isEpisode ? item.series_tmdb_id : item.tmdb_id
-  if (tmdbId) params.append("tmdb_id", tmdbId.toString())
-  if (item.number) params.append("number", item.number)
-  if (item.updatetime) params.append("t", item.updatetime)
-  return `${OpenAPI.BASE}/api/v1/resource/poster?${params.toString()}`
-}
 </script>
 
 <template>
@@ -153,20 +142,25 @@ function getPosterUrl(item: MediaItemWithWatches) {
             <VCard class="media-card d-flex flex-column" @click="mediaItemStore.showUpdateMediaItem(item)">
               <div class="poster-wrapper" :class="{ 'show-full': !item.crop }">
                 <img
-                  v-if="!item.crop"
+                  v-if="!item.crop && !posterBroken[item.id]"
                   class="poster-fill"
-                  :src="getPosterUrl(item)"
+                  :src="getDisplayPosterUrl(item)"
                   alt=""
                   aria-hidden="true"
                   loading="lazy"
                   decoding="async"
+                  referrerpolicy="no-referrer"
+                  @error="handlePosterError(item, $event)"
                 />
                 <img
+                  v-show="!posterBroken[item.id]"
                   class="poster-image"
-                  :src="getPosterUrl(item)"
+                  :src="getDisplayPosterUrl(item)"
                   :alt="item.title"
                   loading="lazy"
                   decoding="async"
+                  referrerpolicy="no-referrer"
+                  @error="handlePosterError(item, $event)"
                 />
                 <div class="content-overlay">
                   <div class="watched-badge">
@@ -274,7 +268,7 @@ function getPosterUrl(item: MediaItemWithWatches) {
       </VRow>
     </template>
 
-    <VDialog v-model="showAddDialog" max-width="640" scrollable>
+    <VDialog v-model="showAddDialog" max-width="760" scrollable>
       <VCard>
         <VCardTitle>{{ t('pages.collection.add') }}</VCardTitle>
         <VCardText>
@@ -291,16 +285,17 @@ function getPosterUrl(item: MediaItemWithWatches) {
           <VBtn class="mt-3" variant="tonal" :loading="collectionStore.isSearching" @click="searchEmby">
             {{ t('common.search') }}
           </VBtn>
-          <VList class="mt-2">
+          <VList class="mt-2 picker-list">
             <VListItem
               v-for="candidate in collectionStore.embyCandidates"
               :key="candidate.emby_id"
+              class="picker-item"
               @click="addCandidate(candidate)"
             >
               <template #prepend>
-                <VAvatar size="40" rounded="0">
-                  <VImg :src="getCollectionPosterUrl(candidate)" />
-                </VAvatar>
+                <div class="picker-poster">
+                  <img :src="getCollectionPosterUrl(candidate)" :alt="candidate.name" loading="lazy" />
+                </div>
               </template>
               <VListItemTitle>{{ candidate.name }}</VListItemTitle>
               <VListItemSubtitle>
@@ -320,7 +315,7 @@ function getPosterUrl(item: MediaItemWithWatches) {
       </VCard>
     </VDialog>
 
-    <VDialog v-model="showAddMemberDialog" max-width="640" scrollable>
+    <VDialog v-model="showAddMemberDialog" max-width="760" scrollable>
       <VCard>
         <VCardTitle>{{ t('pages.collection.addMember') }}</VCardTitle>
         <VCardText>
@@ -337,16 +332,37 @@ function getPosterUrl(item: MediaItemWithWatches) {
           <VBtn class="mt-3" variant="tonal" :loading="collectionStore.isSearchingMembers" @click="searchMembers">
             {{ t('common.search') }}
           </VBtn>
-          <VList class="mt-2">
+          <VList class="mt-2 picker-list">
             <VListItem
               v-for="item in collectionStore.memberCandidates"
               :key="item.id"
+              class="picker-item"
               @click="addMemberCandidate(item)"
             >
               <template #prepend>
-                <VAvatar size="40" rounded="0">
-                  <VImg :src="getPosterUrl(item)" />
-                </VAvatar>
+                <div class="picker-poster" :class="{ 'show-full': !item.crop }">
+                  <img
+                    v-if="!item.crop && !posterBroken[item.id]"
+                    class="poster-fill"
+                    :src="getDisplayPosterUrl(item)"
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                    decoding="async"
+                    referrerpolicy="no-referrer"
+                    @error="handlePosterError(item, $event)"
+                  />
+                  <img
+                    v-show="!posterBroken[item.id]"
+                    class="poster-image"
+                    :src="getDisplayPosterUrl(item)"
+                    :alt="item.title"
+                    loading="lazy"
+                    decoding="async"
+                    referrerpolicy="no-referrer"
+                    @error="handlePosterError(item, $event)"
+                  />
+                </div>
               </template>
               <VListItemTitle>{{ getCardTitle(item) }}</VListItemTitle>
               <VListItemSubtitle>
@@ -411,32 +427,32 @@ function getPosterUrl(item: MediaItemWithWatches) {
 
 .collection-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   width: 100%;
 }
 
 @media (min-width: 600px) {
   .collection-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 900px) {
   .collection-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 1200px) {
   .collection-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 1600px) {
   .collection-grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(8, minmax(0, 1fr));
   }
 }
 
@@ -489,7 +505,7 @@ function getPosterUrl(item: MediaItemWithWatches) {
 }
 
 .poster-wrapper.collection-poster {
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 2 / 3;
 }
 
 .poster-image.collection-cover {
@@ -586,5 +602,49 @@ function getPosterUrl(item: MediaItemWithWatches) {
 
 .media-card:hover .remove-member-btn {
   opacity: 1;
+}
+
+.picker-list {
+  background: transparent;
+}
+
+.picker-item {
+  min-height: 0 !important;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  align-items: center;
+}
+
+.picker-item :deep(.v-list-item__prepend) {
+  align-self: center;
+  width: auto;
+  max-width: none;
+  margin-inline-end: 16px;
+}
+
+.picker-poster {
+  position: relative;
+  flex-shrink: 0;
+  width: 84px;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border-radius: 6px;
+  background-color: #1a1a1a;
+}
+
+.picker-poster img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.picker-poster > img:not(.poster-fill):not(.poster-image) {
+  object-fit: cover;
+  object-position: center;
+}
+
+.picker-poster.show-full .poster-image {
+  object-fit: contain;
+  object-position: center;
 }
 </style>
