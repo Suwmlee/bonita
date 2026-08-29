@@ -513,6 +513,7 @@ export default {
         title: "Confirmation",
         cancelText: "Cancel",
         confirmText: "Confirm",
+        deleteText: "Delete",
       },
     },
     record: {

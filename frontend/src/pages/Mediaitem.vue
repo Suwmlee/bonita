@@ -3,19 +3,69 @@ import type { MediaItemWithWatches } from "@/client"
 import { OpenAPI, ResourceService } from "@/client"
 import MediaItemDetailDialog from "@/components/mediaitem/MediaItemDetailDialog.vue"
 import { useMediaItemStore } from "@/stores/mediaitem.store"
-import { computed, onMounted, ref, watch } from "vue"
+import { computed, nextTick, onMounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
+
+const VIEW_STATE_KEY = "mediaitem-view-state"
+const MEDIA_TYPE_VALUES = ["movie", "tvshow", "number"] as const
+
+type MediaTypeFilter = (typeof MEDIA_TYPE_VALUES)[number] | null
+type BooleanFilter = boolean | null
+
+type ViewState = {
+  mediaType: MediaTypeFilter
+  watched: BooleanFilter
+  favorite: BooleanFilter
+  sortField: string
+  sortDirection: "asc" | "desc"
+}
+
+function isBooleanFilter(value: unknown): value is BooleanFilter {
+  return value === null || value === true || value === false
+}
+
+function isMediaTypeFilter(value: unknown): value is MediaTypeFilter {
+  return value === null || MEDIA_TYPE_VALUES.includes(value as (typeof MEDIA_TYPE_VALUES)[number])
+}
+
+function loadViewState(): Partial<ViewState> {
+  try {
+    const raw = localStorage.getItem(VIEW_STATE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Partial<ViewState>
+    const state: Partial<ViewState> = {}
+    if (isMediaTypeFilter(parsed.mediaType)) state.mediaType = parsed.mediaType
+    if (isBooleanFilter(parsed.watched)) state.watched = parsed.watched
+    if (isBooleanFilter(parsed.favorite)) state.favorite = parsed.favorite
+    if (
+      parsed.sortField === "updatetime" ||
+      parsed.sortField === "createtime" ||
+      parsed.sortField === "title"
+    ) {
+      state.sortField = parsed.sortField
+    }
+    if (parsed.sortDirection === "asc" || parsed.sortDirection === "desc") {
+      state.sortDirection = parsed.sortDirection
+    }
+    return state
+  } catch {
+    return {}
+  }
+}
 
 const mediaItemStore = useMediaItemStore()
 const searchQuery = ref("")
 const isSearching = ref(false)
+const viewReady = ref(false)
 const { t } = useI18n()
+
+const savedViewState = loadViewState()
 
 // Sort dropdown state
 const sortDropdownOpen = ref(false)
 
 // Media type filter with hasNumber options
-const selectedMediaType = ref<string | null>("number")
+const selectedMediaType = ref<string | null>(savedViewState.mediaType ?? "number")
 const mediaTypeOptions = [
   { value: null, title: t("pages.mediaitem.mediaType") },
   { value: "movie", title: t("pages.mediaitem.movie") },
@@ -24,7 +74,7 @@ const mediaTypeOptions = [
 ]
 
 // Watched filter
-const watchedFilter = ref<boolean | null>(null)
+const watchedFilter = ref<boolean | null>(savedViewState.watched ?? null)
 const watchedOptions = [
   { value: null, title: t("pages.mediaitem.watchedStatus") },
   { value: true, title: t("pages.mediaitem.watched") },
@@ -32,7 +82,7 @@ const watchedOptions = [
 ]
 
 // Favorite filter
-const favoriteFilter = ref<boolean | null>(null)
+const favoriteFilter = ref<boolean | null>(savedViewState.favorite ?? null)
 const favoriteOptions = [
   { value: null, title: t("pages.mediaitem.favoriteStatus") },
   { value: true, title: t("pages.mediaitem.favorite") },
@@ -40,8 +90,8 @@ const favoriteOptions = [
 ]
 
 // Sort options
-const sortField = ref<string>("updatetime")
-const sortDirection = ref<"asc" | "desc">("desc")
+const sortField = ref<string>(savedViewState.sortField ?? "updatetime")
+const sortDirection = ref<"asc" | "desc">(savedViewState.sortDirection ?? "desc")
 
 const sortOptions = [
   {
@@ -76,7 +126,7 @@ function handleSortChange(value: string) {
   sortDropdownOpen.value = false
 
   // Trigger search with new sort params
-  searchMediaItems()
+  fetchMediaItems(1)
 }
 
 // Get sort icon based on field and current direction
@@ -96,17 +146,7 @@ const totalItems = computed(() => mediaItemStore.totalCount)
 const itemsPerPage = computed({
   get: () => mediaItemStore.itemsPerPage,
   set: async (value) => {
-    await mediaItemStore.getMediaItems(
-      searchQuery.value,
-      1,
-      value,
-      getMediaTypeValue(),
-      sortField.value || undefined,
-      sortDirection.value === "desc",
-      getHasNumberValue(),
-      watchedFilter.value === null ? undefined : watchedFilter.value,
-      favoriteFilter.value === null ? undefined : favoriteFilter.value,
-    )
+    await fetchMediaItems(1, value)
   },
 })
 const totalPages = computed(() =>
@@ -142,14 +182,25 @@ function showAddDialog() {
   mediaItemStore.showAddMediaItem()
 }
 
+function persistViewState() {
+  const state: ViewState = {
+    mediaType: selectedMediaType.value as MediaTypeFilter,
+    watched: watchedFilter.value,
+    favorite: favoriteFilter.value,
+    sortField: sortField.value,
+    sortDirection: sortDirection.value,
+  }
+  localStorage.setItem(VIEW_STATE_KEY, JSON.stringify(state))
+}
+
 // Function to search media items with filters
-async function searchMediaItems() {
+async function fetchMediaItems(page: number, perPage?: number) {
   isSearching.value = true
   try {
     await mediaItemStore.getMediaItems(
       searchQuery.value,
-      1,
-      undefined,
+      page,
+      perPage,
       getMediaTypeValue(),
       sortField.value || undefined,
       sortDirection.value === "desc",
@@ -157,6 +208,7 @@ async function searchMediaItems() {
       watchedFilter.value === null ? undefined : watchedFilter.value,
       favoriteFilter.value === null ? undefined : favoriteFilter.value,
     )
+    persistViewState()
   } finally {
     isSearching.value = false
   }
@@ -164,17 +216,7 @@ async function searchMediaItems() {
 
 // Change page function
 async function changePage(page: number) {
-  await mediaItemStore.getMediaItems(
-    searchQuery.value,
-    page,
-    undefined,
-    getMediaTypeValue(),
-    sortField.value || undefined,
-    sortDirection.value === "desc",
-    getHasNumberValue(),
-    watchedFilter.value === null ? undefined : watchedFilter.value,
-    favoriteFilter.value === null ? undefined : favoriteFilter.value,
-  )
+  await fetchMediaItems(page)
 }
 
 // Function to clean media items (remove duplicates)
@@ -228,12 +270,15 @@ const getPosterUrl = (item: MediaItemWithWatches): string => {
 watch(
   [searchQuery, selectedMediaType, watchedFilter, favoriteFilter],
   async () => {
-    await searchMediaItems()
+    if (!viewReady.value) return
+    await fetchMediaItems(1)
   },
 )
 
-onMounted(() => {
-  searchMediaItems()
+onMounted(async () => {
+  await fetchMediaItems(1)
+  await nextTick()
+  viewReady.value = true
 })
 </script>
 

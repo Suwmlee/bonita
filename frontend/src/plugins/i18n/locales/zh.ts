@@ -491,6 +491,7 @@ export default {
         title: "确认",
         cancelText: "取消",
         confirmText: "确认",
+        deleteText: "删除",
       },
     },
     record: {
