@@ -510,7 +510,7 @@ def celery_emby_scan(self, task_json):
         emby_service.trigger_library_scan()
         logger.info("## [Emby扫描] END")
     except Exception as e:
-        logger.error("## [Emby扫描] ✗ 失败: {str(e)}")
+        logger.error(f"## [Emby扫描] ✗ 失败: {str(e)}")
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},

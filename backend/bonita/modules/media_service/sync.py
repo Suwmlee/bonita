@@ -301,3 +301,129 @@ def sync_item_to_emby(session, emby_service, item, force=False):
             updated = True
     
     return updated
+
+
+_WEBHOOK_WATCH_EVENTS = {
+    "playback.stop",
+    "playback.scrobble",
+    "item.markplayed",
+    "item.markunplayed",
+}
+_WEBHOOK_LIBRARY_EVENTS = {
+    "library.new",
+    "item.added",
+}
+_SYNCABLE_ITEM_TYPES = {"Movie", "Video"}
+
+
+def handle_emby_webhook_event(session, payload: dict) -> str:
+    """处理 Emby Webhook：观看状态变更，以及新媒体入库。"""
+    if not isinstance(payload, dict):
+        return "ignored"
+
+    event = str(payload.get("Event") or payload.get("event") or "").strip().lower()
+    if event == "system.webhooktest":
+        logger.info("  ✓ 收到 Emby Webhook 测试事件")
+        return "test"
+    if event not in _WEBHOOK_WATCH_EVENTS and event not in _WEBHOOK_LIBRARY_EVENTS:
+        return "ignored"
+
+    setting_user = _get_configured_emby_user(session)
+    webhook_user = (payload.get("User") or {}).get("Name") or ""
+    if (
+        event in _WEBHOOK_WATCH_EVENTS
+        and setting_user
+        and webhook_user
+        and webhook_user.lower() != setting_user.lower()
+    ):
+        logger.info(f"  ⊘ 忽略其他用户的 Webhook: {webhook_user}")
+        return "skipped"
+
+    items = _extract_webhook_items(payload)
+    if not items:
+        logger.warning("  ⊘ Webhook 缺少 Item")
+        return "ignored"
+
+    synced = 0
+    for item in items:
+        if not _is_syncable_webhook_item(item):
+            continue
+        item = _enrich_webhook_item(item)
+        if event in _WEBHOOK_LIBRARY_EVENTS:
+            convert_emby_watched_items(session, item, force=False)
+            logger.info(f"  ✓ Webhook 新媒体入库: {item.get('Name')}")
+            synced += 1
+            continue
+
+        user_data = item.setdefault("UserData", {})
+        if not isinstance(user_data, dict):
+            user_data = {}
+            item["UserData"] = user_data
+
+        playback_info = payload.get("PlaybackInfo") or {}
+        played_to_completion = bool(playback_info.get("PlayedToCompletion"))
+
+        if event == "item.markunplayed":
+            user_data["Played"] = False
+            convert_emby_watched_items(session, item, force=True)
+            logger.info(f"  ✓ Webhook 标记未观看: {item.get('Name')}")
+        else:
+            if event == "item.markplayed" or played_to_completion:
+                user_data["Played"] = True
+            convert_emby_watched_items(session, item, force=False)
+            logger.info(f"  ✓ Webhook 同步观看状态: {event} {item.get('Name')}")
+        synced += 1
+
+    return "synced" if synced else "ignored"
+
+
+def _extract_webhook_items(payload: dict) -> list:
+    items = []
+    raw_item = payload.get("Item") or payload.get("item")
+    if isinstance(raw_item, dict):
+        items.append(raw_item)
+    raw_items = payload.get("Items") or payload.get("items")
+    if isinstance(raw_items, list):
+        items.extend(item for item in raw_items if isinstance(item, dict))
+    return [item for item in items if item.get("Id")]
+
+
+def _is_syncable_webhook_item(item: dict) -> bool:
+    if item.get("IsFolder"):
+        return False
+    item_type = item.get("Type") or ""
+    return item_type in _SYNCABLE_ITEM_TYPES or not item_type
+
+
+def _get_configured_emby_user(session) -> str:
+    from bonita.services.setting_service import SettingService
+
+    settings = SettingService(session).get_emby_settings()
+    return settings.get("emby_user") or ""
+
+
+def _enrich_webhook_item(item: dict) -> dict:
+    """Webhook 载荷经常缺 Path / ProviderIds，必要时向 Emby 补全。"""
+    if item.get("Path") and item.get("ProviderIds"):
+        return item
+    try:
+        emby_service = EmbyService()
+        if not emby_service.is_initialized:
+            from bonita.core.service import init_emby
+            init_emby()
+        if not emby_service.is_initialized:
+            return item
+        details = emby_service.get_item_details(item.get("Id"))
+        if not isinstance(details, dict):
+            return item
+        merged = {**details, **item}
+        if not merged.get("Path"):
+            merged["Path"] = details.get("Path")
+        if not merged.get("ProviderIds"):
+            merged["ProviderIds"] = details.get("ProviderIds") or {}
+        if not merged.get("UserData"):
+            merged["UserData"] = details.get("UserData") or item.get("UserData") or {}
+        return merged
+    except Exception as e:
+        logger.warning(f"  ⊘ 补全 Webhook Item 失败: {e}")
+        return item

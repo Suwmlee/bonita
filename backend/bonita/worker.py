@@ -110,10 +110,9 @@ def create_celery():
 
     # Set up scheduled tasks
     celery.conf.beat_schedule = {
-        # Sync watch history from all sources daily
-        "sync-watch-history-daily": {
+        "sync-watch-history": {
             "task": "watch_history:sync",
-            "schedule": 86400.0,  # 24 hours in seconds
+            "schedule": float(settings.WATCH_HISTORY_SYNC_INTERVAL),
             "args": (None, 30, 100),  # sources=None, days=30, limit=100
         },
     }

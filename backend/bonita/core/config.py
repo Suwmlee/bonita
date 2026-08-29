@@ -84,6 +84,8 @@ class Settings(BaseSettings):
     MONITOR_USE_POLLING: bool = False
     # 轮询间隔（秒）
     MONITOR_POLLING_INTERVAL: int = 30
+    # 观看历史定时同步间隔（秒），默认 15 分钟
+    WATCH_HISTORY_SYNC_INTERVAL: int = 900
 
     @classmethod
     def settings_customise_sources(

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useSettingStore } from "@/stores/setting.store"
 import { storeToRefs } from "pinia"
-import { onMounted, ref } from "vue"
+import { computed, onMounted, ref } from "vue"
 import { useI18n } from "vue-i18n"
 
 // 使用 setting store
@@ -36,6 +36,11 @@ const transmissionSaveResult = ref<{
   success: boolean
   message: string
 } | null>(null)
+
+const embyWebhookUrl = computed(() => {
+  const base = (import.meta.env.VITE_API_URL || window.location.origin).replace(/\/$/, "")
+  return `${base}/api/v1/webhooks/emby`
+})
 
 const fetchProxySettings = async () => {
   await settingStore.fetchProxySettings()
@@ -311,6 +316,20 @@ onMounted(() => {
 
               <VCol cols="12">
                 <VSwitch v-model="embyApiSettings.enabled" :label="t('pages.serviceSettings.emby.enable')" color="primary" inset />
+              </VCol>
+
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label>{{ t('pages.serviceSettings.emby.webhookUrl') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField :model-value="embyWebhookUrl" readonly hide-details />
+                    <div class="text-caption text-medium-emphasis mt-1">
+                      {{ t('pages.serviceSettings.emby.webhookHint') }}
+                    </div>
+                  </VCol>
+                </VRow>
               </VCol>
 
               <VCol cols="12">
