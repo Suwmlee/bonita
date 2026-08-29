@@ -263,7 +263,21 @@ const getCardTitle = (item: MediaItemWithWatches) => {
   return parts.join(" ")
 }
 
-// 处理海报URL的函数
+const IMDB_POSTER_CDN = "https://images.metahub.space/poster/medium"
+const posterSrcOverrides = ref<Record<number, string>>({})
+const posterBroken = ref<Record<number, boolean>>({})
+
+function getItemImdbId(item: MediaItemWithWatches): string | null {
+  const raw = item.media_type === "episode" ? item.series_imdb_id : item.imdb_id
+  const id = raw?.trim()
+  if (!id) return null
+  return id.startsWith("tt") ? id : `tt${id}`
+}
+
+function getImdbPosterUrl(imdbId: string): string {
+  return `${IMDB_POSTER_CDN}/${encodeURIComponent(imdbId)}/img`
+}
+
 const getPosterUrl = (item: MediaItemWithWatches): string => {
   const baseUrl = `${OpenAPI.BASE}/api/v1/resource/poster?`
   const params = new URLSearchParams()
@@ -293,6 +307,24 @@ const getPosterUrl = (item: MediaItemWithWatches): string => {
   }
 
   return baseUrl + params.toString()
+}
+
+function getDisplayPosterUrl(item: MediaItemWithWatches): string {
+  return posterSrcOverrides.value[item.id] || getPosterUrl(item)
+}
+
+function handlePosterError(item: MediaItemWithWatches, event: Event) {
+  const failedSrc = (event.target as HTMLImageElement | null)?.src || ""
+  const imdbId = getItemImdbId(item)
+  const fallback = imdbId ? getImdbPosterUrl(imdbId) : null
+
+  // 本地/Emby 海报失败时，用 IMDb 海报；忽略另一张图上尚未切换的旧地址
+  if (fallback && failedSrc !== fallback) {
+    posterSrcOverrides.value[item.id] = fallback
+    return
+  }
+
+  posterBroken.value[item.id] = true
 }
 
 // Watch for changes in filters
@@ -415,20 +447,25 @@ onMounted(async () => {
           <VCard class="media-card d-flex flex-column" @click="showEditDialog(item)">
             <div class="poster-wrapper" :class="{ 'show-full': !item.crop }">
               <img
-                v-if="!item.crop"
+                v-if="!item.crop && !posterBroken[item.id]"
                 class="poster-fill"
-                :src="getPosterUrl(item)"
+                :src="getDisplayPosterUrl(item)"
                 alt=""
                 aria-hidden="true"
                 loading="lazy"
                 decoding="async"
+                referrerpolicy="no-referrer"
+                @error="handlePosterError(item, $event)"
               />
               <img
+                v-show="!posterBroken[item.id]"
                 class="poster-image"
-                :src="getPosterUrl(item)"
+                :src="getDisplayPosterUrl(item)"
                 :alt="item.title"
                 loading="lazy"
                 decoding="async"
+                referrerpolicy="no-referrer"
+                @error="handlePosterError(item, $event)"
               />
               <div class="content-overlay">
                 <div class="watched-badge">
