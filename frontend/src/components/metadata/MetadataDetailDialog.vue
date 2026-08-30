@@ -104,9 +104,18 @@ async function handleImport() {
 <template>
   <VDialog v-model="dialog.showDialog" max-width="700" scrollable>
     <VCard style="max-height: 90vh; display: flex; flex-direction: column;">
-      <VCardTitle class="px-6 pt-5">
+      <VCardTitle class="px-6 pt-5 d-flex align-center justify-space-between">
         <span v-if="dialog.editMetadata">{{ t('pages.metadata.editMetadata') }}</span>
         <span v-else>{{ t('pages.metadata.addMetadata') }}</span>
+        <VBtn
+          v-if="dialog.editMetadata"
+          variant="text"
+          size="small"
+          prepend-icon="bx-refresh"
+          @click="dialog.showRefreshMetadata(dialog.editMetadata)"
+        >
+          {{ t('pages.metadata.refresh') }}
+        </VBtn>
       </VCardTitle>
 
       <!-- 编辑模式 -->

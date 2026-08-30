@@ -33,11 +33,10 @@ class MetadataBase(BaseModel):
     updatetime: Optional[datetime] = None
 
     @model_validator(mode='before')
+    @classmethod
     def process_fields(cls, values):
-        if 'source' in values:
-            values['site'] = values['source']
-        if 'website' in values:
-            values['detailurl'] = values['website']
+        if not isinstance(values, dict):
+            return values
 
         # 处理空字符串和可能导致异常的字段
         for field in ['release', 'year', 'userrating', 'uservotes']:
@@ -85,3 +84,9 @@ class MetadataPublic(MetadataBase):
 class MetadataCollection(BaseModel):
     data: List[MetadataPublic]
     count: int
+
+
+class MetadataRefreshParam(BaseModel):
+    """按站点/详情链接重新刮削"""
+    site: Optional[str] = None
+    detailurl: Optional[str] = None

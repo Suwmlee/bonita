@@ -2,7 +2,7 @@
 
 import { buildClientParams, type Client, formDataBodySerializer, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { AddCollectionErrors, AddCollectionResponses, AddItemsToCollectionErrors, AddItemsToCollectionResponses, BodyLoginLoginAccessToken, BodyResourceUploadImage, CleanMediaItemResponses, CleanupDataErrors, CleanupDataResponses, CleanupRunningTasksResponses, CollectionAddItems, CollectionCreate, CreateConfigErrors, CreateConfigResponses, CreateMediaItemErrors, CreateMediaItemResponses, CreateMetadataErrors, CreateMetadataResponses, CreateTaskConfigErrors, CreateTaskConfigResponses, CreateUserErrors, CreateUserResponses, DeleteConfigErrors, DeleteConfigResponses, DeleteMediaItemErrors, DeleteMediaItemResponses, DeleteMetadataErrors, DeleteMetadataResponses, DeleteRecordsErrors, DeleteRecordsResponses, DeleteTaskConfigErrors, DeleteTaskConfigResponses, DeleteUserErrors, DeleteUserMeResponses, DeleteUserResponses, EmbySettings, EmbySyncParam, EmbyWebhookResponses, GetAllConfigsErrors, GetAllConfigsResponses, GetAllTaskConfigsErrors, GetAllTaskConfigsResponses, GetAllTasksStatusErrors, GetAllTasksStatusResponses, GetCollectionErrors, GetCollectionResponses, GetEmbySettingsResponses, GetImageByQueryErrors, GetImageByQueryResponses, GetJellyfinSettingsResponses, GetMediaItemErrors, GetMediaItemResponses, GetMediaItemsErrors, GetMediaItemsResponses, GetMetadataErrors, GetMetadataResponses, GetPosterErrors, GetPosterResponses, GetProxySettingsResponses, GetRecordsErrors, GetRecordsResponses, GetTransmissionSettingsResponses, GetTransRecordsErrors, GetTransRecordsResponses, HealthCheckResponses, JellyfinSettings, ListCollectionsResponses, ListDirectoryErrors, ListDirectoryResponses, LoginAccessTokenErrors, LoginAccessTokenResponses, MediaItemCreate, MediaItemUpdate, MetadataBase, MetadataCreate, ProxySettings, ReadUserByIdErrors, ReadUserByIdResponses, ReadUserMeResponses, ReadUsersErrors, ReadUsersResponses, RecordPublic, RegisterUserErrors, RegisterUserResponses, RemoveCollectionErrors, RemoveCollectionResponses, RemoveItemFromCollectionErrors, RemoveItemFromCollectionResponses, RunEmbyScanErrors, RunEmbyScanResponses, RunImportNfoErrors, RunImportNfoResponses, RunTransferTaskErrors, RunTransferTaskResponses, ScrapingConfigCreate, ScrapingConfigPublic, SearchCollectionCandidatesErrors, SearchCollectionCandidatesResponses, SearchEmbyCollectionsErrors, SearchEmbyCollectionsResponses, SyncAllCollectionsErrors, SyncAllCollectionsResponses, SyncEmbyWatchHistoryErrors, SyncEmbyWatchHistoryResponses, SyncOneCollectionErrors, SyncOneCollectionResponses, SyncRecordPathErrors, SyncRecordPathResponses, TaskPathParam, TestEmbyConnectionErrors, TestEmbyConnectionResponses, TestJellyfinConnectionErrors, TestJellyfinConnectionResponses, TestTransmissionConnectionErrors, TestTransmissionConnectionResponses, ToolArgsParam, TransferConfigCreate, TransferConfigPublic, TransmissionSettings, TransRecordsPathSyncParam, UpdateConfigErrors, UpdateConfigResponses, UpdateEmbySettingsErrors, UpdateEmbySettingsResponses, UpdateJellyfinSettingsErrors, UpdateJellyfinSettingsResponses, UpdateMediaItemErrors, UpdateMediaItemResponses, UpdateMetadataErrors, UpdateMetadataResponses, UpdatePassword, UpdatePasswordMeErrors, UpdatePasswordMeResponses, UpdateProxySettingsErrors, UpdateProxySettingsResponses, UpdateRecordErrors, UpdateRecordResponses, UpdateSeasonErrors, UpdateSeasonResponses, UpdateTaskConfigErrors, UpdateTaskConfigResponses, UpdateTopFolderErrors, UpdateTopFolderResponses, UpdateTransmissionSettingsErrors, UpdateTransmissionSettingsResponses, UpdateUserErrors, UpdateUserMeErrors, UpdateUserMeResponses, UpdateUserResponses, UploadImageErrors, UploadImageResponses, UserCreate, UserRegister, UserUpdate, UserUpdateMe } from './types.gen';
+import type { AddCollectionErrors, AddCollectionResponses, AddItemsToCollectionErrors, AddItemsToCollectionResponses, BodyLoginLoginAccessToken, BodyResourceUploadImage, CleanMediaItemResponses, CleanupDataErrors, CleanupDataResponses, CleanupRunningTasksResponses, CollectionAddItems, CollectionCreate, CreateConfigErrors, CreateConfigResponses, CreateMediaItemErrors, CreateMediaItemResponses, CreateMetadataErrors, CreateMetadataResponses, CreateTaskConfigErrors, CreateTaskConfigResponses, CreateUserErrors, CreateUserResponses, DeleteConfigErrors, DeleteConfigResponses, DeleteMediaItemErrors, DeleteMediaItemResponses, DeleteMetadataErrors, DeleteMetadataResponses, DeleteRecordsErrors, DeleteRecordsResponses, DeleteTaskConfigErrors, DeleteTaskConfigResponses, DeleteUserErrors, DeleteUserMeResponses, DeleteUserResponses, EmbySettings, EmbySyncParam, EmbyWebhookResponses, GetAllConfigsErrors, GetAllConfigsResponses, GetAllTaskConfigsErrors, GetAllTaskConfigsResponses, GetAllTasksStatusErrors, GetAllTasksStatusResponses, GetCollectionErrors, GetCollectionResponses, GetEmbySettingsResponses, GetImageByQueryErrors, GetImageByQueryResponses, GetJellyfinSettingsResponses, GetMediaItemErrors, GetMediaItemResponses, GetMediaItemsErrors, GetMediaItemsResponses, GetMetadataErrors, GetMetadataResponses, GetPosterErrors, GetPosterResponses, GetProxySettingsResponses, GetRecordsErrors, GetRecordsResponses, GetTransmissionSettingsResponses, GetTransRecordsErrors, GetTransRecordsResponses, HealthCheckResponses, JellyfinSettings, ListCollectionsResponses, ListDirectoryErrors, ListDirectoryResponses, ListMetadataSitesResponses, LoginAccessTokenErrors, LoginAccessTokenResponses, MediaItemCreate, MediaItemUpdate, MetadataBase, MetadataCreate, MetadataRefreshParam, ProxySettings, ReadUserByIdErrors, ReadUserByIdResponses, ReadUserMeResponses, ReadUsersErrors, ReadUsersResponses, RecordPublic, RefreshMetadataErrors, RefreshMetadataResponses, RegisterUserErrors, RegisterUserResponses, RemoveCollectionErrors, RemoveCollectionResponses, RemoveItemFromCollectionErrors, RemoveItemFromCollectionResponses, RunEmbyScanErrors, RunEmbyScanResponses, RunImportNfoErrors, RunImportNfoResponses, RunTransferTaskErrors, RunTransferTaskResponses, ScrapingConfigCreate, ScrapingConfigPublic, SearchCollectionCandidatesErrors, SearchCollectionCandidatesResponses, SearchEmbyCollectionsErrors, SearchEmbyCollectionsResponses, SyncAllCollectionsErrors, SyncAllCollectionsResponses, SyncEmbyWatchHistoryErrors, SyncEmbyWatchHistoryResponses, SyncOneCollectionErrors, SyncOneCollectionResponses, SyncRecordPathErrors, SyncRecordPathResponses, TaskPathParam, TestEmbyConnectionErrors, TestEmbyConnectionResponses, TestJellyfinConnectionErrors, TestJellyfinConnectionResponses, TestTransmissionConnectionErrors, TestTransmissionConnectionResponses, ToolArgsParam, TransferConfigCreate, TransferConfigPublic, TransmissionSettings, TransRecordsPathSyncParam, UpdateConfigErrors, UpdateConfigResponses, UpdateEmbySettingsErrors, UpdateEmbySettingsResponses, UpdateJellyfinSettingsErrors, UpdateJellyfinSettingsResponses, UpdateMediaItemErrors, UpdateMediaItemResponses, UpdateMetadataErrors, UpdateMetadataResponses, UpdatePassword, UpdatePasswordMeErrors, UpdatePasswordMeResponses, UpdateProxySettingsErrors, UpdateProxySettingsResponses, UpdateRecordErrors, UpdateRecordResponses, UpdateSeasonErrors, UpdateSeasonResponses, UpdateTaskConfigErrors, UpdateTaskConfigResponses, UpdateTopFolderErrors, UpdateTopFolderResponses, UpdateTransmissionSettingsErrors, UpdateTransmissionSettingsResponses, UpdateUserErrors, UpdateUserMeErrors, UpdateUserMeResponses, UpdateUserResponses, UploadImageErrors, UploadImageResponses, UserCreate, UserRegister, UserUpdate, UserUpdateMe } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -252,9 +252,9 @@ export class TaskService {
      */
     public static runTransferTask<ThrowOnError extends boolean = true>(parameters: {
         id: number;
-        taskPathParam: TaskPathParam;
+        body?: TaskPathParam | null;
     }, options?: Options<never, ThrowOnError>) {
-        const params = buildClientParams([parameters], [{ args: [{ in: 'path', key: 'id' }, { key: 'taskPathParam', map: 'body' }] }]);
+        const params = buildClientParams([parameters], [{ args: [{ in: 'path', key: 'id' }, { key: 'body', map: 'body' }] }]);
         return (options?.client ?? client).post<RunTransferTaskResponses, RunTransferTaskErrors, ThrowOnError>({
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
@@ -646,6 +646,20 @@ export class MetadataService {
     }
     
     /**
+     * List Metadata Sites
+     *
+     * 获取 scrapinglib 支持的站点列表
+     */
+    public static listMetadataSites<ThrowOnError extends boolean = true>(options?: Options<never, ThrowOnError>) {
+        return (options?.client ?? client).get<ListMetadataSitesResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/metadata/sites',
+            ...options
+        });
+    }
+    
+    /**
      * Get Metadata
      *
      * 获取元数据
@@ -673,6 +687,30 @@ export class MetadataService {
             url: '/api/v1/metadata/all',
             ...options,
             ...params
+        });
+    }
+    
+    /**
+     * Refresh Metadata
+     *
+     * 按站点/详情链接重新刮削，仅返回结果不入库，供对比后更新
+     */
+    public static refreshMetadata<ThrowOnError extends boolean = true>(parameters: {
+        id: number;
+        metadataRefreshParam: MetadataRefreshParam;
+    }, options?: Options<never, ThrowOnError>) {
+        const params = buildClientParams([parameters], [{ args: [{ in: 'path', key: 'id' }, { key: 'metadataRefreshParam', map: 'body' }] }]);
+        return (options?.client ?? client).post<RefreshMetadataResponses, RefreshMetadataErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/metadata/{id}/refresh',
+            ...options,
+            ...params,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options?.headers,
+                ...params.headers
+            }
         });
     }
     

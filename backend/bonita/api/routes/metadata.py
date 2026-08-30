@@ -1,9 +1,13 @@
+import asyncio
 from fastapi import APIRouter, HTTPException
-from typing import Any
+from typing import Any, List
+
+from scrapinglib import getSupportedSources
 
 from bonita import schemas
 from bonita.api.deps import SessionDep
 from bonita.services.metadata_service import MetadataService
+from bonita.utils.http import get_active_proxy
 
 router = APIRouter()
 
@@ -16,6 +20,13 @@ async def create_metadata(
     """创建新元数据"""
     db_metadata = MetadataService(session).create_metadata(metadata_in.model_dump())
     return schemas.MetadataPublic.model_validate(db_metadata.to_dict())
+
+
+@router.get("/sites", response_model=List[str])
+async def list_metadata_sites() -> Any:
+    """获取 scrapinglib 支持的站点列表"""
+    sources = getSupportedSources() or ""
+    return [s.strip() for s in sources.split(",") if s.strip()]
 
 
 @router.get("/all", response_model=schemas.MetadataCollection)
@@ -41,6 +52,29 @@ async def get_metadata(
     )
     data_list = [schemas.MetadataPublic.model_validate(meta.to_dict()) for meta in data]
     return schemas.MetadataCollection(data=data_list, count=count)
+
+
+@router.post("/{id}/refresh", response_model=schemas.MetadataBase)
+async def refresh_metadata(
+    session: SessionDep,
+    id: int,
+    params: schemas.MetadataRefreshParam,
+) -> Any:
+    """按站点/详情链接重新刮削，仅返回结果不入库，供对比后更新"""
+    service = MetadataService(session)
+    db_metadata = service.get_by_id(id)
+    if not db_metadata:
+        raise HTTPException(status_code=404, detail=f"Metadata with id {id} not found")
+    json_data = await asyncio.to_thread(
+        service.scrape_from_source,
+        db_metadata.number,
+        params.site,
+        params.detailurl,
+        get_active_proxy(session),
+    )
+    if not json_data:
+        raise HTTPException(status_code=404, detail="未找到元数据")
+    return schemas.MetadataBase(**json_data)
 
 
 @router.put("/{id}", response_model=schemas.MetadataPublic)

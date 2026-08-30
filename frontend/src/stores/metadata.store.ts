@@ -26,7 +26,9 @@ export const useMetadataStore = defineStore("metadata-store", {
     allMetadata: [] as MetadataPublic[],
     showDialog: false,
     showImportDialog: false,
+    showRefreshDialog: false,
     editMetadata: undefined as MetadataPublic | undefined,
+    refreshTarget: undefined as MetadataPublic | undefined,
     totalCount: 0,
     currentPage: 1,
     itemsPerPage: loadItemsPerPage(),
@@ -79,6 +81,11 @@ export const useMetadataStore = defineStore("metadata-store", {
       this.editMetadata = data
       this.showDialog = true
     },
+    showRefreshMetadata(data: MetadataPublic) {
+      this.showDialog = false
+      this.refreshTarget = data
+      this.showRefreshDialog = true
+    },
     // Method to show dialog for adding new metadata
     showAddMetadata() {
       this.editMetadata = undefined
@@ -89,14 +96,15 @@ export const useMetadataStore = defineStore("metadata-store", {
         id: data.id,
         metadataBase: data,
       })
+      this.updateMetadataById(data.id, metadata)
       if (this.showDialog) {
-        this.updateMetadataById(data.id, metadata)
         this.showDialog = false
       }
+      return metadata
     },
     // Method to import metadata from JSON (single object or array)
     async importFromJson(
-      jsonData: Partial<MetadataPublic> | Partial<MetadataPublic>[],
+      jsonData: Partial<MetadataCreate> | Partial<MetadataCreate>[],
     ): Promise<{ success: number; failed: number }> {
       const items = Array.isArray(jsonData) ? jsonData : [jsonData]
       let success = 0

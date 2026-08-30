@@ -1,10 +1,15 @@
+import logging
 from typing import List, Optional, Tuple
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from bonita.db.models.metadata import Metadata
+from bonita.modules.scraping.scraping import scraping
 from bonita.utils.downloader import process_cached_file
+from bonita.utils.http import get_active_proxy
+
+logger = logging.getLogger(__name__)
 
 
 class MetadataService:
@@ -114,3 +119,33 @@ class MetadataService:
         self.session.delete(db_metadata)
         self.session.commit()
         return True
+
+    def scrape_from_source(
+        self,
+        number: str,
+        site: Optional[str] = None,
+        detailurl: Optional[str] = None,
+        proxy: Optional[dict] = None,
+    ) -> Optional[dict]:
+        """按番号从指定站点刮削，不写入数据库。"""
+        site = (site or "").strip()
+        detailurl = (detailurl or "").strip()
+        logger.info(
+            f"  → 刮削刷新: {number} | site={site or '-'} | detailurl={detailurl or '-'}"
+        )
+        if proxy is None:
+            proxy = get_active_proxy(self.session)
+        json_data = scraping(
+            number,
+            sources=site or None,
+            specifiedsource=site,
+            specifiedurl=detailurl,
+            proxy=proxy,
+        )
+        if not json_data:
+            logger.warning(f"  ⊘ 刮削刷新失败: {number}")
+            return None
+        json_data.setdefault("number", number)
+        json_data.setdefault("cover", "")
+        logger.info(f"  ✓ 刮削刷新成功: {json_data.get('title', number)}")
+        return json_data

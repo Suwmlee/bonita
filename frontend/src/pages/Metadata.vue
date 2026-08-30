@@ -2,6 +2,7 @@
 import type { MetadataPublic } from "@/client"
 import { client } from "@/client/client.gen"
 import MetadataDetailDialog from "@/components/metadata/MetadataDetailDialog.vue"
+import MetadataRefreshDialog from "@/components/metadata/MetadataRefreshDialog.vue"
 import { useMetadataStore } from "@/stores/metadata.store"
 import { computed, onMounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
@@ -155,10 +156,17 @@ onMounted(() => {
         <VCard class="metadata-card" @click="showEditDialog(item)">
           <div class="card-header">
             <span class="card-number text-truncate" :title="item.number">{{ item.number }}</span>
-            <VBtn icon variant="text" size="small" class="delete-btn"
-              @click.stop="metadataStore.confirmDeleteMetadata(item.id)">
-              <VIcon icon="bx-trash" size="18" color="error" />
-            </VBtn>
+            <div class="card-actions">
+              <VBtn icon variant="text" size="small" class="action-btn"
+                :title="t('pages.metadata.refresh')"
+                @click.stop="metadataStore.showRefreshMetadata(item)">
+                <VIcon icon="bx-refresh" size="18" />
+              </VBtn>
+              <VBtn icon variant="text" size="small" class="action-btn"
+                @click.stop="metadataStore.confirmDeleteMetadata(item.id)">
+                <VIcon icon="bx-trash" size="18" color="error" />
+              </VBtn>
+            </div>
           </div>
 
           <div class="cover-wrapper" :class="{ 'show-full': coverLetterbox[item.id] }">
@@ -237,6 +245,10 @@ onMounted(() => {
 
     <!-- Metadata add/edit dialog -->
     <MetadataDetailDialog />
+    <MetadataRefreshDialog
+      v-model="metadataStore.showRefreshDialog"
+      :metadata="metadataStore.refreshTarget"
+    />
   </div>
 </template>
 
@@ -279,11 +291,17 @@ onMounted(() => {
   letter-spacing: 0.03em;
 }
 
-.delete-btn {
+.card-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.action-btn {
   opacity: 0.55;
 }
 
-.metadata-card:hover .delete-btn {
+.metadata-card:hover .action-btn {
   opacity: 1;
 }
 

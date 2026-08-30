@@ -257,7 +257,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                                 proxy=proxy
                             )
                             if fallback_json and fallback_json.get('cover'):
-                                new_site = fallback_json.get('source', '')
+                                new_site = fallback_json.get('site', '')
                                 if new_site:
                                     used_sources.add(new_site)
                                 # 收集 extrafanart

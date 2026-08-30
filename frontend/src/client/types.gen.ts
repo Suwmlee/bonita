@@ -1006,6 +1006,22 @@ export type MetadataPublic = {
 };
 
 /**
+ * MetadataRefreshParam
+ *
+ * 按站点/详情链接重新刮削
+ */
+export type MetadataRefreshParam = {
+    /**
+     * Site
+     */
+    site?: string | null;
+    /**
+     * Detailurl
+     */
+    detailurl?: string | null;
+};
+
+/**
  * OperationMethod
  *
  * 操作类型: 1. 硬链接 2. 软链接 3. 移动 4. 复制
@@ -2156,7 +2172,10 @@ export type UpdateUserResponses = {
 export type UpdateUserResponse = UpdateUserResponses[keyof UpdateUserResponses];
 
 export type RunTransferTaskData = {
-    body: TaskPathParam;
+    /**
+     * Path Param
+     */
+    body?: TaskPathParam | null;
     path: {
         /**
          * Id
@@ -2710,6 +2729,24 @@ export type CreateMetadataResponses = {
 
 export type CreateMetadataResponse = CreateMetadataResponses[keyof CreateMetadataResponses];
 
+export type ListMetadataSitesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/metadata/sites';
+};
+
+export type ListMetadataSitesResponses = {
+    /**
+     * Response Metadata-List Metadata Sites
+     *
+     * Successful Response
+     */
+    200: Array<string>;
+};
+
+export type ListMetadataSitesResponse = ListMetadataSitesResponses[keyof ListMetadataSitesResponses];
+
 export type GetMetadataData = {
     body?: never;
     path?: never;
@@ -2755,6 +2792,36 @@ export type GetMetadataResponses = {
 };
 
 export type GetMetadataResponse = GetMetadataResponses[keyof GetMetadataResponses];
+
+export type RefreshMetadataData = {
+    body: MetadataRefreshParam;
+    path: {
+        /**
+         * Id
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/api/v1/metadata/{id}/refresh';
+};
+
+export type RefreshMetadataErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RefreshMetadataError = RefreshMetadataErrors[keyof RefreshMetadataErrors];
+
+export type RefreshMetadataResponses = {
+    /**
+     * Successful Response
+     */
+    200: MetadataBase;
+};
+
+export type RefreshMetadataResponse = RefreshMetadataResponses[keyof RefreshMetadataResponses];
 
 export type DeleteMetadataData = {
     body?: never;
