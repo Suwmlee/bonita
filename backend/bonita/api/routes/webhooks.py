@@ -6,7 +6,7 @@ from fastapi import APIRouter, Request
 
 from bonita import schemas
 from bonita.api.deps import SessionDep
-from bonita.modules.media_service.sync import handle_emby_webhook_event
+from bonita.services.watch_sync_service import WatchSyncService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ async def emby_webhook(request: Request, session: SessionDep):
         return schemas.Response(success=False, message="empty webhook payload")
 
     try:
-        result = handle_emby_webhook_event(session, payload)
+        result = WatchSyncService(session).handle_emby_webhook(payload)
         return schemas.Response(
             success=True,
             message=f"emby webhook {result}",

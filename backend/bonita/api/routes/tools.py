@@ -67,16 +67,14 @@ async def sync_record_path(
 async def sync_emby_watch_history(
         session: SessionDep,
         params: schemas.EmbySyncParam):
-    """ 同步 Emby 和 Bonita 之间的观看记录
+    """ 同步媒体服务器和 Bonita 之间的观看记录
     
     Args:
-        params: Emby 同步参数
-            - direction: 同步方向 ("from_emby" 或 "to_emby")，默认为 "from_emby"
-                * "from_emby": 从 Emby 同步到 Bonita（默认）
-                * "to_emby": 从 Bonita 回写到 Emby（电影、剧集、番号）
+        params: 同步参数
+            - direction: 同步方向，默认为 "from_server"
+                * "from_server": 从媒体服务器同步到 Bonita
+                * "to_server": 从 Bonita 回写到媒体服务器（电影、剧集、番号）
             - force: 是否强制覆盖数据，默认为 false
-                * direction="from_emby" 时：是否强制覆盖本地数据（包括喜爱标记）
-                * direction="to_emby" 时：是否强制覆盖 Emby 上的已看/收藏状态
     """
     tool_service = ToolService(session)
     return tool_service.sync_emby_watch_history(direction=params.direction.value, force=params.force)

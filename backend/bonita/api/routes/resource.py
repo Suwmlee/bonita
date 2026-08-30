@@ -1,37 +1,20 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse, RedirectResponse
-import os
-import hashlib
-import logging
-from datetime import datetime
-from sqlalchemy import func
 
 from bonita import schemas
 from bonita.api.deps import SessionDep
-from bonita.core.config import settings
-from bonita.db.models.metadata import Metadata
-from bonita.db.models.downloads import Downloads
-from bonita.modules.media_service.emby import EmbyService
+from bonita.services.resource_service import ResourceService
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
 
 
 @router.get("/image")
 async def get_image_by_query(path: str, session: SessionDep):
-    """Get image from local cache or download it using query parameter
-
-    Args:
-        path: The image URL (can be non-encoded) or file hash
-        session: Database session
-
-    Returns:
-        FileResponse: The image file
-    """
-    cache_downloads_cover = session.query(Downloads).filter(Downloads.url == path).first()
-    if not cache_downloads_cover or not os.path.exists(cache_downloads_cover.filepath):
+    """Get image from local cache or download it using query parameter"""
+    filepath = ResourceService(session).get_cached_image_path(path)
+    if not filepath:
         raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(cache_downloads_cover.filepath)
+    return FileResponse(filepath)
 
 
 @router.post("/upload/image")
@@ -40,54 +23,11 @@ async def upload_image(
     custom_url: str = None,
     session: SessionDep = None
 ):
-    """Upload an image file
-
-    Args:
-        file: The image file to upload
-        custom_url: Optional custom URL to use instead of file hash
-        session: Database session
-
-    Returns:
-        dict: Information about the uploaded file
-    """
-    if not file.content_type.startswith('image/'):
+    """Upload an image file"""
+    if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
-
-    # Generate a unique filename using hash of content and original filename
     content = await file.read()
-    file_hash = hashlib.md5(content).hexdigest()
-    file_ext = os.path.splitext(file.filename)[1]
-    filename = f"{file_hash}{file_ext}"
-
-    # Ensure cache directory exists
-    download_folder = os.path.abspath(os.path.join(settings.CACHE_LOCATION, "images"))
-    os.makedirs(download_folder, exist_ok=True)
-
-    # Save file to cache directory
-    file_path = os.path.join(download_folder, filename)
-    with open(file_path, "wb") as f:
-        f.write(content)
-
-    # Use custom_url if provided, otherwise use file_hash
-    url_value = custom_url if custom_url is not None else file_hash
-
-    # Check if a record with this URL already exists
-    existing_download = session.query(Downloads).filter(Downloads.url == url_value).first()
-
-    if existing_download:
-        # Update existing record
-        existing_download.filepath = file_path
-        session.commit()
-        download = existing_download
-    else:
-        # Save to downloads table
-        download = Downloads(
-            url=url_value,
-            filepath=file_path,
-            updatetime=datetime.now()
-        )
-        download.create(session)
-
+    url_value = ResourceService(session).save_image(content, file.filename, custom_url)
     return schemas.Response(success=True, message=url_value)
 
 
@@ -98,49 +38,29 @@ async def get_poster(
     tmdb_id: str = None,
     number: str = None,
     emby_id: str = None,
+    external_id: str = None,
+    source: str = "emby",
     image_tag: str = None,
     session: SessionDep = None
 ):
     """获取海报图片。有番号时返回完整的 metadata.cover。"""
-    if emby_id:
-        try:
-            emby_service = EmbyService()
-            if emby_service.is_initialized:
-                poster_url = emby_service.get_item_image_url(emby_id, image_tag)
-                if poster_url:
-                    response = RedirectResponse(poster_url, status_code=302)
-                    response.headers["Cache-Control"] = "no-store"
-                    return response
-        except Exception as e:
-            logger.error(f"从Emby获取海报失败: {e}")
-
-    # 如果提供了number，优先从metadata获取cover
-    if number:
-        try:
-            metadata = session.query(Metadata).filter(func.upper(Metadata.number) == number.upper()).first()
-            if metadata and metadata.cover:
-                # 根据cover字段值从Downloads表获取文件路径
-                cache_downloads_cover = session.query(Downloads).filter(Downloads.url == metadata.cover).first()
-                if cache_downloads_cover and os.path.exists(cache_downloads_cover.filepath):
-                    return FileResponse(
-                        cache_downloads_cover.filepath,
-                        headers={"Cache-Control": "public, max-age=0, must-revalidate"},
-                    )
-        except Exception as e:
-            logger.error(f"从metadata获取海报失败: {e}")
-            # 记录错误但继续尝试其他方法获取海报
-            pass
-
-    # 如果number为空或者从metadata获取失败，尝试从Emby获取
-    try:
-        emby_service = EmbyService()
-        if emby_service.is_initialized:
-            poster_url = emby_service.get_poster_url(title, imdb_id, tmdb_id)
-            if poster_url:
-                response = RedirectResponse(poster_url, status_code=302)
-                response.headers["Cache-Control"] = "no-store"
-                return response
-    except Exception as e:
-        logger.error(f"从Emby获取海报失败: {e}")
-        # 记录错误但继续尝试其他方法获取海报
-        pass
+    result = ResourceService(session).get_poster(
+        title=title,
+        imdb_id=imdb_id,
+        tmdb_id=tmdb_id,
+        number=number,
+        emby_id=emby_id,
+        external_id=external_id,
+        source=source,
+        image_tag=image_tag,
+    )
+    if not result:
+        return None
+    if result.kind == "file":
+        return FileResponse(
+            result.path,
+            headers={"Cache-Control": result.cache_control},
+        )
+    response = RedirectResponse(result.path, status_code=302)
+    response.headers["Cache-Control"] = result.cache_control
+    return response

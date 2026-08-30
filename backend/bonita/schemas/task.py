@@ -78,20 +78,20 @@ class ToolArgsParam(BaseModel):
 
 
 class SyncDirection(str, Enum):
-    """
-    Emby 同步方向枚举
-    """
+    """媒体服务器同步方向。from_emby / to_emby 为兼容别名。"""
+    FROM_SERVER = "from_server"
+    TO_SERVER = "to_server"
     FROM_EMBY = "from_emby"
     TO_EMBY = "to_emby"
 
 
 class EmbySyncParam(BaseModel):
     """
-    Emby 同步参数
+    媒体服务器观看同步参数。路径仍为 /tools/sync/emby。
     """
     direction: SyncDirection = Field(
-        default=SyncDirection.FROM_EMBY,
-        description="from_emby: Emby → Bonita；to_emby: Bonita → Emby（电影、剧集、番号）",
+        default=SyncDirection.FROM_SERVER,
+        description="from_server: 远端 → Bonita；to_server: Bonita → 远端",
     )
     force: bool = Field(
         default=False,

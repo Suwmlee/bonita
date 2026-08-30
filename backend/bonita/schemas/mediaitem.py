@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from datetime import datetime
 
 
@@ -100,10 +100,18 @@ class MediaItemWithWatches(MediaItemInDB):
     crop: Optional[bool] = None
     series_imdb_id: Optional[str] = None
     series_tmdb_id: Optional[str] = None
+    external_item_id: Optional[str] = None
     emby_item_id: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+    @model_validator(mode="after")
+    def fill_id_aliases(self):
+        rid = self.external_item_id or self.emby_item_id
+        self.external_item_id = rid
+        self.emby_item_id = rid
+        return self
 
 
 class MediaItemCollection(BaseModel):

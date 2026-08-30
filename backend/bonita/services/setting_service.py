@@ -1,6 +1,15 @@
+import logging
+from urllib.parse import urljoin
+from typing import Dict, Optional, Any, Tuple
+
+import requests
 from sqlalchemy.orm import Session
+
 from bonita.db.models.setting import SystemSetting
-from typing import List, Dict, Optional, Any, Union, Tuple
+from bonita.modules.media_service.emby import EmbyClient
+from bonita.modules.downloader.transmission import TransmissionClient
+
+logger = logging.getLogger(__name__)
 
 
 class SettingService:
@@ -249,3 +258,93 @@ class SettingService:
             dest_path,
             "Transmission路径映射-宿主机路径"
         )
+
+    def get_proxy_for_requests(self) -> Optional[Dict[str, str]]:
+        """返回适合 requests 库使用的代理配置；未启用时返回 None。"""
+        rows = self.session.query(SystemSetting).filter(
+            SystemSetting.key.in_(["proxy_enabled", "proxy_http", "proxy_https"])
+        ).all()
+        proxy_dict = {setting.key: setting.value for setting in rows}
+        if proxy_dict.get("proxy_enabled", "false").lower() != "true":
+            return None
+        proxy = {}
+        if proxy_dict.get("proxy_http"):
+            proxy["http"] = proxy_dict["proxy_http"]
+        if proxy_dict.get("proxy_https"):
+            proxy["https"] = proxy_dict["proxy_https"]
+        return proxy or None
+
+    def try_initialize_emby(
+        self,
+        host: Optional[str] = None,
+        apikey: Optional[str] = None,
+        user: Optional[str] = None,
+    ) -> bool:
+        """用给定参数或当前设置初始化 Emby 客户端。"""
+        if host is None or apikey is None or user is None:
+            current = self.get_emby_settings()
+            if not current.get("enabled"):
+                return False
+            host = current.get("emby_host") or ""
+            apikey = current.get("emby_apikey") or ""
+            user = current.get("emby_user") or ""
+        if not host or not apikey or not user:
+            return False
+        return bool(EmbyClient().initialize(host, apikey, user))
+
+    def save_emby_settings(
+        self, host: str, apikey: str, user: str, enabled: bool
+    ) -> Tuple[bool, str]:
+        """保存 Emby 设置；启用时先验证连接。"""
+        if enabled:
+            if not self.try_initialize_emby(host, apikey, user):
+                return False, "Emby设置已保存但初始化失败，请检查设置是否正确"
+        self.update_emby_settings(host=host, apikey=apikey, user=user, enabled=enabled)
+        return True, "Emby设置已更新"
+
+    def test_emby_connection(self, host: str, apikey: str, user: str) -> Tuple[bool, str]:
+        try:
+            if EmbyClient().initialize(host, apikey, user):
+                return True, "Emby连接成功，API Key有效"
+            return False, "Emby连接失败，请检查服务器地址、API Key和用户名"
+        except Exception as e:
+            logger.exception("测试Emby连接时出错")
+            return False, f"测试Emby连接时出错: {str(e)}"
+
+    def test_jellyfin_connection(self, host: str, apikey: str) -> Tuple[bool, str]:
+        try:
+            base_url = (host or "").rstrip("/")
+            api_url = urljoin(f"{base_url}/", "System/Info")
+            headers = {"X-Emby-Token": apikey}
+            response = requests.get(api_url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                return True, "Jellyfin连接成功，API Key有效"
+            return False, f"Jellyfin连接失败，状态码: {response.status_code}"
+        except requests.RequestException as e:
+            return False, f"Jellyfin连接失败: {str(e)}"
+        except Exception as e:
+            logger.exception("测试Jellyfin连接时出错")
+            return False, f"测试Jellyfin连接时出错: {str(e)}"
+
+    def test_transmission_connection(
+        self,
+        host: str,
+        username: str,
+        password: str,
+        source_path: str = "",
+        dest_path: str = "",
+    ) -> Tuple[bool, str]:
+        try:
+            init_success = TransmissionClient().initialize(
+                url=host,
+                username=username,
+                password=password,
+                source_path=source_path,
+                dest_path=dest_path,
+            )
+            if init_success:
+                return True, "Transmission连接成功"
+            return False, "Transmission连接失败，请检查服务器地址、用户名和密码"
+        except Exception as e:
+            logger.exception("测试Transmission连接时出错")
+            return False, f"测试Transmission连接时出错: {str(e)}"

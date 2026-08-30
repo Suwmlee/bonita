@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session
 
 from bonita import schemas
 from bonita.celery_tasks.tasks import celery_import_nfo
-from bonita.modules.media_service.sync import sync_emby_history
 from bonita.services.record_service import RecordService
-from bonita.services.setting_service import SettingService
+from bonita.services.watch_sync_service import WatchSyncService
+from bonita.modules.media_service.client import is_to_server
 from bonita.core.enums import TaskStatusEnum
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,6 @@ class ToolService:
     def __init__(self, session: Session):
         self.session = session
         self.record_service = RecordService(session)
-        self.setting_service = SettingService(session)
 
     def import_nfo(self, folder_path: str, option: str) -> schemas.TaskStatus:
         """导入NFO信息
@@ -107,23 +106,20 @@ class ToolService:
             }
         )
 
-    def sync_emby_watch_history(self, direction: str = "from_emby", force: bool = False) -> schemas.Response:
-        """同步Emby观看历史
+    def sync_emby_watch_history(self, direction: str = "from_server", force: bool = False) -> schemas.Response:
+        """同步媒体服务器观看历史
 
         Args:
-            direction: 同步方向，"from_emby"（默认）或 "to_emby"（电影、剧集、番号）
+            direction: 同步方向，"from_server"（默认）或 "to_server"
             force: 是否强制覆盖对端已有的已看/收藏状态，默认为 False
-
-        Returns:
-            schemas.Response: 操作响应
         """
-        logger.info(f"Sync emby watch history, direction={direction}, force={force}")
-        sync_emby_history(self.session, direction=direction, force=force)
+        logger.info(f"Sync watch history, direction={direction}, force={force}")
+        WatchSyncService(self.session).sync_emby_history(direction=direction, force=force)
 
-        direction_text = "Emby → Bonita" if direction == "from_emby" else "Bonita → Emby"
+        direction_text = "Bonita → 媒体服务器" if is_to_server(direction) else "媒体服务器 → Bonita"
         return schemas.Response(
             success=True,
-            message=f"sync emby watch history success (direction: {direction_text}, force={'enabled' if force else 'disabled'})"
+            message=f"sync watch history success (direction: {direction_text}, force={'enabled' if force else 'disabled'})"
         )
 
     def cleanup_data(self, force_flag: bool) -> schemas.Response:

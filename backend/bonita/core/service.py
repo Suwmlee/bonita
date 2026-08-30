@@ -1,10 +1,5 @@
-
-
 import logging
-from bonita.db import SessionFactory
-from bonita.db.models.setting import SystemSetting
-from bonita.db.models.task import TransferConfig
-from bonita.modules.media_service.emby import EmbyService
+from bonita.modules.media_service.factory import init_media_servers
 from bonita.modules.monitor.monitor import MonitorService
 
 logger = logging.getLogger(__name__)
@@ -29,22 +24,8 @@ def stop_monitor():
 
 
 def init_emby():
-    """
-    initial EmbyService
-    """
-    with SessionFactory() as session:
-        logger.info("initial EmbyService")
-        emby_enabled = session.query(SystemSetting).filter(SystemSetting.key == "emby_enabled").first()
-        if not emby_enabled or emby_enabled.value != "true":
-            logger.info("Emby is not enabled")
-            return
-        emby_host = session.query(SystemSetting).filter(SystemSetting.key == "emby_host").first()
-        emby_apikey = session.query(SystemSetting).filter(SystemSetting.key == "emby_apikey").first()
-        emby_user = session.query(SystemSetting).filter(SystemSetting.key == "emby_user").first()
-        if not emby_host or not emby_apikey or not emby_user:
-            logger.info("Emby host or API key or user not configured")
-            return
-        EmbyService().initialize(emby_host.value, emby_apikey.value, emby_user.value)
+    """兼容旧启动路径，初始化已启用的媒体服务器。"""
+    init_media_servers()
 
 
 def init_service():
@@ -52,4 +33,4 @@ def init_service():
     initial Service
     """
     init_monitor()
-    init_emby()
+    init_media_servers()

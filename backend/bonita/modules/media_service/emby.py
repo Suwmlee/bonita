@@ -2,28 +2,94 @@ import logging
 import requests
 from typing import Any, Dict, List, Optional, Union
 
+from bonita.modules.media_service.client import (
+    ITEM_COLLECTION,
+    ITEM_EPISODE,
+    ITEM_MOVIE,
+    ITEM_SEASON,
+    ITEM_SERIES,
+    ITEM_VIDEO,
+    SOURCE_EMBY,
+    WEBHOOK_FAVORITE,
+    WEBHOOK_IGNORED,
+    WEBHOOK_LIBRARY_NEW,
+    WEBHOOK_TEST,
+    WEBHOOK_UNPLAYED,
+    WEBHOOK_WATCH,
+    CollectionRef,
+    MediaServerClient,
+    RemoteItem,
+    WatchState,
+    WebhookEvent,
+)
 from bonita.utils.singleton import Singleton
 
 logger = logging.getLogger(__name__)
 
+_EMBY_TYPE_MAP = {
+    "Movie": ITEM_MOVIE,
+    "Video": ITEM_VIDEO,
+    "Episode": ITEM_EPISODE,
+    "Series": ITEM_SERIES,
+    "Season": ITEM_SEASON,
+    "BoxSet": ITEM_COLLECTION,
+}
+_TYPE_TO_EMBY = {
+    ITEM_MOVIE: "Movie",
+    ITEM_VIDEO: "Video",
+    ITEM_EPISODE: "Episode",
+    ITEM_SERIES: "Series",
+    ITEM_SEASON: "Season",
+    ITEM_COLLECTION: "BoxSet",
+}
+_WEBHOOK_WATCH_EVENTS = {
+    "playback.stop",
+    "playback.scrobble",
+    "item.markplayed",
+}
+_WEBHOOK_LIBRARY_EVENTS = {"library.new", "item.added"}
 
-class EmbyService(metaclass=Singleton):
-    """Emby media server service for interacting with Emby API"""
+
+def _ticks_to_seconds(ticks) -> int:
+    if not ticks:
+        return 0
+    try:
+        ticks = int(ticks)
+    except (TypeError, ValueError):
+        return 0
+    if ticks <= 0:
+        return 0
+    return int(ticks / 10000000)
+
+
+def _as_int(value, default=-1) -> int:
+    if value is None or value == "":
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+class EmbyClient(MediaServerClient, metaclass=Singleton):
+    """Emby HTTP 适配器。对外只暴露归一化类型。"""
+
+    source = SOURCE_EMBY
 
     def __init__(self):
-        """Initialize EmbyService with default values"""
         self.emby_host = None
         self.emby_apikey = None
         self.emby_user = None
         self.emby_user_id = None
         self.headers = {}
-        self.is_initialized = False
+        self._initialized = False
 
-    def initialize(self, emby_host: str, emby_apikey: str, emby_user: str):
+    def initialize(self, host: str, apikey: str, user: str = "") -> bool:
         """Initialize the Emby service with connection parameters
         """
+        emby_host, emby_apikey, emby_user = host or "", apikey or "", user or ""
         # 如果已经初始化并且参数相同，直接返回 True
-        if (self.is_initialized and
+        if (self._initialized and
             self.emby_host == emby_host.rstrip('/') and
             self.emby_apikey == emby_apikey and
             self.emby_user == emby_user.lower()):
@@ -37,22 +103,30 @@ class EmbyService(metaclass=Singleton):
         }
         if not self.emby_host or not self.emby_apikey or not emby_user:
             logger.warning("Emby service initialized with missing host, API key or user")
-            self.is_initialized = False
+            self._initialized = False
             return False
         try:
             self.emby_user = emby_user.lower()
             self.emby_user_id = self.get_users().get(self.emby_user)
             if not self.emby_user_id:
                 logger.warning(f"User {self.emby_user} not found in Emby")
-                self.is_initialized = False
+                self._initialized = False
                 return False
-            self.is_initialized = True
+            self._initialized = True
         except Exception as e:
             logger.error(f"Error initializing Emby service: {e}")
-            self.is_initialized = False
+            self._initialized = False
             return False
         logger.info(f"Emby service initialized with host: {self.emby_host}, user: {self.emby_user}")
         return True
+
+    @property
+    def is_initialized(self) -> bool:
+        return self._initialized
+
+    @property
+    def configured_user(self) -> str:
+        return self.emby_user or ""
 
     def _make_request(
         self,
@@ -350,7 +424,7 @@ class EmbyService(metaclass=Singleton):
                 break
         return items
 
-    def query_items(
+    def _query_raw_items(
         self,
         include_item_types: str,
         search_term: str = None,
@@ -538,3 +612,215 @@ class EmbyService(metaclass=Singleton):
         except Exception as e:
             logger.error(f"Error fetching Emby data: {str(e)}")
             return None
+
+    def to_remote_item(self, raw: Optional[dict]) -> Optional[RemoteItem]:
+        if not isinstance(raw, dict) or not raw.get("Id"):
+            return None
+        emby_type = raw.get("Type") or ""
+        item_type = _EMBY_TYPE_MAP.get(emby_type, emby_type.lower() or ITEM_MOVIE)
+        season = -1
+        episode = -1
+        if item_type == ITEM_EPISODE:
+            season = _as_int(raw.get("ParentIndexNumber"))
+            episode = _as_int(raw.get("IndexNumber"))
+        elif item_type == ITEM_SEASON:
+            season = _as_int(raw.get("IndexNumber"))
+        providers = raw.get("ProviderIds") or {}
+        provider_ids = {}
+        if providers.get("Imdb"):
+            provider_ids["imdb"] = providers.get("Imdb")
+        if providers.get("Tmdb"):
+            provider_ids["tmdb"] = str(providers.get("Tmdb"))
+        if providers.get("Tvdb"):
+            provider_ids["tvdb"] = providers.get("Tvdb")
+        series_remote_id = raw.get("SeriesId")
+        if item_type == ITEM_SERIES:
+            series_remote_id = raw.get("Id") or series_remote_id
+        user_data = raw.get("UserData") if isinstance(raw.get("UserData"), dict) else {}
+        duration = _ticks_to_seconds(raw.get("RunTimeTicks"))
+        played = bool(user_data.get("Played", False))
+        position_seconds = _ticks_to_seconds(user_data.get("PlaybackPositionTicks") or 0)
+        play_progress = 100.0 if played else 0.0
+        if position_seconds > 0 and duration > 0:
+            play_progress = min(100.0, (position_seconds / duration) * 100)
+        child_count = raw.get("ChildCount")
+        if child_count is None:
+            child_count = raw.get("RecursiveItemCount") or 0
+        return RemoteItem(
+            source=SOURCE_EMBY,
+            remote_id=raw.get("Id"),
+            item_type=item_type,
+            title=raw.get("Name") or "",
+            original_title=raw.get("OriginalTitle") or "",
+            path=raw.get("Path"),
+            provider_ids=provider_ids,
+            season=season,
+            episode=episode,
+            series_remote_id=series_remote_id,
+            series_name=(raw.get("SeriesName") or "").strip(),
+            watch=WatchState(
+                played=played,
+                favorite=bool(user_data.get("IsFavorite", False)),
+                play_count=user_data.get("PlayCount") or 1,
+                position_seconds=position_seconds,
+                duration_seconds=duration,
+                play_progress=play_progress,
+            ),
+            image_tag=(raw.get("ImageTags") or {}).get("Primary"),
+            child_count=int(child_count or 0),
+            is_folder=bool(raw.get("IsFolder")),
+        )
+
+    def list_user_items(self) -> List[RemoteItem]:
+        libraries = self.get_user_all_items() or {}
+        items: List[RemoteItem] = []
+        for library_items in libraries.values():
+            for raw in (
+                library_items.get("series", [])
+                + library_items.get("movies", [])
+                + library_items.get("episodes", [])
+                + library_items.get("seasons", [])
+            ):
+                remote = self.to_remote_item(raw)
+                if remote:
+                    items.append(remote)
+        return items
+
+    def get_item(self, item_id: str) -> Optional[RemoteItem]:
+        return self.to_remote_item(self.get_item_details(item_id))
+
+    def get_user_item(self, item_id: str) -> Optional[RemoteItem]:
+        return self.to_remote_item(self.get_user_item_details(item_id))
+
+    def query_items(
+        self,
+        item_types: List[str],
+        search_term: Optional[str] = None,
+        imdb_id: Optional[str] = None,
+        tmdb_id: Optional[str] = None,
+        tvdb_id: Optional[str] = None,
+        parent_id: Optional[str] = None,
+        limit: int = 25,
+    ) -> List[RemoteItem]:
+        include = ",".join(
+            _TYPE_TO_EMBY.get(item_type, item_type) for item_type in item_types
+        ) or "Movie,Episode,Series"
+        provider = None
+        if imdb_id:
+            provider = f"Imdb.{imdb_id}"
+        elif tmdb_id:
+            provider = f"Tmdb.{tmdb_id}"
+        elif tvdb_id:
+            provider = f"Tvdb.{tvdb_id}"
+        raw_items = self._query_raw_items(
+            include,
+            search_term=search_term,
+            provider_id_equals=provider,
+            parent_id=parent_id,
+            limit=limit,
+        )
+        return [item for item in (self.to_remote_item(raw) for raw in raw_items) if item]
+
+    def search_collections(self, search: str = "", limit: int = 50) -> List[CollectionRef]:
+        refs = []
+        for raw in self.search_boxsets(search, limit=limit):
+            remote = self.to_remote_item(raw)
+            if not remote:
+                continue
+            refs.append(
+                CollectionRef(
+                    remote_id=remote.remote_id,
+                    name=remote.title,
+                    child_count=remote.child_count,
+                    image_tag=remote.image_tag,
+                )
+            )
+        return refs
+
+    def get_collection_items(self, collection_id: str) -> List[RemoteItem]:
+        return [
+            item for item in (
+                self.to_remote_item(raw) for raw in self.get_boxset_items(collection_id)
+            ) if item
+        ]
+
+    def parse_webhook(self, payload: dict) -> WebhookEvent:
+        if not isinstance(payload, dict):
+            return WebhookEvent(kind=WEBHOOK_IGNORED)
+        event = str(payload.get("Event") or payload.get("event") or "").strip().lower()
+        user_name = (payload.get("User") or {}).get("Name") or ""
+        if event == "system.webhooktest":
+            return WebhookEvent(kind=WEBHOOK_TEST, user_name=user_name, raw_event=event)
+        if event == "item.rate":
+            kind = WEBHOOK_FAVORITE
+        elif event == "item.markunplayed":
+            kind = WEBHOOK_UNPLAYED
+        elif event in _WEBHOOK_WATCH_EVENTS:
+            kind = WEBHOOK_WATCH
+        elif event in _WEBHOOK_LIBRARY_EVENTS:
+            kind = WEBHOOK_LIBRARY_NEW
+        else:
+            return WebhookEvent(kind=WEBHOOK_IGNORED, user_name=user_name, raw_event=event)
+
+        raw_items = []
+        raw_item = payload.get("Item") or payload.get("item")
+        if isinstance(raw_item, dict):
+            raw_items.append(raw_item)
+        extra = payload.get("Items") or payload.get("items")
+        if isinstance(extra, list):
+            raw_items.extend(item for item in extra if isinstance(item, dict))
+        raw_items = [item for item in raw_items if item.get("Id")]
+
+        playback_info = payload.get("PlaybackInfo") or {}
+        played_to_completion = bool(playback_info.get("PlayedToCompletion"))
+        items: List[RemoteItem] = []
+        for raw in raw_items:
+            merged = self._enrich_raw_item(raw)
+            if kind == WEBHOOK_FAVORITE:
+                details = self.get_user_item_details(raw.get("Id"))
+                if isinstance(details, dict) and isinstance(details.get("UserData"), dict):
+                    merged = {**details, **merged}
+                    merged["UserData"] = details["UserData"]
+            elif kind == WEBHOOK_UNPLAYED:
+                user_data = dict(merged.get("UserData") or {})
+                user_data["Played"] = False
+                merged["UserData"] = user_data
+            elif kind == WEBHOOK_WATCH:
+                user_data = dict(merged.get("UserData") or {})
+                if event == "item.markplayed" or played_to_completion:
+                    user_data["Played"] = True
+                merged["UserData"] = user_data
+            remote = self.to_remote_item(merged)
+            if remote:
+                items.append(remote)
+        return WebhookEvent(kind=kind, user_name=user_name, items=items, raw_event=event)
+
+    def _enrich_raw_item(self, item: dict) -> dict:
+        needs_enrich = (
+            not item.get("Path")
+            or not item.get("ProviderIds")
+            or (
+                item.get("Type") == "Episode"
+                and (
+                    item.get("ParentIndexNumber") is None
+                    or item.get("IndexNumber") is None
+                    or not item.get("SeriesName")
+                )
+            )
+        )
+        if not needs_enrich:
+            return item
+        details = self.get_item_details(item.get("Id"))
+        if not isinstance(details, dict):
+            return item
+        merged = {**details, **item}
+        for key in (
+            "Path", "ProviderIds", "UserData", "SeriesName", "SeriesId",
+            "ParentIndexNumber", "IndexNumber", "RunTimeTicks",
+        ):
+            if not merged.get(key) and details.get(key) is not None:
+                merged[key] = details.get(key)
+        return merged
+
+
+EmbyService = EmbyClient

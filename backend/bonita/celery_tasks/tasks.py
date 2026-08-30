@@ -21,8 +21,8 @@ from bonita.modules.transfer.transfer import transSingleFile, transferfile
 from bonita.utils.downloader import process_cached_file, download_file, update_cache_from_local
 from bonita.utils.filehelper import cleanFolderWithoutSuffix, findAllFilesWithSuffix, video_type
 from bonita.utils.http import get_active_proxy
-from bonita.modules.media_service.emby import EmbyService
-from bonita.modules.media_service.sync import sync_emby_history
+from bonita.modules.media_service.factory import ensure_media_client
+from bonita.services.watch_sync_service import WatchSyncService
 from bonita.celery_tasks.decorators import manage_celery_task
 from bonita.services.celery_service import TaskProgressTracker
 from bonita.services.setting_service import SettingService
@@ -503,11 +503,11 @@ def celery_clean_others(self, root_path, done_list):
 def celery_emby_scan(self, task_json):
     logger.info("## [Emby扫描] START")
     try:
-        emby_service = EmbyService()
-        if not emby_service.is_initialized:
-            from bonita.core.service import init_emby
-            init_emby()
-        emby_service.trigger_library_scan()
+        client = ensure_media_client()
+        if not client:
+            logger.warning("## [Emby扫描] ⊘ 服务未初始化")
+            return
+        client.trigger_library_scan()
         logger.info("## [Emby扫描] END")
     except Exception as e:
         logger.error(f"## [Emby扫描] ✗ 失败: {str(e)}")
@@ -637,15 +637,9 @@ def celery_sync_watch_history(self, sources=None, days=30, limit=100):
         if "emby" in requested_sources:
             emby_settings = setting_service.get_emby_settings()
             if emby_settings.get("enabled"):
-                emby_service = EmbyService()
-                if not emby_service.is_initialized:
-                    try:
-                        from bonita.core.service import init_emby
-                        init_emby()
-                    except Exception as init_error:
-                        logger.error(f"  ✗ Emby 初始化失败: {init_error}")
-                if emby_service.is_initialized:
-                    sync_emby_history(session)
+                client = ensure_media_client("emby")
+                if client:
+                    WatchSyncService(session).sync_emby_history()
                     synced_sources.append("emby")
                     logger.info("  ✓ Emby 同步完成")
                 else:
