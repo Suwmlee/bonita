@@ -1,6 +1,6 @@
 import logging
-from typing import Any
-from fastapi import APIRouter, HTTPException
+from typing import Any, Optional
+from fastapi import APIRouter, Body, HTTPException
 
 from bonita import schemas
 from bonita.api.deps import SessionDep
@@ -16,11 +16,12 @@ logger = logging.getLogger(__name__)
 async def run_transfer_task(
         session: SessionDep,
         id: int,
-        path_param: schemas.TaskPathParam) -> Any:
+        path_param: Optional[schemas.TaskPathParam] = Body(default=None)) -> Any:
     """ 立即执行任务
     """
     logger.info(f"run transfer task: {id}")
-    status = TransferConfigService(session).run_transfer(id, path_param.path)
+    path = path_param.path if path_param else None
+    status = TransferConfigService(session).run_transfer(id, path)
     if not status:
         raise HTTPException(status_code=404, detail="Task not found")
     return status

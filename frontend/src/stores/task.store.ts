@@ -108,7 +108,8 @@ export const useTaskStore = defineStore("task-store", {
     async runTaskById(id: number) {
       const { data: task } = await TaskService.runTransferTask({
         id: id,
-        taskPathParam: {},
+        // 不能传 {}：生成客户端会丢掉空 body，但仍带 Content-Type: application/json，后端会 422
+        taskPathParam: { path: null },
       })
       // Add the newly run task to the runningTasks array
       if (task) {
