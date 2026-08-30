@@ -85,6 +85,7 @@ function getCollectionPosterUrl(item: { name: string; emby_id: string; image_tag
 function getMediaTypeLabel(mediaType: string) {
   if (mediaType === "movie") return t("pages.mediaitem.typeMovie")
   if (mediaType === "tvshow" || mediaType === "episode") return t("pages.mediaitem.typeTvshow")
+  if (mediaType === "video") return t("pages.mediaitem.typeVideo")
   return mediaType
 }
 

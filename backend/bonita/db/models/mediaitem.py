@@ -12,7 +12,7 @@ class MediaItem(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     # 内部标识
-    media_type = Column(String, nullable=False, comment="媒体类型: movie, episode, special")
+    media_type = Column(String, nullable=False, comment="媒体类型: movie, tvshow, episode, video")
 
     # 外部平台标识映射
     imdb_id = Column(String, index=True, comment="IMDB ID")

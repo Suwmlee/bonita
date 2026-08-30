@@ -57,6 +57,7 @@ const mediaTypes = [
   { value: "movie", title: t("pages.mediaitem.movie") },
   { value: "tvshow", title: t("pages.mediaitem.tvshow") },
   { value: "episode", title: t("pages.mediaitem.episode") },
+  { value: "video", title: t("pages.mediaitem.video") },
 ]
 
 // Computed property for watched status

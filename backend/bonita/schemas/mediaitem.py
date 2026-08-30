@@ -100,6 +100,7 @@ class MediaItemWithWatches(MediaItemInDB):
     crop: Optional[bool] = None
     series_imdb_id: Optional[str] = None
     series_tmdb_id: Optional[str] = None
+    emby_item_id: Optional[str] = None
 
     class Config:
         from_attributes = True

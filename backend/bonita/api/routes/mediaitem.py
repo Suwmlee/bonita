@@ -4,6 +4,7 @@ from sqlalchemy import func, desc, asc
 from sqlalchemy.orm import Session
 
 from bonita.api.deps import SessionDep
+from bonita.db.models.collection import CollectionItem
 from bonita.db.models.mediaitem import MediaItem
 from bonita.db.models.watch_history import WatchHistory
 from bonita.services.metadata_service import MetadataService
@@ -43,6 +44,22 @@ def _series_poster_ids(media_item: MediaItem, series_map: dict) -> tuple:
     return series.get("imdb_id"), series.get("tmdb_id")
 
 
+def _emby_item_id_map(session: Session, media_items: List[MediaItem]) -> dict:
+    ids = [item.id for item in media_items]
+    if not ids:
+        return {}
+    rows = session.query(CollectionItem.media_item_id, CollectionItem.emby_item_id).filter(
+        CollectionItem.media_item_id.in_(ids),
+        CollectionItem.emby_item_id.isnot(None),
+        CollectionItem.emby_item_id != "",
+    ).all()
+    result = {}
+    for media_item_id, emby_item_id in rows:
+        if media_item_id not in result:
+            result[media_item_id] = emby_item_id
+    return result
+
+
 def _favorited_series_ids(session: Session) -> List[int]:
     rows = (
         session.query(WatchHistory.media_item_id)
@@ -63,6 +80,7 @@ def attach_watch_data(session: Session, media_items: List[MediaItem]) -> List[sc
     metadata_service = MetadataService(session)
     crop_map = metadata_service.get_crop_by_numbers([item.number for item in media_items])
     series_map = _series_info_map(session, media_items)
+    emby_id_map = _emby_item_id_map(session, media_items)
     items = []
     for media_item in media_items:
         history = hist_map.get(media_item.id)
@@ -90,6 +108,7 @@ def attach_watch_data(session: Session, media_items: List[MediaItem]) -> List[sc
                 crop=metadata_service.resolve_crop(media_item.number, crop_map),
                 series_imdb_id=series_imdb_id,
                 series_tmdb_id=series_tmdb_id,
+                emby_item_id=emby_id_map.get(media_item.id),
             )
         )
     return items
@@ -226,7 +245,9 @@ async def get_media_items(
     crop_map = metadata_service.get_crop_by_numbers(
         [media_item.number for media_item, *_ in results],
     )
-    series_map = _series_info_map(session, [media_item for media_item, *_ in results])
+    media_items = [media_item for media_item, *_ in results]
+    series_map = _series_info_map(session, media_items)
+    emby_id_map = _emby_item_id_map(session, media_items)
 
     # 构造结果
     items = []
@@ -259,6 +280,7 @@ async def get_media_items(
             crop=crop,
             series_imdb_id=series_imdb_id,
             series_tmdb_id=series_tmdb_id,
+            emby_item_id=emby_id_map.get(media_item.id),
         )
 
         items.append(item_with_watches)
@@ -278,46 +300,7 @@ async def get_media_item(
     media_item = session.query(MediaItem).filter(MediaItem.id == media_id).first()
     if not media_item:
         raise HTTPException(status_code=404, detail="媒体项不存在")
-    
-    # 查询观看历史信息
-    watch_history = session.query(WatchHistory).filter(
-        WatchHistory.media_item_id == media_id
-    ).first()
-    
-    # 构建MediaItemWithWatches响应
-    item_dict = schemas.MediaItemInDB.model_validate(media_item)
-    series_map = _series_info_map(session, [media_item])
-    series_imdb_id, series_tmdb_id = _series_poster_ids(media_item, series_map)
-    series_favorite = bool(
-        media_item.series_id and series_map.get(media_item.series_id, {}).get("favorite")
-    )
-    
-    if watch_history:
-        userdata = schemas.UserWatchData(
-            favorite=(watch_history.favorite or False) or series_favorite,
-            watched=watch_history.watched or False,
-            total_plays=watch_history.watch_count or 0,
-            play_progress=watch_history.play_progress,
-            duration=watch_history.duration,
-            has_rating=watch_history.has_rating or False,
-            user_rating=watch_history.rating,
-            last_played=watch_history.updatetime,
-            watch_updatetime=watch_history.updatetime
-        )
-    else:
-        userdata = schemas.UserWatchData(
-            favorite=series_favorite,
-            watched=False,
-            total_plays=0
-        )
-    
-    return schemas.MediaItemWithWatches(
-        **item_dict.model_dump(),
-        userdata=userdata,
-        crop=MetadataService(session).get_crop_by_number(media_item.number),
-        series_imdb_id=series_imdb_id,
-        series_tmdb_id=series_tmdb_id,
-    )
+    return attach_watch_data(session, [media_item])[0]
 
 
 @router.post("/", response_model=schemas.MediaItemInDB)
@@ -388,46 +371,7 @@ async def update_media_item(
     
     session.commit()
     session.refresh(media_item)
-    
-    # 查询观看历史信息，构建返回结果
-    watch_history = session.query(WatchHistory).filter(
-        WatchHistory.media_item_id == media_id
-    ).first()
-    
-    # 构建MediaItemWithWatches响应
-    item_dict = schemas.MediaItemInDB.model_validate(media_item)
-    series_map = _series_info_map(session, [media_item])
-    series_imdb_id, series_tmdb_id = _series_poster_ids(media_item, series_map)
-    series_favorite = bool(
-        media_item.series_id and series_map.get(media_item.series_id, {}).get("favorite")
-    )
-
-    if watch_history:
-        userdata = schemas.UserWatchData(
-            favorite=(watch_history.favorite or False) or series_favorite,
-            watched=watch_history.watched or False,
-            total_plays=watch_history.watch_count or 0,
-            play_progress=watch_history.play_progress,
-            duration=watch_history.duration,
-            has_rating=watch_history.has_rating or False,
-            user_rating=watch_history.rating,
-            last_played=watch_history.updatetime,
-            watch_updatetime=watch_history.updatetime
-        )
-    else:
-        userdata = schemas.UserWatchData(
-            favorite=series_favorite,
-            watched=False,
-            total_plays=0
-        )
-    
-    return schemas.MediaItemWithWatches(
-        **item_dict.model_dump(),
-        userdata=userdata,
-        crop=MetadataService(session).get_crop_by_number(media_item.number),
-        series_imdb_id=series_imdb_id,
-        series_tmdb_id=series_tmdb_id,
-    )
+    return attach_watch_data(session, [media_item])[0]
 
 
 @router.delete("/{media_id}")

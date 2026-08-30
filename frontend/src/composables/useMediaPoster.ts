@@ -31,6 +31,9 @@ export function getPosterUrl(item: MediaItemWithWatches): string {
   if (tmdbId) params.append("tmdb_id", tmdbId.toString())
 
   if (item.number) params.append("number", item.number)
+  if (item.media_type === "video" && item.emby_item_id) {
+    params.append("emby_id", item.emby_item_id)
+  }
   if (item.updatetime) params.append("t", item.updatetime)
 
   return `${OpenAPI.BASE}/api/v1/resource/poster?${params.toString()}`

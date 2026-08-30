@@ -7,7 +7,7 @@ import { computed, nextTick, onMounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
 
 const VIEW_STATE_KEY = "mediaitem-view-state"
-const MEDIA_TYPE_VALUES = ["movie", "tvshow", "number"] as const
+const MEDIA_TYPE_VALUES = ["movie", "tvshow", "number", "video"] as const
 
 type MediaTypeFilter = (typeof MEDIA_TYPE_VALUES)[number] | null
 type BooleanFilter = boolean | null
@@ -71,6 +71,7 @@ const mediaTypeOptions = [
   { value: "movie", title: t("pages.mediaitem.movie") },
   { value: "tvshow", title: t("pages.mediaitem.tvshow") },
   { value: "number", title: t("pages.mediaitem.hasNumber") },
+  { value: "video", title: t("pages.mediaitem.video") },
 ]
 
 // Watched filter
@@ -240,6 +241,9 @@ const getMediaTypeLabel = (mediaType: string) => {
   }
   if (mediaType === "tvshow" || mediaType === "episode") {
     return t("pages.mediaitem.typeTvshow")
+  }
+  if (mediaType === "video") {
+    return t("pages.mediaitem.typeVideo")
   }
   return mediaType
 }

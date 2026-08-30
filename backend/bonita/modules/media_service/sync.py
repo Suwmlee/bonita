@@ -721,6 +721,48 @@ def _enrich_webhook_item(item: dict) -> dict:
 
 
 _COLLECTION_MEMBER_TYPES = {"Movie", "Video", "Episode", "Series"}
+_UNLINKED_VIDEO_EMBY_TYPES = {"Movie", "Video"}
+UNLINKED_VIDEO_TYPE = "video"
+
+
+def _find_media_item_by_emby_item_id(session, emby_item_id: str):
+    """合集成员表上的 Emby Id 反查已有 MediaItem，避免无关联视频重复建卡。"""
+    if not emby_item_id:
+        return None
+    row = session.query(CollectionItem).filter(
+        CollectionItem.emby_item_id == emby_item_id
+    ).first()
+    if not row:
+        return None
+    return session.query(MediaItem).filter(MediaItem.id == row.media_item_id).first()
+
+
+def _create_unlinked_video(session, item) -> MediaItem:
+    """为合集里对不上 IMDB/番号的电影/视频建一张无关联视频卡。"""
+    title = (item.get("Name") or "").strip() or item.get("Id") or "未命名视频"
+    original_title = (item.get("OriginalTitle") or "").strip() or None
+    media_item = MediaItem(
+        media_type=UNLINKED_VIDEO_TYPE,
+        title=title,
+        original_title=original_title,
+    )
+    media_item.create(session)
+    logger.info(f"    ✓ 创建无关联视频: {title}")
+    return media_item
+
+
+def _resolve_collection_member(session, item):
+    """合集成员匹配：先走 IMDB/番号，对不上的 Movie/Video 补建为无关联视频。"""
+    media_item = _resolve_media_item(session, item, create=False)
+    if media_item:
+        return media_item
+    if item.get("Type") not in _UNLINKED_VIDEO_EMBY_TYPES:
+        return None
+    emby_item_id = item.get("Id")
+    media_item = _find_media_item_by_emby_item_id(session, emby_item_id)
+    if media_item:
+        return media_item
+    return _create_unlinked_video(session, item)
 
 
 def add_and_sync_collection(session, emby_id: str, name: str = None) -> Collection:
@@ -798,12 +840,18 @@ def sync_collection_from_emby(session, collection: Collection) -> Collection:
             CollectionItem.collection_id == collection.id
         ).all()
     }
+    existing_emby_ids = {
+        row.emby_item_id for row in existing.values() if row.emby_item_id
+    }
     added = 0
     unmatched = 0
     for item in boxset_items:
         if item.get("Type") not in _COLLECTION_MEMBER_TYPES:
             continue
-        media_item = _resolve_media_item(session, item, create=False)
+        emby_item_id = item.get("Id")
+        if emby_item_id and emby_item_id in existing_emby_ids:
+            continue
+        media_item = _resolve_collection_member(session, item)
         if not media_item:
             unmatched += 1
             logger.info(
@@ -811,11 +859,11 @@ def sync_collection_from_emby(session, collection: Collection) -> Collection:
                 f"{item.get('Name') or item.get('Id')} path={item.get('Path')}"
             )
             continue
-        emby_item_id = item.get("Id")
         row = existing.get(media_item.id)
         if row:
             if emby_item_id and row.emby_item_id != emby_item_id:
                 row.emby_item_id = emby_item_id
+                existing_emby_ids.add(emby_item_id)
             continue
         member = CollectionItem(
             collection_id=collection.id,
@@ -824,6 +872,8 @@ def sync_collection_from_emby(session, collection: Collection) -> Collection:
         )
         session.add(member)
         existing[media_item.id] = member
+        if emby_item_id:
+            existing_emby_ids.add(emby_item_id)
         added += 1
     session.flush()
     _refresh_member_counts(
@@ -1012,6 +1062,13 @@ def _find_emby_id_for_media_item(session, emby_service, media_item: MediaItem) -
     """根据本地媒体项反查 Emby Item Id。"""
     if media_item.media_type == "episode":
         return _find_emby_episode_id(session, emby_service, media_item)
+    if media_item.media_type == UNLINKED_VIDEO_TYPE:
+        row = session.query(CollectionItem).filter(
+            CollectionItem.media_item_id == media_item.id,
+            CollectionItem.emby_item_id.isnot(None),
+            CollectionItem.emby_item_id != "",
+        ).first()
+        return row.emby_item_id if row else None
     # 番号只按转移路径匹配，不走外部 ID / 标题搜索
     if (media_item.number or "").strip():
         return _find_emby_id_by_destpath(session, emby_service, media_item)

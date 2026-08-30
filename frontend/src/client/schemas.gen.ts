@@ -890,6 +890,17 @@ export const $MediaItemWithWatches = {
                 }
             ],
             title: 'Crop'
+        },
+        emby_item_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Emby Item Id'
         }
     },
     type: 'object',

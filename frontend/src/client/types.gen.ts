@@ -161,6 +161,7 @@ export type MediaItemWithWatches = {
     crop?: boolean | null;
     series_imdb_id?: string | null;
     series_tmdb_id?: string | null;
+    emby_item_id?: string | null;
 };
 
 export type MetadataBase = {
