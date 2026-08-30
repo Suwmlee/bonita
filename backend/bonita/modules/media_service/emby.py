@@ -821,6 +821,3 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
             if not merged.get(key) and details.get(key) is not None:
                 merged[key] = details.get(key)
         return merged
-
-
-EmbyService = EmbyClient

@@ -214,7 +214,3 @@ def propagate_favorite_to_episodes(session, series_id, season=None):
     if updated:
         session.commit()
         logger.info(f"    ♥ 已将收藏同步到 {updated} 集")
-
-
-def sync_emby_history(session, direction="from_server", force=False):
-    return sync_watch_history(session, direction=direction, force=force, source=SOURCE_EMBY)

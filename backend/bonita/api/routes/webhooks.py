@@ -45,7 +45,7 @@ async def emby_webhook(request: Request, session: SessionDep):
         return schemas.Response(success=False, message="empty webhook payload")
 
     try:
-        result = WatchSyncService(session).handle_emby_webhook(payload)
+        result = WatchSyncService(session).handle_webhook(payload)
         return schemas.Response(
             success=True,
             message=f"emby webhook {result}",

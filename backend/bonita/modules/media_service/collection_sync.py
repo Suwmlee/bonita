@@ -290,8 +290,3 @@ def sync_whitelisted_collections(session, direction: str = "from_server") -> int
         except Exception as e:
             logger.error(f"  ✗ 合集同步失败 {collection.name}: {e}")
     return synced
-
-
-sync_collection_from_emby = sync_collection_from_server
-sync_collection_to_emby = sync_collection_to_server
-_refresh_collection_meta = refresh_collection_meta

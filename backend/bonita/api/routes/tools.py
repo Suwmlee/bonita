@@ -77,7 +77,7 @@ async def sync_emby_watch_history(
             - force: 是否强制覆盖数据，默认为 false
     """
     tool_service = ToolService(session)
-    return tool_service.sync_emby_watch_history(direction=params.direction.value, force=params.force)
+    return tool_service.sync_watch_history(direction=params.direction.value, force=params.force)
 
 
 @router.post("/cleanup", response_model=schemas.Response)

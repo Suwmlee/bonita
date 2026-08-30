@@ -7,20 +7,20 @@ from bonita import schemas
 from bonita.db.models.collection import Collection, CollectionItem
 from bonita.db.models.mediaitem import MediaItem
 from bonita.modules.media_service.client import SOURCE_EMBY, is_to_server
-from bonita.modules.media_service.factory import require_media_client
-from bonita.modules.media_service.sync import (
+from bonita.modules.media_service.collection_sync import (
     add_and_sync_collection,
     add_collection_members,
+    refresh_collection_meta,
     remove_collection_member,
     sync_collection_members,
     sync_whitelisted_collections,
-    _refresh_collection_meta,
 )
+from bonita.modules.media_service.factory import require_media_client
 from bonita.services.mediaitem_service import MediaItemService
 
 
 class CollectionService:
-    """合集白名单与媒体服务器合集同步编排。"""
+    """合集白名单 CRUD，同步实现在 collection_sync。"""
 
     def __init__(self, session: Session):
         self.session = session
@@ -51,17 +51,12 @@ class CollectionService:
             )
         return results
 
-    def search_emby_collections(
-        self, search: str = "", limit: int = 50
-    ) -> List[schemas.EmbyCollectionCandidate]:
-        return self.search_remote_collections(search=search, limit=limit, source=SOURCE_EMBY)
-
     def list_collections(self) -> List[Collection]:
         rows = self.session.query(Collection).order_by(Collection.updatetime.desc()).all()
         for row in rows:
             if not row.name or row.name == row.external_id:
                 try:
-                    _refresh_collection_meta(self.session, row)
+                    refresh_collection_meta(self.session, row)
                 except Exception:
                     pass
         return rows
@@ -117,7 +112,7 @@ class CollectionService:
     def get_detail(self, collection: Collection) -> Tuple[Collection, List[schemas.MediaItemWithWatches]]:
         if not collection.name or collection.name == collection.external_id:
             try:
-                _refresh_collection_meta(self.session, collection)
+                refresh_collection_meta(self.session, collection)
             except Exception:
                 pass
         media_items = (
@@ -135,7 +130,6 @@ class CollectionService:
 
     @staticmethod
     def sync_message(direction: str, synced: int) -> str:
-        label = "媒体服务器"
         if is_to_server(direction):
-            return f"已回写 {synced} 个合集到 {label}"
-        return f"已从 {label} 拉取 {synced} 个合集"
+            return f"已回写 {synced} 个合集到媒体服务器"
+        return f"已从媒体服务器拉取 {synced} 个合集"

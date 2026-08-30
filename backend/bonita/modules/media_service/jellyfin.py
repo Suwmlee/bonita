@@ -101,6 +101,3 @@ class JellyfinClient(MediaServerClient, metaclass=Singleton):
 
     def parse_webhook(self, payload: dict) -> WebhookEvent:
         return WebhookEvent(kind=WEBHOOK_IGNORED)
-
-
-JellyfinService = JellyfinClient

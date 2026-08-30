@@ -3,6 +3,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 
 from bonita import schemas
 from bonita.api.deps import SessionDep
+from bonita.modules.media_service.client import SOURCE_EMBY
 from bonita.services.resource_service import ResourceService
 
 router = APIRouter()
@@ -37,9 +38,8 @@ async def get_poster(
     imdb_id: str = None,
     tmdb_id: str = None,
     number: str = None,
-    emby_id: str = None,
     external_id: str = None,
-    source: str = "emby",
+    source: str = SOURCE_EMBY,
     image_tag: str = None,
     session: SessionDep = None
 ):
@@ -49,7 +49,6 @@ async def get_poster(
         imdb_id=imdb_id,
         tmdb_id=tmdb_id,
         number=number,
-        emby_id=emby_id,
         external_id=external_id,
         source=source,
         image_tag=image_tag,

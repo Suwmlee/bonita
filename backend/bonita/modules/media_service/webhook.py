@@ -77,7 +77,3 @@ def handle_webhook_event(session, payload: dict, source=SOURCE_EMBY) -> str:
             logger.info(f"  ✓ Webhook 同步观看状态: {event.raw_event} {item.title}")
         synced += 1
     return "synced" if synced else "ignored"
-
-
-def handle_emby_webhook_event(session, payload: dict) -> str:
-    return handle_webhook_event(session, payload, source=SOURCE_EMBY)

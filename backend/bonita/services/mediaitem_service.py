@@ -102,7 +102,6 @@ class MediaItemService:
                 last_played=history.updatetime if history else None,
                 watch_updatetime=history.updatetime if history else None,
             )
-            remote_id = remote_id_map.get(media_item.id)
             items.append(
                 schemas.MediaItemWithWatches(
                     **item_dict.model_dump(),
@@ -110,8 +109,7 @@ class MediaItemService:
                     crop=metadata_service.resolve_crop(media_item.number, crop_map),
                     series_imdb_id=series_imdb_id,
                     series_tmdb_id=series_tmdb_id,
-                    external_item_id=remote_id,
-                    emby_item_id=remote_id,
+                    external_item_id=remote_id_map.get(media_item.id),
                 )
             )
         return items
@@ -133,29 +131,13 @@ class MediaItemService:
                 WatchHistory.media_item_id,
                 func.max(WatchHistory.watched).label("watched"),
                 func.max(WatchHistory.favorite).label("favorite"),
-                func.sum(WatchHistory.watch_count).label("total_plays"),
-                func.max(WatchHistory.play_progress).label("play_progress"),
-                func.max(WatchHistory.duration).label("duration"),
-                func.max(WatchHistory.has_rating).label("has_rating"),
-                func.max(WatchHistory.rating).label("rating"),
-                func.max(WatchHistory.updatetime).label("watch_updatetime"),
             )
             .group_by(WatchHistory.media_item_id)
             .subquery()
         )
 
         query = (
-            self.session.query(
-                MediaItem,
-                watch_info.c.favorite,
-                watch_info.c.watched,
-                watch_info.c.total_plays,
-                watch_info.c.play_progress,
-                watch_info.c.duration,
-                watch_info.c.has_rating,
-                watch_info.c.rating,
-                watch_info.c.watch_updatetime
-            )
+            self.session.query(MediaItem)
             .outerjoin(watch_info, MediaItem.id == watch_info.c.media_item_id)
         )
 
@@ -220,50 +202,8 @@ class MediaItemService:
         count = query.count()
         sort_column = getattr(MediaItem, sort_by, MediaItem.updatetime)
         query = query.order_by(desc(sort_column) if sort_desc else asc(sort_column))
-        results = query.offset(skip).limit(limit).all()
-
-        metadata_service = MetadataService(self.session)
-        crop_map = metadata_service.get_crop_by_numbers(
-            [media_item.number for media_item, *_ in results],
-        )
-        media_items = [media_item for media_item, *_ in results]
-        series_map = self._series_info_map(media_items)
-        remote_id_map = self._remote_item_id_map(media_items)
-
-        items = []
-        for (
-            media_item, item_favorite, item_watched, total_plays, play_progress,
-            duration, has_rating, rating, watch_updatetime,
-        ) in results:
-            item_dict = schemas.MediaItemInDB.model_validate(media_item)
-            series_imdb_id, series_tmdb_id = self._series_poster_ids(media_item, series_map)
-            series_favorite = bool(
-                media_item.series_id and series_map.get(media_item.series_id, {}).get("favorite")
-            )
-            userdata = schemas.UserWatchData(
-                favorite=bool(item_favorite) or series_favorite,
-                watched=item_watched or False,
-                total_plays=total_plays or 0,
-                play_progress=play_progress,
-                duration=duration,
-                has_rating=has_rating or False,
-                user_rating=rating,
-                last_played=watch_updatetime,
-                watch_updatetime=watch_updatetime
-            )
-            remote_id = remote_id_map.get(media_item.id)
-            items.append(
-                schemas.MediaItemWithWatches(
-                    **item_dict.model_dump(),
-                    userdata=userdata,
-                    crop=metadata_service.resolve_crop(media_item.number, crop_map),
-                    series_imdb_id=series_imdb_id,
-                    series_tmdb_id=series_tmdb_id,
-                    external_item_id=remote_id,
-                    emby_item_id=remote_id,
-                )
-            )
-        return items, count
+        media_items = query.offset(skip).limit(limit).all()
+        return self.attach_watch_data(media_items), count
 
     def get_by_id(self, media_id: int) -> Optional[MediaItem]:
         return self.session.query(MediaItem).filter(MediaItem.id == media_id).first()

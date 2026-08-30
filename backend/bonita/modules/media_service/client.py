@@ -20,7 +20,7 @@ def source_label(source: str) -> str:
 
 
 def is_to_server(direction: str) -> bool:
-    return direction in ("to_emby", "to_server", "to_jellyfin")
+    return direction == DIR_TO_SERVER
 
 
 ITEM_MOVIE = "movie"

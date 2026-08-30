@@ -23,11 +23,6 @@ def stop_monitor():
     MonitorService().stop()
 
 
-def init_emby():
-    """兼容旧启动路径，初始化已启用的媒体服务器。"""
-    init_media_servers()
-
-
 def init_service():
     """
     initial Service

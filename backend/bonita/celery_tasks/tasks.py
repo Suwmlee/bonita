@@ -639,7 +639,7 @@ def celery_sync_watch_history(self, sources=None, days=30, limit=100):
             if emby_settings.get("enabled"):
                 client = ensure_media_client("emby")
                 if client:
-                    WatchSyncService(session).sync_emby_history()
+                    WatchSyncService(session).sync_history()
                     synced_sources.append("emby")
                     logger.info("  ✓ Emby 同步完成")
                 else:

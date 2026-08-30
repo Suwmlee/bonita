@@ -66,17 +66,15 @@ class ResourceService:
         imdb_id: Optional[str] = None,
         tmdb_id: Optional[str] = None,
         number: Optional[str] = None,
-        emby_id: Optional[str] = None,
         external_id: Optional[str] = None,
         source: str = SOURCE_EMBY,
         image_tag: Optional[str] = None,
     ) -> Optional[PosterResult]:
-        remote_id = external_id or emby_id
-        if remote_id:
+        if external_id:
             try:
                 client = get_media_client(source)
                 if client:
-                    poster_url = client.get_item_image_url(remote_id, image_tag)
+                    poster_url = client.get_item_image_url(external_id, image_tag)
                     if poster_url:
                         return PosterResult(kind="redirect", path=poster_url, cache_control="no-store")
             except Exception as e:

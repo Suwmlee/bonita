@@ -106,7 +106,7 @@ class ToolService:
             }
         )
 
-    def sync_emby_watch_history(self, direction: str = "from_server", force: bool = False) -> schemas.Response:
+    def sync_watch_history(self, direction: str = "from_server", force: bool = False) -> schemas.Response:
         """同步媒体服务器观看历史
 
         Args:
@@ -114,7 +114,7 @@ class ToolService:
             force: 是否强制覆盖对端已有的已看/收藏状态，默认为 False
         """
         logger.info(f"Sync watch history, direction={direction}, force={force}")
-        WatchSyncService(self.session).sync_emby_history(direction=direction, force=force)
+        WatchSyncService(self.session).sync_history(direction=direction, force=force)
 
         direction_text = "Bonita → 媒体服务器" if is_to_server(direction) else "媒体服务器 → Bonita"
         return schemas.Response(

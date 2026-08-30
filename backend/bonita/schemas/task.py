@@ -78,11 +78,8 @@ class ToolArgsParam(BaseModel):
 
 
 class SyncDirection(str, Enum):
-    """媒体服务器同步方向。from_emby / to_emby 为兼容别名。"""
     FROM_SERVER = "from_server"
     TO_SERVER = "to_server"
-    FROM_EMBY = "from_emby"
-    TO_EMBY = "to_emby"
 
 
 class EmbySyncParam(BaseModel):

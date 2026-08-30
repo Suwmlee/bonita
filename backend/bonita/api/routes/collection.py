@@ -30,7 +30,7 @@ async def search_emby_collections(
 ) -> Any:
     """从 Emby 搜索合集，不入库。已加入白名单的会标记 added。"""
     try:
-        return CollectionService(session).search_emby_collections(search=search, limit=limit)
+        return CollectionService(session).search_remote_collections(search=search, limit=limit)
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -44,11 +44,11 @@ async def list_collections(session: SessionDep) -> Any:
 @router.post("/", response_model=schemas.CollectionPublic)
 async def add_collection(session: SessionDep, payload: schemas.CollectionCreate) -> Any:
     """加入白名单并立即从媒体服务器拉取成员。"""
-    if not payload.resolved_id:
+    if not (payload.external_id or "").strip():
         raise HTTPException(status_code=400, detail="缺少 external_id")
     try:
         collection = CollectionService(session).add_collection(
-            payload.resolved_id, payload.name, source=payload.source
+            payload.external_id.strip(), payload.name, source=payload.source
         )
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -58,9 +58,7 @@ async def add_collection(session: SessionDep, payload: schemas.CollectionCreate)
 @router.post("/sync", response_model=schemas.Response)
 async def sync_all_collections(
     session: SessionDep,
-    direction: Literal["from_server", "to_server", "from_emby", "to_emby"] = Query(
-        default="from_server"
-    ),
+    direction: Literal["from_server", "to_server"] = Query(default="from_server"),
 ) -> Any:
     try:
         synced = CollectionService(session).sync_all(direction=direction)
@@ -80,9 +78,7 @@ async def sync_all_collections(
 async def sync_one_collection(
     collection_id: int,
     session: SessionDep,
-    direction: Literal["from_server", "to_server", "from_emby", "to_emby"] = Query(
-        default="from_server"
-    ),
+    direction: Literal["from_server", "to_server"] = Query(default="from_server"),
 ) -> Any:
     service = CollectionService(session)
     collection = _require_collection(service, collection_id)
