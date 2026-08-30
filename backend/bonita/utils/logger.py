@@ -1,4 +1,5 @@
 import logging
+import os
 from contextvars import ContextVar
 from logging.handlers import RotatingFileHandler
 
@@ -18,11 +19,23 @@ class ContextFilter(logging.Filter):
         return True
 
 
+def _log_rotation_namer(default_name: str) -> str:
+    """把 RotatingFileHandler 默认的 bonita.log.1 改成 bonita.1.log。"""
+    directory, filename = os.path.split(default_name)
+    if filename.endswith(".log"):
+        return default_name
+    stem, separator, suffix = filename.rpartition(".")
+    if separator and stem.endswith(".log") and suffix.isdigit():
+        name = stem[: -len(".log")]
+        return os.path.join(directory, f"{name}.{suffix}.log")
+    return default_name
+
+
 def init_log_config():
     """
     日志配置
     """
-    max_log_size = 5 * 1024 * 1024  # 5 MB
+    max_log_size = 10 * 1024 * 1024  # 10 MB
     backup_count = 5
     formatter = logging.Formatter(settings.LOGGING_FORMAT)
     file_handler = RotatingFileHandler(
@@ -31,6 +44,7 @@ def init_log_config():
         backupCount=backup_count,
         encoding="utf-8",
     )
+    file_handler.namer = _log_rotation_namer
     file_handler.setFormatter(formatter)
     file_handler.addFilter(ContextFilter())
 
