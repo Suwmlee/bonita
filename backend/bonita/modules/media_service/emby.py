@@ -256,15 +256,8 @@ class EmbyService(metaclass=Singleton):
         return result
 
     def get_item_details(self, item_id) -> Dict[str, Any]:
-        """Fetches details for a specific item from Emby
-        """
-        if not item_id:
-            return None
-        try:
-            return self._make_request('get', f'/emby/Items/{item_id}')
-        except Exception as e:
-            logger.error(f"Error fetching Emby item details: {str(e)}")
-            return None
+        """按当前用户取单条详情。Emby 没有 GET /emby/Items/{id}，网页端用的是用户库接口。"""
+        return self.get_user_item_details(item_id)
 
     def get_user_item_details(self, item_id, user_id=None) -> Dict[str, Any]:
         """按当前用户取条目，带 UserData（已看/收藏）。"""
@@ -280,7 +273,7 @@ class EmbyService(metaclass=Singleton):
                 f"/Users/{user_id}/Items/{item_id}",
                 params={
                     "Fields": (
-                        "ProviderIds,Path,UserData,SeriesName,SeriesId,"
+                        "ProviderIds,Path,UserData,OriginalTitle,SeriesName,SeriesId,"
                         "IndexNumber,ParentIndexNumber,RunTimeTicks,ImageTags"
                     ),
                 },
