@@ -1,4 +1,4 @@
-import { StatusService } from "@/client/services.gen"
+import { StatusService } from "@/client"
 import { defineStore } from "pinia"
 
 export const useAppStore = defineStore("app-store", {
@@ -17,7 +17,7 @@ export const useAppStore = defineStore("app-store", {
     },
     async fetchVersion() {
       try {
-        const response = await StatusService.healthCheck()
+        const { data: response } = await StatusService.healthCheck()
         if (response?.version) {
           this.version = response.version
         }

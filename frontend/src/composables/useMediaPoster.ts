@@ -1,5 +1,5 @@
 import type { MediaItemWithWatches } from "@/client"
-import { OpenAPI } from "@/client"
+import { client } from "@/client/client.gen"
 import { ref } from "vue"
 
 const IMDB_POSTER_CDN = "https://images.metahub.space/poster/medium"
@@ -31,12 +31,12 @@ export function getPosterUrl(item: MediaItemWithWatches): string {
   if (tmdbId) params.append("tmdb_id", tmdbId.toString())
 
   if (item.number) params.append("number", item.number)
-  if (item.media_type === "video" && item.emby_item_id) {
-    params.append("emby_id", item.emby_item_id)
+  if (item.media_type === "video" && item.external_item_id) {
+    params.append("external_id", item.external_item_id)
   }
   if (item.updatetime) params.append("t", item.updatetime)
 
-  return `${OpenAPI.BASE}/api/v1/resource/poster?${params.toString()}`
+  return `${client.getConfig().baseURL}/api/v1/resource/poster?${params.toString()}`
 }
 
 export function useMediaPoster() {

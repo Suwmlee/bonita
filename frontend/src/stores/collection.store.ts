@@ -1,5 +1,11 @@
-import { CollectionService, type CollectionDetail, type CollectionPublic, type CollectionSyncDirection, type EmbyCollectionCandidate } from "@/client/collection"
-import type { MediaItemWithWatches } from "@/client"
+import {
+  CollectionService,
+  type CollectionDetail,
+  type CollectionPublic,
+  type EmbyCollectionCandidate,
+  type MediaItemWithWatches,
+  type SyncDirection,
+} from "@/client"
 import { i18n } from "@/plugins/i18n"
 import { defineStore } from "pinia"
 import { useConfirmationStore } from "./confirmation.store"
@@ -20,7 +26,7 @@ export const useCollectionStore = defineStore("collection-store", {
     async listCollections() {
       this.isLoading = true
       try {
-        const response = await CollectionService.list()
+        const { data: response } = await CollectionService.listCollections()
         this.collections = response.data
       } catch (error) {
         console.error("Error listing collections:", error)
@@ -33,7 +39,8 @@ export const useCollectionStore = defineStore("collection-store", {
     async searchEmby(search: string) {
       this.isSearching = true
       try {
-        this.embyCandidates = await CollectionService.searchEmby(search)
+        const { data } = await CollectionService.searchEmbyCollections({ search })
+        this.embyCandidates = data
       } catch (error) {
         console.error("Error searching Emby collections:", error)
         useToastStore().error(i18n.global.t("pages.collection.searchFailed") as string)
@@ -43,10 +50,12 @@ export const useCollectionStore = defineStore("collection-store", {
       }
     },
 
-    async addCollection(embyId: string, name?: string) {
+    async addCollection(externalId: string, name?: string) {
       this.isLoading = true
       try {
-        const created = await CollectionService.add(embyId, name)
+        const { data: created } = await CollectionService.addCollection({
+          collectionCreate: { external_id: externalId, name },
+        })
         await this.listCollections()
         useToastStore().success(i18n.global.t("pages.collection.addSuccess") as string)
         return created
@@ -62,7 +71,10 @@ export const useCollectionStore = defineStore("collection-store", {
     async loadDetail(collectionId: number) {
       this.isLoading = true
       try {
-        this.detail = await CollectionService.get(collectionId)
+        const { data } = await CollectionService.getCollection({
+          collection_id: collectionId,
+        })
+        this.detail = data
       } catch (error) {
         console.error("Error loading collection:", error)
         useToastStore().error(i18n.global.t("pages.collection.loadFailed") as string)
@@ -84,10 +96,13 @@ export const useCollectionStore = defineStore("collection-store", {
       }
     },
 
-    async syncOne(collectionId: number, direction: CollectionSyncDirection = "from_server") {
+    async syncOne(collectionId: number, direction: SyncDirection = "from_server") {
       this.isSyncing = true
       try {
-        const updated = await CollectionService.syncOne(collectionId, direction)
+        const { data: updated } = await CollectionService.syncOneCollection({
+          collection_id: collectionId,
+          direction,
+        })
         this._applySynced(updated)
         if (this.detail?.id === collectionId) {
           await this.loadDetail(collectionId)
@@ -102,10 +117,10 @@ export const useCollectionStore = defineStore("collection-store", {
       }
     },
 
-    async syncAll(direction: CollectionSyncDirection = "from_server") {
+    async syncAll(direction: SyncDirection = "from_server") {
       this.isSyncing = true
       try {
-        await CollectionService.syncAll(direction)
+        await CollectionService.syncAllCollections({ direction })
         await this.listCollections()
         if (this.detail) {
           await this.loadDetail(this.detail.id)
@@ -123,7 +138,11 @@ export const useCollectionStore = defineStore("collection-store", {
     async searchMembers(collectionId: number, search: string) {
       this.isSearchingMembers = true
       try {
-        this.memberCandidates = await CollectionService.searchCandidates(collectionId, search)
+        const { data } = await CollectionService.searchCollectionCandidates({
+          collection_id: collectionId,
+          search,
+        })
+        this.memberCandidates = data
       } catch (error) {
         console.error("Error searching collection members:", error)
         useToastStore().error(i18n.global.t("pages.collection.searchMembersFailed") as string)
@@ -135,7 +154,10 @@ export const useCollectionStore = defineStore("collection-store", {
 
     async addMembers(collectionId: number, mediaItemIds: number[], search = "") {
       try {
-        const updated = await CollectionService.addItems(collectionId, mediaItemIds)
+        const { data: updated } = await CollectionService.addItemsToCollection({
+          collection_id: collectionId,
+          collectionAddItems: { media_item_ids: mediaItemIds },
+        })
         this._applySynced(updated)
         await this.loadDetail(collectionId)
         await this.searchMembers(collectionId, search)
@@ -157,7 +179,10 @@ export const useCollectionStore = defineStore("collection-store", {
       })
       if (!confirmed) return
       try {
-        const updated = await CollectionService.removeItem(collection.id, item.id)
+        const { data: updated } = await CollectionService.removeItemFromCollection({
+          collection_id: collection.id,
+          media_item_id: item.id,
+        })
         this._applySynced(updated)
         if (this.detail?.id === collection.id) {
           await this.loadDetail(collection.id)
@@ -178,7 +203,7 @@ export const useCollectionStore = defineStore("collection-store", {
       })
       if (!confirmed) return
       try {
-        await CollectionService.remove(collection.id)
+        await CollectionService.removeCollection({ collection_id: collection.id })
         this.collections = this.collections.filter((item) => item.id !== collection.id)
         if (this.detail?.id === collection.id) {
           this.detail = undefined

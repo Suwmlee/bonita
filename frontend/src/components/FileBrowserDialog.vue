@@ -56,8 +56,8 @@ async function loadFiles() {
   error.value = ""
 
   try {
-    const response = await FilesService.listDirectory({
-      directoryPath: currentPath.value,
+    const { data: response } = await FilesService.listDirectory({
+      directory_path: currentPath.value,
     })
 
     files.value = response.data || []

@@ -54,24 +54,17 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
         const limit =
           itemsPerPage !== undefined ? itemsPerPage : this.itemsPerPage
 
-        // 使用类型断言来处理 favorite 参数
-        const params: any = {
-          search: search,
-          skip: skip,
-          limit: limit,
-          mediaType: mediaType,
-          sortBy: sortBy,
-          sortDesc: sortDesc,
-          hasNumber: hasNumber,
-          watched: watched,
-        }
-
-        // 只有当 favorite 有值时才添加到参数中
-        if (favorite !== undefined) {
-          params.favorite = favorite
-        }
-
-        const response = await MediaitemService.getMediaItems(params)
+        const { data: response } = await MediaitemService.getMediaItems({
+          search,
+          skip,
+          limit,
+          media_type: mediaType,
+          sort_by: sortBy,
+          sort_desc: sortDesc,
+          has_number: hasNumber,
+          watched,
+          favorite,
+        })
 
         this.allMediaItems = response.data
 
@@ -113,9 +106,9 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
     async updateMediaItem(data: MediaItemWithWatches) {
       this.isLoading = true
       try {
-        const mediaItem = await MediaitemService.updateMediaItem({
-          mediaId: data.id,
-          requestBody: {
+        const { data: mediaItem } = await MediaitemService.updateMediaItem({
+          media_id: data.id,
+          mediaItemUpdate: {
             media_type: data.media_type,
             title: data.title,
             original_title: data.original_title,
@@ -170,8 +163,8 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
           series_id: data.series_id,
         }
 
-        const response = await MediaitemService.createMediaItem({
-          requestBody: mediaItemCreate,
+        const { data: response } = await MediaitemService.createMediaItem({
+          mediaItemCreate,
         })
 
         if (response) {
@@ -232,8 +225,8 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
     async deleteMediaItem(idToRemove: number) {
       this.isLoading = true
       try {
-        const response = await MediaitemService.deleteMediaItem({
-          mediaId: idToRemove,
+        const { data: response } = await MediaitemService.deleteMediaItem({
+          media_id: idToRemove,
         })
 
         if (response) {

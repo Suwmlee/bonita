@@ -47,12 +47,12 @@ export const useMetadataStore = defineStore("metadata-store", {
       const limit =
         itemsPerPage !== undefined ? itemsPerPage : this.itemsPerPage
 
-      const response = await MetadataService.getMetadata({
+      const { data: response } = await MetadataService.getMetadata({
         filter: filter,
         skip: skip,
         limit: limit,
-        sortBy: sortBy,
-        sortDesc: sortDesc,
+        sort_by: sortBy,
+        sort_desc: sortDesc,
       })
 
       this.allMetadata = response.data
@@ -85,9 +85,9 @@ export const useMetadataStore = defineStore("metadata-store", {
       this.showDialog = true
     },
     async updateMetadata(data: MetadataPublic) {
-      const metadata = await MetadataService.updateMetadata({
+      const { data: metadata } = await MetadataService.updateMetadata({
         id: data.id,
-        requestBody: data,
+        metadataBase: data,
       })
       if (this.showDialog) {
         this.updateMetadataById(data.id, metadata)
@@ -117,9 +117,9 @@ export const useMetadataStore = defineStore("metadata-store", {
             country: item.country,
             outline: item.outline,
             director: item.director,
-            actor: item.actor,
+            actor: item.actor || "",
             actor_photo: item.actor_photo,
-            cover: item.cover,
+            cover: item.cover || "",
             cover_small: item.cover_small,
             crop: item.crop ?? true,
             extrafanart: item.extrafanart,
@@ -132,7 +132,7 @@ export const useMetadataStore = defineStore("metadata-store", {
             detailurl: item.detailurl,
             site: item.site,
           }
-          await MetadataService.createMetadata({ requestBody: metadataCreate })
+          await MetadataService.createMetadata({ metadataCreate })
           success++
         } catch {
           failed++
@@ -163,9 +163,9 @@ export const useMetadataStore = defineStore("metadata-store", {
           country: data.country,
           outline: data.outline,
           director: data.director,
-          actor: data.actor,
+          actor: data.actor || "",
           actor_photo: data.actor_photo,
-          cover: data.cover,
+          cover: data.cover || "",
           cover_small: data.cover_small,
           crop: data.crop ?? true,
           extrafanart: data.extrafanart,
@@ -179,8 +179,8 @@ export const useMetadataStore = defineStore("metadata-store", {
           site: data.site,
         }
 
-        const response = await MetadataService.createMetadata({
-          requestBody: metadataCreate,
+        const { data: response } = await MetadataService.createMetadata({
+          metadataCreate,
         })
 
         if (response) {
@@ -223,7 +223,7 @@ export const useMetadataStore = defineStore("metadata-store", {
       }
     },
     async deleteMetadata(idToRemove: number) {
-      const response = await MetadataService.deleteMetadata({
+      const { data: response } = await MetadataService.deleteMetadata({
         id: idToRemove,
       })
       if (response.success) {

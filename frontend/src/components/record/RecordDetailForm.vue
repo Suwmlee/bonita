@@ -1,10 +1,5 @@
 <script lang="ts" setup>
-import {
-  ExtraInfoPublic,
-  type RecordPublic,
-  RecordService,
-  TransferRecordPublic,
-} from "@/client"
+import { type RecordPublic, RecordService } from "@/client"
 import { useRecordStore } from "@/stores/record.store"
 import { useTaskStore } from "@/stores/task.store"
 import { useToastStore } from "@/stores/toast.store"
@@ -52,9 +47,9 @@ async function applySeasonToAll() {
       currentTransferRecord.value.srcpath !== undefined &&
       currentTransferRecord.value.season !== undefined
     ) {
-      const response = await RecordService.updateSeason({
+      const { data: response } = await RecordService.updateSeason({
         srcpath: currentTransferRecord.value.srcpath,
-        newSeason: Number(currentTransferRecord.value.season),
+        new_season: Number(currentTransferRecord.value.season),
       })
 
       if (response?.success) {
@@ -80,10 +75,10 @@ async function applyTopFolderToAll() {
       currentTransferRecord.value.srcfolder !== undefined &&
       currentTransferRecord.value.top_folder !== undefined
     ) {
-      const response = await RecordService.updateTopFolder({
+      const { data: response } = await RecordService.updateTopFolder({
         srcfolder: currentTransferRecord.value.srcfolder,
-        oldTopFolder: originalTopFolder.value || "",
-        newTopFolder: currentTransferRecord.value.top_folder || "",
+        old_top_folder: originalTopFolder.value || "",
+        new_top_folder: currentTransferRecord.value.top_folder || "",
       })
 
       if (response?.success) {

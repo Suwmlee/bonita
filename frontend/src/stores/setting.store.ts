@@ -1,17 +1,10 @@
-import { SettingsService } from "@/client/services.gen"
+import { SettingsService } from "@/client"
 import type {
   EmbySettings,
   JellyfinSettings,
   ProxySettings,
-  TestEmbyConnectionData,
-  TestJellyfinConnectionData,
-  TestTransmissionConnectionData,
   TransmissionSettings,
-  UpdateEmbySettingsData,
-  UpdateJellyfinSettingsData,
-  UpdateProxySettingsData,
-  UpdateTransmissionSettingsData,
-} from "@/client/types.gen"
+} from "@/client"
 import { defineStore } from "pinia"
 import { useToastStore } from "./toast.store"
 
@@ -79,7 +72,7 @@ export const useSettingStore = defineStore("setting-store", {
       this.loading = true
 
       try {
-        const response = await SettingsService.getProxySettings()
+        const { data: response } = await SettingsService.getProxySettings()
         this.proxySettings = response
         return response
       } catch (error) {
@@ -99,11 +92,9 @@ export const useSettingStore = defineStore("setting-store", {
       this.saving = true
 
       try {
-        const data: UpdateProxySettingsData = {
-          requestBody: this.proxySettings,
-        }
-
-        const response = await SettingsService.updateProxySettings(data)
+        const { data: response } = await SettingsService.updateProxySettings({
+          proxySettings: this.proxySettings,
+        })
         toast.success("代理设置已更新")
         return response
       } catch (error) {
@@ -123,7 +114,7 @@ export const useSettingStore = defineStore("setting-store", {
       this.loading = true
 
       try {
-        const response = await SettingsService.getEmbySettings()
+        const { data: response } = await SettingsService.getEmbySettings()
         this.embyApiSettings = response
         return response
       } catch (error) {
@@ -142,11 +133,9 @@ export const useSettingStore = defineStore("setting-store", {
       this.saving = true
 
       try {
-        const data: UpdateEmbySettingsData = {
-          requestBody: this.embyApiSettings,
-        }
-
-        const response = await SettingsService.updateEmbySettings(data)
+        const { data: response } = await SettingsService.updateEmbySettings({
+          embySettings: this.embyApiSettings,
+        })
         return response
       } catch (error) {
         console.error("Error updating Emby settings:", error)
@@ -164,15 +153,13 @@ export const useSettingStore = defineStore("setting-store", {
       this.testingEmby = true
 
       try {
-        const data: TestEmbyConnectionData = {
-          requestBody: {
+        const { data: response } = await SettingsService.testEmbyConnection({
+          embySettings: {
             emby_host: this.embyApiSettings.emby_host,
             emby_apikey: apiKey,
             emby_user: this.embyApiSettings.emby_user,
           },
-        }
-
-        const response = await SettingsService.testEmbyConnection(data)
+        })
         return response
       } catch (error) {
         console.error("Error testing Emby connection:", error)
@@ -190,7 +177,7 @@ export const useSettingStore = defineStore("setting-store", {
       this.loading = true
 
       try {
-        const response = await SettingsService.getJellyfinSettings()
+        const { data: response } = await SettingsService.getJellyfinSettings()
         this.jellyfinApiSettings = response
         return response
       } catch (error) {
@@ -209,11 +196,9 @@ export const useSettingStore = defineStore("setting-store", {
       this.saving = true
 
       try {
-        const data: UpdateJellyfinSettingsData = {
-          requestBody: this.jellyfinApiSettings,
-        }
-
-        const response = await SettingsService.updateJellyfinSettings(data)
+        const { data: response } = await SettingsService.updateJellyfinSettings({
+          jellyfinSettings: this.jellyfinApiSettings,
+        })
         return response
       } catch (error) {
         console.error("Error updating Jellyfin settings:", error)
@@ -231,14 +216,12 @@ export const useSettingStore = defineStore("setting-store", {
       this.testingJellyfin = true
 
       try {
-        const data: TestJellyfinConnectionData = {
-          requestBody: {
+        const { data: response } = await SettingsService.testJellyfinConnection({
+          jellyfinSettings: {
             jellyfin_host: this.jellyfinApiSettings.jellyfin_host,
             jellyfin_apikey: apiKey,
           },
-        }
-
-        const response = await SettingsService.testJellyfinConnection(data)
+        })
         return response
       } catch (error) {
         console.error("Error testing Jellyfin connection:", error)
@@ -256,7 +239,7 @@ export const useSettingStore = defineStore("setting-store", {
       this.loading = true
 
       try {
-        const response = await SettingsService.getTransmissionSettings()
+        const { data: response } = await SettingsService.getTransmissionSettings()
         this.transmissionSettings = response
         return response
       } catch (error) {
@@ -275,11 +258,9 @@ export const useSettingStore = defineStore("setting-store", {
       this.saving = true
 
       try {
-        const data: UpdateTransmissionSettingsData = {
-          requestBody: this.transmissionSettings,
-        }
-
-        const response = await SettingsService.updateTransmissionSettings(data)
+        const { data: response } = await SettingsService.updateTransmissionSettings({
+          transmissionSettings: this.transmissionSettings,
+        })
         return response
       } catch (error) {
         console.error("Error updating Transmission settings:", error)
@@ -296,8 +277,8 @@ export const useSettingStore = defineStore("setting-store", {
       this.testingTransmission = true
 
       try {
-        const data: TestTransmissionConnectionData = {
-          requestBody: {
+        const { data: response } = await SettingsService.testTransmissionConnection({
+          transmissionSettings: {
             transmission_host: this.transmissionSettings.transmission_host,
             transmission_username:
               this.transmissionSettings.transmission_username,
@@ -308,9 +289,7 @@ export const useSettingStore = defineStore("setting-store", {
             transmission_dest_path:
               this.transmissionSettings.transmission_dest_path,
           },
-        }
-
-        const response = await SettingsService.testTransmissionConnection(data)
+        })
         return response
       } catch (error) {
         console.error("Error testing Transmission connection:", error)

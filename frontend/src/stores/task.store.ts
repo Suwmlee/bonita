@@ -22,7 +22,7 @@ export const useTaskStore = defineStore("task-store", {
   }),
   actions: {
     async getAllTasks() {
-      const all = await TaskConfigService.getAllTaskConfigs()
+      const { data: all } = await TaskConfigService.getAllTaskConfigs()
       this.allTasks = all.data
       return this.allTasks
     },
@@ -35,8 +35,8 @@ export const useTaskStore = defineStore("task-store", {
       this.showDialog = true
     },
     async createTask(data: TransferConfigCreate) {
-      const task = await TaskConfigService.createTaskConfig({
-        requestBody: data,
+      const { data: task } = await TaskConfigService.createTaskConfig({
+        transferConfigCreate: data,
       })
       if (this.showDialog) {
         this.allTasks.push(task)
@@ -44,9 +44,9 @@ export const useTaskStore = defineStore("task-store", {
       }
     },
     async updateTask(data: TransferConfigPublic) {
-      const task = await TaskConfigService.updateTaskConfig({
+      const { data: task } = await TaskConfigService.updateTaskConfig({
         id: data.id,
-        requestBody: data,
+        transferConfigPublic: data,
       })
       if (this.showDialog) {
         this.updateTaskById(data.id, task)
@@ -75,7 +75,7 @@ export const useTaskStore = defineStore("task-store", {
         )
 
         if (confirmed) {
-          const response = await TaskConfigService.deleteTaskConfig({
+          const { data: response } = await TaskConfigService.deleteTaskConfig({
             id: id,
           })
           if (response.success) {
@@ -106,9 +106,9 @@ export const useTaskStore = defineStore("task-store", {
       console.log("Task added to running tasks:", task)
     },
     async runTaskById(id: number) {
-      const task = await TaskService.runTransferTask({
+      const { data: task } = await TaskService.runTransferTask({
         id: id,
-        requestBody: {},
+        taskPathParam: {},
       })
       // Add the newly run task to the runningTasks array
       if (task) {
@@ -117,9 +117,9 @@ export const useTaskStore = defineStore("task-store", {
       return task
     },
     async runTaskByIdWithPath(id: number, path: string) {
-      const task = await TaskService.runTransferTask({
+      const { data: task } = await TaskService.runTransferTask({
         id: id,
-        requestBody: {
+        taskPathParam: {
           path: path,
         },
       })
@@ -147,7 +147,7 @@ export const useTaskStore = defineStore("task-store", {
     },
     async getRunningTasks() {
       try {
-        const response = await TaskService.getAllTasksStatus()
+        const { data: response } = await TaskService.getAllTasksStatus()
         if (response && Array.isArray(response)) {
           // Filter running tasks (PENDING and PROGRESS status)
           const runningTasksOnly = response.filter((task) => 

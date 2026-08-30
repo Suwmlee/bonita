@@ -4,7 +4,7 @@
  * Bootstraps Vuetify and other plugins then mounts the App`
  */
 
-import { OpenAPI } from "./client"
+import { client } from "./client/client.gen"
 
 // Components
 import App from "./App.vue"
@@ -21,10 +21,10 @@ import "@core/scss/template/index.scss"
 import "@layouts/styles/index.scss"
 import "@styles/styles.scss"
 
-OpenAPI.BASE = import.meta.env.VITE_API_URL || window.location.origin
-OpenAPI.TOKEN = async () => {
-  return localStorage.getItem("access_token") || ""
-}
+client.setConfig({
+  baseURL: import.meta.env.VITE_API_URL || window.location.origin,
+  auth: () => localStorage.getItem("access_token") || "",
+})
 
 const app = createApp(App)
 

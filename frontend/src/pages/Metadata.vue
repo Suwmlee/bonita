@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { MetadataPublic } from "@/client"
-import { OpenAPI } from "@/client"
+import { client } from "@/client/client.gen"
 import MetadataDetailDialog from "@/components/metadata/MetadataDetailDialog.vue"
 import { useMetadataStore } from "@/stores/metadata.store"
 import { computed, onMounted, ref, watch } from "vue"
@@ -39,7 +39,7 @@ const imageUrlCache = new Map<string, string>()
 function getImageUrl(path: string) {
   const cached = imageUrlCache.get(path)
   if (cached) return cached
-  const url = `${OpenAPI.BASE}/api/v1/resource/image?path=${encodeURIComponent(path)}&t=${Date.now()}`
+  const url = `${client.getConfig().baseURL}/api/v1/resource/image?path=${encodeURIComponent(path)}&t=${Date.now()}`
   imageUrlCache.set(path, url)
   return url
 }

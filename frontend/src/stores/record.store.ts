@@ -41,13 +41,13 @@ export const useRecordStore = defineStore("record-store", {
       try {
         const skip = (options.page - 1) * options.itemsPerPage
         const limit = options.itemsPerPage
-        const response = await RecordService.getRecords({
+        const { data: response } = await RecordService.getRecords({
           skip,
           limit,
           search: options.search,
-          taskId: options.taskId,
-          sortBy: options.sortBy,
-          sortDesc: options.sortDesc,
+          task_id: options.taskId,
+          sort_by: options.sortBy,
+          sort_desc: options.sortDesc,
         })
 
         this.records = response.data
@@ -71,8 +71,8 @@ export const useRecordStore = defineStore("record-store", {
       this.showDialog = true
     },
     async updateRecord(data: RecordPublic) {
-      const record = await RecordService.updateRecord({
-        requestBody: data,
+      await RecordService.updateRecord({
+        recordPublic: data,
       })
       if (this.showDialog) {
         this.updateRecordById(data.transfer_record.id, data)
@@ -80,8 +80,8 @@ export const useRecordStore = defineStore("record-store", {
       }
     },
     async deleteRecords(ids: number[], force = false) {
-      const response = await RecordService.deleteRecords({
-        requestBody: ids,
+      const { data: response } = await RecordService.deleteRecords({
+        body: ids,
         force: force,
       })
       if (response.success) {

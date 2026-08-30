@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import type { MediaItemWithWatches } from "@/client"
-import { OpenAPI } from "@/client"
-import type { CollectionPublic, EmbyCollectionCandidate } from "@/client/collection"
+import type {
+  CollectionPublic,
+  EmbyCollectionCandidate,
+  MediaItemWithWatches,
+} from "@/client"
+import { client } from "@/client/client.gen"
 import MediaItemDetailDialog from "@/components/mediaitem/MediaItemDetailDialog.vue"
 import { useMediaPoster } from "@/composables/useMediaPoster"
 import { useCollectionStore } from "@/stores/collection.store"
@@ -54,12 +57,12 @@ async function addMemberCandidate(item: MediaItemWithWatches) {
 
 async function addCandidate(candidate: EmbyCollectionCandidate) {
   if (candidate.added) {
-    const existing = collectionStore.collections.find((item) => item.emby_id === candidate.emby_id)
+    const existing = collectionStore.collections.find((item) => item.external_id === candidate.external_id)
     showAddDialog.value = false
     if (existing) await collectionStore.loadDetail(existing.id)
     return
   }
-  const created = await collectionStore.addCollection(candidate.emby_id, candidate.name)
+  const created = await collectionStore.addCollection(candidate.external_id, candidate.name)
   if (created) {
     showAddDialog.value = false
     await collectionStore.loadDetail(created.id)
@@ -74,12 +77,12 @@ function backToList() {
   collectionStore.clearDetail()
 }
 
-function getCollectionPosterUrl(item: { name: string; emby_id: string; image_tag?: string | null }) {
+function getCollectionPosterUrl(item: { name: string; external_id: string; image_tag?: string | null }) {
   const params = new URLSearchParams()
   params.append("title", item.name)
-  params.append("emby_id", item.emby_id)
+  params.append("external_id", item.external_id)
   if (item.image_tag) params.append("image_tag", item.image_tag)
-  return `${OpenAPI.BASE}/api/v1/resource/poster?${params.toString()}`
+  return `${client.getConfig().baseURL}/api/v1/resource/poster?${params.toString()}`
 }
 
 function getMediaTypeLabel(mediaType: string) {
@@ -139,7 +142,7 @@ function getCardTitle(item: MediaItemWithWatches) {
 
       <VContainer fluid class="px-2 py-2">
         <div class="custom-grid">
-          <div v-for="item in selected.items" :key="item.id" class="grid-item">
+          <div v-for="item in selected.items ?? []" :key="item.id" class="grid-item">
             <VCard class="media-card d-flex flex-column" @click="mediaItemStore.showUpdateMediaItem(item)">
               <div class="poster-wrapper" :class="{ 'show-full': !item.crop }">
                 <img
@@ -214,7 +217,7 @@ function getCardTitle(item: MediaItemWithWatches) {
           </div>
         </div>
       </VContainer>
-      <VRow v-if="!collectionStore.isLoading && selected.items.length === 0" class="mt-5">
+      <VRow v-if="!collectionStore.isLoading && (selected.items?.length ?? 0) === 0" class="mt-5">
         <VCol class="text-center">
           <p class="text-medium-emphasis">{{ t('pages.collection.noMembers') }}</p>
         </VCol>
@@ -289,7 +292,7 @@ function getCardTitle(item: MediaItemWithWatches) {
           <VList class="mt-2 picker-list">
             <VListItem
               v-for="candidate in collectionStore.embyCandidates"
-              :key="candidate.emby_id"
+              :key="candidate.external_id"
               class="picker-item"
               @click="addCandidate(candidate)"
             >

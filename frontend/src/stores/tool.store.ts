@@ -1,7 +1,5 @@
 import { ToolsService } from "@/client"
 import type {
-  CleanupDataResponse,
-  RunImportNfoResponse,
   SyncDirection,
   ToolArgsParam,
   TransRecordsPathSyncParam,
@@ -23,11 +21,11 @@ export const useToolStore = defineStore("tool-store", {
         const toastStore = useToastStore()
         const taskStore = useTaskStore()
 
-        const response: RunImportNfoResponse = await ToolsService.runImportNfo({
-          requestBody: params,
+        const { data: response } = await ToolsService.runImportNfo({
+          toolArgsParam: params,
         })
         // Check status
-        if (!response || response.status === "FAILED") {
+        if (!response || response.status === "FAILURE") {
           toastStore.error(
             i18n.global.t("pages.tools.nfoImportFailedWithDetail", {
               detail: response.detail || i18n.global.t("common.unknown"),
@@ -54,8 +52,8 @@ export const useToolStore = defineStore("tool-store", {
       try {
         const toastStore = useToastStore()
 
-        const response = await ToolsService.syncEmbyWatchHistory({
-          requestBody: {
+        const { data: response } = await ToolsService.syncEmbyWatchHistory({
+          embySyncParam: {
             direction,
             force,
           },
@@ -79,8 +77,8 @@ export const useToolStore = defineStore("tool-store", {
       try {
         const toastStore = useToastStore()
 
-        const response = await ToolsService.syncRecordPath({
-          requestBody: params,
+        const { data: response } = await ToolsService.syncRecordPath({
+          transRecordsPathSyncParam: params,
         })
         if (response.success === false) {
           toastStore.error(
@@ -108,8 +106,8 @@ export const useToolStore = defineStore("tool-store", {
       try {
         const toastStore = useToastStore()
 
-        const response: CleanupDataResponse = await ToolsService.cleanupData({
-          requestBody: {
+        const { data: response } = await ToolsService.cleanupData({
+          toolArgsParam: {
             arg1: forceDelete ? "true" : "false",
           },
         })

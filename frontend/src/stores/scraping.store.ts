@@ -15,7 +15,7 @@ export const useScrapingStore = defineStore("scraping-store", {
   }),
   actions: {
     async getAllSetting() {
-      const all = await ScrapingConfigService.getAllConfigs()
+      const { data: all } = await ScrapingConfigService.getAllConfigs()
       this.allSettings = all.data
       return this.allSettings
     },
@@ -28,8 +28,8 @@ export const useScrapingStore = defineStore("scraping-store", {
       this.showDialog = true
     },
     async addSetting(data: ScrapingConfigCreate) {
-      const setting = await ScrapingConfigService.createConfig({
-        requestBody: data,
+      const { data: setting } = await ScrapingConfigService.createConfig({
+        scrapingConfigCreate: data,
       })
       if (this.showDialog) {
         this.allSettings.push(setting)
@@ -37,9 +37,9 @@ export const useScrapingStore = defineStore("scraping-store", {
       }
     },
     async updateSetting(data: ScrapingConfigPublic) {
-      const setting = await ScrapingConfigService.updateConfig({
+      const { data: setting } = await ScrapingConfigService.updateConfig({
         id: data.id,
-        requestBody: data,
+        scrapingConfigPublic: data,
       })
       if (this.showDialog) {
         this.updateSettingById(data.id, setting)
@@ -68,7 +68,7 @@ export const useScrapingStore = defineStore("scraping-store", {
         )
 
         if (confirmed) {
-          const response = await ScrapingConfigService.deleteConfig({
+          const { data: response } = await ScrapingConfigService.deleteConfig({
             id: id,
           })
           if (response.success) {

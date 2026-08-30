@@ -19,7 +19,9 @@ const changePasswd = async () => {
     current_password: currentPassword.value,
     new_password: newPassword.value,
   }
-  const response = await UserService.updatePasswordMe({ requestBody: data })
+  const { data: response } = await UserService.updatePasswordMe({
+    updatePassword: data,
+  })
   console.log(response)
 }
 </script>

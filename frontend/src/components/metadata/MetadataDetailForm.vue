@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { OpenAPI, ResourceService } from "@/client"
+import { ResourceService } from "@/client"
+import { client } from "@/client/client.gen"
 import type { MetadataPublic } from "@/client/types.gen"
 import { useMetadataStore } from "@/stores/metadata.store"
 import { computed, ref } from "vue"
@@ -29,7 +30,7 @@ const coverImageUrl = computed(() => {
 
   // Add a timestamp query parameter to prevent browser caching
   const timestamp = new Date().getTime()
-  return `${OpenAPI.BASE}/api/v1/resource/image?path=${encodeURIComponent(currentMetadata.value.cover)}&t=${timestamp}`
+  return `${client.getConfig().baseURL}/api/v1/resource/image?path=${encodeURIComponent(currentMetadata.value.cover)}&t=${timestamp}`
 })
 
 if (updateMetadata) {
@@ -149,9 +150,9 @@ async function handleFileUpload(event: Event) {
     }
 
     // Upload image with existing path as custom URL if available
-    const response = await ResourceService.uploadImage({
-      formData: formData,
-      customUrl: currentMetadata.value.cover || undefined,
+    const { data: response } = await ResourceService.uploadImage({
+      bodyResourceUploadImage: formData,
+      custom_url: currentMetadata.value.cover || undefined,
     })
 
     let path = ""
