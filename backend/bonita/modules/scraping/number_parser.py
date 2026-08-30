@@ -178,7 +178,6 @@ def get_number(file_path: str) -> str:
         if file_number:
             return file_number
 
-        logging.getLogger().debug(f"[!] 特殊番号: {file_path}")
         if '字幕组' in filename or 'SUB' in filename.upper() or re.match(r'[\u30a0-\u30ff]+', filename):
             filename = G_spat.sub("", filename)
             filename = re.sub(r"\[.*?\]", "", filename)

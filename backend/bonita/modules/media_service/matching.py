@@ -176,8 +176,6 @@ def _resolve_movie(session, item: RemoteItem, create=True):
         return media_item
 
     if not create or not (imdb_id or tmdb_id or tvdb_id):
-        if number:
-            logger.debug(f"    ⊘ 未找到元数据: {number}")
         return None
 
     media_item = MediaItem(
