@@ -64,7 +64,7 @@ async def sync_record_path(
 
 
 @router.post("/sync/emby", response_model=schemas.Response)
-async def sync_emby_watch_history(
+def sync_emby_watch_history(
         session: SessionDep,
         params: schemas.EmbySyncParam):
     """ 同步媒体服务器和 Bonita 之间的观看记录

@@ -7,6 +7,8 @@ from bonita.core.config import settings
 
 task_id_ctx = ContextVar("task_id", default="")
 
+LOG_BACKUP_COUNT = 5
+
 
 class ContextFilter(logging.Filter):
     """
@@ -31,12 +33,27 @@ def _log_rotation_namer(default_name: str) -> str:
     return default_name
 
 
+def list_log_files(log_file_path: str | None = None) -> list[str]:
+    """当前日志 + 轮转备份，按从旧到新排序：bonita.5.log … bonita.1.log、bonita.log。"""
+    path = os.path.abspath(log_file_path or settings.LOGGING_LOCATION)
+    directory, filename = os.path.split(path)
+    stem, ext = os.path.splitext(filename)
+    found: list[str] = []
+    for i in range(LOG_BACKUP_COUNT, 0, -1):
+        backup = os.path.join(directory, f"{stem}.{i}{ext}")
+        if os.path.isfile(backup):
+            found.append(backup)
+    if os.path.isfile(path):
+        found.append(path)
+    return found
+
+
 def init_log_config():
     """
     日志配置
     """
     max_log_size = 10 * 1024 * 1024  # 10 MB
-    backup_count = 5
+    backup_count = LOG_BACKUP_COUNT
     formatter = logging.Formatter(settings.LOGGING_FORMAT)
     file_handler = RotatingFileHandler(
         settings.LOGGING_LOCATION,
