@@ -88,7 +88,7 @@ class EmbyService(metaclass=Singleton):
             response = requests.request(
                 method=method.lower(),
                 url=url,
-                json=data,
+                json=data if data is not None else None,
                 headers=self.headers,
                 params=params
             )
@@ -329,22 +329,33 @@ class EmbyService(metaclass=Singleton):
         """获取合集的直接成员（电影 / 剧 / 集）。"""
         if not self.emby_user_id or not boxset_id:
             return []
-        response = self._make_request(
-            "get",
-            f"/Users/{self.emby_user_id}/Items",
-            params={
-                "ParentId": boxset_id,
-                "Recursive": "False",
-                "IncludeItemTypes": "Movie,Episode,Series,Video",
-                "Fields": (
-                    "ProviderIds,Path,SeriesName,SeriesId,"
-                    "IndexNumber,ParentIndexNumber,RunTimeTicks"
-                ),
-            },
-        )
-        if isinstance(response, dict):
-            return response.get("Items") or []
-        return []
+        items: List[Dict[str, Any]] = []
+        start = 0
+        page_size = 200
+        while True:
+            response = self._make_request(
+                "get",
+                f"/Users/{self.emby_user_id}/Items",
+                params={
+                    "ParentId": boxset_id,
+                    "Recursive": "False",
+                    "IncludeItemTypes": "Movie,Episode,Series,Video",
+                    "Fields": (
+                        "ProviderIds,Path,SeriesName,SeriesId,"
+                        "IndexNumber,ParentIndexNumber,RunTimeTicks"
+                    ),
+                    "StartIndex": start,
+                    "Limit": page_size,
+                },
+            )
+            page = response.get("Items") or [] if isinstance(response, dict) else []
+            items.extend(page)
+            if len(page) < page_size:
+                break
+            start += page_size
+            if start >= 10000:
+                break
+        return items
 
     def query_items(
         self,
@@ -385,26 +396,48 @@ class EmbyService(metaclass=Singleton):
             return response.get("Items") or []
         return []
 
-    def add_items_to_collection(self, collection_id: str, item_ids: List[str]) -> bool:
-        """把条目加入 Emby 合集。"""
+    def add_items_to_collection(self, collection_id: str, item_ids: List[str]) -> tuple:
+        """把条目加入 Emby 合集。返回 (成功数, 失败数)。"""
         return self._mutate_collection_items("post", collection_id, item_ids)
 
-    def remove_items_from_collection(self, collection_id: str, item_ids: List[str]) -> bool:
-        """从 Emby 合集移除条目。"""
+    def remove_items_from_collection(self, collection_id: str, item_ids: List[str]) -> tuple:
+        """从 Emby 合集移除条目。返回 (成功数, 失败数)。"""
         return self._mutate_collection_items("delete", collection_id, item_ids)
 
-    def _mutate_collection_items(self, method: str, collection_id: str, item_ids: List[str]) -> bool:
+    def _mutate_collection_items(self, method: str, collection_id: str, item_ids: List[str]) -> tuple:
         if not collection_id or not item_ids:
-            return True
+            return 0, 0
         unique_ids = list(dict.fromkeys(item_ids))
+        succeeded = 0
+        failed = 0
         for offset in range(0, len(unique_ids), 50):
             chunk = unique_ids[offset:offset + 50]
-            self._make_request(
-                method,
-                f"/emby/Collections/{collection_id}/Items",
-                params={"Ids": ",".join(chunk)},
-            )
-        return True
+            try:
+                self._make_request(
+                    method,
+                    f"/emby/Collections/{collection_id}/Items",
+                    params={"Ids": ",".join(chunk)},
+                    data=None,
+                )
+                succeeded += len(chunk)
+            except Exception as e:
+                if len(chunk) == 1:
+                    logger.error(f"合集成员变更失败 {method} {chunk[0]}: {e}")
+                    failed += 1
+                    continue
+                for item_id in chunk:
+                    try:
+                        self._make_request(
+                            method,
+                            f"/emby/Collections/{collection_id}/Items",
+                            params={"Ids": item_id},
+                            data=None,
+                        )
+                        succeeded += 1
+                    except Exception as item_error:
+                        logger.error(f"合集成员变更失败 {method} {item_id}: {item_error}")
+                        failed += 1
+        return succeeded, failed
 
     def get_item_image_url(self, item_id: str, image_tag: str = None, size: str = "w500") -> str:
         if not item_id:

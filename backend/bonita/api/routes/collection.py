@@ -2,6 +2,7 @@ from typing import Any, List, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import or_
+import logging
 
 from bonita import schemas
 from bonita.api.deps import SessionDep
@@ -18,6 +19,7 @@ from bonita.modules.media_service.sync import (
     _refresh_collection_meta,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -97,6 +99,9 @@ async def sync_all_collections(
         synced = sync_whitelisted_collections(session, direction=direction)
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception("合集批量同步失败")
+        raise HTTPException(status_code=500, detail=str(e))
     message = (
         f"已从 Emby 拉取 {synced} 个合集"
         if direction == "from_emby"
@@ -116,6 +121,9 @@ async def sync_one_collection(
         collection = sync_collection_members(session, collection, direction=direction)
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception(f"合集同步失败 {collection.name}")
+        raise HTTPException(status_code=500, detail=str(e))
     return _to_public(collection)
 
 

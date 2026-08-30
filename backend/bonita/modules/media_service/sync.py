@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime
 
 from bonita.db.models.collection import Collection, CollectionItem
@@ -788,6 +789,7 @@ def sync_collection_from_emby(session, collection: Collection) -> Collection:
     emby_service = EmbyService()
     if not emby_service.is_initialized:
         raise RuntimeError("Emby服务未初始化")
+    logger.info(f"  → 合集 {collection.name}: 从 Emby 拉取成员")
     _refresh_collection_meta(session, collection)
     boxset_items = emby_service.get_boxset_items(collection.emby_id)
     existing = {
@@ -797,11 +799,17 @@ def sync_collection_from_emby(session, collection: Collection) -> Collection:
         ).all()
     }
     added = 0
+    unmatched = 0
     for item in boxset_items:
         if item.get("Type") not in _COLLECTION_MEMBER_TYPES:
             continue
         media_item = _resolve_media_item(session, item, create=False)
         if not media_item:
+            unmatched += 1
+            logger.info(
+                f"    ⊘ 合集 {collection.name}: 未匹配 "
+                f"{item.get('Name') or item.get('Id')} path={item.get('Path')}"
+            )
             continue
         emby_item_id = item.get("Id")
         row = existing.get(media_item.id)
@@ -826,7 +834,8 @@ def sync_collection_from_emby(session, collection: Collection) -> Collection:
     )
     logger.info(
         f"    ✓ 合集 {collection.name}: 从 Emby 新增 {added} 项, "
-        f"本地 {collection.matched_count} 项, Emby {collection.item_count} 项"
+        f"未匹配 {unmatched} 项, 本地 {collection.matched_count} 项, "
+        f"Emby {collection.item_count} 项"
     )
     return collection
 
@@ -836,6 +845,7 @@ def sync_collection_to_emby(session, collection: Collection) -> Collection:
     emby_service = EmbyService()
     if not emby_service.is_initialized:
         raise RuntimeError("Emby服务未初始化")
+    logger.info(f"  → 合集 {collection.name}: 开始回写 Emby")
     _refresh_collection_meta(session, collection)
     boxset_items = emby_service.get_boxset_items(collection.emby_id)
     emby_ids = {item.get("Id") for item in boxset_items if item.get("Id")}
@@ -845,27 +855,49 @@ def sync_collection_to_emby(session, collection: Collection) -> Collection:
     wanted_ids = set()
     unresolved = 0
     for member in members:
-        if not member.emby_item_id:
-            media_item = session.query(MediaItem).filter(
-                MediaItem.id == member.media_item_id
-            ).first()
+        media_item = session.query(MediaItem).filter(
+            MediaItem.id == member.media_item_id
+        ).first()
+        resolved_id = member.emby_item_id
+        already_in_collection = resolved_id and resolved_id in emby_ids
+        is_number = bool(media_item and (media_item.number or "").strip())
+        if not already_in_collection:
+            looked_up = None
             if media_item:
-                member.emby_item_id = _find_emby_id_for_media_item(
+                looked_up = _find_emby_id_for_media_item(
                     session, emby_service, media_item
                 )
-        if member.emby_item_id:
-            wanted_ids.add(member.emby_item_id)
+            if looked_up:
+                if resolved_id and resolved_id != looked_up:
+                    logger.info(
+                        f"    ↻ 合集 {collection.name}: "
+                        f"{_media_item_label(media_item)} Emby Id "
+                        f"{resolved_id} → {looked_up}"
+                    )
+                resolved_id = looked_up
+                member.emby_item_id = looked_up
+            elif is_number:
+                resolved_id = None
+        if resolved_id:
+            wanted_ids.add(resolved_id)
         else:
             unresolved += 1
             logger.warning(
-                f"    ⊘ 合集 {collection.name}: 无法在 Emby 找到媒体项 {member.media_item_id}"
+                f"    ⊘ 合集 {collection.name}: 无法在 Emby 找到 "
+                f"{_media_item_label(media_item) or member.media_item_id}"
             )
     to_add = [item_id for item_id in wanted_ids if item_id not in emby_ids]
     to_remove = [item_id for item_id in emby_ids if item_id not in wanted_ids]
+    added_ok, add_failed = 0, 0
+    removed_ok, remove_failed = 0, 0
     if to_add:
-        emby_service.add_items_to_collection(collection.emby_id, to_add)
+        added_ok, add_failed = emby_service.add_items_to_collection(
+            collection.emby_id, to_add
+        )
     if to_remove:
-        emby_service.remove_items_from_collection(collection.emby_id, to_remove)
+        removed_ok, remove_failed = emby_service.remove_items_from_collection(
+            collection.emby_id, to_remove
+        )
     session.flush()
     boxset_items = emby_service.get_boxset_items(collection.emby_id)
     _refresh_member_counts(
@@ -875,8 +907,10 @@ def sync_collection_to_emby(session, collection: Collection) -> Collection:
         touch_sync=True,
     )
     logger.info(
-        f"    ✓ 合集 {collection.name}: 回写 Emby 新增 {len(to_add)} 项, "
-        f"移除 {len(to_remove)} 项, 未对上 {unresolved} 项"
+        f"    ✓ 合集 {collection.name}: 回写 Emby 新增 {added_ok} 项, "
+        f"移除 {removed_ok} 项, 未对上 {unresolved} 项"
+        + (f", 新增失败 {add_failed} 项" if add_failed else "")
+        + (f", 移除失败 {remove_failed} 项" if remove_failed else "")
     )
     return collection
 
@@ -931,18 +965,65 @@ def remove_collection_member(session, collection: Collection, media_item_id: int
     return True
 
 
+def _media_item_label(media_item: MediaItem) -> str:
+    if not media_item:
+        return ""
+    return (media_item.number or media_item.title or "").strip() or str(media_item.id)
+
+
+def _dest_paths_for_media_item(session, media_item: MediaItem) -> list:
+    """用转移记录反查 Emby 库内文件路径。拉取时靠 Path 对番号，回写必须反过来。"""
+    if not media_item or not (media_item.number or "").strip():
+        return []
+    number = media_item.number.strip()
+    rows = session.query(TransRecords.destpath).join(
+        ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath
+    ).filter(ExtraInfo.number == number).all()
+    return list(dict.fromkeys(path for (path,) in rows if path))
+
+
+def _paths_match(emby_path: str, destpath: str) -> bool:
+    left = (emby_path or "").replace("\\", "/").rstrip("/").lower()
+    right = (destpath or "").replace("\\", "/").rstrip("/").lower()
+    if not left or not right:
+        return False
+    if left == right:
+        return True
+    return left.endswith(right) or right.endswith(left)
+
+
+def _find_emby_id_by_destpath(session, emby_service, media_item: MediaItem) -> str:
+    """用转移 destpath 对 Emby Path，和从 Emby 拉取是同一条链。"""
+    include_types = "Series" if media_item.media_type == "tvshow" else "Movie,Video"
+    for destpath in _dest_paths_for_media_item(session, media_item):
+        filename = os.path.basename(destpath)
+        stem = os.path.splitext(filename)[0]
+        for term in dict.fromkeys([filename, stem]):
+            if not term:
+                continue
+            items = emby_service.query_items(include_types, search_term=term, limit=50)
+            for item in items:
+                if _paths_match(item.get("Path"), destpath):
+                    return item.get("Id")
+    return None
+
+
 def _find_emby_id_for_media_item(session, emby_service, media_item: MediaItem) -> str:
     """根据本地媒体项反查 Emby Item Id。"""
     if media_item.media_type == "episode":
         return _find_emby_episode_id(session, emby_service, media_item)
+    # 番号只按转移路径匹配，不走外部 ID / 标题搜索
+    if (media_item.number or "").strip():
+        return _find_emby_id_by_destpath(session, emby_service, media_item)
+
     include_types = "Series" if media_item.media_type == "tvshow" else "Movie,Video"
     items = _query_emby_by_providers(emby_service, media_item, include_types)
     matched = _pick_emby_item(items, media_item)
     if matched:
         return matched.get("Id")
-    term = (media_item.number or media_item.title or "").strip()
+    term = (media_item.title or "").strip()
     if term:
-        items = emby_service.query_items(include_types, search_term=term)
+        items = emby_service.query_items(include_types, search_term=term, limit=100)
         matched = _pick_emby_item(items, media_item)
         if matched:
             return matched.get("Id")
@@ -1020,12 +1101,19 @@ def _pick_emby_item(items, media_item: MediaItem, force_series=False):
                 return item
         return None
     number = (media_item.number or "").strip().lower()
+    number_compact = number.replace("-", "").replace("_", "")
     if number:
         for item in items:
             name = (item.get("Name") or "").strip().lower()
-            path = (item.get("Path") or "").lower()
+            path = (item.get("Path") or "").replace("\\", "/").lower()
             if number in name or number in path:
                 return item
+            if number_compact and (
+                number_compact in name.replace("-", "").replace("_", "")
+                or number_compact in path.replace("-", "").replace("_", "")
+            ):
+                return item
+        return None
     title = (media_item.title or "").strip().lower()
     if title:
         for item in items:
