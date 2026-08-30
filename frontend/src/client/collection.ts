@@ -3,7 +3,7 @@ import { OpenAPI } from "@/client"
 import { request as __request } from "@/client/core/request"
 import type { CancelablePromise } from "@/client/core/CancelablePromise"
 
-export type CollectionSyncDirection = "from_emby" | "to_emby"
+export type CollectionSyncDirection = "from_server" | "to_server"
 
 export type EmbyCollectionCandidate = {
   emby_id: string
@@ -77,7 +77,7 @@ export class CollectionService {
 
   public static syncOne(
     collectionId: number,
-    direction: CollectionSyncDirection = "from_emby",
+    direction: CollectionSyncDirection = "from_server",
   ): CancelablePromise<CollectionPublic> {
     return __request(OpenAPI, {
       method: "POST",
@@ -88,7 +88,7 @@ export class CollectionService {
   }
 
   public static syncAll(
-    direction: CollectionSyncDirection = "from_emby",
+    direction: CollectionSyncDirection = "from_server",
   ): CancelablePromise<{ success: boolean; message?: string }> {
     return __request(OpenAPI, {
       method: "POST",

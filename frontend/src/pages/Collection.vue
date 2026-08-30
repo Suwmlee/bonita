@@ -118,16 +118,16 @@ function getCardTitle(item: MediaItemWithWatches) {
         <VBtn
           variant="outlined"
           :loading="collectionStore.isSyncing"
-          @click="collectionStore.syncOne(selected.id, 'from_emby')"
+          @click="collectionStore.syncOne(selected.id, 'from_server')"
         >
-          {{ t('pages.collection.pullFromEmby') }}
+          {{ t('pages.collection.pullFromServer') }}
         </VBtn>
         <VBtn
           variant="outlined"
           :loading="collectionStore.isSyncing"
-          @click="collectionStore.syncOne(selected.id, 'to_emby')"
+          @click="collectionStore.syncOne(selected.id, 'to_server')"
         >
-          {{ t('pages.collection.pushToEmby') }}
+          {{ t('pages.collection.pushToServer') }}
         </VBtn>
         <VBtn color="error" variant="outlined" @click="collectionStore.removeCollection(selected)">
           {{ t('pages.collection.remove') }}
@@ -224,11 +224,11 @@ function getCardTitle(item: MediaItemWithWatches) {
     <template v-else>
       <div class="d-flex align-center mb-6 ga-2 flex-wrap">
         <p class="text-xl mb-0 flex-grow-1">{{ t('pages.collection.title') }}</p>
-        <VBtn variant="outlined" :loading="collectionStore.isSyncing" @click="collectionStore.syncAll('from_emby')">
-          {{ t('pages.collection.pullFromEmby') }}
+        <VBtn variant="outlined" :loading="collectionStore.isSyncing" @click="collectionStore.syncAll('from_server')">
+          {{ t('pages.collection.pullFromServer') }}
         </VBtn>
-        <VBtn variant="outlined" :loading="collectionStore.isSyncing" @click="collectionStore.syncAll('to_emby')">
-          {{ t('pages.collection.pushToEmby') }}
+        <VBtn variant="outlined" :loading="collectionStore.isSyncing" @click="collectionStore.syncAll('to_server')">
+          {{ t('pages.collection.pushToServer') }}
         </VBtn>
         <VBtn color="primary" @click="openAddDialog">
           {{ t('pages.collection.add') }}

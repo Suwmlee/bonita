@@ -14,7 +14,7 @@ const isCleaningMediaItems = ref(false)
 const isCleaningData = ref(false)
 const updateOption = ref("ignore")
 const forceCleanupOption = ref(false)
-const syncDirection = ref<"from_emby" | "to_emby">("from_emby")
+const syncDirection = ref<"from_server" | "to_server">("from_server")
 const forceUpdateEmby = ref(false)
 const oldPrefix = ref("")
 const newPrefix = ref("")
@@ -148,8 +148,8 @@ const cleanupData = async () => {
                 </VCol>
                 <VCol cols="12" md="9">
                   <VRadioGroup v-model="syncDirection" inline hide-details>
-                    <VRadio value="from_emby" :label="t('pages.tools.syncEmby.fromEmby')" />
-                    <VRadio value="to_emby" :label="t('pages.tools.syncEmby.toEmby')" />
+                    <VRadio value="from_server" :label="t('pages.tools.syncEmby.fromServer')" />
+                    <VRadio value="to_server" :label="t('pages.tools.syncEmby.toServer')" />
                   </VRadioGroup>
                 </VCol>
               </VRow>

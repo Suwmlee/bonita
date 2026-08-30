@@ -349,9 +349,9 @@ export type StatusResponse = {
 };
 
 /**
- * Emby 同步方向枚举
+ * 媒体服务器同步方向。from_emby / to_emby 为兼容别名。
  */
-export type SyncDirection = 'from_emby' | 'to_emby';
+export type SyncDirection = 'from_server' | 'to_server' | 'from_emby' | 'to_emby';
 
 export type TaskPathParam = {
     path?: string | null;

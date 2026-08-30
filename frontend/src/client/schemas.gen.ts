@@ -109,7 +109,7 @@ export const $EmbySyncParam = {
                     '$ref': '#/components/schemas/SyncDirection'
                 }
             ],
-            default: 'from_emby'
+            default: 'from_server'
         },
         force: {
             type: 'boolean',
@@ -2304,9 +2304,9 @@ export const $StatusResponse = {
 
 export const $SyncDirection = {
     type: 'string',
-    enum: ['from_emby', 'to_emby'],
+    enum: ['from_server', 'to_server', 'from_emby', 'to_emby'],
     title: 'SyncDirection',
-    description: 'Emby 同步方向枚举'
+    description: '媒体服务器同步方向。from_emby / to_emby 为兼容别名。'
 } as const;
 
 export const $TaskPathParam = {

@@ -49,7 +49,7 @@ export const useToolStore = defineStore("tool-store", {
       }
     },
 
-    async syncEmbyWatchHistory(direction: SyncDirection = "from_emby", force = false) {
+    async syncEmbyWatchHistory(direction: SyncDirection = "from_server", force = false) {
       this.syncEmbyInProgress = true
       try {
         const toastStore = useToastStore()

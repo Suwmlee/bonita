@@ -84,7 +84,7 @@ export const useCollectionStore = defineStore("collection-store", {
       }
     },
 
-    async syncOne(collectionId: number, direction: CollectionSyncDirection = "from_emby") {
+    async syncOne(collectionId: number, direction: CollectionSyncDirection = "from_server") {
       this.isSyncing = true
       try {
         const updated = await CollectionService.syncOne(collectionId, direction)
@@ -92,7 +92,7 @@ export const useCollectionStore = defineStore("collection-store", {
         if (this.detail?.id === collectionId) {
           await this.loadDetail(collectionId)
         }
-        const key = direction === "to_emby" ? "pages.collection.pushSuccess" : "pages.collection.pullSuccess"
+        const key = direction === "to_server" ? "pages.collection.pushSuccess" : "pages.collection.pullSuccess"
         useToastStore().success(i18n.global.t(key) as string)
       } catch (error) {
         console.error("Error syncing collection:", error)
@@ -102,7 +102,7 @@ export const useCollectionStore = defineStore("collection-store", {
       }
     },
 
-    async syncAll(direction: CollectionSyncDirection = "from_emby") {
+    async syncAll(direction: CollectionSyncDirection = "from_server") {
       this.isSyncing = true
       try {
         await CollectionService.syncAll(direction)
@@ -110,7 +110,7 @@ export const useCollectionStore = defineStore("collection-store", {
         if (this.detail) {
           await this.loadDetail(this.detail.id)
         }
-        const key = direction === "to_emby" ? "pages.collection.pushSuccess" : "pages.collection.pullSuccess"
+        const key = direction === "to_server" ? "pages.collection.pushSuccess" : "pages.collection.pullSuccess"
         useToastStore().success(i18n.global.t(key) as string)
       } catch (error) {
         console.error("Error syncing collections:", error)
