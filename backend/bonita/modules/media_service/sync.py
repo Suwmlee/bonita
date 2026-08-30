@@ -247,6 +247,10 @@ def _resolve_movie(session, item, create=True):
                 logger.info(f"    ✓ 创建媒体项: {meta.title} ({number})")
                 return media_item
 
+    media_item = _find_media_item_by_emby_item_id(session, item.get("Id"))
+    if media_item:
+        return media_item
+
     if not create or not (imdb_id or tmdb_id or tvdb_id):
         if number:
             logger.debug(f"    ⊘ 未找到元数据: {number}")
@@ -752,16 +756,12 @@ def _create_unlinked_video(session, item) -> MediaItem:
 
 
 def _resolve_collection_member(session, item):
-    """合集成员匹配：先走 IMDB/番号，对不上的 Movie/Video 补建为无关联视频。"""
+    """合集成员匹配：先走 IMDB/番号/Emby Id，对不上的 Movie/Video 补建为无关联视频。"""
     media_item = _resolve_media_item(session, item, create=False)
     if media_item:
         return media_item
     if item.get("Type") not in _UNLINKED_VIDEO_EMBY_TYPES:
         return None
-    emby_item_id = item.get("Id")
-    media_item = _find_media_item_by_emby_item_id(session, emby_item_id)
-    if media_item:
-        return media_item
     return _create_unlinked_video(session, item)
 
 
