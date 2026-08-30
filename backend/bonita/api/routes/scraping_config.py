@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException
 
 from bonita import schemas
 from bonita.api.deps import CurrentUser, SessionDep
-from bonita.db.models.scraping import ScrapingConfig
+from bonita.services.scraping_config_service import ScrapingConfigService
 
 
 router = APIRouter()
@@ -14,9 +14,7 @@ def get_all_configs(session: SessionDep, skip: int = 0, limit: int = 100) -> Any
     """
     获取所有配置.
     """
-    configs = session.query(ScrapingConfig).offset(skip).limit(limit).all()
-    count = session.query(ScrapingConfig).count()
-
+    configs, count = ScrapingConfigService(session).list_configs(skip=skip, limit=limit)
     config_list = [schemas.ScrapingConfigPublic.model_validate(config) for config in configs]
     return schemas.ScrapingConfigsPublic(data=config_list, count=count)
 
@@ -28,10 +26,7 @@ def create_config(
     """
     创建新配置
     """
-    config_info = config_in.__dict__
-    config = ScrapingConfig(**config_info)
-    config.create(session)
-    return config
+    return ScrapingConfigService(session).create_config(config_in)
 
 
 @router.put("/{id}", response_model=schemas.ScrapingConfigPublic)
@@ -43,13 +38,11 @@ def update_config(
     """
     更新配置
     """
-    config = session.get(ScrapingConfig, id)
+    config = ScrapingConfigService(session).update_config(
+        id, config_in.model_dump(exclude_unset=True)
+    )
     if not config:
         raise HTTPException(status_code=404, detail="配置未找到")
-    update_dict = config_in.model_dump(exclude_unset=True)
-    config.update(session, update_dict)
-    session.commit()
-    session.refresh(config)
     return config
 
 
@@ -61,7 +54,7 @@ def delete_config(
     """
     删除配置
     """
-    config = session.get(ScrapingConfig, id)
-    session.delete(config)
-    session.commit()
-    return schemas.Response(success=True, message="配置删除成功") 
+    config = ScrapingConfigService(session).delete_config(id)
+    if not config:
+        raise HTTPException(status_code=404, detail="配置未找到")
+    return schemas.Response(success=True, message="配置删除成功")

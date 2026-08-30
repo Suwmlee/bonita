@@ -4,7 +4,6 @@ from typing import Any, List
 from bonita import schemas
 from bonita.api.deps import SessionDep
 from bonita.services.record_service import RecordService
-from bonita.services.metadata_service import MetadataService
 
 router = APIRouter()
 
@@ -38,7 +37,6 @@ def get_records(
     record_list = []
     for trans_record, extra_info in joined_results:
         transfer_record_public = schemas.TransferRecordPublic.model_validate(trans_record)
-        # 处理 extra_info 为空的情况
         extra_info_public = None
         if extra_info:
             extra_info_public = schemas.ExtraInfoPublic.model_validate(extra_info)
@@ -52,20 +50,14 @@ def update_record(session: SessionDep, record: schemas.RecordPublic) -> Any:
     """ 更新记录信息 包含 ExtraInfo
     """
     record_service = RecordService(session)
-    transfer_record, extra_info = record_service.get_record_by_id(record.transfer_record.id)
+    extra_update = record.extra_info.model_dump(exclude_unset=True) if record.extra_info else None
+    transfer_record, extra_info = record_service.update_record_with_extra(
+        record_id=record.transfer_record.id,
+        transfer_update=record.transfer_record.model_dump(exclude_unset=True),
+        extra_update=extra_update,
+    )
     if not transfer_record:
         raise HTTPException(status_code=404, detail=f"TransferRecord with id {record.transfer_record.id} not found")
-
-    update_dict = record.transfer_record.model_dump(exclude_unset=True)
-    transfer_record.update(session, update_dict)
-    if extra_info and record.extra_info:
-        extra_info_update_dict = record.extra_info.model_dump(exclude_unset=True)
-        extra_info.update(session, extra_info_update_dict)
-        if extra_info.number and extra_info.crop is not None:
-            MetadataService(session).sync_crop_by_number(
-                extra_info.number, bool(extra_info.crop)
-            )
-    session.commit()
 
     updated_transfer_record_public = schemas.TransferRecordPublic.model_validate(transfer_record)
     updated_extra_info_public = schemas.ExtraInfoPublic.model_validate(extra_info) if extra_info else None
@@ -82,15 +74,6 @@ def update_top_folder(
     """更新 top_folder
 
     更新指定 srcfolder 和 top_folder 相同的所有记录的 top_folder 字段
-
-    Args:
-        session: 数据库会话
-        srcfolder: 源文件夹路径
-        old_top_folder: 原来的 top_folder 值
-        new_top_folder: 新的 top_folder 值
-
-    Returns:
-        更新操作的结果
     """
     record_service = RecordService(session)
     success, message, _ = record_service.update_top_folder(
@@ -114,14 +97,6 @@ def update_season(
     """更新 season
 
     更新源文件上层目录相同的所有记录的 season 和 isepisode 字段
-
-    Args:
-        session: 数据库会话
-        srcpath: 源文件路径
-        new_season: 新的 season 值
-
-    Returns:
-        更新操作的结果
     """
     record_service = RecordService(session)
     success, message, _ = record_service.update_season(
@@ -141,16 +116,7 @@ def delete_records(
     record_ids: List[int],
     force: bool = False
 ) -> Any:
-    """删除记录信息
-
-    Args:
-        session: 数据库会话
-        record_ids: 要删除的记录ID列表
-        force: 是否强制删除，如果为True则同时删除关联的文件和Transmission种子
-
-    Returns:
-        删除操作的结果
-    """
+    """删除记录信息"""
     record_service = RecordService(session)
     success, message, _, _ = record_service.delete_records(record_ids, force)
 

@@ -4,7 +4,6 @@ import datetime
 from fastapi import APIRouter, Query
 
 from bonita import schemas
-from bonita.api.deps import SessionDep
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -12,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 @router.get("/list", response_model=schemas.FileListResponse)
 async def list_directory(
-        session: SessionDep,
         directory_path: str = Query(None, description="要浏览的目录路径"),
         ):
     """ 获取指定目录中的文件列表

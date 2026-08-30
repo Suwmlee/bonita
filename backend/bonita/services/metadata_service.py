@@ -1,9 +1,10 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from bonita.db.models.metadata import Metadata
+from bonita.utils.downloader import process_cached_file
 
 
 class MetadataService:
@@ -49,3 +50,67 @@ class MetadataService:
 
     def get_crop_by_number(self, number: Optional[str]) -> bool:
         return self.resolve_crop(number)
+
+    def get_by_id(self, metadata_id: int) -> Optional[Metadata]:
+        return self.session.get(Metadata, metadata_id)
+
+    def get_by_number(self, number: str) -> Optional[Metadata]:
+        if not number:
+            return None
+        return (
+            self.session.query(Metadata)
+            .filter(func.upper(Metadata.number) == number.upper())
+            .first()
+        )
+
+    def list_metadata(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        filter_text: Optional[str] = None,
+        sort_by: str = "updatetime",
+        sort_desc: bool = True,
+    ) -> Tuple[List[Metadata], int]:
+        query = self.session.query(Metadata)
+        if filter_text:
+            query = query.filter(
+                Metadata.number.ilike(f"%{filter_text}%") |
+                Metadata.actor.ilike(f"%{filter_text}%")
+            )
+        sort_column = getattr(Metadata, sort_by, Metadata.updatetime)
+        query = query.order_by(sort_column.desc() if sort_desc else sort_column.asc())
+        count = query.count()
+        data = query.offset(skip).limit(limit).all()
+        return data, count
+
+    def _cache_cover_if_needed(self, payload: dict) -> None:
+        cover = payload.get("cover")
+        if cover and str(cover).startswith(("http://", "https://")):
+            process_cached_file(self.session, cover, payload.get("number"))
+
+    def create_metadata(self, metadata_dict: dict) -> Metadata:
+        actor_value = metadata_dict.get("actor")
+        if not actor_value or (isinstance(actor_value, str) and actor_value.strip() == ""):
+            metadata_dict["actor"] = "佚名"
+        self._cache_cover_if_needed(metadata_dict)
+        db_metadata = Metadata(**metadata_dict)
+        db_metadata.create(self.session)
+        return db_metadata
+
+    def update_metadata(self, metadata_id: int, update_dict: dict) -> Optional[Metadata]:
+        db_metadata = self.get_by_id(metadata_id)
+        if not db_metadata:
+            return None
+        self._cache_cover_if_needed(update_dict)
+        db_metadata.update(self.session, update_dict)
+        self.session.commit()
+        self.session.refresh(db_metadata)
+        return db_metadata
+
+    def delete_metadata(self, metadata_id: int) -> bool:
+        db_metadata = self.get_by_id(metadata_id)
+        if not db_metadata:
+            return False
+        self.session.delete(db_metadata)
+        self.session.commit()
+        return True

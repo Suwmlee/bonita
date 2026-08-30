@@ -1,11 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from typing import Any
-from datetime import datetime
 
 from bonita import schemas
 from bonita.api.deps import SessionDep
-from bonita.db.models.metadata import Metadata
-from bonita.utils.downloader import process_cached_file
+from bonita.services.metadata_service import MetadataService
 
 router = APIRouter()
 
@@ -15,27 +13,8 @@ async def create_metadata(
     session: SessionDep,
     metadata_in: schemas.MetadataCreate
 ) -> Any:
-    """创建新元数据
-
-    Args:
-        session: 数据库会话
-        metadata_in: 元数据内容
-
-    Returns:
-        创建的元数据
-    """
-    metadata_dict = metadata_in.model_dump()
-
-    # 确保 actor 字段不为空
-    actor_value = metadata_dict.get('actor')
-    if not actor_value or (isinstance(actor_value, str) and actor_value.strip() == ''):
-        metadata_dict['actor'] = '佚名'
-
-    if metadata_dict.get("cover") and metadata_dict["cover"].startswith(("http://", "https://")):
-        process_cached_file(session, metadata_dict["cover"], metadata_dict["number"])
-
-    db_metadata = Metadata(**metadata_dict)
-    db_metadata.create(session)
+    """创建新元数据"""
+    db_metadata = MetadataService(session).create_metadata(metadata_in.model_dump())
     return schemas.MetadataPublic.model_validate(db_metadata.to_dict())
 
 
@@ -53,25 +32,13 @@ async def get_metadata(
     sort_by参数可以指定排序字段，默认按updatetime排序
     sort_desc参数可以指定是否降序排序，默认为True
     """
-    query = session.query(Metadata)
-
-    # Apply fuzzy search filter if provided
-    if filter:
-        query = query.filter(
-            Metadata.number.ilike(f"%{filter}%") |
-            Metadata.actor.ilike(f"%{filter}%")
-        )
-
-    # Apply sorting
-    sort_column = getattr(Metadata, sort_by, Metadata.updatetime)
-    query = query.order_by(sort_column.desc() if sort_desc else sort_column.asc())
-
-    # Get total count after applying filters
-    count = query.count()
-
-    # Get paginated data
-    data = query.offset(skip).limit(limit).all()
-
+    data, count = MetadataService(session).list_metadata(
+        skip=skip,
+        limit=limit,
+        filter_text=filter,
+        sort_by=sort_by,
+        sort_desc=sort_desc,
+    )
     data_list = [schemas.MetadataPublic.model_validate(meta.to_dict()) for meta in data]
     return schemas.MetadataCollection(data=data_list, count=count)
 
@@ -82,27 +49,12 @@ async def update_metadata(
     id: int,
     metadata: schemas.MetadataBase
 ) -> Any:
-    """更新元数据
-
-    Args:
-        session: 数据库会话
-        id: 元数据ID
-        metadata: 更新的元数据内容
-
-    Returns:
-        更新后的元数据
-    """
-    db_metadata = session.get(Metadata, id)
+    """更新元数据"""
+    db_metadata = MetadataService(session).update_metadata(
+        id, metadata.model_dump(exclude_unset=True)
+    )
     if not db_metadata:
         raise HTTPException(status_code=404, detail=f"Metadata with id {id} not found")
-
-    update_dict = metadata.model_dump(exclude_unset=True)
-    if update_dict.get("cover") and update_dict["cover"].startswith(("http://", "https://")):
-        process_cached_file(session, update_dict["cover"], update_dict["number"])
-
-    db_metadata.update(session, update_dict)
-    session.commit()
-    session.refresh(db_metadata)
     return schemas.MetadataPublic.model_validate(db_metadata.to_dict())
 
 
@@ -111,17 +63,7 @@ async def delete_metadata(
     session: SessionDep,
     id: int
 ) -> Any:
-    """删除元数据
-
-    Args:
-        session: 数据库会话
-        id: 元数据ID
-    """
-
-    db_metadata = session.get(Metadata, id)
-    if not db_metadata:
+    """删除元数据"""
+    if not MetadataService(session).delete_metadata(id):
         raise HTTPException(status_code=404, detail=f"Metadata with id {id} not found")
-
-    session.delete(db_metadata)
-    session.commit()
     return schemas.Response(success=True, message="Metadata deleted successfully")

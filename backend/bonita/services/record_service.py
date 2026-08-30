@@ -122,6 +122,36 @@ class RecordService:
         self.session.commit()
         return record
 
+    def update_record_with_extra(
+        self,
+        record_id: int,
+        transfer_update: dict,
+        extra_update: Optional[dict] = None,
+    ) -> Tuple[Optional[TransRecords], Optional[ExtraInfo]]:
+        """更新转移记录及 ExtraInfo，并同步番号 crop。"""
+        transfer_record, extra_info = self.get_record_by_id(record_id)
+        if not transfer_record:
+            return None, None
+
+        payload = {k: v for k, v in transfer_update.items() if v is not None}
+        for key, value in payload.items():
+            if hasattr(transfer_record, key):
+                setattr(transfer_record, key, value)
+
+        if extra_info and extra_update:
+            extra_payload = {k: v for k, v in extra_update.items() if v is not None}
+            for key, value in extra_payload.items():
+                if hasattr(extra_info, key):
+                    setattr(extra_info, key, value)
+            if extra_info.number and extra_info.crop is not None:
+                from bonita.services.metadata_service import MetadataService
+                MetadataService(self.session).sync_crop_by_number(
+                    extra_info.number, bool(extra_info.crop)
+                )
+
+        self.session.commit()
+        return transfer_record, extra_info
+
     def update_top_folder(self, srcfolder: str, old_top_folder: str, new_top_folder: str) -> Tuple[bool, str, int]:
         """批量更新top_folder
 

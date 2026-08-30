@@ -1,4 +1,3 @@
-
 from datetime import timedelta
 from typing import Annotated
 
@@ -9,7 +8,8 @@ from bonita import schemas
 from bonita.api.deps import SessionDep
 from bonita.core import security
 from bonita.core.config import settings
-from bonita.db.models.user import User
+from bonita.services.errors import InvalidInputError
+from bonita.services.user_service import UserService
 
 
 router = APIRouter()
@@ -23,16 +23,13 @@ async def login_access_token(
     """
     获取认证Token
     """
-    # 检查数据库
-    user = User.authenticate(
-        session=session,
-        email=form_data.username,
-        password=form_data.password
-    )
-    if not user:
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
-    elif not user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+    try:
+        user = UserService(session).authenticate(
+            email=form_data.username,
+            password=form_data.password,
+        )
+    except InvalidInputError as e:
+        raise HTTPException(status_code=400, detail=e.message)
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return schemas.Token(
         access_token=security.create_access_token(
