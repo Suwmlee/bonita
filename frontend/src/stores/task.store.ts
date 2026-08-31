@@ -109,7 +109,7 @@ export const useTaskStore = defineStore("task-store", {
       const { data: task } = await TaskService.runTransferTask({
         id: id,
         // 不能传 {}：生成客户端会丢掉空 body，但仍带 Content-Type: application/json，后端会 422
-        taskPathParam: { path: null },
+        body: { path: null },
       })
       // Add the newly run task to the runningTasks array
       if (task) {
@@ -120,7 +120,7 @@ export const useTaskStore = defineStore("task-store", {
     async runTaskByIdWithPath(id: number, path: string) {
       const { data: task } = await TaskService.runTransferTask({
         id: id,
-        taskPathParam: {
+        body: {
           path: path,
         },
       })
