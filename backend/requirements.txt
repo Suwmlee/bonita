@@ -10,6 +10,6 @@ alembic==1.13.2
 celery==5.4.0
 redis==5.0.8
 watchdog==6.0.0
-scrapinglib>=0.13.0
+scrapinglib>=0.14.0
 pillow>=12.1.1
 transmission_rpc==7.0.11
