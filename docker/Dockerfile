@@ -12,7 +12,7 @@ RUN pnpm run build:icons
 RUN pnpm run build
 
 # 构建 Bonita with s6-overlay
-FROM python:3.12-slim-bullseye AS backend-build
+FROM python:3.12-slim-bookworm AS backend-build
 
 # s6-overlay 版本
 ARG S6_OVERLAY_VERSION=3.2.1.0
@@ -28,13 +28,14 @@ ENV S6_KEEP_ENV=1
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
     echo $TZ > /etc/timezone
 
-# 安装 s6-overlay
+# 安装 s6-overlay（uname -m 为 x86_64 / aarch64，与官方包名一致）
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-aarch64.tar.xz /tmp
 RUN apt-get update && \
     apt-get install -y --no-install-recommends xz-utils && \
     tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz && \
-    tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz && \
+    tar -C / -Jxpf /tmp/s6-overlay-$(uname -m).tar.xz && \
     rm -rf /tmp/* && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
