@@ -1,14 +1,28 @@
+import hashlib
+import logging
+import mimetypes
 import os
 import shutil
+import time
+from urllib.parse import urlparse
+
 import requests
-import hashlib
-import mimetypes
 from PIL import Image
 from sqlalchemy.orm import Session
 
 from bonita.core.config import settings
 from bonita.db.models.downloads import Downloads
 from bonita.utils.http import get_active_proxy
+
+logger = logging.getLogger(__name__)
+
+DOWNLOAD_TIMEOUT = (10, 30)
+DOWNLOAD_RETRIES = 3
+DOWNLOAD_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/131.0.0.0 Safari/537.36"
+)
 
 
 def process_cached_file(session: Session, url: str, folder) -> str:
@@ -18,21 +32,17 @@ def process_cached_file(session: Session, url: str, folder) -> str:
     :param folder: 下载文件保存的缓存目录
     :return: 缓存的文件路径
     """
-    cache_downloads_cover = session.query(Downloads).filter(Downloads.url == url).first()
-    if not cache_downloads_cover:
-        # 数据库中没有记录，下载并添加记录
-        # 获取代理设置
-        proxy = get_active_proxy(session)
-        cache_cover_path = download_file(url, folder, proxy)
-        cache_downloads_cover = Downloads(url=url, filepath=cache_cover_path)
-        cache_downloads_cover.create(session)
-    elif not os.path.exists(cache_downloads_cover.filepath):
-        # 数据库有记录但文件不存在，重新下载并更新记录
-        proxy = get_active_proxy(session)
-        cache_cover_path = download_file(url, folder, proxy)
-        cache_downloads_cover.filepath = cache_cover_path
+    cache = session.query(Downloads).filter(Downloads.url == url).first()
+    if cache and os.path.exists(cache.filepath):
+        return cache.filepath
+    filepath = download_file(url, folder, get_active_proxy(session))
+    if cache:
+        cache.filepath = filepath
         session.commit()
-    return cache_downloads_cover.filepath
+    else:
+        cache = Downloads(url=url, filepath=filepath)
+        cache.create(session)
+    return cache.filepath
 
 
 def update_cache_from_local(session: Session, source_path: str, folder: str, url: str):
@@ -91,10 +101,12 @@ def get_file_extension(response):
     :param response: HTTP 响应对象
     :return: 文件扩展名
     """
-    content_type = response.headers.get('Content-Type')
-    if content_type:
-        return mimetypes.guess_extension(content_type)
-    return ''
+    content_type = (response.headers.get('Content-Type') or '').split(';')[0].strip().lower()
+    if not content_type:
+        return ''
+    if content_type in ('image/jpeg', 'image/jpg'):
+        return '.jpg'
+    return mimetypes.guess_extension(content_type) or ''
 
 
 def generate_file_name(url, response):
@@ -104,14 +116,7 @@ def generate_file_name(url, response):
     :return: 生成的文件名
     """
     file_name = hashlib.md5(url.encode()).hexdigest()
-    file_extension = os.path.splitext(url)[1]
-
-    if not file_extension:
-        file_extension = get_file_extension(response)
-
-    if not file_extension:
-        file_extension = '.jpg'  # 默认扩展名
-
+    file_extension = os.path.splitext(urlparse(url).path)[1] or get_file_extension(response) or '.jpg'
     return file_name + file_extension
 
 
@@ -122,29 +127,39 @@ def download_file(url, download_dir, proxy=None):
     :param proxy: 代理信息，格式为 {"http": "http://proxy.com:8080", "https": "http://proxy.com:8080"}
     :return: 下载的文件路径
     """
-    # 设置代理
-    proxies = proxy if proxy else {}
+    parsed = urlparse(url)
+    headers = {"User-Agent": DOWNLOAD_USER_AGENT}
+    if parsed.scheme and parsed.netloc:
+        headers["Referer"] = f"{parsed.scheme}://{parsed.netloc}/"
 
-    # 下载文件
-    response = requests.get(url, proxies=proxies, stream=True)
-    response.raise_for_status()
+    for attempt in range(1, DOWNLOAD_RETRIES + 1):
+        try:
+            with requests.get(
+                url,
+                proxies=proxy or {},
+                headers=headers,
+                stream=True,
+                timeout=DOWNLOAD_TIMEOUT,
+            ) as response:
+                response.raise_for_status()
+                file_name = generate_file_name(url, response)
+                download_folder = os.path.abspath(os.path.join(settings.CACHE_LOCATION, download_dir))
+                os.makedirs(download_folder, exist_ok=True)
+                download_path = os.path.join(download_folder, file_name)
+                with open(download_path, 'wb') as file:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            file.write(chunk)
 
-    # 生成文件名
-    file_name = generate_file_name(url, response)
-
-    # 设置下载路径
-    download_folder = os.path.abspath(os.path.join(settings.CACHE_LOCATION, download_dir))
-    if not os.path.exists(download_folder):
-        os.makedirs(download_folder)
-    download_path = os.path.join(download_folder, file_name)
-
-    # 保存文件
-    with open(download_path, 'wb') as file:
-        for chunk in response.iter_content(chunk_size=8192):
-            file.write(chunk)
-
-    # GIF 转换为 JPG
-    if download_path.lower().endswith('.gif'):
-        download_path = _convert_gif_to_jpg(download_path)
-
-    return download_path
+            if os.path.getsize(download_path) == 0:
+                os.remove(download_path)
+                raise IOError(f"Downloaded empty file: {url}")
+            if download_path.lower().endswith('.gif'):
+                download_path = _convert_gif_to_jpg(download_path)
+            return download_path
+        except (requests.RequestException, OSError) as e:
+            status = getattr(getattr(e, 'response', None), 'status_code', None)
+            if attempt >= DOWNLOAD_RETRIES or (status and status < 500 and status != 429):
+                raise
+            logger.warning(f"下载失败 (尝试 {attempt}/{DOWNLOAD_RETRIES}): {url} — {e}")
+            time.sleep(attempt)

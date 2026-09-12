@@ -91,7 +91,10 @@ class MetadataService:
     def _cache_cover_if_needed(self, payload: dict) -> None:
         cover = payload.get("cover")
         if cover and str(cover).startswith(("http://", "https://")):
-            process_cached_file(self.session, cover, payload.get("number"))
+            try:
+                process_cached_file(self.session, cover, payload.get("number"))
+            except Exception as e:
+                logger.warning(f"封面下载失败，元数据仍将保存: {cover} — {e}")
 
     def create_metadata(self, metadata_dict: dict) -> Metadata:
         actor_value = metadata_dict.get("actor")
@@ -106,6 +109,7 @@ class MetadataService:
         db_metadata = self.get_by_id(metadata_id)
         if not db_metadata:
             return None
+        update_dict.setdefault("number", db_metadata.number)
         self._cache_cover_if_needed(update_dict)
         db_metadata.update(self.session, update_dict)
         self.session.commit()

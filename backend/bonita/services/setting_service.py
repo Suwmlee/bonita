@@ -267,12 +267,11 @@ class SettingService:
         proxy_dict = {setting.key: setting.value for setting in rows}
         if proxy_dict.get("proxy_enabled", "false").lower() != "true":
             return None
-        proxy = {}
-        if proxy_dict.get("proxy_http"):
-            proxy["http"] = proxy_dict["proxy_http"]
-        if proxy_dict.get("proxy_https"):
-            proxy["https"] = proxy_dict["proxy_https"]
-        return proxy or None
+        http = proxy_dict.get("proxy_http") or proxy_dict.get("proxy_https")
+        https = proxy_dict.get("proxy_https") or proxy_dict.get("proxy_http")
+        if not http:
+            return None
+        return {"http": http, "https": https}
 
     def try_initialize_emby(
         self,
