@@ -147,7 +147,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                 waiting_list.append(tf)
         else:
             if os.path.splitext(full_path)[1].lower() not in video_type:
-                logger.warning("    ✗ 非视频文件，跳过")
+                logger.warning(f"    ✗ 非视频文件，跳过: {full_path}")
                 return []
             tf = BasicFileInfo(full_path)
             tf.set_root_folder(task_info.source_folder)
