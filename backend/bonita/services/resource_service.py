@@ -13,6 +13,7 @@ from bonita.db.models.downloads import Downloads
 from bonita.db.models.metadata import Metadata
 from bonita.modules.media_service.client import SOURCE_EMBY
 from bonita.modules.media_service.factory import get_media_client
+from bonita.utils.downloader import process_cached_file
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +32,20 @@ class ResourceService:
         self.session = session
 
     def get_cached_image_path(self, path: str) -> Optional[str]:
-        cache_downloads_cover = self.session.query(Downloads).filter(Downloads.url == path).first()
-        if not cache_downloads_cover or not os.path.exists(cache_downloads_cover.filepath):
+        if not path:
             return None
-        return cache_downloads_cover.filepath
+        cache_downloads_cover = self.session.query(Downloads).filter(Downloads.url == path).first()
+        if cache_downloads_cover and os.path.exists(cache_downloads_cover.filepath):
+            return cache_downloads_cover.filepath
+        if os.path.isfile(path):
+            return path
+        if path.startswith(("http://", "https://")):
+            try:
+                return process_cached_file(self.session, path, "images")
+            except Exception as e:
+                logger.warning("Failed to fetch remote image %s: %s", path, e)
+                return None
+        return None
 
     def save_image(self, content: bytes, filename: Optional[str], custom_url: Optional[str] = None) -> str:
         file_hash = hashlib.md5(content).hexdigest()
