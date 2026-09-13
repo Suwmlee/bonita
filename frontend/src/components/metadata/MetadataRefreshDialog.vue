@@ -40,6 +40,8 @@ const COMPARE_FIELDS = [
 
 type CompareField = (typeof COMPARE_FIELDS)[number]
 
+const IMAGE_FIELDS = new Set<CompareField>(["cover", "cover_small"])
+
 const FIELD_LABEL_KEYS: Record<CompareField, string> = {
   number: "number",
   title: "title",
@@ -95,6 +97,9 @@ const isApplying = ref(false)
 const fetched = ref<MetadataBase | null>(null)
 const selectedFields = ref<CompareField[]>([])
 const onlyDiff = ref(true)
+const failedImages = ref<Set<string>>(new Set())
+const previewField = ref<CompareField | null>(null)
+const previewSizes = ref<{ current?: string; next?: string }>({})
 
 const siteOptions = computed(() => {
   const values = new Set(sites.value)
@@ -151,10 +156,55 @@ const diffCount = computed(
 
 const selectedCount = computed(() => selectedFields.value.length)
 
+const hasImageRows = computed(() =>
+  rows.value.some((row) => IMAGE_FIELDS.has(row.field)),
+)
+
 function previewSrc(path: unknown): string {
   if (!path || typeof path !== "string") return ""
-  if (path.startsWith("http://") || path.startsWith("https://")) return path
   return `${client.getConfig().baseURL}/api/v1/resource/image?path=${encodeURIComponent(path)}`
+}
+
+function imageKey(field: CompareField, side: "current" | "next") {
+  return `${field}:${side}`
+}
+
+function isImageFailed(field: CompareField, side: "current" | "next") {
+  return failedImages.value.has(imageKey(field, side))
+}
+
+function markImageFailed(field: CompareField, side: "current" | "next") {
+  const next = new Set(failedImages.value)
+  next.add(imageKey(field, side))
+  failedImages.value = next
+}
+
+function showImage(field: CompareField, value: unknown, side: "current" | "next") {
+  return IMAGE_FIELDS.has(field) && Boolean(previewSrc(value)) && !isImageFailed(field, side)
+}
+
+const previewOpen = computed({
+  get: () => previewField.value !== null,
+  set: (value: boolean) => {
+    if (!value) previewField.value = null
+  },
+})
+
+function openImagePreview(field: CompareField) {
+  previewSizes.value = {}
+  previewField.value = field
+}
+
+function onPreviewLoad(side: "current" | "next", event: Event) {
+  const img = event.target as HTMLImageElement
+  if (!img.naturalWidth || !img.naturalHeight) return
+  previewSizes.value = {
+    ...previewSizes.value,
+    [side]: t("components.metadata.refreshDialog.imageSize", {
+      width: img.naturalWidth,
+      height: img.naturalHeight,
+    }),
+  }
 }
 
 function onSiteChange(site: string | null) {
@@ -181,6 +231,9 @@ function reset() {
   fetched.value = null
   selectedFields.value = []
   onlyDiff.value = true
+  failedImages.value = new Set()
+  previewField.value = null
+  previewSizes.value = {}
 }
 
 async function loadSites() {
@@ -206,6 +259,8 @@ async function fetchMetadata() {
   isFetching.value = true
   fetched.value = null
   selectedFields.value = []
+  failedImages.value = new Set()
+  previewField.value = null
   try {
     const { data } = await MetadataService.refreshMetadata({
       id: props.metadata.id,
@@ -237,6 +292,10 @@ function toggleField(field: CompareField, checked: boolean) {
 
 function selectChanged() {
   selectedFields.value = COMPARE_FIELDS.filter((field) => isChanged(field))
+}
+
+function clearSelection() {
+  selectedFields.value = []
 }
 
 async function applySelected() {
@@ -271,7 +330,7 @@ watch(open, async (visible) => {
 </script>
 
 <template>
-  <VDialog v-model="open" max-width="960" scrollable>
+  <VDialog v-model="open" max-width="1100" scrollable>
     <VCard style="max-height: 90vh; display: flex; flex-direction: column;">
       <VCardTitle class="px-6 pt-5 d-flex align-center justify-space-between">
         <span>
@@ -353,6 +412,14 @@ watch(open, async (visible) => {
             >
               {{ t('components.metadata.refreshDialog.selectChanged') }}
             </VBtn>
+            <VBtn
+              variant="text"
+              size="small"
+              :disabled="selectedCount === 0"
+              @click="clearSelection"
+            >
+              {{ t('components.metadata.refreshDialog.clearSelection') }}
+            </VBtn>
           </div>
 
           <div v-if="rows.length" class="compare-table">
@@ -366,7 +433,7 @@ watch(open, async (visible) => {
               v-for="row in rows"
               :key="row.field"
               class="compare-row"
-              :class="{ changed: row.changed }"
+              :class="{ changed: row.changed, 'image-row': IMAGE_FIELDS.has(row.field) }"
             >
               <div class="col-check">
                 <VCheckbox
@@ -379,25 +446,47 @@ watch(open, async (visible) => {
               </div>
               <div class="col-label">{{ fieldLabel(row.field) }}</div>
               <div class="col-value">
-                <img
-                  v-if="row.field === 'cover' && previewSrc(row.current)"
-                  class="cover-thumb"
-                  :src="previewSrc(row.current)"
-                  alt=""
-                />
+                <button
+                  v-if="showImage(row.field, row.current, 'current')"
+                  type="button"
+                  class="cover-btn"
+                  @click="openImagePreview(row.field)"
+                >
+                  <img
+                    class="cover-thumb"
+                    :src="previewSrc(row.current)"
+                    alt=""
+                    referrerpolicy="no-referrer"
+                    @error="markImageFailed(row.field, 'current')"
+                  />
+                </button>
                 <span v-else>{{ displayValue(row.field, row.current) }}</span>
               </div>
               <div class="col-value next">
-                <img
-                  v-if="row.field === 'cover' && previewSrc(row.next)"
-                  class="cover-thumb"
-                  :src="previewSrc(row.next)"
-                  alt=""
-                />
+                <button
+                  v-if="showImage(row.field, row.next, 'next')"
+                  type="button"
+                  class="cover-btn"
+                  @click="openImagePreview(row.field)"
+                >
+                  <img
+                    class="cover-thumb"
+                    :src="previewSrc(row.next)"
+                    alt=""
+                    referrerpolicy="no-referrer"
+                    @error="markImageFailed(row.field, 'next')"
+                  />
+                </button>
                 <span v-else>{{ displayValue(row.field, row.next) }}</span>
               </div>
             </div>
           </div>
+          <p
+            v-if="hasImageRows"
+            class="text-caption text-medium-emphasis mt-2 mb-0"
+          >
+            {{ t('components.metadata.refreshDialog.clickToCompare') }}
+          </p>
         </template>
       </VCardText>
 
@@ -415,6 +504,53 @@ watch(open, async (visible) => {
           {{ t('components.metadata.refreshDialog.apply', { count: selectedCount }) }}
         </VBtn>
       </VCardActions>
+    </VCard>
+  </VDialog>
+
+  <VDialog v-model="previewOpen" max-width="96vw" scrim="true">
+    <VCard v-if="previewField">
+      <VCardTitle class="d-flex align-center justify-space-between">
+        <span>{{ t('components.metadata.refreshDialog.imagePreview') }} · {{ fieldLabel(previewField) }}</span>
+        <VBtn icon variant="text" size="small" @click="previewField = null">
+          <VIcon icon="bx-x" />
+        </VBtn>
+      </VCardTitle>
+      <VCardText>
+        <div class="preview-grid">
+          <div class="preview-pane">
+            <div class="preview-label">{{ t('components.metadata.refreshDialog.current') }}</div>
+            <img
+              v-if="showImage(previewField, metadata?.[previewField], 'current')"
+              class="preview-img"
+              :src="previewSrc(metadata?.[previewField])"
+              alt=""
+              referrerpolicy="no-referrer"
+              @load="onPreviewLoad('current', $event)"
+              @error="markImageFailed(previewField, 'current')"
+            />
+            <div v-else class="preview-empty">{{ displayValue(previewField, metadata?.[previewField]) }}</div>
+            <div v-if="previewSizes.current" class="text-caption text-medium-emphasis mt-2">
+              {{ previewSizes.current }}
+            </div>
+          </div>
+          <div class="preview-pane">
+            <div class="preview-label">{{ t('components.metadata.refreshDialog.fetched') }}</div>
+            <img
+              v-if="showImage(previewField, fetched?.[previewField], 'next')"
+              class="preview-img"
+              :src="previewSrc(fetched?.[previewField])"
+              alt=""
+              referrerpolicy="no-referrer"
+              @load="onPreviewLoad('next', $event)"
+              @error="markImageFailed(previewField, 'next')"
+            />
+            <div v-else class="preview-empty">{{ displayValue(previewField, fetched?.[previewField]) }}</div>
+            <div v-if="previewSizes.next" class="text-caption text-medium-emphasis mt-2">
+              {{ previewSizes.next }}
+            </div>
+          </div>
+        </div>
+      </VCardText>
     </VCard>
   </VDialog>
 </template>
@@ -472,13 +608,59 @@ watch(open, async (visible) => {
   white-space: pre-wrap;
 }
 
+.cover-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+  text-align: left;
+}
+
 .cover-thumb {
   display: block;
-  max-width: 160px;
-  max-height: 100px;
+  width: auto;
+  max-width: 100%;
+  max-height: 280px;
+  height: auto;
   object-fit: contain;
   border-radius: 4px;
   background: #1a1a1a;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.preview-pane {
+  min-width: 0;
+}
+
+.preview-label {
+  margin-bottom: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.preview-img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 75vh;
+  height: auto;
+  object-fit: contain;
+  border-radius: 6px;
+  background: #111;
+}
+
+.preview-empty {
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
 }
 
 @media (max-width: 768px) {
@@ -490,6 +672,10 @@ watch(open, async (visible) => {
   .compare-head span:nth-child(n + 3),
   .compare-row .col-value {
     grid-column: 1 / -1;
+  }
+
+  .preview-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>
