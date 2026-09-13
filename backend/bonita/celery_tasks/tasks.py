@@ -693,3 +693,19 @@ def celery_sync_watch_history(self, sources=None, days=30, limit=100):
         raise
     finally:
         session.close()
+
+
+@shared_task(name="tools:reload_scrapinglib")
+def celery_reload_scrapinglib():
+    """在 Celery worker 中重新加载 scrapinglib，使工具页升级立即生效"""
+    from bonita.utils.scrapinglib_pkg import (
+        ensure_extra_site_packages,
+        get_installed_version,
+        reload_modules,
+    )
+
+    ensure_extra_site_packages()
+    reload_modules()
+    installed = get_installed_version()
+    logger.info("Reloaded scrapinglib in celery worker, version=%s", installed)
+    return installed

@@ -92,3 +92,12 @@ class LogResponse(BaseModel):
     total_lines: int
     current_page: int
     total_pages: int
+
+
+class ScrapinglibVersion(BaseModel):
+    """scrapinglib 当前/最新版本信息"""
+    current: str
+    latest: Optional[str] = None
+    update_available: bool = False
+    message: Optional[str] = None
+    success: bool = True

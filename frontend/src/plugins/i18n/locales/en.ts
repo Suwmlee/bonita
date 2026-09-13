@@ -224,6 +224,20 @@ export default {
         "Failed to sync transfer record paths: Unknown error",
       syncRecordPathFailedWithDetail:
         "Failed to sync transfer record paths: {detail}",
+      scrapinglib: {
+        title: "Update scrapinglib",
+        subtitle: "Check the latest scraping library version and install it",
+        current: "Current version",
+        latest: "Latest version",
+        unknown: "Unknown",
+        check: "Check for updates",
+        update: "Update now",
+        upToDate: "Up to date",
+        available: "Update available",
+        checkFailed: "Failed to check scrapinglib version",
+        updateSuccess: "scrapinglib updated",
+        updateFailed: "Failed to update scrapinglib",
+      },
     },
     serviceSettings: {
       title: "Service Settings",

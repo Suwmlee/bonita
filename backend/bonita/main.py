@@ -3,6 +3,10 @@ from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from starlette.middleware.cors import CORSMiddleware
 
+from bonita.utils.scrapinglib_pkg import ensure_extra_site_packages
+
+ensure_extra_site_packages()
+
 from bonita import __version__
 from bonita.core.config import settings
 from bonita.core.db import init_db

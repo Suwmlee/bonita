@@ -1369,6 +1369,34 @@ export type ToolArgsParam = {
 };
 
 /**
+ * ScrapinglibVersion
+ *
+ * scrapinglib 当前/最新版本信息
+ */
+export type ScrapinglibVersion = {
+    /**
+     * Current
+     */
+    current: string;
+    /**
+     * Latest
+     */
+    latest?: string | null;
+    /**
+     * Update Available
+     */
+    update_available?: boolean;
+    /**
+     * Message
+     */
+    message?: string | null;
+    /**
+     * Success
+     */
+    success?: boolean;
+};
+
+/**
  * TransRecordsPathSyncParam
  *
  * 转移记录路径批量替换参数
@@ -3507,6 +3535,47 @@ export type CleanupDataResponses = {
 };
 
 export type CleanupDataResponse = CleanupDataResponses[keyof CleanupDataResponses];
+
+export type GetScrapinglibVersionData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tools/scrapinglib';
+};
+
+export type GetScrapinglibVersionResponses = {
+    /**
+     * Successful Response
+     */
+    200: ScrapinglibVersion;
+};
+
+export type GetScrapinglibVersionResponse = GetScrapinglibVersionResponses[keyof GetScrapinglibVersionResponses];
+
+export type UpdateScrapinglibData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tools/scrapinglib/update';
+};
+
+export type UpdateScrapinglibErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateScrapinglibError = UpdateScrapinglibErrors[keyof UpdateScrapinglibErrors];
+
+export type UpdateScrapinglibResponses = {
+    /**
+     * Successful Response
+     */
+    200: ScrapinglibVersion;
+};
+
+export type UpdateScrapinglibResponse = UpdateScrapinglibResponses[keyof UpdateScrapinglibResponses];
 
 export type GetProxySettingsData = {
     body?: never;

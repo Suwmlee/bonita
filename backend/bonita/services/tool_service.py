@@ -4,11 +4,19 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from bonita import schemas
-from bonita.celery_tasks.tasks import celery_import_nfo
+from bonita.celery_tasks.tasks import celery_import_nfo, celery_reload_scrapinglib
 from bonita.services.record_service import RecordService
 from bonita.services.watch_sync_service import WatchSyncService
 from bonita.modules.media_service.client import is_to_server
 from bonita.core.enums import TaskStatusEnum
+from bonita.utils.http import get_active_proxy
+from bonita.utils.scrapinglib_pkg import (
+    fetch_latest_version,
+    get_installed_version,
+    is_newer,
+    pip_install_upgrade,
+    reload_modules,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -158,3 +166,63 @@ class ToolService:
                 success=False,
                 message=f"Cleanup failed: {str(e)}"
             )
+
+    def get_scrapinglib_version(self) -> schemas.ScrapinglibVersion:
+        """检测 scrapinglib 当前版本与 PyPI 最新版本"""
+        current = get_installed_version()
+        try:
+            latest = fetch_latest_version(get_active_proxy(self.session))
+            update_available = is_newer(latest, current)
+            message = "有新版本可更新" if update_available else "已是最新版本"
+            return schemas.ScrapinglibVersion(
+                current=current,
+                latest=latest,
+                update_available=update_available,
+                message=message,
+            )
+        except Exception as e:
+            logger.warning("Failed to fetch scrapinglib latest version: %s", e)
+            return schemas.ScrapinglibVersion(
+                current=current,
+                latest=None,
+                update_available=False,
+                message=f"无法获取最新版本: {e}",
+                success=False,
+            )
+
+    def update_scrapinglib(self) -> schemas.ScrapinglibVersion:
+        """升级 scrapinglib 并在当前进程及 Celery worker 中重新加载"""
+        info = self.get_scrapinglib_version()
+        if not info.update_available:
+            if not info.latest:
+                return info
+            info.message = "已是最新版本，无需更新"
+            return info
+
+        ok, output = pip_install_upgrade()
+        if not ok:
+            info.message = f"更新失败: {output[-500:] if output else 'pip install 失败'}"
+            info.success = False
+            return info
+
+        try:
+            from bonita.utils.scrapinglib_pkg import ensure_extra_site_packages
+            ensure_extra_site_packages()
+            reload_modules()
+        except Exception as e:
+            logger.warning("Reload scrapinglib in API process failed: %s", e)
+
+        try:
+            celery_reload_scrapinglib.delay()
+        except Exception as e:
+            logger.warning("Failed to notify celery to reload scrapinglib: %s", e)
+
+        current = get_installed_version()
+        latest = info.latest
+        update_available = is_newer(latest, current) if latest else False
+        return schemas.ScrapinglibVersion(
+            current=current,
+            latest=latest,
+            update_available=update_available,
+            message=f"已更新到 {current}" if not update_available else f"已安装，当前版本 {current}",
+        )

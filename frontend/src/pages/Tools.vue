@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useMediaItemStore } from "@/stores/mediaitem.store"
 import { useToolStore } from "@/stores/tool.store"
+import { onMounted, ref } from "vue"
 import { useI18n } from "vue-i18n"
 
 const toolStore = useToolStore()
@@ -83,6 +84,10 @@ const cleanupData = async () => {
     isCleaningData.value = false
   }
 }
+
+onMounted(() => {
+  toolStore.checkScrapinglibVersion()
+})
 </script>
 
 <template>
@@ -91,49 +96,6 @@ const cleanupData = async () => {
   </p>
   <VRow>
     <VCol cols="12" sm="8" md="6" lg="5" xl="4">
-      <VCard class="mb-6">
-        <VCardTitle>{{ t('pages.tools.importNfo.title') }}</VCardTitle>
-        <VCardSubtitle class="text-wrap">
-          {{ t('pages.tools.importNfo.subtitle') }}
-        </VCardSubtitle>
-        <VCardText>
-          <VForm :loading="isLoading">
-            <VRow>
-              <VCol cols="12">
-                <VRow no-gutters>
-                  <VCol cols="12" md="3" class="row-label">
-                    <label for="nfoFolder">{{ t('pages.tools.importNfo.folder') }}</label>
-                  </VCol>
-                  <VCol cols="12" md="9">
-                    <VTextField v-model="nfoFolder" :placeholder="t('pages.tools.importNfo.folderPlaceholder')" variant="outlined" />
-                  </VCol>
-                </VRow>
-              </VCol>
-              
-              <VCol cols="12">
-                <VRow no-gutters>
-                  <VCol cols="12" md="3" class="row-label">
-                    <label for="updateOption">{{ t('pages.tools.importNfo.importMethod') }}</label>
-                  </VCol>
-                  <VCol cols="12" md="9">
-                    <VRadioGroup v-model="updateOption" inline hide-details>
-                      <VRadio value="ignore" :label="t('pages.tools.importNfo.ignoreExisting')" />
-                      <VRadio value="force" :label="t('pages.tools.importNfo.forceUpdate')" />
-                    </VRadioGroup>
-                  </VCol>
-                </VRow>
-              </VCol>
-
-              <VCol cols="12">
-                <VBtn color="primary" block :loading="isLoading" @click="importNfoData">
-                  {{ t('pages.tools.importNfo.startImport') }}
-                </VBtn>
-              </VCol>
-            </VRow>
-          </VForm>
-        </VCardText>
-      </VCard>
-      
       <VCard class="mb-6">
         <VCardTitle>{{ t('pages.tools.syncEmby.title') }}</VCardTitle>
         <VCardSubtitle class="text-wrap">
@@ -176,6 +138,144 @@ const cleanupData = async () => {
               </VBtn>
             </VCol>
           </VRow>
+        </VCardText>
+      </VCard>
+
+      <VCard class="mb-6">
+        <VCardTitle>{{ t('pages.tools.cleanup.title') }}</VCardTitle>
+        <VCardSubtitle class="text-wrap">
+          {{ t('pages.tools.cleanup.subtitle') }}
+        </VCardSubtitle>
+        <VCardText>
+          <VRow>
+            <VCol cols="12">
+              <VRow no-gutters>
+                <VCol cols="12" md="3" class="row-label">
+                  <label for="forceCleanupOption">{{ t('pages.tools.cleanup.forceOption') }}</label>
+                </VCol>
+                <VCol cols="12" md="9">
+                  <VCheckbox v-model="forceCleanupOption" hide-details />
+                </VCol>
+              </VRow>
+            </VCol>
+            <VCol cols="12">
+              <VBtn color="error" block :loading="isCleaningData" @click="cleanupData">
+                {{ t('pages.tools.cleanup.startCleanup') }}
+              </VBtn>
+            </VCol>
+          </VRow>
+        </VCardText>
+      </VCard>
+
+      <VCard class="mb-6">
+        <VCardTitle>{{ t('pages.tools.scrapinglib.title') }}</VCardTitle>
+        <VCardSubtitle class="text-wrap">
+          {{ t('pages.tools.scrapinglib.subtitle') }}
+        </VCardSubtitle>
+        <VCardText>
+          <VRow>
+            <VCol cols="12">
+              <VRow no-gutters>
+                <VCol cols="12" md="3" class="row-label">
+                  <label>{{ t('pages.tools.scrapinglib.current') }}</label>
+                </VCol>
+                <VCol cols="12" md="9" class="d-flex align-center">
+                  <span>{{ toolStore.scrapinglibVersion?.current || t('pages.tools.scrapinglib.unknown') }}</span>
+                </VCol>
+              </VRow>
+            </VCol>
+            <VCol cols="12">
+              <VRow no-gutters>
+                <VCol cols="12" md="3" class="row-label">
+                  <label>{{ t('pages.tools.scrapinglib.latest') }}</label>
+                </VCol>
+                <VCol cols="12" md="9" class="d-flex align-center">
+                  <span>{{ toolStore.scrapinglibVersion?.latest || t('pages.tools.scrapinglib.unknown') }}</span>
+                  <VChip
+                    v-if="toolStore.scrapinglibVersion?.latest"
+                    class="ml-3"
+                    size="small"
+                    :color="toolStore.scrapinglibVersion.update_available ? 'warning' : 'success'"
+                    variant="tonal"
+                  >
+                    {{ toolStore.scrapinglibVersion.update_available
+                      ? t('pages.tools.scrapinglib.available')
+                      : t('pages.tools.scrapinglib.upToDate') }}
+                  </VChip>
+                </VCol>
+              </VRow>
+            </VCol>
+            <VCol v-if="toolStore.scrapinglibVersion?.message" cols="12">
+              <p class="text-caption text-medium-emphasis mb-0">
+                {{ toolStore.scrapinglibVersion.message }}
+              </p>
+            </VCol>
+            <VCol cols="12" md="6">
+              <VBtn
+                color="secondary"
+                block
+                :loading="toolStore.scrapinglibChecking"
+                :disabled="toolStore.scrapinglibUpdating"
+                @click="toolStore.checkScrapinglibVersion"
+              >
+                {{ t('pages.tools.scrapinglib.check') }}
+              </VBtn>
+            </VCol>
+            <VCol cols="12" md="6">
+              <VBtn
+                color="primary"
+                block
+                :loading="toolStore.scrapinglibUpdating"
+                :disabled="toolStore.scrapinglibChecking || !toolStore.scrapinglibVersion?.update_available"
+                @click="toolStore.updateScrapinglib"
+              >
+                {{ t('pages.tools.scrapinglib.update') }}
+              </VBtn>
+            </VCol>
+          </VRow>
+        </VCardText>
+      </VCard>
+
+      <VCard class="mb-6">
+        <VCardTitle>{{ t('pages.tools.importNfo.title') }}</VCardTitle>
+        <VCardSubtitle class="text-wrap">
+          {{ t('pages.tools.importNfo.subtitle') }}
+        </VCardSubtitle>
+        <VCardText>
+          <VForm :loading="isLoading">
+            <VRow>
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="nfoFolder">{{ t('pages.tools.importNfo.folder') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField v-model="nfoFolder" :placeholder="t('pages.tools.importNfo.folderPlaceholder')" variant="outlined" />
+                  </VCol>
+                </VRow>
+              </VCol>
+              
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="updateOption">{{ t('pages.tools.importNfo.importMethod') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VRadioGroup v-model="updateOption" inline hide-details>
+                      <VRadio value="ignore" :label="t('pages.tools.importNfo.ignoreExisting')" />
+                      <VRadio value="force" :label="t('pages.tools.importNfo.forceUpdate')" />
+                    </VRadioGroup>
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VBtn color="primary" block :loading="isLoading" @click="importNfoData">
+                  {{ t('pages.tools.importNfo.startImport') }}
+                </VBtn>
+              </VCol>
+            </VRow>
+          </VForm>
         </VCardText>
       </VCard>
 
@@ -227,32 +327,6 @@ const cleanupData = async () => {
               </VCol>
             </VRow>
           </VForm>
-        </VCardText>
-      </VCard>
-
-      <VCard class="mb-6">
-        <VCardTitle>{{ t('pages.tools.cleanup.title') }}</VCardTitle>
-        <VCardSubtitle class="text-wrap">
-          {{ t('pages.tools.cleanup.subtitle') }}
-        </VCardSubtitle>
-        <VCardText>
-          <VRow>
-            <VCol cols="12">
-              <VRow no-gutters>
-                <VCol cols="12" md="3" class="row-label">
-                  <label for="forceCleanupOption">{{ t('pages.tools.cleanup.forceOption') }}</label>
-                </VCol>
-                <VCol cols="12" md="9">
-                  <VCheckbox v-model="forceCleanupOption" hide-details />
-                </VCol>
-              </VRow>
-            </VCol>
-            <VCol cols="12">
-              <VBtn color="error" block :loading="isCleaningData" @click="cleanupData">
-                {{ t('pages.tools.cleanup.startCleanup') }}
-              </VBtn>
-            </VCol>
-          </VRow>
         </VCardText>
       </VCard>
     </VCol>

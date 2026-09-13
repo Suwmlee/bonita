@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import uuid
 from fastapi import APIRouter
@@ -95,3 +96,17 @@ async def cleanup_data(
     # 使用ToolService处理逻辑
     tool_service = ToolService(session)
     return tool_service.cleanup_data(delete_files)
+
+
+@router.get("/scrapinglib", response_model=schemas.ScrapinglibVersion)
+async def get_scrapinglib_version(session: SessionDep):
+    """检测 scrapinglib 当前版本与 PyPI 最新版本"""
+    tool_service = ToolService(session)
+    return await asyncio.to_thread(tool_service.get_scrapinglib_version)
+
+
+@router.post("/scrapinglib/update", response_model=schemas.ScrapinglibVersion)
+async def update_scrapinglib(session: SessionDep):
+    """升级 scrapinglib 到最新版本并重新加载"""
+    tool_service = ToolService(session)
+    return await asyncio.to_thread(tool_service.update_scrapinglib)

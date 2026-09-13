@@ -1,5 +1,6 @@
 import { ToolsService } from "@/client"
 import type {
+  ScrapinglibVersion,
   SyncDirection,
   ToolArgsParam,
   TransRecordsPathSyncParam,
@@ -14,6 +15,9 @@ export const useToolStore = defineStore("tool-store", {
     importNfoInProgress: false,
     syncEmbyInProgress: false,
     cleaningInProgress: false,
+    scrapinglibChecking: false,
+    scrapinglibUpdating: false,
+    scrapinglibVersion: null as ScrapinglibVersion | null,
   }),
   actions: {
     async runImportNfo(params: ToolArgsParam = {}) {
@@ -123,6 +127,54 @@ export const useToolStore = defineStore("tool-store", {
         )
       } finally {
         this.cleaningInProgress = false
+      }
+    },
+
+    async checkScrapinglibVersion() {
+      this.scrapinglibChecking = true
+      try {
+        const { data } = await ToolsService.getScrapinglibVersion()
+        this.scrapinglibVersion = data
+        return data
+      } catch (error) {
+        console.error("Error checking scrapinglib version:", error)
+        const toastStore = useToastStore()
+        toastStore.error(
+          error instanceof Error
+            ? error.message
+            : (i18n.global.t("pages.tools.scrapinglib.checkFailed") as string),
+        )
+      } finally {
+        this.scrapinglibChecking = false
+      }
+    },
+
+    async updateScrapinglib() {
+      this.scrapinglibUpdating = true
+      try {
+        const toastStore = useToastStore()
+        const { data } = await ToolsService.updateScrapinglib()
+        this.scrapinglibVersion = data
+        if (data?.success === false) {
+          toastStore.error(
+            data.message || (i18n.global.t("pages.tools.scrapinglib.updateFailed") as string),
+          )
+        } else {
+          toastStore.success(
+            data?.message || (i18n.global.t("pages.tools.scrapinglib.updateSuccess") as string),
+          )
+        }
+        return data
+      } catch (error) {
+        console.error("Error updating scrapinglib:", error)
+        const toastStore = useToastStore()
+        toastStore.error(
+          error instanceof Error
+            ? error.message
+            : (i18n.global.t("pages.tools.scrapinglib.updateFailed") as string),
+        )
+      } finally {
+        this.scrapinglibUpdating = false
       }
     },
   },
