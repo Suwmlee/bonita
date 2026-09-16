@@ -324,6 +324,7 @@ export default {
       path: "路径",
       destPath: "目标路径",
       seasonEpisode: "季/集",
+      partNumber: "部次",
       number: "番号",
       tag: "标签",
       updateTime: "更新时间",

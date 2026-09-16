@@ -86,6 +86,11 @@ const formatSeasonEpisode = (
   return `${seasonPart}${episodePart}`
 }
 
+const formatPartNumber = (partNumber?: number | null) => {
+  if (partNumber == null || partNumber <= 0) return ""
+  return `P${String(partNumber).padStart(2, "0")}`
+}
+
 const headers = [
   {
     title: t("pages.records.name"),
@@ -117,7 +122,18 @@ const headers = [
     title: t("pages.records.seasonEpisode"),
     align: "start" as const,
     key: "transfer_record.season",
-    width: "88px",
+    width: "120px",
+    minWidth: "120",
+    nowrap: true,
+    sortable: true,
+    cellProps: { class: "records-season-col" },
+    headerProps: { class: "records-season-col" },
+  },
+  {
+    title: t("pages.records.partNumber"),
+    align: "start" as const,
+    key: "transfer_record.part_number",
+    width: "96px",
     nowrap: true,
     sortable: true,
   },
@@ -512,6 +528,12 @@ onMounted(() => {
         </span>
       </template>
 
+      <template #item.transfer_record.part_number="{ item }">
+        <span class="nowrap-cell">
+          {{ formatPartNumber(item.transfer_record.part_number) }}
+        </span>
+      </template>
+
       <template #item.extra_info.number="{ item }">
         <span class="nowrap-cell">{{ item.extra_info?.number || '' }}</span>
       </template>
@@ -597,8 +619,8 @@ onMounted(() => {
 
 .records-table :deep(table) {
   table-layout: fixed;
-  width: max(100%, 1400px) !important;
-  min-width: 1400px !important;
+  width: max(100%, 1520px) !important;
+  min-width: 1520px !important;
 }
 
 .records-table :deep(th:not(.records-actions-col)),
@@ -619,6 +641,12 @@ onMounted(() => {
   left: 0;
   z-index: 2;
   background-color: rgb(var(--v-theme-surface));
+}
+
+.records-table :deep(.records-season-col) {
+  width: 120px !important;
+  min-width: 120px !important;
+  max-width: 120px !important;
 }
 
 .records-table :deep(.records-actions-col) {

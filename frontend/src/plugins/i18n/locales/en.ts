@@ -340,6 +340,7 @@ export default {
       path: "Path",
       destPath: "Destination Path",
       seasonEpisode: "S/E",
+      partNumber: "Part",
       number: "Number",
       tag: "Tag",
       updateTime: "Update Time",
