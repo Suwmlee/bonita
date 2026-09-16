@@ -30,6 +30,7 @@ class TransRecords(Base):
     isepisode = Column(Boolean, default=False)
     season = Column(Integer, default=-1)
     episode = Column(Integer, default=-1)
+    part_number = Column(Integer, default=0, server_default='0', comment='部次')
     # 链接使用的地址，可能与docker内地址不同
     linkpath = Column(String, default='')
     destpath = Column(String, default='')

@@ -341,7 +341,8 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                         # 开始转移
                         target_file = transferfile(original_file, target_file,
                                                    optimize_name_tag=task_info.optimize_name, series_tag=is_series,
-                                                   file_list=waiting_list, linktype=task_info.operation)
+                                                   file_list=waiting_list, linktype=task_info.operation,
+                                                   part_number=record.part_number or 0)
                         done_list.append(target_file.full_path)
                         if record.destpath != target_file.full_path:
                             # 如果新的路径和之前不同，则删除之前的文件
@@ -398,21 +399,26 @@ def celery_scrapping(self, file_path, scraping_dict):
         scraping_conf = schemas.ScrapingConfigPublic(**scraping_dict)
         # 根据路径获取额外自定义信息
         fileNumInfo = FileNumInfo(file_path)
+        transfer_record = session.query(TransRecords).filter(
+            TransRecords.srcpath == file_path).first()
         extrainfo = session.query(ExtraInfo).filter(ExtraInfo.filepath == file_path).first()
         if not extrainfo:
             extrainfo = ExtraInfo(filepath=file_path)
             extrainfo.number = fileNumInfo.num
             if not need_crop(extrainfo.number):
                 extrainfo.crop = False
-            extrainfo.partNumber = fileNumInfo.partNumber
             extrainfo.tag = ', '.join(map(str, fileNumInfo.tags()))
             extrainfo.create(session)
+            # 首次刮削：与原先 ExtraInfo.partNumber 一样，从文件名写入转移记录
+            if transfer_record and not transfer_record.part_number:
+                transfer_record.part_number = fileNumInfo.partNumber or 0
         else:
             if extrainfo.crop is None:
                 if need_crop(extrainfo.number):
                     extrainfo.crop = True
                 else:
                     extrainfo.crop = False
+        part_number = transfer_record.part_number if transfer_record else 0
         # 处理指定源/强制从网站更新
         metadata_record = None
         if extrainfo.specifiedurl:
@@ -496,9 +502,9 @@ def celery_scrapping(self, file_path, scraping_dict):
         combined_tags = {tag for tag in combined_tags if tag.strip()}
         metadata_mixed.tag = ", ".join(combined_tags) if combined_tags else ''
         # 更新文件名称，part -C -EP01
-        if extrainfo.partNumber:
-            metadata_mixed.extra_filename += format_part_suffix(extrainfo.partNumber)
-            metadata_mixed.extra_part = extrainfo.partNumber
+        if part_number:
+            metadata_mixed.extra_filename += format_part_suffix(part_number)
+            metadata_mixed.extra_part = part_number
 
         return metadata_mixed
     except Exception as e:

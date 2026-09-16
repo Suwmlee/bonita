@@ -186,6 +186,17 @@ async function applyTopFolderToAll() {
 
         <VRow no-gutters class="mb-4">
           <VCol cols="12" md="3" class="row-label">
+            <label>{{ t('components.record.form.partNumber') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField v-model="currentTransferRecord.part_number" type="number"
+              :rules="[v => v >= 0 || t('components.record.form.partNumberRule')]"
+              :hint="t('components.record.form.partNumberHint')" persistent-hint />
+          </VCol>
+        </VRow>
+
+        <VRow no-gutters class="mb-4">
+          <VCol cols="12" md="3" class="row-label">
             <label>{{ t('components.record.form.status') }}</label>
           </VCol>
           <VCol cols="12" md="9">
@@ -226,17 +237,6 @@ async function applyTopFolderToAll() {
           <VCol cols="12" md="9">
             <VTextField v-model="currentExtraInfo.tag" :placeholder="t('components.record.form.tagsPlaceholder')" 
               :hint="t('components.record.form.tagsHint')" persistent-hint />
-          </VCol>
-        </VRow>
-
-        <VRow no-gutters class="mb-4">
-          <VCol cols="12" md="3" class="row-label">
-            <label>{{ t('components.record.form.partNumber') }}</label>
-          </VCol>
-          <VCol cols="12" md="9">
-            <VTextField v-model="currentExtraInfo.partNumber" type="number"
-              :rules="[v => v >= 0 || t('components.record.form.partNumberRule')]" 
-              :hint="t('components.record.form.partNumberHint')" persistent-hint />
           </VCol>
         </VRow>
 

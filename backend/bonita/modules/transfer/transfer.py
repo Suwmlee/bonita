@@ -7,6 +7,7 @@ import logging
 from bonita.utils.fileinfo import BasicFileInfo, TargetFileInfo
 from bonita.utils.regex import matchSeason, simpleMatchEp
 from bonita.utils.filehelper import OperationMethod, linkFile, video_type, subext_type, replaceRegex, replaceCJK, cleanFilebyNameSuffix, moveSubs
+from bonita.modules.scraping.number_parser import format_part_suffix
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +144,8 @@ def fix_episode_name(name: str, season: int, episode: int, original_marker: str,
 def transferfile(original_file: BasicFileInfo,
                  target_file: TargetFileInfo,
                  optimize_name_tag: bool, series_tag: bool,
-                 file_list: list, linktype: OperationMethod):
+                 file_list: list, linktype: OperationMethod,
+                 part_number: int = 0):
     """
     转移文件
     """
@@ -160,7 +162,8 @@ def transferfile(original_file: BasicFileInfo,
     # 当前设置类型是剧集
     if series_tag and (target_file.is_episode or original_file.is_episode):
         _fix_series_naming(original_file, target_file)
-
+    if part_number:
+        target_file.basename += format_part_suffix(part_number)
     target_file.filename = target_file.basename + target_file.file_extension
 
     folder_path = os.path.join(target_file.root_folder, target_file.top_folder, target_file.second_folder)

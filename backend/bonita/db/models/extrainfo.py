@@ -12,6 +12,5 @@ class ExtraInfo(Base):
     number = Column(String, default="", nullable=False, comment="编号")
     tag = Column(String, default="", comment="标签（用于分类）")
     crop = Column(Boolean, default=True, comment="是否裁切poster")
-    partNumber = Column(Integer, default=0, comment="分集数")
     specifiedsource = Column(String, default="", comment="指定来源")
     specifiedurl = Column(String, default="", comment="指定链接")

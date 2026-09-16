@@ -26,6 +26,7 @@ class TransferRecordBase(BaseModel):
     isepisode: Optional[bool] = False
     season: Optional[int] = -1
     episode: Optional[int] = -1
+    part_number: Optional[int] = 0
     linkpath: Optional[str] = None
     destpath: Optional[str] = None
 

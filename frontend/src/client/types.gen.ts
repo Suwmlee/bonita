@@ -271,10 +271,6 @@ export type ExtraInfoPublic = {
      */
     tag?: string | null;
     /**
-     * Partnumber
-     */
-    partNumber?: number | null;
-    /**
      * Crop
      */
     crop?: boolean | null;
@@ -1252,6 +1248,34 @@ export type ScrapingConfigsPublic = {
 };
 
 /**
+ * ScrapinglibVersion
+ *
+ * scrapinglib 当前/最新版本信息
+ */
+export type ScrapinglibVersion = {
+    /**
+     * Current
+     */
+    current: string;
+    /**
+     * Latest
+     */
+    latest?: string | null;
+    /**
+     * Update Available
+     */
+    update_available?: boolean;
+    /**
+     * Message
+     */
+    message?: string | null;
+    /**
+     * Success
+     */
+    success?: boolean;
+};
+
+/**
  * StatusResponse
  */
 export type StatusResponse = {
@@ -1366,34 +1390,6 @@ export type ToolArgsParam = {
      * Arg3
      */
     arg3?: string | null;
-};
-
-/**
- * ScrapinglibVersion
- *
- * scrapinglib 当前/最新版本信息
- */
-export type ScrapinglibVersion = {
-    /**
-     * Current
-     */
-    current: string;
-    /**
-     * Latest
-     */
-    latest?: string | null;
-    /**
-     * Update Available
-     */
-    update_available?: boolean;
-    /**
-     * Message
-     */
-    message?: string | null;
-    /**
-     * Success
-     */
-    success?: boolean;
 };
 
 /**
@@ -1650,6 +1646,10 @@ export type TransferRecordPublic = {
      * Episode
      */
     episode?: number | null;
+    /**
+     * Part Number
+     */
+    part_number?: number | null;
     /**
      * Linkpath
      */
@@ -3558,15 +3558,6 @@ export type UpdateScrapinglibData = {
     query?: never;
     url: '/api/v1/tools/scrapinglib/update';
 };
-
-export type UpdateScrapinglibErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type UpdateScrapinglibError = UpdateScrapinglibErrors[keyof UpdateScrapinglibErrors];
 
 export type UpdateScrapinglibResponses = {
     /**
