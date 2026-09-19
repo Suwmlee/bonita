@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from bonita import schemas
 from bonita.db.models.collection import Collection, CollectionItem
 from bonita.db.models.mediaitem import MediaItem
-from bonita.modules.media_service.client import SOURCE_EMBY, is_to_server
+from bonita.modules.media_service.client import SOURCE_EMBY
 from bonita.modules.media_service.collection_sync import (
     add_and_sync_collection,
     add_collection_members,
@@ -16,7 +16,9 @@ from bonita.modules.media_service.collection_sync import (
     sync_whitelisted_collections,
 )
 from bonita.modules.media_service.factory import require_media_client
+from bonita.services.celery_service import CeleryTaskService, TASK_COLLECTION_SYNC
 from bonita.services.mediaitem_service import MediaItemService
+from bonita.tasks import celery_sync_collection
 
 
 class CollectionService:
@@ -71,6 +73,17 @@ class CollectionService:
 
     def sync_one(self, collection: Collection, direction: str = "from_server") -> Collection:
         return sync_collection_members(self.session, collection, direction=direction)
+
+    def enqueue_sync(self, collection_id: Optional[int], direction: str = "from_server") -> schemas.TaskStatus:
+        detail = f"{collection_id if collection_id is not None else 'all'}|{direction}"
+        return CeleryTaskService(self.session).enqueue_unique(
+            celery_sync_collection,
+            TASK_COLLECTION_SYNC,
+            detail=detail,
+            name="合集同步",
+            collection_id=collection_id,
+            direction=direction,
+        )
 
     def search_candidates(
         self, collection_id: int, search: str = "", limit: int = 20
@@ -127,9 +140,3 @@ class CollectionService:
     def delete_collection(self, collection: Collection) -> None:
         self.session.delete(collection)
         self.session.commit()
-
-    @staticmethod
-    def sync_message(direction: str, synced: int) -> str:
-        if is_to_server(direction):
-            return f"已回写 {synced} 个合集到媒体服务器"
-        return f"已从媒体服务器拉取 {synced} 个合集"

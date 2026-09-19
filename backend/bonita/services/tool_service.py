@@ -4,10 +4,13 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from bonita import schemas
-from bonita.celery_tasks.tasks import celery_import_nfo, celery_reload_scrapinglib
+from bonita.tasks import (
+    celery_import_nfo,
+    celery_reload_scrapinglib,
+    celery_sync_watch_history,
+)
 from bonita.services.record_service import RecordService
-from bonita.services.watch_sync_service import WatchSyncService
-from bonita.modules.media_service.client import is_to_server
+from bonita.services.celery_service import CeleryTaskService, TASK_WATCH_HISTORY_SYNC
 from bonita.core.enums import TaskStatusEnum
 from bonita.utils.http import get_active_proxy
 from bonita.utils.scrapinglib_pkg import (
@@ -114,20 +117,16 @@ class ToolService:
             }
         )
 
-    def sync_watch_history(self, direction: str = "from_server", force: bool = False) -> schemas.Response:
-        """同步媒体服务器观看历史
-
-        Args:
-            direction: 同步方向，"from_server"（默认）或 "to_server"
-            force: 是否强制覆盖对端已有的已看/收藏状态，默认为 False
-        """
-        logger.info(f"Sync watch history, direction={direction}, force={force}")
-        WatchSyncService(self.session).sync_history(direction=direction, force=force)
-
-        direction_text = "Bonita → 媒体服务器" if is_to_server(direction) else "媒体服务器 → Bonita"
-        return schemas.Response(
-            success=True,
-            message=f"sync watch history success (direction: {direction_text}, force={'enabled' if force else 'disabled'})"
+    def sync_watch_history(self, direction: str = "from_server", force: bool = False) -> schemas.TaskStatus:
+        """将观看历史同步丢给 Celery，立即返回任务状态。"""
+        logger.info(f"Enqueue watch history sync, direction={direction}, force={force}")
+        return CeleryTaskService(self.session).enqueue_unique(
+            celery_sync_watch_history,
+            TASK_WATCH_HISTORY_SYNC,
+            detail=f"{direction}|{int(bool(force))}",
+            name="同步观看历史",
+            direction=direction,
+            force=force,
         )
 
     def cleanup_data(self, force_flag: bool) -> schemas.Response:

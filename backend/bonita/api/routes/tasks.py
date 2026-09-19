@@ -35,25 +35,7 @@ def get_all_tasks_status(
     """ 获取所有任务状态
     """
     celery_service = CeleryTaskService(session)
-    active_tasks = celery_service.get_all_tasks(limit=limit)
-
-    all_tasks = []
-    for task in active_tasks:
-        all_tasks.append(schemas.TaskStatus(
-            task_id=task.task_id,
-            name=task.task_type or "unknown",
-            status=task.status,
-            detail=task.detail,
-            task_type=task.task_type,
-            progress=task.progress,
-            step=task.step,
-            result=task.result,
-            error_message=task.error_message,
-            created_at=task.created_at,
-            updatetime=task.updatetime
-        ))
-
-    return all_tasks
+    return [celery_service.to_task_status(task) for task in celery_service.get_all_tasks(limit=limit)]
 
 
 @router.post("/cleanup/running", response_model=Response)

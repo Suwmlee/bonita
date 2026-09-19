@@ -15,7 +15,7 @@ from bonita.utils.filehelper import is_video_file
 from bonita.utils.singleton import Singleton
 from bonita.modules.monitor.event_handler import FileEventHandler
 from bonita.modules.monitor.polling_handler import PollingHandler
-from bonita.celery_tasks.tasks import celery_transfer_group
+from bonita.tasks import celery_transfer_group
 
 logger = logging.getLogger(__name__)
 

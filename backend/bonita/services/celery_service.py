@@ -1,11 +1,16 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 import logging
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from bonita import schemas
 from bonita.db.models.task import CeleryTask
 from bonita.core.enums import TaskStatusEnum
 from bonita.db import SessionFactory
+
+TASK_WATCH_HISTORY_SYNC = "WatchHistorySync"
+TASK_COLLECTION_SYNC = "CollectionSync"
 
 
 logger = logging.getLogger(__name__)
@@ -25,17 +30,60 @@ class CeleryTaskService:
         if self._should_close_session:
             self.session.close()
 
-    def create_task(self, task_id: str, task_type: str) -> CeleryTask:
-        """创建新任务记录"""
+    def create_task(self, task_id: str, task_type: str, detail: str = "") -> CeleryTask:
+        existing = self.get_task(task_id)
+        if existing:
+            return existing
         task = CeleryTask(
             task_id=task_id,
             task_type=task_type,
+            detail=detail or "",
             status=TaskStatusEnum.PENDING,
             progress=0.0,
+            step="任务已启动",
         )
-        self.session.add(task)
-        self.session.commit()
-        return task
+        try:
+            self.session.add(task)
+            self.session.commit()
+            return task
+        except IntegrityError:
+            self.session.rollback()
+            found = self.get_task(task_id)
+            if found:
+                return found
+            raise
+
+    def find_active_task(self, task_type: str, detail: str = None) -> Optional[CeleryTask]:
+        query = self.session.query(CeleryTask).filter(
+            CeleryTask.task_type == task_type,
+            CeleryTask.status.in_([TaskStatusEnum.PENDING, TaskStatusEnum.PROGRESS]),
+        )
+        if detail is not None:
+            query = query.filter(CeleryTask.detail == detail)
+        return query.order_by(CeleryTask.created_at.desc()).first()
+
+    def to_task_status(self, task: CeleryTask, name: str = None) -> schemas.TaskStatus:
+        return schemas.TaskStatus(
+            task_id=task.task_id,
+            name=name or task.task_type or "unknown",
+            status=task.status,
+            detail=task.detail,
+            task_type=task.task_type,
+            progress=task.progress,
+            step=task.step,
+            result=task.result,
+            error_message=task.error_message,
+            created_at=task.created_at,
+            updatetime=task.updatetime,
+        )
+
+    def enqueue_unique(self, celery_task, task_type: str, detail: str, name: str, **kwargs) -> schemas.TaskStatus:
+        existing = self.find_active_task(task_type, detail)
+        if existing:
+            return self.to_task_status(existing, name=name)
+        result = celery_task.delay(**kwargs)
+        record = self.create_task(result.id, task_type, detail=detail)
+        return self.to_task_status(record, name=name)
 
     def update_task_progress(self, task_id: str, progress: float, step: str = "", status: TaskStatusEnum = TaskStatusEnum.PROGRESS) -> Optional[CeleryTask]:
         """更新任务进度"""

@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
 
 from bonita import schemas
-from bonita.celery_tasks.tasks import celery_transfer_entry, celery_transfer_group
+from bonita.tasks import celery_transfer_entry, celery_transfer_group
 from bonita.core.enums import TaskStatusEnum
 from bonita.db.models.task import TransferConfig
 from bonita.modules.monitor.monitor import MonitorService

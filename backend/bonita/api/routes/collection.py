@@ -55,41 +55,31 @@ async def add_collection(session: SessionDep, payload: schemas.CollectionCreate)
     return _to_public(collection)
 
 
-@router.post("/sync", response_model=schemas.Response)
+@router.post("/sync", response_model=schemas.TaskStatus)
 async def sync_all_collections(
     session: SessionDep,
     direction: Literal["from_server", "to_server"] = Query(default="from_server"),
 ) -> Any:
     try:
-        synced = CollectionService(session).sync_all(direction=direction)
-    except RuntimeError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return CollectionService(session).enqueue_sync(None, direction=direction)
     except Exception as e:
-        logger.exception("合集批量同步失败")
+        logger.exception("合集批量同步入队失败")
         raise HTTPException(status_code=500, detail=str(e))
-    return schemas.Response(
-        success=True,
-        message=CollectionService.sync_message(direction, synced),
-        data={"synced": synced},
-    )
 
 
-@router.post("/{collection_id}/sync", response_model=schemas.CollectionPublic)
+@router.post("/{collection_id}/sync", response_model=schemas.TaskStatus)
 async def sync_one_collection(
     collection_id: int,
     session: SessionDep,
     direction: Literal["from_server", "to_server"] = Query(default="from_server"),
 ) -> Any:
     service = CollectionService(session)
-    collection = _require_collection(service, collection_id)
+    _require_collection(service, collection_id)
     try:
-        collection = service.sync_one(collection, direction=direction)
-    except RuntimeError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return service.enqueue_sync(collection_id, direction=direction)
     except Exception as e:
-        logger.exception(f"合集同步失败 {collection.name}")
+        logger.exception(f"合集同步入队失败 {collection_id}")
         raise HTTPException(status_code=500, detail=str(e))
-    return _to_public(collection)
 
 
 @router.get("/{collection_id}/candidates", response_model=List[schemas.MediaItemWithWatches])

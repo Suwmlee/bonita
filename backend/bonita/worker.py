@@ -19,7 +19,7 @@ from bonita.utils.scrapinglib_pkg import ensure_extra_site_packages
 
 ensure_extra_site_packages()
 
-from bonita.celery_tasks import tasks
+import bonita.tasks  # noqa: F401  register celery task modules
 from bonita.core.config import settings
 from bonita.utils.logger import init_log_config, task_id_ctx
 
