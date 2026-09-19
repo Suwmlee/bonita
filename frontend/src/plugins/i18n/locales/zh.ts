@@ -564,6 +564,7 @@ export default {
           actorRequired: "演员不能为空",
           coverRequired: "封面不能为空",
         },
+        clickToView: "点击查看大图",
         uploadCover: "上传封面",
         selectImage: "选择图片",
         imageTypeError: "请选择图片文件（JPEG、PNG等）。",

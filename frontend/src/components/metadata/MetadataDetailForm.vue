@@ -18,6 +18,7 @@ const formValid = ref(true)
 const formErrors = ref<Record<string, string>>({})
 const isUploading = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+const coverPreviewOpen = ref(false)
 
 const { updateMetadata } = props as {
   updateMetadata: MetadataPublic
@@ -356,10 +357,19 @@ async function handleFileUpload(event: Event) {
               <input ref="fileInput" type="file" accept="image/*" class="d-none" @change="handleFileUpload" />
             </div>
 
-            <!-- Image preview -->
-            <div v-if="coverImageUrl" class="mt-2">
-              <VImg :src="coverImageUrl" max-height="200" contain class="rounded" />
-            </div>
+            <button
+              v-if="coverImageUrl"
+              type="button"
+              class="cover-preview-btn mt-2"
+              :title="t('components.metadata.form.clickToView')"
+              @click="coverPreviewOpen = true"
+            >
+              <img
+                class="cover-preview"
+                :src="coverImageUrl"
+                :alt="currentMetadata.title || t('components.metadata.form.cover')"
+              />
+            </button>
             
             <!-- Hint text about cover value behavior -->
             <div v-if="currentMetadata.cover" class="text-caption text-grey mt-1">
@@ -507,10 +517,50 @@ async function handleFileUpload(event: Event) {
       </VCol>
     </VRow>
   </VForm>
+
+  <VDialog v-model="coverPreviewOpen" max-width="96vw" z-index="3000">
+    <img
+      v-if="coverImageUrl"
+      class="cover-lightbox-img"
+      :src="coverImageUrl"
+      :alt="currentMetadata.title || t('components.metadata.form.cover')"
+      @click="coverPreviewOpen = false"
+    />
+  </VDialog>
 </template>
 
 <style>
 .text-error {
   color: rgb(244, 67, 54);
+}
+</style>
+
+<style scoped>
+.cover-preview-btn {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+  text-align: left;
+}
+
+.cover-preview {
+  display: block;
+  width: 100%;
+  max-height: 380px;
+  object-fit: contain;
+  object-position: left center;
+  border-radius: 8px;
+  background: #1a1a1a;
+}
+
+.cover-lightbox-img {
+  display: block;
+  max-width: 96vw;
+  max-height: 90vh;
+  margin: auto;
+  cursor: zoom-out;
 }
 </style>

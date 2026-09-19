@@ -102,7 +102,7 @@ async function handleImport() {
 </script>
 
 <template>
-  <VDialog v-model="dialog.showDialog" max-width="700" scrollable>
+  <VDialog v-model="dialog.showDialog" max-width="840" scrollable>
     <VCard style="max-height: 90vh; display: flex; flex-direction: column;">
       <VCardTitle class="px-6 pt-5 d-flex align-center justify-space-between">
         <span v-if="dialog.editMetadata">{{ t('pages.metadata.editMetadata') }}</span>

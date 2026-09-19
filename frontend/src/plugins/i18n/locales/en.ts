@@ -586,6 +586,7 @@ export default {
           actorRequired: "Actor is required",
           coverRequired: "Cover is required",
         },
+        clickToView: "Click to view full size",
         uploadCover: "Upload Cover",
         selectImage: "Select Image",
         imageTypeError: "Please select an image file (JPEG, PNG, etc.).",
