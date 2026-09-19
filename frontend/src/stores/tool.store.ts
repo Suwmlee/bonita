@@ -55,15 +55,28 @@ export const useToolStore = defineStore("tool-store", {
       this.syncEmbyInProgress = true
       try {
         const toastStore = useToastStore()
+        const taskStore = useTaskStore()
 
-        const { data: response } = await ToolsService.syncEmbyWatchHistory({
+        const { data: task } = await ToolsService.syncEmbyWatchHistory({
           embySyncParam: {
             direction,
             force,
           },
         })
+        if (!task?.task_id) {
+          toastStore.error(i18n.global.t("pages.tools.embyFailed") as string)
+          return task
+        }
+        const finished = await taskStore.waitForTask(task.task_id)
+        if (finished?.status === "FAILURE" || finished?.status === "REVOKED") {
+          toastStore.error(
+            finished.error_message
+              || (i18n.global.t("pages.tools.embyFailed") as string),
+          )
+          return finished
+        }
         toastStore.success(i18n.global.t("pages.tools.embySuccess") as string)
-        return response
+        return finished || task
       } catch (error) {
         console.error("Error syncing Emby watch history:", error)
         const toastStore = useToastStore()

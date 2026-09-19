@@ -9,6 +9,7 @@ import {
 import { i18n } from "@/plugins/i18n"
 import { defineStore } from "pinia"
 import { useConfirmationStore } from "./confirmation.store"
+import { useTaskStore } from "./task.store"
 import { useToastStore } from "./toast.store"
 
 export const useCollectionStore = defineStore("collection-store", {
@@ -104,38 +105,39 @@ export const useCollectionStore = defineStore("collection-store", {
     },
 
     async syncOne(collectionId: number, direction: SyncDirection = "from_server") {
-      this.isSyncing = true
-      try {
-        const { data: updated } = await CollectionService.syncOneCollection({
-          collection_id: collectionId,
-          direction,
-        })
-        this._applySynced(updated)
-        if (this.detail?.id === collectionId) {
-          await this.loadDetail(collectionId)
-        }
-        const key = direction === "to_server" ? "pages.collection.pushSuccess" : "pages.collection.pullSuccess"
-        useToastStore().success(i18n.global.t(key) as string)
-      } catch (error) {
-        console.error("Error syncing collection:", error)
-        useToastStore().error(i18n.global.t("pages.collection.syncFailed") as string)
-      } finally {
-        this.isSyncing = false
-      }
+      await this._runSync(direction, collectionId)
     },
 
     async syncAll(direction: SyncDirection = "from_server") {
+      await this._runSync(direction)
+    },
+
+    async _runSync(direction: SyncDirection, collectionId?: number) {
       this.isSyncing = true
       try {
-        await CollectionService.syncAllCollections({ direction })
+        const { data: task } = collectionId == null
+          ? await CollectionService.syncAllCollections({ direction })
+          : await CollectionService.syncOneCollection({
+              collection_id: collectionId,
+              direction,
+            })
+        if (!task?.task_id) {
+          useToastStore().error(i18n.global.t("pages.collection.syncFailed") as string)
+          return
+        }
+        const finished = await useTaskStore().waitForTask(task.task_id)
+        if (finished?.status === "FAILURE" || finished?.status === "REVOKED") {
+          useToastStore().error(i18n.global.t("pages.collection.syncFailed") as string)
+          return
+        }
         await this.listCollections()
-        if (this.detail) {
+        if (this.detail && (collectionId == null || this.detail.id === collectionId)) {
           await this.loadDetail(this.detail.id)
         }
         const key = direction === "to_server" ? "pages.collection.pushSuccess" : "pages.collection.pullSuccess"
         useToastStore().success(i18n.global.t(key) as string)
       } catch (error) {
-        console.error("Error syncing collections:", error)
+        console.error("Error syncing collection:", error)
         useToastStore().error(i18n.global.t("pages.collection.syncFailed") as string)
       } finally {
         this.isSyncing = false

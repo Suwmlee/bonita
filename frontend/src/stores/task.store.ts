@@ -143,8 +143,26 @@ export const useTaskStore = defineStore("task-store", {
             }
           }
         }
+        if (task.task_type === "WatchHistorySync") {
+          return { ...task, name: task.name || (i18n.global.t("pages.dashboard.watchHistorySync") as string) }
+        }
+        if (task.task_type === "CollectionSync") {
+          return { ...task, name: task.name || (i18n.global.t("pages.dashboard.collectionSync") as string) }
+        }
         return task
       })
+    },
+    async waitForTask(taskId: string, interval = 2000): Promise<TaskStatus | undefined> {
+      while (true) {
+        await this.getRunningTasks()
+        if (this.runningTasks.some((task) => task.task_id === taskId)) {
+          await new Promise((resolve) => setTimeout(resolve, interval))
+          continue
+        }
+        const finished = this.historicalTasks.find((task) => task.task_id === taskId)
+        if (finished) return finished
+        await new Promise((resolve) => setTimeout(resolve, interval))
+      }
     },
     async getRunningTasks() {
       try {

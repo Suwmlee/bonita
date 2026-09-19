@@ -3206,7 +3206,7 @@ export type SyncAllCollectionsResponses = {
     /**
      * Successful Response
      */
-    200: Response;
+    200: TaskStatus;
 };
 
 export type SyncAllCollectionsResponse = SyncAllCollectionsResponses[keyof SyncAllCollectionsResponses];
@@ -3241,7 +3241,7 @@ export type SyncOneCollectionResponses = {
     /**
      * Successful Response
      */
-    200: CollectionPublic;
+    200: TaskStatus;
 };
 
 export type SyncOneCollectionResponse = SyncOneCollectionResponses[keyof SyncOneCollectionResponses];
@@ -3506,7 +3506,7 @@ export type SyncEmbyWatchHistoryResponses = {
     /**
      * Successful Response
      */
-    200: Response;
+    200: TaskStatus;
 };
 
 export type SyncEmbyWatchHistoryResponse = SyncEmbyWatchHistoryResponses[keyof SyncEmbyWatchHistoryResponses];

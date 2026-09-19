@@ -130,6 +130,8 @@ export default {
       destination: "Destination",
       errorMessage: "Error Message",
       unknownTask: "Unknown Task",
+      watchHistorySync: "Watch history sync",
+      collectionSync: "Collection sync",
       running: "Running",
       completedTime: "Completed Time",
     },

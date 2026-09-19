@@ -130,6 +130,8 @@ export default {
       destination: "目标",
       errorMessage: "错误信息",
       unknownTask: "未知任务",
+      watchHistorySync: "同步观看历史",
+      collectionSync: "合集同步",
       running: "运行中",
       completedTime: "完成时间",
     },

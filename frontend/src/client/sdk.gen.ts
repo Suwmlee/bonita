@@ -1166,14 +1166,7 @@ export class ToolsService {
     /**
      * Sync Emby Watch History
      *
-     * 同步媒体服务器和 Bonita 之间的观看记录
-     *
-     * Args:
-     * params: 同步参数
-     * - direction: 同步方向，默认为 "from_server"
-     * * "from_server": 从媒体服务器同步到 Bonita
-     * * "to_server": 从 Bonita 回写到媒体服务器（电影、剧集、番号）
-     * - force: 是否强制覆盖数据，默认为 false
+     * 同步媒体服务器观看记录，立即返回后台任务。
      */
     public static syncEmbyWatchHistory<ThrowOnError extends boolean = true>(parameters: {
         embySyncParam: EmbySyncParam;
