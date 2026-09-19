@@ -45,18 +45,6 @@ function getImageUrl(path: string) {
   return url
 }
 
-const COVER_RATIO = 16 / 10
-const COVER_RATIO_TOLERANCE = 0.12
-const coverLetterbox = ref<Record<number, boolean>>({})
-
-function onCoverLoad(event: Event, id: number) {
-  const img = event.target as HTMLImageElement
-  if (!img.naturalWidth || !img.naturalHeight) return
-  const ratio = img.naturalWidth / img.naturalHeight
-  const mismatch = Math.abs(ratio - COVER_RATIO) / COVER_RATIO
-  coverLetterbox.value[id] = mismatch >= COVER_RATIO_TOLERANCE
-}
-
 // Function to search metadata with filter
 async function searchMetadata() {
   isSearching.value = true
@@ -169,10 +157,9 @@ onMounted(() => {
             </div>
           </div>
 
-          <div class="cover-wrapper" :class="{ 'show-full': coverLetterbox[item.id] }">
+          <div class="cover-wrapper">
             <template v-if="item.cover">
               <img
-                v-if="coverLetterbox[item.id]"
                 class="cover-fill"
                 :src="getImageUrl(item.cover)"
                 alt=""
@@ -183,7 +170,6 @@ onMounted(() => {
                 :src="getImageUrl(item.cover)"
                 :alt="item.title"
                 loading="lazy"
-                @load="onCoverLoad($event, item.id)"
               />
             </template>
             <div v-else class="cover-placeholder">
@@ -308,7 +294,7 @@ onMounted(() => {
 .cover-wrapper {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 3 / 2;
   overflow: hidden;
   background-color: #1a1a1a;
   flex-shrink: 0;
@@ -331,13 +317,9 @@ onMounted(() => {
 }
 
 .cover-image {
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
   z-index: 1;
-}
-
-.cover-wrapper.show-full .cover-image {
-  object-fit: contain;
 }
 
 .cover-placeholder {
