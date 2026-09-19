@@ -203,26 +203,23 @@ class PollingHandler(metaclass=Singleton):
             return
 
         old_snapshots = task.file_snapshots
+        failed_created = set()
 
-        # 检测新增和变化的文件
         for filepath, snapshot in current_snapshots.items():
-            if filepath not in old_snapshots:
-                # 新文件 - 加入稳定性检查队列（首次发现直接进入不稳定队列）
+            if filepath not in old_snapshots or filepath in task.unstable_files:
                 if self._is_file_stable(filepath, snapshot, task.unstable_files):
-                    # 极少数情况：首次发现就已稳定（_unstable_files 被外部预热时），直接触发
-                    self._handle_file_created(task, snapshot)
-            elif filepath in task.unstable_files:
-                # 文件在不稳定列表中，继续检查是否已稳定
-                if self._is_file_stable(filepath, snapshot, task.unstable_files):
-                    self._handle_file_created(task, snapshot)
-        
-        # 检测删除的文件
+                    if not self._handle_file_created(task, snapshot):
+                        failed_created.add(filepath)
+                        task.unstable_files[filepath] = snapshot
+
         for filepath in old_snapshots:
             if filepath not in current_snapshots:
                 self._handle_file_deleted(task, old_snapshots[filepath])
                 task.unstable_files.pop(filepath, None)
-        
-        # 更新快照
+
+        for filepath in failed_created:
+            current_snapshots.pop(filepath, None)
+
         task.file_snapshots = current_snapshots
         task.last_scan = datetime.now()
 
@@ -294,20 +291,18 @@ class PollingHandler(metaclass=Singleton):
             unstable_files[filepath] = snapshot
             return False
 
-    def _handle_file_created(self, task: MonitorTask, snapshot: FileSnapshot) -> None:
-        """处理文件创建事件"""
-        # 创建事件对象
+    def _handle_file_created(self, task: MonitorTask, snapshot: FileSnapshot) -> bool:
         event = PollingFileEvent(
             event_type="created",
             src_path=snapshot.path,
             is_directory=snapshot.is_directory
         )
-        
-        # 调用回调函数
         try:
-            task.callback_func(event, task.task_id, snapshot.path, task.folder_type)
+            result = task.callback_func(event, task.task_id, snapshot.path, task.folder_type)
+            return False if result is False else True
         except Exception as e:
             logger.error(f"Callback function failed: {e}", exc_info=True)
+            return False
 
     def _handle_file_deleted(self, task: MonitorTask, snapshot: FileSnapshot) -> None:
         """处理文件删除事件"""

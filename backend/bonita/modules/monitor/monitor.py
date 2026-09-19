@@ -154,8 +154,8 @@ class MonitorService(metaclass=Singleton):
             if not self._monitors[folder_path]:
                 del self._monitors[folder_path]
 
-    def handle_file_event(self, event: FileSystemEvent, task_id: str, filepath: str, folder_type: Literal["source", "output"]) -> None:
-        """Execute task based on file system event"""
+    def handle_file_event(self, event: FileSystemEvent, task_id: str, filepath: str, folder_type: Literal["source", "output"]) -> bool:
+        """Execute task based on file system event. False means enqueue/update failed and should retry."""
         try:
             logger.info(
                 f"File event: {event.event_type}, filepath: {filepath}, task_id: {task_id}, type: {folder_type}")
@@ -163,30 +163,32 @@ class MonitorService(metaclass=Singleton):
                 # 源文件夹的处理逻辑
                 if event.event_type == 'created' or event.event_type == 'moved':
                     if event.is_directory or not is_video_file(filepath):
-                        return
-                    self._trigger_transfer_task(filepath, task_id)
+                        return True
+                    return self._trigger_transfer_task(filepath, task_id)
                 elif event.event_type == 'deleted':
-                    self._update_deleted_records(filepath)
+                    return self._update_deleted_records(filepath)
             elif folder_type == "output":
                 # 输出文件夹的处理逻辑
                 if event.event_type == 'created' or event.event_type == 'moved':
                     if event.is_directory or not is_video_file(filepath):
-                        return
-                    self._handle_output_file_created(filepath)
+                        return True
+                    return self._handle_output_file_created(filepath)
                 elif event.event_type == 'deleted':
-                    self._update_output_deleted_records(filepath)
+                    return self._update_output_deleted_records(filepath)
+            return True
         except Exception as e:
             logger.error(f"Task execution failed: {e}")
+            return False
 
-    def _trigger_transfer_task(self, filepath: str, task_id: str) -> None:
-        """Execute the task's main logic"""
+    def _trigger_transfer_task(self, filepath: str, task_id: str) -> bool:
+        """Execute the task's main logic. True = handled or skipped, False = retry later."""
         try:
             logger.info(f"Trigger task for file: {filepath}, task_id: {task_id}")
             with SessionFactory() as session:
                 task_info = session.query(TransferConfig).filter(TransferConfig.id == task_id).first()
                 if not task_info:
                     logger.warning(f"No task config found for task_id: {task_id}")
-                    return
+                    return True
 
                 filename = os.path.basename(filepath)
 
@@ -198,7 +200,7 @@ class MonitorService(metaclass=Singleton):
                         top_dir = relative.parts[0] if len(relative.parts) > 1 else None
                         if top_dir and top_dir in escape_folders:
                             logger.info(f"  ⊘ 文件在排除文件夹 [{top_dir}] 中，跳过: {filepath}")
-                            return
+                            return True
                     except ValueError:
                         pass
 
@@ -207,24 +209,25 @@ class MonitorService(metaclass=Singleton):
                     escape_lits = [lit.strip() for lit in task_info.escape_literals.split(',') if lit.strip()]
                     if any(lit in filename for lit in escape_lits):
                         logger.info(f"  ⊘ 文件名包含排除文字，跳过: {filepath}")
-                        return
+                        return True
 
                 # 检查 escape_size：文件是否小于指定大小（单位 MB，0 表示不排除）
                 if task_info.escape_size and task_info.escape_size > 0:
                     min_size_bytes = task_info.escape_size * 1024 * 1024
                     if os.path.getsize(filepath) < min_size_bytes:
                         logger.info(f"  ⊘ 文件小于 {task_info.escape_size}MB，跳过: {filepath}")
-                        return
+                        return True
 
-                # TODO: 环境不同可能存在丢失情况...
                 if not celery_transfer_group.app.conf.broker_url:
                     celery_transfer_group.app.conf.broker_url = settings.CELERY_BROKER_URL
                     logger.info(f"Set broker_url to: {celery_transfer_group.app.conf.broker_url}")
                 celery_transfer_group.delay(task_info.to_dict(), filepath, True)
+                return True
         except Exception as e:
             logger.error(f"Task execution failed: {e}")
+            return False
 
-    def _update_deleted_records(self, path: str) -> None:
+    def _update_deleted_records(self, path: str) -> bool:
         """Update records for deleted files in source folder"""
         try:
             with SessionFactory() as session:
@@ -234,10 +237,12 @@ class MonitorService(metaclass=Singleton):
                     logger.info(f"Updating deleted source record: {record.srcpath}")
                     record.srcdeleted = True
                 session.commit()
+            return True
         except Exception as e:
             logger.error(f"Failed to update deleted record: {e}")
+            return False
 
-    def _handle_output_file_created(self, filepath: str) -> None:
+    def _handle_output_file_created(self, filepath: str) -> bool:
         """处理输出文件夹中文件创建的逻辑"""
         try:
             with SessionFactory() as session:
@@ -249,10 +254,12 @@ class MonitorService(metaclass=Singleton):
                         record.deadtime = None
                         record.deleted = False
                 session.commit()
+            return True
         except Exception as e:
             logger.error(f"Failed to handle output file created: {e}")
+            return False
 
-    def _update_output_deleted_records(self, path: str) -> None:
+    def _update_output_deleted_records(self, path: str) -> bool:
         """处理输出文件夹中文件删除的逻辑，更新deadtime"""
         try:
             with SessionFactory() as session:
@@ -263,5 +270,7 @@ class MonitorService(metaclass=Singleton):
                     record.deadtime = datetime.now() + timedelta(days=7)
                     record.deleted = True
                 session.commit()
+            return True
         except Exception as e:
             logger.error(f"Failed to update output deleted record: {e}")
+            return False
