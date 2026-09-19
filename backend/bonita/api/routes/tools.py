@@ -65,7 +65,7 @@ async def sync_record_path(
 
 
 @router.post("/sync/emby", response_model=schemas.TaskStatus)
-def sync_emby_watch_history(
+async def sync_emby_watch_history(
         session: SessionDep,
         params: schemas.EmbySyncParam):
     """同步媒体服务器观看记录，立即返回后台任务。"""

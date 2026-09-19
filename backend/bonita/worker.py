@@ -110,6 +110,7 @@ def create_celery():
     celery.conf.update(
         worker_hijack_root_logger=False
     )  # 禁止 Celery 劫持根日志记录器，保持我们自定义的日志配置生效
+    celery.set_default()  # 线程池/监控线程里 delay() 也走这个 app，而不是无 broker 的默认实例
     ensure_extra_site_packages()
     init_log_config()  # 初始化日志配置
 

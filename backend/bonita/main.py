@@ -11,11 +11,9 @@ from bonita import __version__
 from bonita.core.config import settings
 from bonita.core.db import init_db
 from bonita.core.service import init_service
+from bonita.worker import celery
 from bonita.api.main import api_router
 from bonita.utils.logger import init_log_config
-
-# celery client
-from bonita.worker import celery
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
