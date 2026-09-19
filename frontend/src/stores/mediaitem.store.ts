@@ -5,6 +5,7 @@ import {
 } from "@/client"
 import { i18n } from "@/plugins/i18n"
 import { defineStore } from "pinia"
+import { useCollectionStore } from "./collection.store"
 import { useConfirmationStore } from "./confirmation.store"
 import { useToastStore } from "./toast.store"
 
@@ -233,6 +234,8 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
           this.allMediaItems = this.allMediaItems.filter(
             (mediaItem) => mediaItem.id !== idToRemove,
           )
+          this.totalCount = Math.max(0, this.totalCount - 1)
+          useCollectionStore().onMediaDeleted(idToRemove)
 
           const toastStore = useToastStore()
           toastStore.success(i18n.global.t("pages.mediaitem.deleteSuccess") as string)
@@ -255,6 +258,10 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
         if (response) {
           // Refresh the list after cleaning
           await this.getMediaItems()
+          const collectionStore = useCollectionStore()
+          if (collectionStore.detail) {
+            await collectionStore.loadDetail(collectionStore.detail.id)
+          }
 
           const toastStore = useToastStore()
           toastStore.success(i18n.global.t("pages.mediaitem.cleanSuccess") as string)

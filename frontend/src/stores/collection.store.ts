@@ -89,6 +89,13 @@ export const useCollectionStore = defineStore("collection-store", {
       this.memberCandidates = []
     },
 
+    onMediaDeleted(mediaItemId: number) {
+      if (!this.detail?.items?.some((item) => item.id === mediaItemId)) return
+      const items = this.detail.items.filter((item) => item.id !== mediaItemId)
+      this.detail = { ...this.detail, items, matched_count: items.length }
+      this._applySynced(this.detail)
+    },
+
     _applySynced(updated: CollectionPublic) {
       const index = this.collections.findIndex((item) => item.id === updated.id)
       if (index >= 0) {

@@ -76,6 +76,30 @@ def refresh_collection_meta(session, collection: Collection, fallback_name: str 
         session.commit()
 
 
+def detach_media_from_collections(session, media_item_ids) -> None:
+    ids = list(dict.fromkeys(media_id for media_id in media_item_ids if media_id is not None))
+    if not ids:
+        return
+    collection_ids = [
+        row[0]
+        for row in session.query(CollectionItem.collection_id)
+        .filter(CollectionItem.media_item_id.in_(ids))
+        .distinct()
+        .all()
+    ]
+    if not collection_ids:
+        return
+    session.query(CollectionItem).filter(
+        CollectionItem.media_item_id.in_(ids)
+    ).delete(synchronize_session=False)
+    session.flush()
+    collections = session.query(Collection).filter(Collection.id.in_(collection_ids)).all()
+    for collection in collections:
+        collection.matched_count = session.query(CollectionItem).filter(
+            CollectionItem.collection_id == collection.id
+        ).count()
+
+
 def _refresh_member_counts(session, collection: Collection, remote_item_count=None, touch_sync=False):
     collection.matched_count = session.query(CollectionItem).filter(
         CollectionItem.collection_id == collection.id
@@ -174,6 +198,9 @@ def sync_collection_to_server(session, collection: Collection) -> Collection:
         media_item = session.query(MediaItem).filter(
             MediaItem.id == member.media_item_id
         ).first()
+        if not media_item:
+            session.delete(member)
+            continue
         resolved_id = member.external_item_id
         already_in_collection = resolved_id and resolved_id in remote_ids
         is_number = bool(media_item and (media_item.number or "").strip())

@@ -7,6 +7,7 @@ from bonita import schemas
 from bonita.db.models.collection import CollectionItem
 from bonita.db.models.mediaitem import MediaItem
 from bonita.db.models.watch_history import WatchHistory
+from bonita.modules.media_service.collection_sync import detach_media_from_collections
 from bonita.services.metadata_service import MetadataService
 
 
@@ -265,6 +266,7 @@ class MediaItemService:
         watch_history_deleted = self.session.query(WatchHistory).filter(
             WatchHistory.media_item_id == media_id
         ).delete(synchronize_session=False)
+        detach_media_from_collections(self.session, [media_id])
         self.session.delete(media_item)
         self.session.commit()
         return {
@@ -282,6 +284,7 @@ class MediaItemService:
         )
         duplicate_count = 0
         watch_history_deleted = 0
+        to_delete = []
         for (number,) in duplicate_numbers:
             items = (
                 self.session.query(MediaItem)
@@ -289,13 +292,15 @@ class MediaItemService:
                 .order_by(desc(MediaItem.updatetime))
                 .all()
             )
-            for item in items[1:]:
-                deleted_count = self.session.query(WatchHistory).filter(
-                    WatchHistory.media_item_id == item.id
-                ).delete(synchronize_session=False)
-                watch_history_deleted += deleted_count
-                self.session.delete(item)
-                duplicate_count += 1
+            to_delete.extend(items[1:])
+        detach_media_from_collections(self.session, [item.id for item in to_delete])
+        for item in to_delete:
+            deleted_count = self.session.query(WatchHistory).filter(
+                WatchHistory.media_item_id == item.id
+            ).delete(synchronize_session=False)
+            watch_history_deleted += deleted_count
+            self.session.delete(item)
+            duplicate_count += 1
         self.session.commit()
         return {
             "detail": "媒体项已清理",
