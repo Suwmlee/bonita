@@ -157,17 +157,23 @@ const headers = [
     title: t("pages.records.updateTime"),
     align: "start" as const,
     key: "transfer_record.updatetime",
-    width: "170px",
+    width: "184px",
+    minWidth: "184",
     nowrap: true,
     sortable: true,
+    cellProps: { class: "records-datetime-col" },
+    headerProps: { class: "records-datetime-col" },
   },
   {
     title: t("pages.records.deadTime"),
     align: "start" as const,
     key: "transfer_record.deadtime",
-    width: "170px",
+    width: "184px",
+    minWidth: "184",
     nowrap: true,
     sortable: true,
+    cellProps: { class: "records-datetime-col" },
+    headerProps: { class: "records-datetime-col" },
   },
   {
     title: t("common.actions"),
@@ -619,8 +625,8 @@ onMounted(() => {
 
 .records-table :deep(table) {
   table-layout: fixed;
-  width: max(100%, 1520px) !important;
-  min-width: 1520px !important;
+  width: max(100%, 1560px) !important;
+  min-width: 1560px !important;
 }
 
 .records-table :deep(th:not(.records-actions-col)),
@@ -647,6 +653,13 @@ onMounted(() => {
   width: 120px !important;
   min-width: 120px !important;
   max-width: 120px !important;
+}
+
+.records-table :deep(.records-datetime-col) {
+  width: 184px !important;
+  min-width: 184px !important;
+  max-width: 184px !important;
+  padding-inline: 8px !important;
 }
 
 .records-table :deep(.records-actions-col) {
@@ -687,6 +700,10 @@ onMounted(() => {
 .nowrap-cell,
 .datetime-cell {
   white-space: nowrap;
+}
+
+.datetime-cell {
+  font-variant-numeric: tabular-nums;
 }
 
 .tag-cell {
