@@ -507,8 +507,8 @@ watch(open, async (visible) => {
     </VCard>
   </VDialog>
 
-  <VDialog v-model="previewOpen" max-width="96vw" scrim="true">
-    <VCard v-if="previewField">
+  <VDialog v-model="previewOpen" width="auto" max-width="96vw">
+    <VCard v-if="previewField" class="preview-card">
       <VCardTitle class="d-flex align-center justify-space-between">
         <span>{{ t('components.metadata.refreshDialog.imagePreview') }} · {{ fieldLabel(previewField) }}</span>
         <VBtn icon variant="text" size="small" @click="previewField = null">
@@ -629,10 +629,15 @@ watch(open, async (visible) => {
   background: #1a1a1a;
 }
 
+.preview-card {
+  width: fit-content;
+  max-width: 96vw;
+}
+
 .preview-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
 }
 
 .preview-pane {
@@ -647,8 +652,7 @@ watch(open, async (visible) => {
 
 .preview-img {
   display: block;
-  width: auto;
-  max-width: 100%;
+  max-width: min(800px, 46vw);
   max-height: 75vh;
   height: auto;
   object-fit: contain;
@@ -675,7 +679,11 @@ watch(open, async (visible) => {
   }
 
   .preview-grid {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .preview-img {
+    max-width: 100%;
   }
 }
 </style>
