@@ -356,12 +356,14 @@ class RecordService:
 
             dest_path = transfer_record.destpath
             src_path = transfer_record.srcpath
+            record_name = transfer_record.srcname or src_path or f"id={record_id}"
 
             # 删除关联的额外信息
             if extra_info:
                 self.session.delete(extra_info)
 
             if force:
+                logger.info(f"强制删除记录: {record_name}")
                 # 如果强制删除，那么也删除源文件和记录
                 self.session.delete(transfer_record)
                 self.session.commit()
@@ -369,6 +371,7 @@ class RecordService:
                 self._clean_files_async(dest_path)
                 self._clean_files_async(src_path)
             else:
+                logger.info(f"标记删除记录: {record_name}")
                 # 清除状态，可以重新转移
                 reset_dict = {
                     'top_folder': '',
@@ -405,6 +408,7 @@ class RecordService:
 
         if failed_ids:
             message = f"已删除 {deleted_count} 条记录{torrent_info_msg}。无法删除ID: {failed_ids}"
+            logger.warning(f"记录未找到: {failed_ids}")
         else:
             message = f"成功删除 {deleted_count} 条记录{torrent_info_msg}"
 
