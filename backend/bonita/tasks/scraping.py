@@ -13,6 +13,7 @@ from bonita.db.models.record import TransRecords
 from bonita.modules.scraping.number_parser import FileNumInfo, format_part_suffix
 from bonita.modules.scraping.scraping import load_all_NFO_from_folder, need_crop, scraping
 from bonita.utils.downloader import update_cache_from_local
+from bonita.utils.http import get_active_proxy
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
              name='scraping:single')
 def celery_scrapping(self, file_path, scraping_dict):
     logger.info(f"    ▸ [刮削] {os.path.basename(file_path)}")
+    session = None
     try:
         session = SessionFactory()
         scraping_conf = schemas.ScrapingConfigPublic(**scraping_dict)
@@ -134,11 +136,12 @@ def celery_scrapping(self, file_path, scraping_dict):
             metadata_mixed.extra_part = part_number
 
         return metadata_mixed
-    except Exception as e:
-        logger.error(e)
+    except Exception:
+        logger.exception("      ✗ 刮削异常")
     finally:
-        session.commit()
-        session.close()
+        if session:
+            session.commit()
+            session.close()
     return None
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
@@ -203,6 +206,7 @@ def celery_import_nfo(self, folder_path, option):
                 except Exception:
                     # 如果解析失败，直接使用完整URL
                     metadata_base.site = metadata_base.detailurl
+            session = None
             try:
                 session = SessionFactory()
                 metadata_record = session.query(Metadata).filter(
@@ -229,10 +233,11 @@ def celery_import_nfo(self, folder_path, option):
                 logger.error(f"  ✗ 导入失败 {os.path.basename(nfo_dict['nfo_path'])}: {str(e)}")
                 continue
             finally:
-                session.close()
+                if session:
+                    session.close()
         logger.info("## [NFO导入] END")
     except Exception:
-        logger.error("## [NFO导入] ✗ 失败: {str(e)}")
+        logger.exception("## [NFO导入] ✗ 失败")
     return True
 
 @shared_task(name="tools:reload_scrapinglib")
