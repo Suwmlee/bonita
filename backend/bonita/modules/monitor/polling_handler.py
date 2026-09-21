@@ -6,7 +6,7 @@ from typing import Dict, Literal, Optional, Callable
 from threading import Thread, Lock, Event
 from dataclasses import dataclass
 
-from bonita.utils.filehelper import is_video_file
+from bonita.utils.filehelper import is_incomplete_download, is_video_file
 from bonita.utils.singleton import Singleton
 
 logger = logging.getLogger(__name__)
@@ -193,20 +193,18 @@ class PollingHandler(metaclass=Singleton):
         """检查单个目录的变化"""
         current_snapshots = self._scan_directory(task.folder_path)
 
-        # 第一次轮询：仅建立基线快照，不触发任何事件
+        # 首次扫描视为新文件，由回调按转移记录跳过已处理项
         if task.last_scan is None:
-            task.file_snapshots = current_snapshots
-            task.last_scan = datetime.now()
-            logger.info(
-                f"Initial scan complete for {task.folder_path}: {len(current_snapshots)} files indexed"
-            )
-            return
-
-        old_snapshots = task.file_snapshots
+            logger.info(f"Initial scan for {task.folder_path}: {len(current_snapshots)} files")
+            old_snapshots = {}
+        else:
+            old_snapshots = task.file_snapshots
         failed_created = set()
 
         for filepath, snapshot in current_snapshots.items():
-            if filepath not in old_snapshots or filepath in task.unstable_files:
+            old = old_snapshots.get(filepath)
+            size_grew = old is not None and snapshot.size > old.size
+            if old is None or size_grew or filepath in task.unstable_files:
                 if self._is_file_stable(filepath, snapshot, task.unstable_files):
                     if not self._handle_file_created(task, snapshot):
                         failed_created.add(filepath)
@@ -239,19 +237,18 @@ class PollingHandler(metaclass=Singleton):
                     # 跳过目录，只处理文件
                     if item.is_dir():
                         continue
-                    
-                    # 只扫描视频文件
-                    if not is_video_file(str(item)):
+                    path_str = str(item)
+                    if not is_video_file(path_str) or is_incomplete_download(path_str):
                         continue
                     
                     stat = item.stat()
                     snapshot = FileSnapshot(
-                        path=str(item),
+                        path=path_str,
                         size=stat.st_size,
                         mtime=stat.st_mtime,
-                        is_directory=False  # 已经确定是文件
+                        is_directory=False
                     )
-                    snapshots[str(item)] = snapshot
+                    snapshots[path_str] = snapshot
                 except (OSError, PermissionError) as e:
                     logger.debug(f"Cannot access {item}: {e}")
                     continue

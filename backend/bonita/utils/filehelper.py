@@ -302,6 +302,16 @@ def is_video_file(filepath: str) -> bool:
     is_video = ext in video_type
     return is_video
 
+
+# Transmission .part、qBittorrent .!qB、浏览器未完成下载等
+_INCOMPLETE_SUFFIXES = ('.part', '.!qb', '.partial', '.crdownload', '.tmp')
+
+
+def is_incomplete_download(filepath: str) -> bool:
+    """下载器尚未完成的临时文件，监控时应跳过。"""
+    name = os.path.basename(filepath).lower()
+    return name.endswith(_INCOMPLETE_SUFFIXES)
+
 def sanitize_path(name: str) -> str:
     """
     清理字符串，使其可以作为合法的文件名或目录名。
