@@ -1,4 +1,5 @@
 import logging
+import os
 import requests
 from typing import Any, Dict, List, Optional, Union
 
@@ -184,6 +185,46 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
         """Triggers a library scan in Emby
         """
         return self._make_request('post', '/Library/Refresh')
+
+    def refresh_libraries_for_paths(self, paths: List[str]) -> bool:
+        """只刷新包含这些路径的媒体库。无法全部对上时返回 False，由调用方全库刷新。"""
+        targets = []
+        for raw in paths or []:
+            if isinstance(raw, str) and raw.strip():
+                targets.append(os.path.normcase(os.path.normpath(raw.strip())))
+        if not targets:
+            return False
+
+        folders = self._make_request('get', '/Library/VirtualFolders')
+        if not isinstance(folders, list):
+            return False
+
+        matched = {}
+        for path in targets:
+            hit = None
+            hit_len = -1
+            for folder in folders:
+                if not isinstance(folder, dict):
+                    continue
+                library_id = folder.get("ItemId") or folder.get("Id")
+                if not library_id:
+                    continue
+                for root in folder.get("Locations") or []:
+                    if not root:
+                        continue
+                    root_norm = os.path.normcase(os.path.normpath(root)).rstrip(os.sep)
+                    if path == root_norm or path.startswith(root_norm + os.sep):
+                        if len(root_norm) > hit_len:
+                            hit = (library_id, folder.get("Name") or library_id)
+                            hit_len = len(root_norm)
+            if not hit:
+                return False
+            matched[hit[0]] = hit[1]
+
+        for library_id, name in matched.items():
+            self._make_request('post', f'/Items/{library_id}/Refresh', params={'Recursive': 'true'})
+            logger.info(f"  → 刷新媒体库 {name}")
+        return True
 
     def get_server_info(self):
         """Get server information

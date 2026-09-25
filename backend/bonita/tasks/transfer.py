@@ -95,9 +95,9 @@ def celery_transfer_entry(self, task_json):
         if task_info.auto_watch:
             logger.info("  → 触发媒体库扫描")
             if os.environ.get("MAX_CONCURRENCY") == "1":
-                celery_emby_scan.apply(args=[task_json])
+                celery_emby_scan.apply(args=[task_json, done_list])
             else:
-                celery_emby_scan.apply_async(args=[task_json])
+                celery_emby_scan.apply_async(args=[task_json, done_list])
 
     progress_tracker.complete("转移任务完成")
     logger.info(f"## [转移任务] END - ID:{task_info.id}")
@@ -367,7 +367,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
         progress_tracker.set_progress(95, "处理后续任务")
         if isEntry and task_info.auto_watch:
             try:
-                celery_emby_scan.apply(args=[task_json])
+                celery_emby_scan.apply(args=[task_json, done_list])
             except Exception as e:
                 logger.error(f"    ✗ Emby 扫描失败: {e}")
 

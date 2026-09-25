@@ -14,13 +14,22 @@ logger = logging.getLogger(__name__)
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='emby:scan')
-def celery_emby_scan(self, task_json):
+def celery_emby_scan(self, task_json, paths=None):
     logger.info("## [Emby扫描] START")
     try:
         client = ensure_media_client()
         if not client:
             logger.warning("## [Emby扫描] ⊘ 服务未初始化")
             return
+        if paths:
+            try:
+                if client.refresh_libraries_for_paths(paths):
+                    logger.info("## [Emby扫描] END")
+                    return
+            except Exception as e:
+                logger.warning(f"## [Emby扫描] 按库刷新失败，改为全库刷新: {e}")
+            else:
+                logger.info("## [Emby扫描] 未能按库刷新，改为全库刷新")
         client.trigger_library_scan()
         logger.info("## [Emby扫描] END")
     except Exception as e:
