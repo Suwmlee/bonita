@@ -275,23 +275,6 @@ export default {
         webhookHint:
           "Paste this into Emby Add Notification → Webhooks. Enable Playback, Mark Played, Mark Unplayed, Rate (favorites), and New Media Added. If Emby cannot reach localhost, replace it with Bonita’s LAN IP.",
       },
-      jellyfin: {
-        title: "Jellyfin API Settings",
-        subtitle: "Configure Jellyfin server API connection parameters",
-        server: "Jellyfin Server",
-        serverPlaceholder: "Example: http://jellyfin.example.com:8096",
-        apiKey: "API Key",
-        apiKeyPlaceholder: "Jellyfin API Key",
-        save: "Save Settings",
-        test: "Test Connection",
-        saveSuccess: "Jellyfin settings saved successfully",
-        saveError: "Failed to save Jellyfin settings, please try again later",
-        testError:
-          "Connection test failed, please check your settings and network",
-        connectionSuccess: "Connection successful!",
-        connectionError: "Connection failed!",
-        enable: "Enable Jellyfin Integration",
-      },
       transmission: {
         title: "Transmission Client Settings",
         subtitle: "Configure Transmission torrent client connection parameters",
@@ -318,6 +301,32 @@ export default {
         connectionSuccess: "Connection successful!",
         connectionError: "Connection failed!",
         enable: "Enable Transmission Integration",
+      },
+      qbittorrent: {
+        title: "qBittorrent Client Settings",
+        subtitle: "Configure qBittorrent torrent client connection parameters",
+        server: "Server Address",
+        serverPlaceholder: "Example: http://192.168.1.100:8080",
+        username: "Username",
+        usernamePlaceholder: "qBittorrent Username",
+        password: "Password",
+        passwordPlaceholder: "qBittorrent Password",
+        pathMappingFrom: "Path Mapping Source",
+        pathMappingFromPlaceholder:
+          "Example: /downloads (Docker container path)",
+        pathMappingTo: "Path Mapping Target",
+        pathMappingToPlaceholder:
+          "Example: /volume1/downloads (Host machine path)",
+        save: "Save Settings",
+        test: "Test Connection",
+        saveSuccess: "qBittorrent settings saved successfully",
+        saveError:
+          "Failed to save qBittorrent settings, please try again later",
+        testError:
+          "Connection test failed, please check your settings and network",
+        connectionSuccess: "Connection successful!",
+        connectionError: "Connection failed!",
+        enable: "Enable qBittorrent Integration",
       },
     },
     userSettings: {

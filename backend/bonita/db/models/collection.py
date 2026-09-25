@@ -12,7 +12,7 @@ class Collection(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    source = Column(String, nullable=False, default="emby", index=True, comment="媒体源 emby/jellyfin")
+    source = Column(String, nullable=False, default="emby", index=True, comment="媒体源 emby")
     external_id = Column(String, nullable=False, index=True, comment="远端合集 Id")
     name = Column(String, nullable=False, comment="合集名称")
     image_tag = Column(String, comment="远端海报 ImageTag")

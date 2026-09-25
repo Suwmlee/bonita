@@ -3,18 +3,15 @@ from typing import Optional
 
 from bonita.modules.media_service.client import (
     SOURCE_EMBY,
-    SOURCE_JELLYFIN,
     MediaServerClient,
     source_label,
 )
 from bonita.modules.media_service.emby import EmbyClient
-from bonita.modules.media_service.jellyfin import JellyfinClient
 
 logger = logging.getLogger(__name__)
 
 _CLIENTS = {
     SOURCE_EMBY: EmbyClient,
-    SOURCE_JELLYFIN: JellyfinClient,
 }
 
 

@@ -57,15 +57,6 @@ class EmbySettings(BaseModel):
     enabled: Optional[bool] = False
 
 
-class JellyfinSettings(BaseModel):
-    """
-    Jellyfin settings schema
-    """
-    jellyfin_host: str
-    jellyfin_apikey: str
-    enabled: Optional[bool] = False
-
-
 class TransmissionSettings(BaseModel):
     """
     Transmission downloader settings schema
@@ -75,6 +66,18 @@ class TransmissionSettings(BaseModel):
     transmission_password: str
     transmission_source_path: Optional[str] = ""
     transmission_dest_path: Optional[str] = ""
+    enabled: Optional[bool] = False
+
+
+class QBittorrentSettings(BaseModel):
+    """
+    qBittorrent downloader settings schema
+    """
+    qbittorrent_host: str
+    qbittorrent_username: str
+    qbittorrent_password: str
+    qbittorrent_source_path: Optional[str] = ""
+    qbittorrent_dest_path: Optional[str] = ""
     enabled: Optional[bool] = False
 
 

@@ -347,26 +347,6 @@ export type HttpValidationError = {
 };
 
 /**
- * JellyfinSettings
- *
- * Jellyfin settings schema
- */
-export type JellyfinSettings = {
-    /**
-     * Jellyfin Host
-     */
-    jellyfin_host: string;
-    /**
-     * Jellyfin Apikey
-     */
-    jellyfin_apikey: string;
-    /**
-     * Enabled
-     */
-    enabled?: boolean | null;
-};
-
-/**
  * MediaItemCollection
  *
  * MediaItem集合，用于分页响应
@@ -1039,6 +1019,38 @@ export type ProxySettings = {
      * Https
      */
     https?: string | null;
+    /**
+     * Enabled
+     */
+    enabled?: boolean | null;
+};
+
+/**
+ * QBittorrentSettings
+ *
+ * qBittorrent downloader settings schema
+ */
+export type QBittorrentSettings = {
+    /**
+     * Qbittorrent Host
+     */
+    qbittorrent_host: string;
+    /**
+     * Qbittorrent Username
+     */
+    qbittorrent_username: string;
+    /**
+     * Qbittorrent Password
+     */
+    qbittorrent_password: string;
+    /**
+     * Qbittorrent Source Path
+     */
+    qbittorrent_source_path?: string | null;
+    /**
+     * Qbittorrent Dest Path
+     */
+    qbittorrent_dest_path?: string | null;
     /**
      * Enabled
      */
@@ -3675,72 +3687,6 @@ export type TestEmbyConnectionResponses = {
 
 export type TestEmbyConnectionResponse = TestEmbyConnectionResponses[keyof TestEmbyConnectionResponses];
 
-export type GetJellyfinSettingsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/settings/jellyfin';
-};
-
-export type GetJellyfinSettingsResponses = {
-    /**
-     * Successful Response
-     */
-    200: JellyfinSettings;
-};
-
-export type GetJellyfinSettingsResponse = GetJellyfinSettingsResponses[keyof GetJellyfinSettingsResponses];
-
-export type UpdateJellyfinSettingsData = {
-    body: JellyfinSettings;
-    path?: never;
-    query?: never;
-    url: '/api/v1/settings/jellyfin';
-};
-
-export type UpdateJellyfinSettingsErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type UpdateJellyfinSettingsError = UpdateJellyfinSettingsErrors[keyof UpdateJellyfinSettingsErrors];
-
-export type UpdateJellyfinSettingsResponses = {
-    /**
-     * Successful Response
-     */
-    200: Response;
-};
-
-export type UpdateJellyfinSettingsResponse = UpdateJellyfinSettingsResponses[keyof UpdateJellyfinSettingsResponses];
-
-export type TestJellyfinConnectionData = {
-    body: JellyfinSettings;
-    path?: never;
-    query?: never;
-    url: '/api/v1/settings/jellyfin/test';
-};
-
-export type TestJellyfinConnectionErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type TestJellyfinConnectionError = TestJellyfinConnectionErrors[keyof TestJellyfinConnectionErrors];
-
-export type TestJellyfinConnectionResponses = {
-    /**
-     * Successful Response
-     */
-    200: Response;
-};
-
-export type TestJellyfinConnectionResponse = TestJellyfinConnectionResponses[keyof TestJellyfinConnectionResponses];
-
 export type GetTransmissionSettingsData = {
     body?: never;
     path?: never;
@@ -3806,6 +3752,72 @@ export type TestTransmissionConnectionResponses = {
 };
 
 export type TestTransmissionConnectionResponse = TestTransmissionConnectionResponses[keyof TestTransmissionConnectionResponses];
+
+export type GetQbittorrentSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/qbittorrent';
+};
+
+export type GetQbittorrentSettingsResponses = {
+    /**
+     * Successful Response
+     */
+    200: QBittorrentSettings;
+};
+
+export type GetQbittorrentSettingsResponse = GetQbittorrentSettingsResponses[keyof GetQbittorrentSettingsResponses];
+
+export type UpdateQbittorrentSettingsData = {
+    body: QBittorrentSettings;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/qbittorrent';
+};
+
+export type UpdateQbittorrentSettingsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateQbittorrentSettingsError = UpdateQbittorrentSettingsErrors[keyof UpdateQbittorrentSettingsErrors];
+
+export type UpdateQbittorrentSettingsResponses = {
+    /**
+     * Successful Response
+     */
+    200: Response;
+};
+
+export type UpdateQbittorrentSettingsResponse = UpdateQbittorrentSettingsResponses[keyof UpdateQbittorrentSettingsResponses];
+
+export type TestQbittorrentConnectionData = {
+    body: QBittorrentSettings;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/qbittorrent/test';
+};
+
+export type TestQbittorrentConnectionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TestQbittorrentConnectionError = TestQbittorrentConnectionErrors[keyof TestQbittorrentConnectionErrors];
+
+export type TestQbittorrentConnectionResponses = {
+    /**
+     * Successful Response
+     */
+    200: Response;
+};
+
+export type TestQbittorrentConnectionResponse = TestQbittorrentConnectionResponses[keyof TestQbittorrentConnectionResponses];
 
 export type GetImageByQueryData = {
     body?: never;

@@ -12,27 +12,29 @@ const { t } = useI18n() // 导入国际化工具函数
 const {
   proxySettings,
   embyApiSettings,
-  jellyfinApiSettings,
   transmissionSettings,
+  qbittorrentSettings,
   loading,
   saving,
   testingEmby,
-  testingJellyfin,
   testingTransmission,
+  testingQBittorrent,
 } = storeToRefs(settingStore)
 const testResult = ref<{ success?: boolean; message?: string } | null>(null)
 const saveResult = ref<{ success: boolean; message: string } | null>(null)
-const jellyfinTestResult = ref<{ success?: boolean; message?: string } | null>(
-  null,
-)
-const jellyfinSaveResult = ref<{ success: boolean; message: string } | null>(
-  null,
-)
 const transmissionTestResult = ref<{
   success?: boolean
   message?: string
 } | null>(null)
 const transmissionSaveResult = ref<{
+  success: boolean
+  message: string
+} | null>(null)
+const qbittorrentTestResult = ref<{
+  success?: boolean
+  message?: string
+} | null>(null)
+const qbittorrentSaveResult = ref<{
   success: boolean
   message: string
 } | null>(null)
@@ -50,12 +52,12 @@ const fetchEmbySettings = async () => {
   await settingStore.fetchEmbySettings()
 }
 
-const fetchJellyfinSettings = async () => {
-  await settingStore.fetchJellyfinSettings()
-}
-
 const fetchTransmissionSettings = async () => {
   await settingStore.fetchTransmissionSettings()
+}
+
+const fetchQBittorrentSettings = async () => {
+  await settingStore.fetchQBittorrentSettings()
 }
 
 const saveProxySettings = async () => {
@@ -92,37 +94,6 @@ const saveEmbyApiSettings = async () => {
   }, 3000)
 }
 
-const saveJellyfinApiSettings = async () => {
-  // 重置之前的保存结果
-  jellyfinSaveResult.value = null
-
-  // 确保字段有正确的值类型
-  jellyfinApiSettings.value.jellyfin_host =
-    jellyfinApiSettings.value.jellyfin_host || ""
-  jellyfinApiSettings.value.jellyfin_apikey =
-    jellyfinApiSettings.value.jellyfin_apikey || ""
-
-  try {
-    const response = await settingStore.saveJellyfinApiSettings()
-    jellyfinSaveResult.value = {
-      success: true,
-      message: t("pages.serviceSettings.jellyfin.saveSuccess"),
-    }
-    return response
-  } catch (error) {
-    console.error("Error saving Jellyfin settings:", error)
-    jellyfinSaveResult.value = {
-      success: false,
-      message: t("pages.serviceSettings.jellyfin.saveError"),
-    }
-  }
-
-  // 3秒后自动清除保存结果提示
-  setTimeout(() => {
-    jellyfinSaveResult.value = null
-  }, 3000)
-}
-
 const saveTransmissionSettings = async () => {
   // 重置之前的保存结果
   transmissionSaveResult.value = null
@@ -156,6 +127,35 @@ const saveTransmissionSettings = async () => {
   }, 3000)
 }
 
+const saveQBittorrentSettings = async () => {
+  qbittorrentSaveResult.value = null
+  qbittorrentSettings.value.qbittorrent_host =
+    qbittorrentSettings.value.qbittorrent_host || ""
+  qbittorrentSettings.value.qbittorrent_username =
+    qbittorrentSettings.value.qbittorrent_username || ""
+  qbittorrentSettings.value.qbittorrent_password =
+    qbittorrentSettings.value.qbittorrent_password || ""
+
+  try {
+    const response = await settingStore.saveQBittorrentSettings()
+    qbittorrentSaveResult.value = {
+      success: true,
+      message: t("pages.serviceSettings.qbittorrent.saveSuccess"),
+    }
+    return response
+  } catch (error) {
+    console.error("Error saving qBittorrent settings:", error)
+    qbittorrentSaveResult.value = {
+      success: false,
+      message: t("pages.serviceSettings.qbittorrent.saveError"),
+    }
+  }
+
+  setTimeout(() => {
+    qbittorrentSaveResult.value = null
+  }, 3000)
+}
+
 const testEmbyConnection = async () => {
   testResult.value = null
 
@@ -173,27 +173,6 @@ const testEmbyConnection = async () => {
     testResult.value = {
       success: false,
       message: t("pages.serviceSettings.emby.testError"),
-    }
-  }
-}
-
-const testJellyfinConnection = async () => {
-  jellyfinTestResult.value = null
-
-  try {
-    // 确保 API Key 有值
-    const apiKey = jellyfinApiSettings.value.jellyfin_apikey || ""
-
-    const response = await settingStore.testJellyfinConnection(apiKey)
-    jellyfinTestResult.value = {
-      success: response.success,
-      message: response.message ?? "", // 使用空字符串作为 null 或 undefined 的默认值
-    }
-  } catch (error) {
-    console.error("Error testing Jellyfin connection:", error)
-    jellyfinTestResult.value = {
-      success: false,
-      message: t("pages.serviceSettings.jellyfin.testError"),
     }
   }
 }
@@ -216,11 +195,29 @@ const testTransmissionConnection = async () => {
   }
 }
 
+const testQBittorrentConnection = async () => {
+  qbittorrentTestResult.value = null
+
+  try {
+    const response = await settingStore.testQBittorrentConnection()
+    qbittorrentTestResult.value = {
+      success: response.success,
+      message: response.message ?? "",
+    }
+  } catch (error) {
+    console.error("Error testing qBittorrent connection:", error)
+    qbittorrentTestResult.value = {
+      success: false,
+      message: t("pages.serviceSettings.qbittorrent.testError"),
+    }
+  }
+}
+
 onMounted(() => {
   fetchProxySettings()
   fetchEmbySettings()
-  fetchJellyfinSettings()
   fetchTransmissionSettings()
+  fetchQBittorrentSettings()
 })
 </script>
 
@@ -362,69 +359,6 @@ onMounted(() => {
       </VCard>
 
       <VCard class="mb-6">
-        <VCardTitle>{{ t('pages.serviceSettings.jellyfin.title') }}</VCardTitle>
-        <VCardSubtitle>
-          {{ t('pages.serviceSettings.jellyfin.subtitle') }}
-        </VCardSubtitle>
-        <VCardText>
-          <VForm :loading="loading">
-            <VRow>
-              <VCol cols="12">
-                <VRow no-gutters>
-                  <VCol cols="12" md="3" class="row-label">
-                    <label for="jellyfinUrl">{{ t('pages.serviceSettings.jellyfin.server') }}</label>
-                  </VCol>
-                  <VCol cols="12" md="9">
-                    <VTextField v-model="jellyfinApiSettings.jellyfin_host" :placeholder="t('pages.serviceSettings.jellyfin.serverPlaceholder')" />
-                  </VCol>
-                </VRow>
-              </VCol>
-
-              <VCol cols="12">
-                <VRow no-gutters>
-                  <VCol cols="12" md="3" class="row-label">
-                    <label for="jellyfinApiKey">{{ t('pages.serviceSettings.jellyfin.apiKey') }}</label>
-                  </VCol>
-                  <VCol cols="12" md="9">
-                    <VTextField v-model="jellyfinApiSettings.jellyfin_apikey" :placeholder="t('pages.serviceSettings.jellyfin.apiKeyPlaceholder')" />
-                  </VCol>
-                </VRow>
-              </VCol>
-
-              <VCol cols="12">
-                <VSwitch v-model="jellyfinApiSettings.enabled" :label="t('pages.serviceSettings.jellyfin.enable')" color="primary" inset />
-              </VCol>
-
-              <VCol cols="12">
-                <VRow>
-                  <VCol>
-                    <VBtn color="primary" :loading="saving" @click="saveJellyfinApiSettings" class="mr-2">
-                      {{ t('pages.serviceSettings.jellyfin.save') }}
-                    </VBtn>
-                    <VBtn color="secondary" :loading="testingJellyfin" @click="testJellyfinConnection">
-                      {{ t('pages.serviceSettings.jellyfin.test') }}
-                    </VBtn>
-                  </VCol>
-                </VRow>
-              </VCol>
-              
-              <VCol cols="12" v-if="jellyfinSaveResult">
-                <VAlert :type="jellyfinSaveResult.success ? 'success' : 'error'" variant="tonal" density="compact" class="mb-3">
-                  {{ jellyfinSaveResult.message }}
-                </VAlert>
-              </VCol>
-              
-              <VCol cols="12" v-if="jellyfinTestResult">
-                <VAlert :type="jellyfinTestResult.success ? 'success' : 'error'" variant="tonal" density="compact">
-                  {{ jellyfinTestResult.message || (jellyfinTestResult.success ? t('pages.serviceSettings.jellyfin.connectionSuccess') : t('pages.serviceSettings.jellyfin.connectionError')) }}
-                </VAlert>
-              </VCol>
-            </VRow>
-          </VForm>
-        </VCardText>
-      </VCard>
-
-      <VCard>
         <VCardTitle>{{ t('pages.serviceSettings.transmission.title') }}</VCardTitle>
         <VCardSubtitle>
           {{ t('pages.serviceSettings.transmission.subtitle') }}
@@ -522,6 +456,112 @@ onMounted(() => {
               <VCol cols="12" v-if="transmissionTestResult">
                 <VAlert :type="transmissionTestResult.success ? 'success' : 'error'" variant="tonal" density="compact">
                   {{ transmissionTestResult.message || (transmissionTestResult.success ? t('pages.serviceSettings.transmission.connectionSuccess') : t('pages.serviceSettings.transmission.connectionError')) }}
+                </VAlert>
+              </VCol>
+            </VRow>
+          </VForm>
+        </VCardText>
+      </VCard>
+
+      <VCard class="mb-6">
+        <VCardTitle>{{ t('pages.serviceSettings.qbittorrent.title') }}</VCardTitle>
+        <VCardSubtitle>
+          {{ t('pages.serviceSettings.qbittorrent.subtitle') }}
+        </VCardSubtitle>
+        <VCardText>
+          <VForm :loading="loading">
+            <VRow>
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="qbittorrentUrl">{{ t('pages.serviceSettings.qbittorrent.server') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField v-model="qbittorrentSettings.qbittorrent_host" :placeholder="t('pages.serviceSettings.qbittorrent.serverPlaceholder')" />
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="qbittorrentUsername">{{ t('pages.serviceSettings.qbittorrent.username') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField v-model="qbittorrentSettings.qbittorrent_username" :placeholder="t('pages.serviceSettings.qbittorrent.usernamePlaceholder')" />
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="qbittorrentPassword">{{ t('pages.serviceSettings.qbittorrent.password') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField
+                      v-model="qbittorrentSettings.qbittorrent_password"
+                      :placeholder="t('pages.serviceSettings.qbittorrent.passwordPlaceholder')"
+                      type="password"
+                    />
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="qbittorrentPathMappingFrom">{{ t('pages.serviceSettings.qbittorrent.pathMappingFrom') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField
+                      v-model="qbittorrentSettings.qbittorrent_source_path"
+                      :placeholder="t('pages.serviceSettings.qbittorrent.pathMappingFromPlaceholder')"
+                    />
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="qbittorrentPathMappingTo">{{ t('pages.serviceSettings.qbittorrent.pathMappingTo') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField
+                      v-model="qbittorrentSettings.qbittorrent_dest_path"
+                      :placeholder="t('pages.serviceSettings.qbittorrent.pathMappingToPlaceholder')"
+                    />
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VSwitch v-model="qbittorrentSettings.enabled" :label="t('pages.serviceSettings.qbittorrent.enable')" color="primary" inset />
+              </VCol>
+
+              <VCol cols="12">
+                <VRow>
+                  <VCol>
+                    <VBtn color="primary" :loading="saving" @click="saveQBittorrentSettings" class="mr-2">
+                      {{ t('pages.serviceSettings.qbittorrent.save') }}
+                    </VBtn>
+                    <VBtn color="secondary" :loading="testingQBittorrent" @click="testQBittorrentConnection">
+                      {{ t('pages.serviceSettings.qbittorrent.test') }}
+                    </VBtn>
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12" v-if="qbittorrentSaveResult">
+                <VAlert :type="qbittorrentSaveResult.success ? 'success' : 'error'" variant="tonal" density="compact" class="mb-3">
+                  {{ qbittorrentSaveResult.message }}
+                </VAlert>
+              </VCol>
+
+              <VCol cols="12" v-if="qbittorrentTestResult">
+                <VAlert :type="qbittorrentTestResult.success ? 'success' : 'error'" variant="tonal" density="compact">
+                  {{ qbittorrentTestResult.message || (qbittorrentTestResult.success ? t('pages.serviceSettings.qbittorrent.connectionSuccess') : t('pages.serviceSettings.qbittorrent.connectionError')) }}
                 </VAlert>
               </VCol>
             </VRow>

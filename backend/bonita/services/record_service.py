@@ -388,12 +388,12 @@ class RecordService:
 
             deleted_count += 1
 
-        # 如果强制删除，尝试删除 Transmission 种子
+        # 如果强制删除，尝试删除已启用下载器中的种子
         torrent_info_msg = ""
         if force and records_for_torrent_deletion:
             try:
                 downloader_service = self._get_downloader_service()
-                if downloader_service.initialize_transmission():
+                if downloader_service.initialize():
                     deleted_torrents, skipped_torrents = downloader_service.delete_torrents_by_records(
                         records_for_torrent_deletion,
                         check_video_files=True

@@ -1,12 +1,11 @@
 import logging
-from urllib.parse import urljoin
 from typing import Dict, Optional, Any, Tuple
 
-import requests
 from sqlalchemy.orm import Session
 
 from bonita.db.models.setting import SystemSetting
 from bonita.modules.media_service.emby import EmbyClient
+from bonita.modules.downloader.qbittorrent import QBittorrentClient
 from bonita.modules.downloader.transmission import TransmissionClient
 
 logger = logging.getLogger(__name__)
@@ -89,18 +88,6 @@ class SettingService:
             "enabled": self.get_setting("emby_enabled", "false").lower() == "true"
         }
 
-    def get_jellyfin_settings(self) -> Dict:
-        """获取Jellyfin媒体服务器设置
-
-        Returns:
-            Dict: Jellyfin设置字典
-        """
-        return {
-            "jellyfin_host": self.get_setting("jellyfin_host", ""),
-            "jellyfin_apikey": self.get_setting("jellyfin_apikey", ""),
-            "enabled": self.get_setting("jellyfin_enabled", "false").lower() == "true"
-        }
-
     def get_transmission_settings(self) -> Dict:
         """获取Transmission下载器设置
 
@@ -114,6 +101,17 @@ class SettingService:
             "transmission_source_path": self.get_setting("transmission_source_path", ""),
             "transmission_dest_path": self.get_setting("transmission_dest_path", ""),
             "enabled": self.get_setting("transmission_enabled", "false").lower() == "true"
+        }
+
+    def get_qbittorrent_settings(self) -> Dict:
+        """获取 qBittorrent 下载器设置。"""
+        return {
+            "qbittorrent_host": self.get_setting("qbittorrent_host", ""),
+            "qbittorrent_username": self.get_setting("qbittorrent_username", ""),
+            "qbittorrent_password": self.get_setting("qbittorrent_password", ""),
+            "qbittorrent_source_path": self.get_setting("qbittorrent_source_path", ""),
+            "qbittorrent_dest_path": self.get_setting("qbittorrent_dest_path", ""),
+            "enabled": self.get_setting("qbittorrent_enabled", "false").lower() == "true",
         }
 
     def update_proxy_settings(self, enabled: bool, http: Optional[str] = None,
@@ -184,32 +182,6 @@ class SettingService:
 
         return True, "Emby设置已更新"
 
-    def update_jellyfin_settings(self, host: str, apikey: str, enabled: bool) -> None:
-        """更新Jellyfin媒体服务器设置
-
-        Args:
-            host: Jellyfin服务器地址
-            apikey: Jellyfin API密钥
-            enabled: 是否启用Jellyfin
-        """
-        self.set_setting(
-            "jellyfin_enabled",
-            str(enabled).lower(),
-            "是否启用Jellyfin"
-        )
-
-        self.set_setting(
-            "jellyfin_host",
-            host,
-            "Jellyfin服务器地址"
-        )
-
-        self.set_setting(
-            "jellyfin_apikey",
-            apikey,
-            "Jellyfin API密钥"
-        )
-
     def update_transmission_settings(self, host: str, username: str, password: str,
                                      source_path: str, dest_path: str,
                                      enabled: bool) -> None:
@@ -258,6 +230,23 @@ class SettingService:
             dest_path,
             "Transmission路径映射-宿主机路径"
         )
+
+    def update_qbittorrent_settings(
+        self,
+        host: str,
+        username: str,
+        password: str,
+        source_path: str,
+        dest_path: str,
+        enabled: bool,
+    ) -> None:
+        """更新 qBittorrent 下载器设置。"""
+        self.set_setting("qbittorrent_enabled", str(enabled).lower(), "是否启用qBittorrent下载器")
+        self.set_setting("qbittorrent_host", host, "qBittorrent服务器地址")
+        self.set_setting("qbittorrent_username", username, "qBittorrent用户名")
+        self.set_setting("qbittorrent_password", password, "qBittorrent密码")
+        self.set_setting("qbittorrent_source_path", source_path or "", "qBittorrent路径映射-容器内路径")
+        self.set_setting("qbittorrent_dest_path", dest_path or "", "qBittorrent路径映射-宿主机路径")
 
     def get_proxy_for_requests(self) -> Optional[Dict[str, str]]:
         """返回适合 requests 库使用的代理配置；未启用时返回 None。"""
@@ -310,21 +299,6 @@ class SettingService:
             logger.exception("测试Emby连接时出错")
             return False, f"测试Emby连接时出错: {str(e)}"
 
-    def test_jellyfin_connection(self, host: str, apikey: str) -> Tuple[bool, str]:
-        try:
-            base_url = (host or "").rstrip("/")
-            api_url = urljoin(f"{base_url}/", "System/Info")
-            headers = {"X-Emby-Token": apikey}
-            response = requests.get(api_url, headers=headers, timeout=10)
-            if response.status_code == 200:
-                return True, "Jellyfin连接成功，API Key有效"
-            return False, f"Jellyfin连接失败，状态码: {response.status_code}"
-        except requests.RequestException as e:
-            return False, f"Jellyfin连接失败: {str(e)}"
-        except Exception as e:
-            logger.exception("测试Jellyfin连接时出错")
-            return False, f"测试Jellyfin连接时出错: {str(e)}"
-
     def test_transmission_connection(
         self,
         host: str,
@@ -347,3 +321,25 @@ class SettingService:
         except Exception as e:
             logger.exception("测试Transmission连接时出错")
             return False, f"测试Transmission连接时出错: {str(e)}"
+
+    def test_qbittorrent_connection(
+        self,
+        host: str,
+        username: str,
+        password: str,
+        source_path: str = "",
+        dest_path: str = "",
+    ) -> Tuple[bool, str]:
+        try:
+            if QBittorrentClient().initialize(
+                url=host,
+                username=username,
+                password=password,
+                source_path=source_path,
+                dest_path=dest_path,
+            ):
+                return True, "qBittorrent连接成功"
+            return False, "qBittorrent连接失败，请检查服务器地址、用户名和密码"
+        except Exception as e:
+            logger.exception("测试qBittorrent连接时出错")
+            return False, f"测试qBittorrent连接时出错: {str(e)}"

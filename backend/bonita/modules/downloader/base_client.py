@@ -1,9 +1,10 @@
+import os
 from abc import ABC, abstractmethod
-from typing import List, Any, Union, Optional, Dict, TypeVar, Generic
+from typing import Any, List, Optional, Union
 
 
-class torrent_info():
-    id: int
+class torrent_info:
+    id: Union[int, str]
     name: str
     hash: str
     downloadDir: str
@@ -12,76 +13,74 @@ class torrent_info():
 
 
 class BaseDownloadClient(ABC):
-    """Base abstract class for download clients"""
+    """下载客户端公共接口。路径映射和按名称/路径查找与具体客户端无关。"""
+
+    def __init__(self):
+        self.source_path = ""
+        self.dest_path = ""
 
     @abstractmethod
-    def initialize(self, url: str, username: str, password: str) -> bool:
-        """Initialize the client with connection parameters
-
-        Args:
-            url: Client server URL
-            username: Client username
-            password: Client password
-
-        Returns:
-            bool: True if initialization was successful
-        """
+    def initialize(
+        self,
+        url: str,
+        username: str,
+        password: str,
+        source_path: str = "",
+        dest_path: str = "",
+    ) -> bool:
+        """使用连接参数初始化客户端。"""
         pass
 
     @abstractmethod
     def login(self) -> Optional[Any]:
-        """Attempt to login to the client
-
-        Returns:
-            Optional[Any]: Client session if successful, None if failed
-        """
+        """登录客户端，成功时返回会话，失败时返回 None。"""
         pass
 
     @abstractmethod
-    def getTorrents(self, ids: List[int]) -> List[torrent_info]:
-        """Get torrents from the client
-
-        Args:
-            ids: Torrent IDs to fetch (optional)
-
-        Returns:
-            List[torrent_file]: List of torrent objects
-        """
+    def getTorrents(
+        self,
+        ids: Optional[Union[str, int, List[Union[str, int]]]] = None,
+    ) -> List[torrent_info]:
+        """获取种子列表。ids 为空时返回全部。"""
         pass
 
     @abstractmethod
-    def searchByName(self, name: str) -> List[torrent_info]:
-        """Search torrents by name
-
-        Args:
-            name: Torrent name to search for
-
-        Returns:
-            List[torrent_file]: List of matching torrent objects
-        """
+    def deleteTorrent(self, torrent_id: Union[int, str], delete: bool = False) -> None:
+        """移除种子。delete 为 True 时同时删除数据。"""
         pass
 
-    @abstractmethod
-    def searchByPath(self, path: str) -> List[torrent_info]:
-        """Search torrents by path
+    def map_path(self, path: str, inverse: bool = False) -> str:
+        """在下载器路径与本机路径之间转换。"""
+        if not self.source_path or not self.dest_path or not path:
+            return path
+        if inverse:
+            return path.replace(self.source_path, self.dest_path)
+        return path.replace(self.dest_path, self.source_path)
 
-        Args:
-            path: Path to search for
+    def searchByName(
+        self,
+        name: str,
+        cached_torrents: Optional[List[torrent_info]] = None,
+    ) -> List[torrent_info]:
+        torrents = cached_torrents if cached_torrents is not None else self.getTorrents()
+        return [torrent for torrent in torrents if torrent.name == name]
 
-        Returns:
-            List[torrent_file]: List of matching torrent objects
-        """
-        pass
-
-    @abstractmethod
-    def deleteTorrent(self, torrent_id: int, delete: bool = False) -> None:
-        """Remove a torrent
-
-        Args:
-            torrent_id: ID of the torrent to remove
-            delete: Whether to delete the torrent data
-
-        Returns:
-            None
-        """
-        pass
+    def searchByPath(
+        self,
+        path: str,
+        cached_torrents: Optional[List[torrent_info]] = None,
+    ) -> List[torrent_info]:
+        """按路径逐级向上匹配种子名称，最多 3 级。"""
+        path = self.map_path(path)
+        for _ in range(3):
+            name = os.path.basename(path)
+            if not name:
+                break
+            matched = self.searchByName(name, cached_torrents)
+            if matched:
+                return matched
+            parent = os.path.dirname(path)
+            if parent == path:
+                break
+            path = parent
+        return []

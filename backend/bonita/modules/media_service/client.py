@@ -4,14 +4,12 @@ from typing import Dict, List, Optional
 
 
 SOURCE_EMBY = "emby"
-SOURCE_JELLYFIN = "jellyfin"
 
 DIR_FROM_SERVER = "from_server"
 DIR_TO_SERVER = "to_server"
 
 _SOURCE_LABELS = {
     SOURCE_EMBY: "Emby",
-    SOURCE_JELLYFIN: "Jellyfin",
 }
 
 

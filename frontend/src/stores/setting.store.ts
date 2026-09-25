@@ -1,8 +1,8 @@
 import { SettingsService } from "@/client"
 import type {
   EmbySettings,
-  JellyfinSettings,
   ProxySettings,
+  QBittorrentSettings,
   TransmissionSettings,
 } from "@/client"
 import { defineStore } from "pinia"
@@ -13,20 +13,20 @@ interface SettingState {
   proxySettings: ProxySettings
   /** Emby API设置 */
   embyApiSettings: EmbySettings
-  /** Jellyfin API设置 */
-  jellyfinApiSettings: JellyfinSettings
   /** Transmission设置 */
   transmissionSettings: TransmissionSettings
+  /** qBittorrent设置 */
+  qbittorrentSettings: QBittorrentSettings
   /** 加载状态 */
   loading: boolean
   /** 保存状态 */
   saving: boolean
   /** Emby测试状态 */
   testingEmby: boolean
-  /** Jellyfin测试状态 */
-  testingJellyfin: boolean
   /** Transmission测试状态 */
   testingTransmission: boolean
+  /** qBittorrent测试状态 */
+  testingQBittorrent: boolean
 }
 
 export const useSettingStore = defineStore("setting-store", {
@@ -43,11 +43,6 @@ export const useSettingStore = defineStore("setting-store", {
         emby_user: "",
         enabled: false,
       },
-      jellyfinApiSettings: {
-        jellyfin_host: "",
-        jellyfin_apikey: "",
-        enabled: false,
-      },
       transmissionSettings: {
         transmission_host: "",
         transmission_username: "",
@@ -56,11 +51,19 @@ export const useSettingStore = defineStore("setting-store", {
         transmission_dest_path: "",
         enabled: false,
       },
+      qbittorrentSettings: {
+        qbittorrent_host: "",
+        qbittorrent_username: "",
+        qbittorrent_password: "",
+        qbittorrent_source_path: "",
+        qbittorrent_dest_path: "",
+        enabled: false,
+      },
       loading: false,
       saving: false,
       testingEmby: false,
-      testingJellyfin: false,
       testingTransmission: false,
+      testingQBittorrent: false,
     }
   },
   actions: {
@@ -170,68 +173,6 @@ export const useSettingStore = defineStore("setting-store", {
     },
 
     /**
-     * 获取Jellyfin设置
-     */
-    async fetchJellyfinSettings() {
-      const toast = useToastStore()
-      this.loading = true
-
-      try {
-        const { data: response } = await SettingsService.getJellyfinSettings()
-        this.jellyfinApiSettings = response
-        return response
-      } catch (error) {
-        console.error("Error fetching Jellyfin settings:", error)
-        toast.error("获取Jellyfin设置失败")
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    /**
-     * 更新Jellyfin设置
-     */
-    async saveJellyfinApiSettings() {
-      this.saving = true
-
-      try {
-        const { data: response } = await SettingsService.updateJellyfinSettings({
-          jellyfinSettings: this.jellyfinApiSettings,
-        })
-        return response
-      } catch (error) {
-        console.error("Error updating Jellyfin settings:", error)
-        throw error
-      } finally {
-        this.saving = false
-      }
-    },
-
-    /**
-     * 测试Jellyfin连接
-     * @param apiKey 用于测试的API Key
-     */
-    async testJellyfinConnection(apiKey: string) {
-      this.testingJellyfin = true
-
-      try {
-        const { data: response } = await SettingsService.testJellyfinConnection({
-          jellyfinSettings: {
-            jellyfin_host: this.jellyfinApiSettings.jellyfin_host,
-            jellyfin_apikey: apiKey,
-          },
-        })
-        return response
-      } catch (error) {
-        console.error("Error testing Jellyfin connection:", error)
-        throw error
-      } finally {
-        this.testingJellyfin = false
-      }
-    },
-
-    /**
      * 获取Transmission设置
      */
     async fetchTransmissionSettings() {
@@ -296,6 +237,70 @@ export const useSettingStore = defineStore("setting-store", {
         throw error
       } finally {
         this.testingTransmission = false
+      }
+    },
+
+    /**
+     * 获取qBittorrent设置
+     */
+    async fetchQBittorrentSettings() {
+      const toast = useToastStore()
+      this.loading = true
+
+      try {
+        const { data: response } = await SettingsService.getQbittorrentSettings()
+        this.qbittorrentSettings = response
+        return response
+      } catch (error) {
+        console.error("Error fetching qBittorrent settings:", error)
+        toast.error("获取qBittorrent设置失败")
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
+     * 更新qBittorrent设置
+     */
+    async saveQBittorrentSettings() {
+      this.saving = true
+
+      try {
+        const { data: response } = await SettingsService.updateQbittorrentSettings({
+          qBittorrentSettings: this.qbittorrentSettings,
+        })
+        return response
+      } catch (error) {
+        console.error("Error updating qBittorrent settings:", error)
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    /**
+     * 测试qBittorrent连接
+     */
+    async testQBittorrentConnection() {
+      this.testingQBittorrent = true
+
+      try {
+        const { data: response } = await SettingsService.testQbittorrentConnection({
+          qBittorrentSettings: {
+            qbittorrent_host: this.qbittorrentSettings.qbittorrent_host,
+            qbittorrent_username: this.qbittorrentSettings.qbittorrent_username,
+            qbittorrent_password: this.qbittorrentSettings.qbittorrent_password,
+            qbittorrent_source_path: this.qbittorrentSettings.qbittorrent_source_path,
+            qbittorrent_dest_path: this.qbittorrentSettings.qbittorrent_dest_path,
+          },
+        })
+        return response
+      } catch (error) {
+        console.error("Error testing qBittorrent connection:", error)
+        throw error
+      } finally {
+        this.testingQBittorrent = false
       }
     },
   },
