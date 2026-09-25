@@ -12,7 +12,7 @@ from bonita.core.config import settings
 from bonita.db.models.downloads import Downloads
 from bonita.db.models.metadata import Metadata
 from bonita.modules.media_service.client import SOURCE_EMBY
-from bonita.modules.media_service.factory import get_media_client
+from bonita.modules.media_service.factory import ensure_media_client
 from bonita.utils.downloader import process_cached_file
 
 logger = logging.getLogger(__name__)
@@ -83,7 +83,7 @@ class ResourceService:
     ) -> Optional[PosterResult]:
         if external_id:
             try:
-                client = get_media_client(source)
+                client = ensure_media_client(source)
                 if client:
                     poster_url = client.get_item_image_url(external_id, image_tag)
                     if poster_url:
@@ -114,7 +114,7 @@ class ResourceService:
                 logger.error(f"从metadata获取海报失败: {e}")
 
         try:
-            client = get_media_client(source)
+            client = ensure_media_client(source)
             if client:
                 poster_url = client.get_poster_url(title, imdb_id, tmdb_id)
                 if poster_url:
