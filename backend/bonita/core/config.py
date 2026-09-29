@@ -63,7 +63,8 @@ class Settings(BaseSettings):
     # 最大并发任务数, 受 worker 数量影响
     MAX_CONCURRENT_TASKS: int = os.environ.get("MAX_CONCURRENT_TASKS", 5)
     # 日志
-    LOGGING_FORMAT: str = "[%(asctime)s] %(levelname)s in %(module)s: PID:%(process)d TID:%(thread)d [%(task_id)s] %(message)s"
+    # task_suffix 由日志 Formatter 填入：有任务 ID 时是 " [id]"，否则为空
+    LOGGING_FORMAT: str = "[%(asctime)s] %(levelname)s %(module)s%(task_suffix)s: %(message)s"
     LOGGING_LOCATION: str = "./data/bonita.log"
     LOGGING_LEVEL: int = logging.INFO
     # SECRET_KEY: str = secrets.token_urlsafe(32)

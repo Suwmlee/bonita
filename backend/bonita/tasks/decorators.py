@@ -22,8 +22,9 @@ def manage_celery_task(task_type: str):
                     if parent and parent.status == TaskStatusEnum.REVOKED:
                         task_service.revoke_task(task_id)
                         logger.info(
-                            f"Task {task_id} ({task_type}) skipped: "
-                            f"parent {self.request.parent_id} has been revoked"
+                            "Task %s skipped: parent %s has been revoked",
+                            task_type,
+                            self.request.parent_id,
                         )
                         return []
 
@@ -33,7 +34,7 @@ def manage_celery_task(task_type: str):
                     task_service.complete_task(task_id, result={'data': result})
                 return result
             except Exception as e:
-                logger.error(f"Task {task_id} failed: {e}")
+                logger.error("Task failed: %s", e)
                 with CeleryTaskService() as task_service:
                     task_service.fail_task(task_id, str(e))
 

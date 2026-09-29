@@ -1,8 +1,5 @@
-import os
-import re
 import asyncio
 import logging
-from collections import deque
 from typing import List, Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, status
@@ -14,16 +11,14 @@ from starlette.requests import ClientDisconnect
 from bonita import schemas
 from bonita.core.config import settings
 from bonita.core import security
-from bonita.utils.logger import list_log_files
+from bonita.utils.logger import LogFollower, read_recent_logs
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 _WS_GONE = (WebSocketDisconnect, ClientDisconnect, RuntimeError)
 
-LOG_PATTERN = re.compile(r"\[(.*?)\] (\w+) in ([\w\.]+): (.*)")
 HISTORY_LINE_LIMIT = 1000
-ALLOWED_LEVELS = {"debug", "info", "warning", "error", "critical"}
 
 
 async def verify_ws_token(websocket: WebSocket, token: str = Query(...)) -> schemas.TokenPayload:
@@ -47,58 +42,8 @@ async def _reject_websocket(websocket: WebSocket) -> None:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
 
 
-def parse_log_line(line: str) -> Optional[schemas.LogEntry]:
-    match = LOG_PATTERN.match(line.strip())
-    if not match:
-        return None
-    timestamp, log_level, log_module, message = match.groups()
-    return schemas.LogEntry(
-        timestamp=timestamp,
-        level=log_level,
-        module=log_module,
-        message=message,
-    )
-
-
-def normalize_level(level: Optional[str]) -> Optional[str]:
-    if not level:
-        return None
-    value = level.strip().lower()
-    if value == "warn":
-        value = "warning"
-    if value not in ALLOWED_LEVELS:
-        return None
-    return value
-
-
-def read_recent_logs(
-    log_file_path: str,
-    limit: int = HISTORY_LINE_LIMIT,
-    level: Optional[str] = None,
-) -> List[schemas.LogEntry]:
-    """
-    从当前日志和轮转备份中取最近 limit 条已解析日志。
-    指定 level 时，从文件中凑满该级别的 limit 条，而不是先截最近 1000 行再筛选。
-    """
-    level_norm = normalize_level(level)
-    files = list_log_files(log_file_path)
-    if not files:
-        return []
-
-    entries: deque[schemas.LogEntry] = deque(maxlen=limit)
-    for path in files:
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                for line in f:
-                    entry = parse_log_line(line)
-                    if not entry:
-                        continue
-                    if level_norm and entry.level.lower() != level_norm:
-                        continue
-                    entries.append(entry)
-        except OSError:
-            continue
-    return list(entries)
+def _to_entries(rows: list[dict]) -> List[schemas.LogEntry]:
+    return [schemas.LogEntry(**row) for row in rows]
 
 
 class LogConnectionManager:
@@ -153,9 +98,10 @@ class LogConnectionManager:
         向单个客户端发送最近一段历史日志，不改动服务器日志文件。
         """
         try:
-            log_entries = await asyncio.to_thread(
+            rows = await asyncio.to_thread(
                 read_recent_logs, settings.LOGGING_LOCATION, HISTORY_LINE_LIMIT, level
             )
+            log_entries = _to_entries(rows)
             if not log_entries:
                 return
             if websocket.client_state != WebSocketState.CONNECTED:
@@ -187,33 +133,16 @@ class LogConnectionManager:
 
     async def monitor_log_file(self):
         """
-        从当前文件末尾开始跟踪新增日志，不再在监控循环里重放全量历史。
+        从当前文件末尾开始跟踪新增日志。轮转时先补完被改名的旧文件，再跟上新文件。
         """
-        log_file_path = settings.LOGGING_LOCATION
-        file_size = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
+        follower = LogFollower(settings.LOGGING_LOCATION)
+        follower.prime()
 
         while not self.stop_flag and self.active_connections:
             try:
-                if not os.path.exists(log_file_path):
-                    file_size = 0
-                    await asyncio.sleep(0.5)
-                    continue
-
-                new_size = os.path.getsize(log_file_path)
-                if new_size < file_size:
-                    file_size = 0
-
-                if new_size > file_size:
-                    with open(log_file_path, "r", encoding="utf-8") as f:
-                        f.seek(file_size)
-                        new_content = f.read()
-
-                    for line in new_content.splitlines():
-                        entry = parse_log_line(line)
-                        if entry:
-                            await self.send_log(entry)
-
-                    file_size = new_size
+                rows = await asyncio.to_thread(follower.read_new)
+                for entry in _to_entries(rows):
+                    await self.send_log(entry)
             except Exception:
                 logger.exception("监控日志文件时出错")
 
