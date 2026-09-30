@@ -42,18 +42,19 @@ class MediaItemService:
             row.id: {
                 "imdb_id": row.imdb_id,
                 "tmdb_id": row.tmdb_id,
+                "tvdb_id": row.tvdb_id,
                 "favorite": favorite_map.get(row.id, False),
             }
             for row in series_rows
         }
 
-    def _series_poster_ids(self, media_item: MediaItem, series_map: dict) -> tuple:
+    def _series_external_ids(self, media_item: MediaItem, series_map: dict) -> tuple:
         if media_item.media_type != "episode" or not media_item.series_id:
-            return None, None
+            return None, None, None
         series = series_map.get(media_item.series_id)
         if not series:
-            return None, None
-        return series.get("imdb_id"), series.get("tmdb_id")
+            return None, None, None
+        return series.get("imdb_id"), series.get("tmdb_id"), series.get("tvdb_id")
 
     def _remote_item_id_map(self, media_items: List[MediaItem]) -> dict:
         ids = [item.id for item in media_items]
@@ -94,7 +95,9 @@ class MediaItemService:
         for media_item in media_items:
             history = hist_map.get(media_item.id)
             item_dict = schemas.MediaItemInDB.model_validate(media_item)
-            series_imdb_id, series_tmdb_id = self._series_poster_ids(media_item, series_map)
+            series_imdb_id, series_tmdb_id, series_tvdb_id = self._series_external_ids(
+                media_item, series_map
+            )
             series_favorite = bool(
                 media_item.series_id and series_map.get(media_item.series_id, {}).get("favorite")
             )
@@ -117,6 +120,7 @@ class MediaItemService:
                     crop=metadata_service.resolve_crop(media_item.number, crop_map),
                     series_imdb_id=series_imdb_id,
                     series_tmdb_id=series_tmdb_id,
+                    series_tvdb_id=series_tvdb_id,
                     external_item_id=remote_id_map.get(media_item.id),
                 )
             )
@@ -158,6 +162,8 @@ class MediaItemService:
 
         if media_type == "tvshow":
             query = query.filter(MediaItem.media_type == "episode")
+        elif media_type == "series":
+            query = query.filter(MediaItem.media_type == "tvshow")
         elif media_type:
             query = query.filter(MediaItem.media_type == media_type)
         else:
@@ -235,6 +241,20 @@ class MediaItemService:
         ):
             raise ValueError(EXTERNAL_ID_REQUIRED_MESSAGE)
 
+    def _validate_episode_fields(self, payload: dict) -> None:
+        if payload.get("media_type") != "episode":
+            return
+        series_id = payload.get("series_id")
+        if not series_id:
+            raise ValueError("剧集必须选择所属剧")
+        series = self.get_by_id(series_id)
+        if not series or series.media_type != "tvshow":
+            raise ValueError("所属剧不存在")
+        season = payload.get("season_number")
+        episode_no = payload.get("episode_number")
+        if season is None or season < 0 or episode_no is None or episode_no < 0:
+            raise ValueError("请填写季数和集数")
+
     def create_media_item(self, payload: dict) -> MediaItem:
         title = (payload.get("title") or "").strip()
         if not title:
@@ -247,6 +267,7 @@ class MediaItemService:
             payload.get("tvdb_id"),
             payload.get("number"),
         )
+        self._validate_episode_fields(payload)
         media_item = MediaItem(**payload)
         self.session.add(media_item)
         self.session.commit()
@@ -269,6 +290,16 @@ class MediaItemService:
         tmdb_id = media_data["tmdb_id"] if "tmdb_id" in media_data else media_item.tmdb_id
         tvdb_id = media_data["tvdb_id"] if "tvdb_id" in media_data else media_item.tvdb_id
         self._validate_external_ids(media_type, imdb_id, tmdb_id, tvdb_id, number)
+
+        def current(key):
+            return media_data[key] if key in media_data else getattr(media_item, key)
+
+        self._validate_episode_fields({
+            "media_type": media_type,
+            "series_id": current("series_id"),
+            "season_number": current("season_number"),
+            "episode_number": current("episode_number"),
+        })
         if "title" in media_data:
             title = (media_data.get("title") or "").strip()
             if not title:
@@ -345,6 +376,7 @@ class MediaItemService:
         return to_delete
 
     def _items_missing_external_ids(self) -> List[MediaItem]:
+        """电影/电视剧三者皆空才清理。单集只随所属剧一起删，不看单集自己的编号。"""
         missing_ids = and_(
             _blank_str(MediaItem.imdb_id),
             _blank_str(MediaItem.tmdb_id),

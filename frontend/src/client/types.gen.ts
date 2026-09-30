@@ -614,6 +614,10 @@ export type MediaItemWithWatches = {
      */
     series_tmdb_id?: string | null;
     /**
+     * Series Tvdb Id
+     */
+    series_tvdb_id?: string | null;
+    /**
      * External Item Id
      */
     external_item_id?: string | null;
