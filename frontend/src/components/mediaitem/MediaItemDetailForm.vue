@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import type { MediaItemWithWatches } from "@/client"
 import { useMediaItemStore } from "@/stores/mediaitem.store"
+import { useToastStore } from "@/stores/toast.store"
 import { computed, ref } from "vue"
 import { useI18n } from "vue-i18n"
 
@@ -11,8 +12,12 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const mediaItemStore = useMediaItemStore()
+const toastStore = useToastStore()
 
-// Create a form data object
+function isBlank(value?: string | null) {
+  return !value || !String(value).trim()
+}
+
 const formData = ref<Partial<MediaItemWithWatches>>(
   props.updateMediaItem
     ? { ...props.updateMediaItem }
@@ -27,11 +32,32 @@ const formData = ref<Partial<MediaItemWithWatches>>(
       },
 )
 
-// Determine if we're in edit mode
 const isEditMode = computed(() => !!props.updateMediaItem)
 
-// Function to save the form
+const needsExternalId = computed(() => {
+  const mediaType = formData.value.media_type
+  if (mediaType === "tvshow") return true
+  if (mediaType === "movie" && isBlank(formData.value.number)) return true
+  return false
+})
+
+const hasExternalId = computed(() => {
+  return (
+    !isBlank(formData.value.imdb_id) ||
+    !isBlank(formData.value.tmdb_id) ||
+    !isBlank(formData.value.tvdb_id)
+  )
+})
+
 async function saveForm() {
+  if (isBlank(formData.value.title)) {
+    toastStore.error(t("pages.mediaitem.titleRequired"))
+    return
+  }
+  if (needsExternalId.value && !hasExternalId.value) {
+    toastStore.error(t("pages.mediaitem.externalIdRequired"))
+    return
+  }
   if (isEditMode.value) {
     await mediaItemStore.updateMediaItem(formData.value as MediaItemWithWatches)
   } else {
@@ -39,12 +65,10 @@ async function saveForm() {
   }
 }
 
-// Function to cancel and close the dialog
 function cancel() {
   mediaItemStore.showDialog = false
 }
 
-// Function to delete the media item
 async function deleteItem() {
   if (isEditMode.value && formData.value.id) {
     await mediaItemStore.confirmDeleteMediaItem(formData.value.id)
@@ -52,7 +76,6 @@ async function deleteItem() {
   }
 }
 
-// Media types for dropdown
 const mediaTypes = [
   { value: "movie", title: t("pages.mediaitem.movie") },
   { value: "tvshow", title: t("pages.mediaitem.tvshow") },
@@ -60,7 +83,6 @@ const mediaTypes = [
   { value: "video", title: t("pages.mediaitem.video") },
 ]
 
-// Computed property for watched status
 const watched = computed({
   get: () => formData.value.userdata?.watched || false,
   set: (value) => {
@@ -71,7 +93,6 @@ const watched = computed({
   },
 })
 
-// Computed property for favorite status
 const favorite = computed({
   get: () => formData.value.userdata?.favorite || false,
   set: (value) => {
@@ -187,6 +208,11 @@ const favorite = computed({
       </VCol>
 
       <!-- IMDB ID -->
+      <VCol v-if="needsExternalId" cols="12">
+        <VAlert type="info" variant="tonal" density="compact">
+          {{ t('pages.mediaitem.externalIdHint') }}
+        </VAlert>
+      </VCol>
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">

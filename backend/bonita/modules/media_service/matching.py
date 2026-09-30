@@ -22,6 +22,23 @@ UNLINKED_VIDEO_TYPE = "video"
 _UNLINKED_VIDEO_TYPES = {ITEM_MOVIE, ITEM_VIDEO}
 
 
+def is_blank(value) -> bool:
+    return value is None or str(value).strip() == ""
+
+
+def has_external_ids(imdb_id=None, tmdb_id=None, tvdb_id=None) -> bool:
+    return not (is_blank(imdb_id) and is_blank(tmdb_id) and is_blank(tvdb_id))
+
+
+def requires_external_ids(media_type: str, number: str = None) -> bool:
+    """电影（无番号）和电视剧必须带有 IMDB / TMDB / TVDB 之一。"""
+    if media_type == "tvshow":
+        return True
+    if media_type == "movie" and is_blank(number):
+        return True
+    return False
+
+
 def resolve_media_item(session, item: RemoteItem, client: MediaServerClient, create=True):
     if item.item_type == ITEM_EPISODE:
         return _resolve_episode(session, item, client, create)
@@ -175,7 +192,9 @@ def _resolve_movie(session, item: RemoteItem, create=True):
     if media_item:
         return media_item
 
-    if not create or not (imdb_id or tmdb_id or tvdb_id):
+    if not create or not has_external_ids(imdb_id, tmdb_id, tvdb_id):
+        if create:
+            logger.debug(f"    ⊘ 电影缺少 IMDB/TMDB/TVDB，跳过: {title}")
         return None
 
     media_item = MediaItem(
@@ -202,10 +221,13 @@ def _resolve_episode(session, item: RemoteItem, client: MediaServerClient, creat
             episode_no = record.episode
 
     if season < 0 or episode_no < 0:
-        logger.debug("    ⊘ 缺少季/集编号，跳过")
+        logger.debug(f"    ⊘ 缺少季/集编号，跳过: {item.path}")
         return None
 
     series = ensure_series(session, item, record, client, create)
+    if not series:
+        logger.debug(f"    ⊘ 无法解析剧集父项，跳过: {item.path or item.title}")
+        return None
     imdb_id, tmdb_id, tvdb_id = item.imdb_id, item.tmdb_id, item.tvdb_id
     episode_title = item.title or ""
     series_name = (item.series_name or "").strip()
@@ -291,7 +313,7 @@ def ensure_series(session, item: RemoteItem, record, client: MediaServerClient, 
             MediaItem.media_type == "tvshow",
             MediaItem.title == series_name,
         ).first()
-        if media_item and (media_item.imdb_id or media_item.tmdb_id):
+        if media_item and has_external_ids(media_item.imdb_id, media_item.tmdb_id, media_item.tvdb_id):
             return media_item
 
     imdb_id = tmdb_id = tvdb_id = ""
@@ -323,8 +345,14 @@ def ensure_series(session, item: RemoteItem, record, client: MediaServerClient, 
             tmdb_id=tmdb_id or media_item.tmdb_id,
             tvdb_id=tvdb_id or media_item.tvdb_id,
         )
-        return media_item
+        if has_external_ids(media_item.imdb_id, media_item.tmdb_id, media_item.tvdb_id):
+            return media_item
+        logger.debug(f"    ⊘ 已有剧集缺少 IMDB/TMDB/TVDB，跳过: {series_name}")
+        return None
     if not create or not series_name:
+        return None
+    if not has_external_ids(imdb_id, tmdb_id, tvdb_id):
+        logger.debug(f"    ⊘ 电视剧缺少 IMDB/TMDB/TVDB，跳过: {series_name}")
         return None
 
     media_item = MediaItem(

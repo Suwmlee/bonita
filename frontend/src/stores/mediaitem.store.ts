@@ -169,17 +169,14 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
         })
 
         if (response) {
-          // Add the new media item to the list
-          this.allMediaItems.push({
+          this.allMediaItems.unshift({
             ...response,
             userdata: {
               watched: false,
             },
           })
+          this.totalCount += 1
           this.showDialog = false
-
-          // Refresh the list to ensure sorting and other data is updated
-          await this.getMediaItems()
 
           const toastStore = useToastStore()
           toastStore.success(i18n.global.t("pages.mediaitem.createSuccess") as string)
@@ -249,27 +246,49 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
       }
     },
 
-    // Clean media items (remove duplicates)
+    async confirmCleanMediaItems() {
+      const confirmationStore = useConfirmationStore()
+      const confirmed = await confirmationStore.openConfirmation({
+        title: i18n.global.t("pages.mediaitem.confirmCleanTitle") as string,
+        message: i18n.global.t("pages.mediaitem.confirmCleanMessage") as string,
+        type: "warning",
+      })
+      if (!confirmed) {
+        return false
+      }
+      return await this.cleanMediaItems()
+    },
+
     async cleanMediaItems() {
       this.isLoading = true
       try {
         const response = await MediaitemService.cleanMediaItem()
 
         if (response) {
-          // Refresh the list after cleaning
-          await this.getMediaItems()
           const collectionStore = useCollectionStore()
           if (collectionStore.detail) {
             await collectionStore.loadDetail(collectionStore.detail.id)
           }
 
+          const payload = (response.data ?? {}) as {
+            duplicate_number_deleted?: number
+            missing_id_deleted?: number
+          }
           const toastStore = useToastStore()
-          toastStore.success(i18n.global.t("pages.mediaitem.cleanSuccess") as string)
+          toastStore.success(
+            i18n.global.t("pages.mediaitem.cleanSuccessDetail", {
+              duplicates: payload.duplicate_number_deleted ?? 0,
+              missing: payload.missing_id_deleted ?? 0,
+            }) as string,
+          )
+          return true
         }
+        return false
       } catch (error) {
         console.error("Error cleaning media items:", error)
         const toastStore = useToastStore()
         toastStore.error(i18n.global.t("pages.mediaitem.cleanFailed") as string)
+        return false
       } finally {
         this.isLoading = false
       }

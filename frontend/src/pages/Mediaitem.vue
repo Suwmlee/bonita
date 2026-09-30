@@ -194,7 +194,6 @@ function persistViewState() {
   localStorage.setItem(VIEW_STATE_KEY, JSON.stringify(state))
 }
 
-// Function to search media items with filters
 async function fetchMediaItems(page: number, perPage?: number) {
   isSearching.value = true
   try {
@@ -220,9 +219,11 @@ async function changePage(page: number) {
   await fetchMediaItems(page)
 }
 
-// Function to clean media items (remove duplicates)
 async function cleanMediaItems() {
-  await mediaItemStore.cleanMediaItems()
+  const cleaned = await mediaItemStore.confirmCleanMediaItems()
+  if (cleaned) {
+    await fetchMediaItems(1)
+  }
 }
 
 const formatDateTime = (dateStr: string | null | undefined) => {
@@ -287,9 +288,21 @@ onMounted(async () => {
 
 <template>
   <div>
-    <p class="text-xl mb-6">
-      {{ t('pages.mediaitem.title') }}
-    </p>
+    <div class="d-flex align-center mb-6 ga-2 flex-wrap">
+      <p class="text-xl mb-0 flex-grow-1">
+        {{ t('pages.mediaitem.title') }}
+      </p>
+      <VBtn
+        variant="outlined"
+        :loading="mediaItemStore.isLoading"
+        @click="cleanMediaItems"
+      >
+        {{ t('pages.mediaitem.clean') }}
+      </VBtn>
+      <VBtn color="primary" prepend-icon="bx-plus" @click="showAddDialog">
+        {{ t('pages.mediaitem.addNew') }}
+      </VBtn>
+    </div>
 
     <!-- Search input and filters -->
     <VRow class="mb-4">

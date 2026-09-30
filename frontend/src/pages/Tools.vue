@@ -11,7 +11,6 @@ const { t } = useI18n() // 导入国际化工具函数
 const nfoFolder = ref("")
 const isLoading = ref(false)
 const isSyncingEmby = ref(false)
-const isCleaningMediaItems = ref(false)
 const isCleaningData = ref(false)
 const updateOption = ref("ignore")
 const forceCleanupOption = ref(false)
@@ -48,12 +47,7 @@ const syncEmbyWatchHistory = async () => {
 }
 
 const cleanMediaItems = async () => {
-  isCleaningMediaItems.value = true
-  try {
-    await mediaItemStore.cleanMediaItems()
-  } finally {
-    isCleaningMediaItems.value = false
-  }
+  await mediaItemStore.confirmCleanMediaItems()
 }
 
 const syncRecordPath = async () => {
@@ -133,7 +127,7 @@ onMounted(() => {
               </VBtn>
             </VCol>
             <VCol cols="12">
-              <VBtn color="secondary" block :loading="isCleaningMediaItems" @click="cleanMediaItems">
+              <VBtn color="secondary" block :loading="mediaItemStore.isLoading" @click="cleanMediaItems">
                 {{ t('pages.mediaitem.clean') }}
               </VBtn>
             </VCol>

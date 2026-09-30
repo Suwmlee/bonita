@@ -65,7 +65,10 @@ async def create_media_item(
     """
     创建新的媒体项
     """
-    return MediaItemService(session).create_media_item(media_item_in.model_dump())
+    try:
+        return MediaItemService(session).create_media_item(media_item_in.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.put("/{media_id}", response_model=schemas.MediaItemWithWatches)
@@ -78,9 +81,12 @@ async def update_media_item(
     更新媒体项
     支持更新媒体项基础信息和观看历史信息
     """
-    item = MediaItemService(session).update_media_item(
-        media_id, media_item_in.model_dump(exclude_unset=True)
-    )
+    try:
+        item = MediaItemService(session).update_media_item(
+            media_id, media_item_in.model_dump(exclude_unset=True)
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not item:
         raise HTTPException(status_code=404, detail="媒体项不存在")
     return item
@@ -108,5 +114,6 @@ async def clean_media_item(
     """
     清理媒体项
     1. 删除番号重复的媒体项（保留最新的一条）
+    2. 删除没有 IMDB / TMDB / TVDB 的电影和电视剧（有番号的电影除外），及其关联剧集
     """
-    return MediaItemService(session).clean_duplicate_numbers()
+    return MediaItemService(session).clean_media_items()

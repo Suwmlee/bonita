@@ -15,7 +15,11 @@ const { t } = useI18n() // 导入国际化工具函数
         <span v-else class="ms-2">{{ t('pages.mediaitem.addMediaItem') }}</span>
       </VCardTitle>
       <VCardItem>
-        <MediaItemDetailForm :updateMediaItem="dialog.editMediaItem" />
+        <MediaItemDetailForm
+          v-if="dialog.showDialog"
+          :key="dialog.editMediaItem?.id ?? 'new'"
+          :updateMediaItem="dialog.editMediaItem"
+        />
       </VCardItem>
     </VCard>
   </VDialog>

@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 
-from sqlalchemy import func, desc, asc
+from sqlalchemy import and_, func, desc, asc, or_
 from sqlalchemy.orm import Session
 
 from bonita import schemas
@@ -8,7 +8,14 @@ from bonita.db.models.collection import CollectionItem
 from bonita.db.models.mediaitem import MediaItem
 from bonita.db.models.watch_history import WatchHistory
 from bonita.modules.media_service.collection_sync import detach_media_from_collections
+from bonita.modules.media_service.matching import has_external_ids, requires_external_ids
 from bonita.services.metadata_service import MetadataService
+
+EXTERNAL_ID_REQUIRED_MESSAGE = "电影和电视剧必须填写 IMDB、TMDB 或 TVDB 中的至少一个编号"
+
+
+def _blank_str(column):
+    return or_(column.is_(None), column == "")
 
 
 class MediaItemService:
@@ -215,7 +222,31 @@ class MediaItemService:
             return None
         return self.attach_watch_data([media_item])[0]
 
+    def _validate_external_ids(
+        self,
+        media_type: Optional[str],
+        imdb_id: Optional[str],
+        tmdb_id: Optional[str],
+        tvdb_id: Optional[str],
+        number: Optional[str],
+    ) -> None:
+        if requires_external_ids(media_type or "", number) and not has_external_ids(
+            imdb_id, tmdb_id, tvdb_id
+        ):
+            raise ValueError(EXTERNAL_ID_REQUIRED_MESSAGE)
+
     def create_media_item(self, payload: dict) -> MediaItem:
+        title = (payload.get("title") or "").strip()
+        if not title:
+            raise ValueError("标题不能为空")
+        payload["title"] = title
+        self._validate_external_ids(
+            payload.get("media_type"),
+            payload.get("imdb_id"),
+            payload.get("tmdb_id"),
+            payload.get("tvdb_id"),
+            payload.get("number"),
+        )
         media_item = MediaItem(**payload)
         self.session.add(media_item)
         self.session.commit()
@@ -231,6 +262,18 @@ class MediaItemService:
 
         watch_data = {k: v for k, v in update_data.items() if k in self.WATCH_FIELDS}
         media_data = {k: v for k, v in update_data.items() if k not in self.WATCH_FIELDS}
+
+        media_type = media_data["media_type"] if "media_type" in media_data else media_item.media_type
+        number = media_data["number"] if "number" in media_data else media_item.number
+        imdb_id = media_data["imdb_id"] if "imdb_id" in media_data else media_item.imdb_id
+        tmdb_id = media_data["tmdb_id"] if "tmdb_id" in media_data else media_item.tmdb_id
+        tvdb_id = media_data["tvdb_id"] if "tvdb_id" in media_data else media_item.tvdb_id
+        self._validate_external_ids(media_type, imdb_id, tmdb_id, tvdb_id, number)
+        if "title" in media_data:
+            title = (media_data.get("title") or "").strip()
+            if not title:
+                raise ValueError("标题不能为空")
+            media_data["title"] = title
 
         for field, value in media_data.items():
             setattr(media_item, field, value)
@@ -263,18 +306,26 @@ class MediaItemService:
         media_item = self.get_by_id(media_id)
         if not media_item:
             return None
-        watch_history_deleted = self.session.query(WatchHistory).filter(
-            WatchHistory.media_item_id == media_id
-        ).delete(synchronize_session=False)
-        detach_media_from_collections(self.session, [media_id])
-        self.session.delete(media_item)
+        watch_history_deleted = self._delete_items([media_item])
         self.session.commit()
         return {
             "detail": "媒体项已删除",
             "watch_history_deleted": watch_history_deleted,
         }
 
-    def clean_duplicate_numbers(self) -> dict:
+    def _delete_items(self, items: List[MediaItem]) -> int:
+        ids = [item.id for item in items]
+        if not ids:
+            return 0
+        detach_media_from_collections(self.session, ids)
+        watch_history_deleted = self.session.query(WatchHistory).filter(
+            WatchHistory.media_item_id.in_(ids)
+        ).delete(synchronize_session=False)
+        for item in items:
+            self.session.delete(item)
+        return watch_history_deleted
+
+    def _duplicate_number_items(self) -> List[MediaItem]:
         duplicate_numbers = (
             self.session.query(MediaItem.number)
             .filter(MediaItem.number.isnot(None), MediaItem.number != "")
@@ -282,8 +333,6 @@ class MediaItemService:
             .having(func.count(MediaItem.id) > 1)
             .all()
         )
-        duplicate_count = 0
-        watch_history_deleted = 0
         to_delete = []
         for (number,) in duplicate_numbers:
             items = (
@@ -293,17 +342,61 @@ class MediaItemService:
                 .all()
             )
             to_delete.extend(items[1:])
-        detach_media_from_collections(self.session, [item.id for item in to_delete])
-        for item in to_delete:
-            deleted_count = self.session.query(WatchHistory).filter(
-                WatchHistory.media_item_id == item.id
-            ).delete(synchronize_session=False)
-            watch_history_deleted += deleted_count
-            self.session.delete(item)
-            duplicate_count += 1
+        return to_delete
+
+    def _items_missing_external_ids(self) -> List[MediaItem]:
+        missing_ids = and_(
+            _blank_str(MediaItem.imdb_id),
+            _blank_str(MediaItem.tmdb_id),
+            _blank_str(MediaItem.tvdb_id),
+        )
+        movies = (
+            self.session.query(MediaItem)
+            .filter(
+                MediaItem.media_type == "movie",
+                missing_ids,
+                _blank_str(MediaItem.number),
+            )
+            .all()
+        )
+        shows = (
+            self.session.query(MediaItem)
+            .filter(MediaItem.media_type == "tvshow", missing_ids)
+            .all()
+        )
+        show_ids = [item.id for item in shows]
+        episodes = []
+        if show_ids:
+            episodes = (
+                self.session.query(MediaItem)
+                .filter(
+                    MediaItem.media_type == "episode",
+                    MediaItem.series_id.in_(show_ids),
+                )
+                .all()
+            )
+        return episodes + movies + shows
+
+    def clean_media_items(self) -> dict:
+        to_delete = []
+        seen = set()
+        duplicate_items = self._duplicate_number_items()
+        missing_items = self._items_missing_external_ids()
+        for item in duplicate_items + missing_items:
+            if item.id in seen:
+                continue
+            seen.add(item.id)
+            to_delete.append(item)
+
+        duplicate_ids = {item.id for item in duplicate_items}
+        missing_ids = {item.id for item in missing_items}
+        episodes = [item for item in to_delete if item.media_type == "episode"]
+        others = [item for item in to_delete if item.media_type != "episode"]
+        watch_history_deleted = self._delete_items(episodes + others)
         self.session.commit()
         return {
             "detail": "媒体项已清理",
-            "duplicate_number_deleted": duplicate_count,
+            "duplicate_number_deleted": len(duplicate_ids),
+            "missing_id_deleted": len(missing_ids - duplicate_ids),
             "watch_history_deleted": watch_history_deleted,
         }
