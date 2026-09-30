@@ -12,11 +12,7 @@
 - 整理、迁移视频文件
 - 管理观影记录、收藏的影片
 - 双向同步`Emby`观看记录、收藏状态
-- 关联`Transmission`
-
-计划:
-- 推送服务
-- Ai影片推荐
+- 关联`Transmission`，`qBittorrent`
 
 
 ### 部署
