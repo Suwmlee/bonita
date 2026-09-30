@@ -481,7 +481,7 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
             "IncludeItemTypes": include_item_types,
             "Fields": (
                 "ProviderIds,Path,SeriesName,SeriesId,"
-                "IndexNumber,ParentIndexNumber"
+                "IndexNumber,ParentIndexNumber,ImageTags"
             ),
             "Limit": limit,
         }
@@ -604,18 +604,14 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
         return self._make_request('post', f'/emby/Users/{user_id}/Items/{item_id}/UserData', data=data)
 
     def get_poster_url(self, title: str, imdb_id: str = None, tmdb_id: int = None, size: str = "w500") -> str:
-        """从 Emby 获取海报地址。优先按 IMDb/TMDB 匹配电影或剧，再按标题回退。"""
+        """从 Emby 获取海报地址。优先按 IMDb/TMDB 匹配，再按标题，最后按 Movie/Series/Video 回退。"""
         try:
-            params = {
-                "Recursive": True,
-                "Fields": "ProviderIds,ImageTags",
-                "SearchTerm": title,
-                "IncludeItemTypes": "Movie,Series",
-            }
-            response = self._make_request('get', '/emby/Items', params=params)
-            items = response.get("Items", []) if isinstance(response, dict) else []
+            items = self._query_raw_items(
+                "Movie,Series,Video",
+                search_term=title,
+                limit=25,
+            )
             if not items:
-                logger.error(f"No items found for title: {title}")
                 return None
 
             tmdb_str = str(tmdb_id) if tmdb_id else ""
@@ -636,10 +632,15 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
                         break
 
             if not matched_item:
-                matched_item = next(
-                    (item for item in items if item.get("Type") == "Series"),
-                    items[0],
-                )
+                for item_type in ("Movie", "Series", "Video"):
+                    matched_item = next(
+                        (item for item in items if item.get("Type") == item_type),
+                        None,
+                    )
+                    if matched_item:
+                        break
+                if not matched_item:
+                    matched_item = items[0]
 
             item_id = matched_item.get("Id")
             if not item_id:
