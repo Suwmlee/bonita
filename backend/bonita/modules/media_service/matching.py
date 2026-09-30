@@ -137,6 +137,86 @@ def update_media_fields(session, media_item, **fields):
             changed = True
     if changed:
         session.commit()
+    return changed
+
+
+def _provider_id_pairs(media_item: MediaItem, remote: RemoteItem):
+    return (
+        (media_item.imdb_id, remote.imdb_id),
+        (media_item.tmdb_id, remote.tmdb_id),
+        (media_item.tvdb_id, remote.tvdb_id),
+    )
+
+
+def _ids_compatible(media_item: MediaItem, remote: RemoteItem) -> bool:
+    return all(
+        is_blank(local) or is_blank(remote_id) or str(local) == str(remote_id)
+        for local, remote_id in _provider_id_pairs(media_item, remote)
+    )
+
+
+def _has_shared_provider_id(media_item: MediaItem, remote: RemoteItem) -> bool:
+    return any(
+        not is_blank(local) and not is_blank(remote_id) and str(local) == str(remote_id)
+        for local, remote_id in _provider_id_pairs(media_item, remote)
+    )
+
+
+def _titles_match(media_item: MediaItem, remote: RemoteItem) -> bool:
+    local = (media_item.title or "").strip().lower()
+    remote_title = (remote.title or "").strip().lower()
+    if local and remote_title and local == remote_title:
+        return True
+    original = (media_item.original_title or "").strip().lower()
+    return bool(original and remote_title and original == remote_title)
+
+
+def fill_blank_provider_ids(session, media_item: MediaItem, remote: RemoteItem) -> bool:
+    """只补空的 IMDb/TMDB/TVDB，不覆盖已有编号。调用方须传入同一层级的远端条目。"""
+    if (
+        not media_item
+        or not remote
+        or not _ids_compatible(media_item, remote)
+        or not (_has_shared_provider_id(media_item, remote) or _titles_match(media_item, remote))
+    ):
+        return False
+    before = (media_item.imdb_id, media_item.tmdb_id, media_item.tvdb_id)
+    changed = update_media_fields(
+        session,
+        media_item,
+        imdb_id=remote.imdb_id or media_item.imdb_id,
+        tmdb_id=remote.tmdb_id or media_item.tmdb_id,
+        tvdb_id=remote.tvdb_id or media_item.tvdb_id,
+    )
+    if changed:
+        logger.info(
+            "    ✓ 补全编号 %s: IMDb %s→%s TMDB %s→%s TVDB %s→%s",
+            media_item_label(media_item),
+            before[0] or "-",
+            media_item.imdb_id or "-",
+            before[1] or "-",
+            media_item.tmdb_id or "-",
+            before[2] or "-",
+            media_item.tvdb_id or "-",
+        )
+    return changed
+
+
+def _incomplete_provider_ids(media_item: MediaItem) -> bool:
+    return (
+        is_blank(media_item.imdb_id)
+        or is_blank(media_item.tmdb_id)
+        or is_blank(media_item.tvdb_id)
+    )
+
+
+def _fill_series_ids_from_client(session, client: MediaServerClient, media_item: MediaItem):
+    """按已有编号再查远端剧，补全父剧空着的 IMDb/TMDB/TVDB。"""
+    if not media_item or not _incomplete_provider_ids(media_item):
+        return
+    items = query_by_providers(client, media_item, [ITEM_SERIES])
+    matched = pick_remote_item(items, media_item, force_series=True)
+    fill_blank_provider_ids(session, media_item, matched)
 
 
 def _resolve_movie(session, item: RemoteItem, create=True):
@@ -193,8 +273,6 @@ def _resolve_movie(session, item: RemoteItem, create=True):
         return media_item
 
     if not create or not has_external_ids(imdb_id, tmdb_id, tvdb_id):
-        if create:
-            logger.debug(f"    ⊘ 电影缺少 IMDB/TMDB/TVDB，跳过: {title}")
         return None
 
     media_item = MediaItem(
@@ -300,35 +378,45 @@ def _resolve_episode(session, item: RemoteItem, client: MediaServerClient, creat
     return media_item
 
 
-def ensure_series(session, item: RemoteItem, record, client: MediaServerClient, create=True):
+def _series_details_from_remote(item: RemoteItem, client: MediaServerClient):
+    """只取剧级别编号。单集 IMDb/TMDB/TVDB 不能写到父剧上。"""
     if item.item_type == ITEM_SERIES:
+        imdb_id, tmdb_id, tvdb_id = item.imdb_id, item.tmdb_id, item.tvdb_id
+        original_title = item.original_title or ""
         series_name = (item.title or item.series_name or "").strip()
-    else:
-        series_name = (item.series_name or item.title or "").strip()
+        if is_blank(imdb_id) or is_blank(tmdb_id) or is_blank(tvdb_id) or not original_title:
+            details = client.get_item(item.remote_id)
+            if details:
+                imdb_id = imdb_id or details.imdb_id
+                tmdb_id = tmdb_id or details.tmdb_id
+                tvdb_id = tvdb_id or details.tvdb_id
+                original_title = original_title or details.original_title or ""
+                series_name = (details.title or series_name).strip()
+        return imdb_id, tmdb_id, tvdb_id, original_title, series_name
+
+    series_name = (item.series_name or "").strip()
+    imdb_id = tmdb_id = tvdb_id = original_title = ""
+    if item.series_remote_id:
+        details = client.get_item(item.series_remote_id)
+        if details:
+            imdb_id, tmdb_id, tvdb_id = details.imdb_id, details.tmdb_id, details.tvdb_id
+            original_title = details.original_title or ""
+            series_name = (details.title or series_name).strip()
+    if not series_name:
+        series_name = (item.title or "").strip()
+    return imdb_id, tmdb_id, tvdb_id, original_title, series_name
+
+
+def ensure_series(session, item: RemoteItem, record, client: MediaServerClient, create=True):
+    imdb_id, tmdb_id, tvdb_id, original_title, series_name = _series_details_from_remote(
+        item, client
+    )
     if not series_name and record and record.top_folder:
         series_name = record.top_folder.strip()
 
-    if series_name:
-        media_item = session.query(MediaItem).filter(
-            MediaItem.media_type == "tvshow",
-            MediaItem.title == series_name,
-        ).first()
-        if media_item and has_external_ids(media_item.imdb_id, media_item.tmdb_id, media_item.tvdb_id):
-            return media_item
-
-    imdb_id = tmdb_id = tvdb_id = ""
-    original_title = ""
-    series_remote_id = item.series_remote_id
-    if item.item_type == ITEM_SERIES:
-        series_remote_id = item.remote_id or series_remote_id
-    if series_remote_id:
-        details = client.get_item(series_remote_id)
-        if details:
-            imdb_id, tmdb_id, tvdb_id = details.imdb_id, details.tmdb_id, details.tvdb_id
-            series_name = (details.title or series_name).strip()
-            original_title = details.original_title or ""
-
-    media_item = find_by_provider_ids(session, "tvshow", imdb_id, tmdb_id, tvdb_id)
+    media_item = None
+    if has_external_ids(imdb_id, tmdb_id, tvdb_id):
+        media_item = find_by_provider_ids(session, "tvshow", imdb_id, tmdb_id, tvdb_id)
     if not media_item and series_name:
         media_item = session.query(MediaItem).filter(
             MediaItem.media_type == "tvshow",
@@ -345,6 +433,8 @@ def ensure_series(session, item: RemoteItem, record, client: MediaServerClient, 
             tmdb_id=tmdb_id or media_item.tmdb_id,
             tvdb_id=tvdb_id or media_item.tvdb_id,
         )
+        if _incomplete_provider_ids(media_item):
+            _fill_series_ids_from_client(session, client, media_item)
         if has_external_ids(media_item.imdb_id, media_item.tmdb_id, media_item.tvdb_id):
             return media_item
         logger.debug(f"    ⊘ 已有剧集缺少 IMDB/TMDB/TVDB，跳过: {series_name}")
@@ -411,12 +501,14 @@ def find_remote_id_for_media_item(session, client: MediaServerClient, media_item
     items = query_by_providers(client, media_item, include_types)
     matched = pick_remote_item(items, media_item)
     if matched:
+        fill_blank_provider_ids(session, media_item, matched)
         return matched.remote_id
     term = (media_item.title or "").strip()
     if term:
         items = client.query_items(include_types, search_term=term, limit=100)
         matched = pick_remote_item(items, media_item)
         if matched:
+            fill_blank_provider_ids(session, media_item, matched)
             return matched.remote_id
     return None
 
@@ -440,6 +532,7 @@ def _find_episode_id(session, client: MediaServerClient, media_item: MediaItem) 
     items = query_by_providers(client, media_item, [ITEM_EPISODE])
     matched = pick_remote_item(items, media_item)
     if matched:
+        fill_blank_provider_ids(session, media_item, matched)
         return matched.remote_id
     series = None
     if media_item.series_id:
@@ -453,11 +546,14 @@ def _find_episode_id(session, client: MediaServerClient, media_item: MediaItem) 
         )
         series_match = pick_remote_item(series_items, series or media_item, force_series=True)
         if series_match:
+            if series:
+                fill_blank_provider_ids(session, series, series_match)
             series_remote_id = series_match.remote_id
     if series_remote_id:
         episodes = client.query_items([ITEM_EPISODE], parent_id=series_remote_id, limit=500)
         matched = pick_remote_item(episodes, media_item)
         if matched:
+            fill_blank_provider_ids(session, media_item, matched)
             return matched.remote_id
     return None
 
