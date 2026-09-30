@@ -4,7 +4,21 @@ import { ref } from "vue"
 
 const IMDB_POSTER_CDN = "https://images.metahub.space/poster/medium"
 
-export function getItemImdbId(item: MediaItemWithWatches): string | null {
+export type PosterSource = Partial<Pick<
+  MediaItemWithWatches,
+  | "media_type"
+  | "title"
+  | "original_title"
+  | "imdb_id"
+  | "tmdb_id"
+  | "number"
+  | "series_imdb_id"
+  | "series_tmdb_id"
+  | "external_item_id"
+  | "updatetime"
+>>
+
+export function getItemImdbId(item: PosterSource): string | null {
   const raw = item.media_type === "episode" ? item.series_imdb_id : item.imdb_id
   const id = raw?.trim()
   if (!id) return null
@@ -15,13 +29,26 @@ export function getImdbPosterUrl(imdbId: string): string {
   return `${IMDB_POSTER_CDN}/${encodeURIComponent(imdbId)}/img`
 }
 
-export function getPosterUrl(item: MediaItemWithWatches): string {
+export function hasPosterSource(item: PosterSource): boolean {
+  return Boolean(
+    item.number?.trim() ||
+    item.imdb_id?.trim() ||
+    item.series_imdb_id?.trim() ||
+    item.tmdb_id ||
+    item.series_tmdb_id ||
+    item.external_item_id?.trim() ||
+    item.original_title?.trim() ||
+    item.title?.trim(),
+  )
+}
+
+export function getPosterUrl(item: PosterSource): string {
   const params = new URLSearchParams()
   const isEpisode = item.media_type === "episode"
 
   params.append(
     "title",
-    isEpisode ? item.original_title || item.title : item.title,
+    isEpisode ? item.original_title || item.title || "" : item.title || "",
   )
 
   const imdbId = isEpisode ? item.series_imdb_id : item.imdb_id

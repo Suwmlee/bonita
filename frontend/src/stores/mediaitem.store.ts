@@ -28,6 +28,8 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
     allMediaItems: [] as MediaItemWithWatches[],
     showDialog: false,
     editMediaItem: undefined as MediaItemWithWatches | undefined,
+    addDraft: undefined as Partial<MediaItemWithWatches> | undefined,
+    dialogHistory: [] as MediaItemWithWatches[],
     totalCount: 0,
     currentPage: 1,
     itemsPerPage: loadItemsPerPage(),
@@ -91,16 +93,87 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
       }
     },
 
+    async searchSeries(search?: string) {
+      const { data: response } = await MediaitemService.getMediaItems({
+        search: search || undefined,
+        skip: 0,
+        limit: 20,
+        media_type: "series",
+        sort_by: "title",
+        sort_desc: false,
+      })
+      return response.data
+    },
+
     // Show dialog for updating media item
     showUpdateMediaItem(data: MediaItemWithWatches) {
+      this.dialogHistory = []
       this.editMediaItem = data
+      this.addDraft = undefined
       this.showDialog = true
     },
 
     // Show dialog for adding new media item
-    showAddMediaItem() {
+    showAddMediaItem(draft?: Partial<MediaItemWithWatches>) {
+      this.dialogHistory = []
       this.editMediaItem = undefined
+      this.addDraft = draft
       this.showDialog = true
+    },
+
+    showAddEpisode(series: MediaItemWithWatches) {
+      this.dialogHistory = [series]
+      this.editMediaItem = undefined
+      this.addDraft = {
+        media_type: "episode",
+        series_id: series.id,
+        original_title: series.title || series.original_title || "",
+        series_imdb_id: series.imdb_id,
+        series_tmdb_id: series.tmdb_id,
+        series_tvdb_id: series.tvdb_id,
+        season_number: 1,
+        episode_number: 1,
+      }
+      this.showDialog = true
+    },
+
+    closeDialog() {
+      this.showDialog = false
+      this.editMediaItem = undefined
+      this.addDraft = undefined
+      this.dialogHistory = []
+    },
+
+    goBackInDialog() {
+      const previous = this.dialogHistory.pop()
+      this.addDraft = undefined
+      if (previous) {
+        this.editMediaItem = previous
+      }
+    },
+
+    async openParentMediaItem(seriesId: number) {
+      this.isLoading = true
+      try {
+        const { data } = await MediaitemService.getMediaItem({
+          media_id: seriesId,
+        })
+        if (!data) {
+          const toastStore = useToastStore()
+          toastStore.error(i18n.global.t("pages.mediaitem.viewParentFailed") as string)
+          return
+        }
+        if (this.editMediaItem) {
+          this.dialogHistory.push(this.editMediaItem)
+        }
+        this.editMediaItem = data
+      } catch (error) {
+        console.error("Error opening parent media item:", error)
+        const toastStore = useToastStore()
+        toastStore.error(i18n.global.t("pages.mediaitem.viewParentFailed") as string)
+      } finally {
+        this.isLoading = false
+      }
     },
 
     // Update existing media item
@@ -132,7 +205,7 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
 
         if (this.showDialog) {
           this.updateMediaItemById(data.id, mediaItem)
-          this.showDialog = false
+          this.closeDialog()
 
           const toastStore = useToastStore()
           toastStore.success(i18n.global.t("pages.mediaitem.updateSuccess") as string)
@@ -176,7 +249,7 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
             },
           })
           this.totalCount += 1
-          this.showDialog = false
+          this.closeDialog()
 
           const toastStore = useToastStore()
           toastStore.success(i18n.global.t("pages.mediaitem.createSuccess") as string)

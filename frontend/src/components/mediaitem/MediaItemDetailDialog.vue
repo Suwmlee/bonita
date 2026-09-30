@@ -4,20 +4,37 @@ import { useMediaItemStore } from "@/stores/mediaitem.store"
 import { useI18n } from "vue-i18n"
 
 const dialog = useMediaItemStore()
-const { t } = useI18n() // 导入国际化工具函数
+const { t } = useI18n()
+
+function onDialogVisible(value: boolean) {
+  if (!value) {
+    dialog.closeDialog()
+  }
+}
 </script>
 
 <template>
-  <VDialog v-model="dialog.showDialog" max-width="600" scrollable>
+  <VDialog :model-value="dialog.showDialog" max-width="820" scrollable @update:model-value="onDialogVisible">
     <VCard class="dialog-mediaitem-content">
-      <VCardTitle>
-        <span v-if="dialog.editMediaItem" class="ms-2">{{ t('pages.mediaitem.editMediaItem') }}</span>
-        <span v-else class="ms-2">{{ t('pages.mediaitem.addMediaItem') }}</span>
+      <VCardTitle class="d-flex align-center">
+        <VBtn
+          v-if="dialog.dialogHistory.length"
+          icon
+          variant="text"
+          size="small"
+          class="me-1"
+          :aria-label="t('common.back')"
+          @click="dialog.goBackInDialog"
+        >
+          <VIcon icon="bx-chevron-left" />
+        </VBtn>
+        <span v-if="dialog.editMediaItem">{{ t('pages.mediaitem.editMediaItem') }}</span>
+        <span v-else>{{ t('pages.mediaitem.addMediaItem') }}</span>
       </VCardTitle>
       <VCardItem>
         <MediaItemDetailForm
           v-if="dialog.showDialog"
-          :key="dialog.editMediaItem?.id ?? 'new'"
+          :key="`${dialog.editMediaItem?.id ?? 'new'}-${dialog.addDraft?.series_id ?? ''}-${dialog.addDraft?.media_type ?? ''}`"
           :updateMediaItem="dialog.editMediaItem"
         />
       </VCardItem>
@@ -29,4 +46,4 @@ const { t } = useI18n() // 导入国际化工具函数
 .dialog-mediaitem-content {
   padding: 1rem;
 }
-</style> 
+</style>
