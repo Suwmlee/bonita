@@ -92,7 +92,9 @@ def _fix_series_naming(original_file: BasicFileInfo, target_file: TargetFileInfo
 
     target_file.season_number = tmp_season
     target_file.episode_number = tmp_episode
-    target_file.second_folder = "Specials" if tmp_season == 0 else f"Season {tmp_season}"
+    # 未识别到季数时不建季目录。有效季编号为 0、1、2…
+    if tmp_season >= 0:
+        target_file.second_folder = "Specials" if tmp_season == 0 else f"Season {tmp_season}"
     target_file.basename = tmp_filename
 
 
