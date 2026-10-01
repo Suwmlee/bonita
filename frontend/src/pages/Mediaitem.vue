@@ -2,8 +2,9 @@
 import type { MediaItemWithWatches } from "@/client"
 import MediaItemDetailDialog from "@/components/mediaitem/MediaItemDetailDialog.vue"
 import { useMediaPoster } from "@/composables/useMediaPoster"
+import { useConfirmationStore } from "@/stores/confirmation.store"
 import { useMediaItemStore } from "@/stores/mediaitem.store"
-import { computed, nextTick, onMounted, ref, watch } from "vue"
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
 
 const VIEW_STATE_KEY = "mediaitem-view-state"
@@ -54,10 +55,84 @@ function loadViewState(): Partial<ViewState> {
 }
 
 const mediaItemStore = useMediaItemStore()
+const confirmationStore = useConfirmationStore()
 const searchQuery = ref("")
 const isSearching = ref(false)
 const viewReady = ref(false)
+const selectedIds = ref<number[]>([])
+const deletingSelection = ref(false)
 const { t } = useI18n()
+
+const selectedCount = computed(() => selectedIds.value.length)
+const allPageSelected = computed(() => {
+  const items = mediaItemStore.allMediaItems
+  return items.length > 0 && items.every((item) => selectedIds.value.includes(item.id))
+})
+
+function isSelected(id: number) {
+  return selectedIds.value.includes(id)
+}
+
+function toggleSelected(id: number) {
+  if (isSelected(id)) {
+    selectedIds.value = selectedIds.value.filter((itemId) => itemId !== id)
+    return
+  }
+  selectedIds.value = [...selectedIds.value, id]
+}
+
+function onCardClick(item: MediaItemWithWatches) {
+  if (selectedCount.value > 0) {
+    toggleSelected(item.id)
+    return
+  }
+  showEditDialog(item)
+}
+
+function cancelSelection() {
+  selectedIds.value = []
+}
+
+function toggleSelectPage() {
+  const pageIds = mediaItemStore.allMediaItems.map((item) => item.id)
+  if (allPageSelected.value) {
+    const pageIdSet = new Set(pageIds)
+    selectedIds.value = selectedIds.value.filter((id) => !pageIdSet.has(id))
+    return
+  }
+  const merged = new Set([...selectedIds.value, ...pageIds])
+  selectedIds.value = [...merged]
+}
+
+function onSelectionKeydown(event: KeyboardEvent) {
+  if (event.key === "Escape" && selectedCount.value > 0) {
+    cancelSelection()
+  }
+}
+
+async function deleteSelected() {
+  const ids = [...selectedIds.value]
+  if (!ids.length || deletingSelection.value) return
+  const confirmed = await confirmationStore.confirmDelete(
+    t("pages.mediaitem.confirmDeleteManyTitle"),
+    t("pages.mediaitem.confirmDeleteManyMessage", { count: ids.length }),
+  )
+  if (!confirmed) return
+  deletingSelection.value = true
+  try {
+    const deletedIds = await mediaItemStore.deleteMediaItems(ids)
+    if (deletedIds.length === 0) return
+    const deleted = new Set(deletedIds)
+    selectedIds.value = selectedIds.value.filter((id) => !deleted.has(id))
+    const page = currentPage.value
+    await fetchMediaItems(page)
+    if (mediaItemStore.allMediaItems.length === 0 && page > 1) {
+      await fetchMediaItems(page - 1)
+    }
+  } finally {
+    deletingSelection.value = false
+  }
+}
 
 const savedViewState = loadViewState()
 
@@ -275,14 +350,20 @@ watch(
   [searchQuery, selectedMediaType, watchedFilter, favoriteFilter],
   async () => {
     if (!viewReady.value) return
+    cancelSelection()
     await fetchMediaItems(1)
   },
 )
 
 onMounted(async () => {
+  window.addEventListener("keydown", onSelectionKeydown)
   await fetchMediaItems(1)
   await nextTick()
   viewReady.value = true
+})
+
+onUnmounted(() => {
+  window.removeEventListener("keydown", onSelectionKeydown)
 })
 </script>
 
@@ -396,10 +477,47 @@ onMounted(async () => {
       </VCol>
     </VRow>
 
+    <VSheet
+      v-if="selectedCount"
+      class="selection-bar d-flex align-center flex-wrap ga-2 px-2 py-2 mb-4"
+      rounded
+      elevation="2"
+    >
+      <VBtn
+        icon
+        variant="text"
+        density="comfortable"
+        :aria-label="t('common.cancel')"
+        @click="cancelSelection"
+      >
+        <VIcon icon="bx-x" />
+      </VBtn>
+      <span class="text-body-1 font-weight-medium">
+        {{ t('pages.mediaitem.selectedCount', { count: selectedCount }) }}
+      </span>
+      <VSpacer />
+      <VBtn
+        variant="text"
+        :disabled="mediaItemStore.allMediaItems.length === 0"
+        @click="toggleSelectPage"
+      >
+        {{ allPageSelected ? t('pages.mediaitem.deselectPage') : t('pages.mediaitem.selectPage') }}
+      </VBtn>
+      <VBtn
+        color="error"
+        variant="flat"
+        prepend-icon="bx-trash"
+        :loading="deletingSelection"
+        @click="deleteSelected"
+      >
+        {{ t('common.delete') }}
+      </VBtn>
+    </VSheet>
+
     <VContainer fluid class="px-2 py-2">
-      <div class="custom-grid">
+      <div class="custom-grid" :class="{ 'is-selecting': selectedCount }">
         <div v-for="item in mediaItemStore.allMediaItems" :key="item.id" class="grid-item">
-          <VCard class="media-card d-flex flex-column" @click="showEditDialog(item)">
+          <VCard class="media-card d-flex flex-column" @click="onCardClick(item)">
             <div class="poster-wrapper" :class="{ 'show-full': !item.crop }">
               <img
                 v-if="!item.crop && !posterBroken[item.id]"
@@ -457,6 +575,16 @@ onMounted(async () => {
                   </div>
                 </div>
               </div>
+              <button
+                type="button"
+                class="select-toggle"
+                :class="{ 'is-selected': isSelected(item.id) }"
+                :aria-pressed="isSelected(item.id)"
+                :aria-label="t('pages.mediaitem.selectItem')"
+                @click.stop="toggleSelected(item.id)"
+              >
+                <VIcon v-if="isSelected(item.id)" icon="bx-check" size="18" />
+              </button>
             </div>
             <div class="card-title">
               <VTooltip location="top" open-delay="300">
@@ -466,6 +594,7 @@ onMounted(async () => {
                 <span>{{ getCardTitle(item) }}</span>
               </VTooltip>
             </div>
+            <div v-if="isSelected(item.id)" class="select-ring" />
           </VCard>
         </div>
       </div>
@@ -557,6 +686,54 @@ onMounted(async () => {
 .media-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.select-ring {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border: 3px solid rgb(var(--v-theme-error));
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.select-toggle {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  box-sizing: border-box;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.media-card:hover .select-toggle,
+.custom-grid.is-selecting .select-toggle {
+  opacity: 0.72;
+  pointer-events: auto;
+}
+
+.select-toggle.is-selected {
+  background: rgba(var(--v-theme-error), 0.82);
+  border-color: rgba(var(--v-theme-error), 0.55);
+}
+
+.selection-bar {
+  position: sticky;
+  top: 8px;
+  z-index: 6;
 }
 
 /* Poster: 2/3 card. Only crop when metadata.crop is true; otherwise show full. */

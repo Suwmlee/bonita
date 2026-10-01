@@ -3,6 +3,7 @@ import {
   type MediaItemWithWatches,
   MediaitemService,
 } from "@/client"
+import { client } from "@/client/client.gen"
 import { i18n } from "@/plugins/i18n"
 import { defineStore } from "pinia"
 import { useCollectionStore } from "./collection.store"
@@ -289,6 +290,50 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
 
       if (confirmed) {
         await this.deleteMediaItem(id)
+      }
+    },
+
+    async deleteMediaItems(ids: number[]): Promise<number[]> {
+      if (ids.length === 0) return []
+      this.isLoading = true
+      const toastStore = useToastStore()
+      const collectionStore = useCollectionStore()
+      try {
+        const { data } = await client.post<{ ids: number[] }>({
+          responseType: "json",
+          security: [{ scheme: "bearer", type: "http" }],
+          url: "/api/v1/mediaitems/batch-delete",
+          body: { ids },
+          headers: { "Content-Type": "application/json" },
+        })
+        const deletedIds = data?.ids ?? []
+        for (const id of deletedIds) {
+          collectionStore.onMediaDeleted(id)
+        }
+        const failed = ids.length - deletedIds.length
+        if (deletedIds.length === ids.length) {
+          toastStore.success(
+            i18n.global.t("pages.mediaitem.deleteManySuccess", {
+              count: deletedIds.length,
+            }) as string,
+          )
+        } else if (deletedIds.length > 0) {
+          toastStore.error(
+            i18n.global.t("pages.mediaitem.deleteManyPartial", {
+              deleted: deletedIds.length,
+              failed,
+            }) as string,
+          )
+        } else {
+          toastStore.error(i18n.global.t("pages.mediaitem.deleteManyFailed") as string)
+        }
+        return deletedIds
+      } catch (error) {
+        console.error("Error deleting media items:", error)
+        toastStore.error(i18n.global.t("pages.mediaitem.deleteManyFailed") as string)
+        return []
+      } finally {
+        this.isLoading = false
       }
     },
 

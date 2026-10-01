@@ -113,3 +113,8 @@ class MediaItemCollection(BaseModel):
     """
     data: List[MediaItemWithWatches]
     count: int
+
+
+class MediaItemBatchDelete(BaseModel):
+    """批量删除媒体项"""
+    ids: List[int]

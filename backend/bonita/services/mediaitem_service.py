@@ -344,6 +344,18 @@ class MediaItemService:
             "watch_history_deleted": watch_history_deleted,
         }
 
+    def delete_media_items(self, media_ids: List[int]) -> dict:
+        unique_ids = list(dict.fromkeys(media_ids))
+        items = (
+            self.session.query(MediaItem)
+            .filter(MediaItem.id.in_(unique_ids))
+            .all()
+        )
+        if items:
+            self._delete_items(items)
+            self.session.commit()
+        return {"ids": [item.id for item in items]}
+
     def _delete_items(self, items: List[MediaItem]) -> int:
         ids = [item.id for item in items]
         if not ids:

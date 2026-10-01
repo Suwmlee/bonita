@@ -451,6 +451,16 @@ export default {
       confirmDeleteTitle: "Delete Media Item",
       confirmDeleteMessage:
         "Are you sure you want to delete this media item? This action cannot be undone.",
+      selectItem: "Select",
+      selectedCount: "{count} selected",
+      selectPage: "Select page",
+      deselectPage: "Clear page",
+      confirmDeleteManyTitle: "Delete Selected Media Items",
+      confirmDeleteManyMessage:
+        "Delete {count} selected media items? This cannot be undone.",
+      deleteManySuccess: "Deleted {count} media items",
+      deleteManyPartial: "Deleted {deleted}, {failed} were not deleted",
+      deleteManyFailed: "Failed to delete selected media items",
     },
     collection: {
       title: "Collections",

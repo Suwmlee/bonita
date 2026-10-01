@@ -107,6 +107,22 @@ async def delete_media_item(
     return result
 
 
+@router.post("/batch-delete")
+async def delete_media_items(
+    payload: schemas.MediaItemBatchDelete,
+    session: SessionDep
+) -> Any:
+    """
+    批量删除媒体项
+    同时删除关联的观看历史，并从合集中解除关联
+    """
+    if not payload.ids:
+        raise HTTPException(status_code=400, detail="未选择媒体项")
+    if len(payload.ids) > 500:
+        raise HTTPException(status_code=400, detail="一次最多删除 500 个媒体项")
+    return MediaItemService(session).delete_media_items(payload.ids)
+
+
 @router.post("/clean")
 async def clean_media_item(
     session: SessionDep
