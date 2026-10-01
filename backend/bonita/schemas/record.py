@@ -29,6 +29,7 @@ class TransferRecordBase(BaseModel):
     part_number: Optional[int] = 0
     linkpath: Optional[str] = None
     destpath: Optional[str] = None
+    output_folder: Optional[str] = ""
 
     updatetime: Optional[datetime] = None
     deadtime: Optional[datetime] = None

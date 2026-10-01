@@ -646,6 +646,8 @@ export default {
         episodeRule: "集数必须大于等于-1",
         partNumberRule: "部次必须大于等于0",
         topFolder: "顶层文件夹",
+        outputFolder: "输出目录",
+        outputFolderHint: "留空则使用任务的输出目录。直接转移时，填写绝对路径会把这条记录转到该目录，顶层文件夹仍用上方填写的名称",
         applyAll: "应用全部",
         topFolderUpdateSuccess: "成功更新所有匹配记录的顶层文件夹",
         topFolderUpdateError: "更新顶层文件夹失败，请重试",

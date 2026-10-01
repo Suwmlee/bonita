@@ -215,6 +215,16 @@ async function applyTopFolderToAll() {
             </VBtn>
           </VCol>
         </VRow>
+
+        <VRow no-gutters class="mb-4">
+          <VCol cols="12" md="3" class="row-label">
+            <label>{{ t('components.record.form.outputFolder') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField v-model="currentTransferRecord.output_folder"
+              :hint="t('components.record.form.outputFolderHint')" persistent-hint />
+          </VCol>
+        </VRow>
       </VCol>
 
       <!-- Extra Info 部分 -->

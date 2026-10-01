@@ -347,6 +347,18 @@ export type HttpValidationError = {
 };
 
 /**
+ * MediaItemBatchDelete
+ *
+ * 批量删除媒体项
+ */
+export type MediaItemBatchDelete = {
+    /**
+     * Ids
+     */
+    ids: Array<number>;
+};
+
+/**
  * MediaItemCollection
  *
  * MediaItem集合，用于分页响应
@@ -1674,6 +1686,10 @@ export type TransferRecordPublic = {
      * Destpath
      */
     destpath?: string | null;
+    /**
+     * Output Folder
+     */
+    output_folder?: string | null;
     /**
      * Updatetime
      */
@@ -3103,6 +3119,31 @@ export type UpdateMediaItemResponses = {
 };
 
 export type UpdateMediaItemResponse = UpdateMediaItemResponses[keyof UpdateMediaItemResponses];
+
+export type DeleteMediaItemsData = {
+    body: MediaItemBatchDelete;
+    path?: never;
+    query?: never;
+    url: '/api/v1/mediaitems/batch-delete';
+};
+
+export type DeleteMediaItemsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteMediaItemsError = DeleteMediaItemsErrors[keyof DeleteMediaItemsErrors];
+
+export type DeleteMediaItemsResponses = {
+    /**
+     * Response Mediaitem-Delete Media Items
+     *
+     * Successful Response
+     */
+    200: unknown;
+};
 
 export type CleanMediaItemData = {
     body?: never;

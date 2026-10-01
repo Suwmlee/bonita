@@ -34,6 +34,8 @@ class TransRecords(Base):
     # 链接使用的地址，可能与docker内地址不同
     linkpath = Column(String, default='')
     destpath = Column(String, default='')
+    # 可选。填写后这条记录转移到该目录，季目录仍按任务类型和剧集编号决定
+    output_folder = Column(String, default='', server_default='', comment='可选输出目录')
     # 完全删除时间，包括源文件和目标路径文件
     deadtime = Column(DateTime, default=None, comment='time to delete files')
 

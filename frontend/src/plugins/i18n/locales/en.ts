@@ -674,6 +674,9 @@ export default {
         episodeRule: "Episode must be -1 or greater",
         partNumberRule: "Part number must be 0 or greater",
         topFolder: "Top Folder",
+        outputFolder: "Output Folder",
+        outputFolderHint:
+          "Leave empty to use the task output folder. During a direct transfer, an absolute path sends this record there, using the top folder name entered above",
         applyAll: "Apply All",
         topFolderUpdateSuccess:
           "Top folder updated successfully for all matching records",

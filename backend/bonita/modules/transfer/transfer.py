@@ -159,7 +159,7 @@ def transferfile(original_file: BasicFileInfo,
             _handle_group_naming(original_file, target_file, file_list)
             target_file.top_folder = _simplify_folder_name(original_file.top_folder)
 
-    # 当前设置类型是剧集
+    # 剧集任务且能确定季集编号时，才建季目录
     if series_tag and (target_file.is_episode or original_file.is_episode):
         _fix_series_naming(original_file, target_file)
     if part_number:

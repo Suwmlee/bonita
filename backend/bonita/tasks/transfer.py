@@ -89,9 +89,9 @@ def celery_transfer_entry(self, task_json):
         if task_info.clean_others:
             logger.info("  → 触发清理任务")
             if os.environ.get("MAX_CONCURRENCY") == "1":
-                celery_clean_others.apply(args=[task_info.output_folder, done_list])
+                celery_clean_others.apply(args=[task_info.output_folder, done_list, task_info.id])
             else:
-                celery_clean_others.apply_async(args=[task_info.output_folder, done_list])
+                celery_clean_others.apply_async(args=[task_info.output_folder, done_list, task_info.id])
         if task_info.auto_watch:
             logger.info("  → 触发媒体库扫描")
             if os.environ.get("MAX_CONCURRENCY") == "1":
@@ -324,10 +324,13 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                         logger.info("      ✓ 刮削转移完成")
                     else:
                         logger.info("      → 直接转移")
-                        target_file = TargetFileInfo(task_info.output_folder)
+                        override_output = (record.output_folder or "").strip()
+                        output_root = os.path.abspath(override_output) if override_output else task_info.output_folder
+                        if override_output:
+                            logger.info(f"      → 使用记录指定输出目录: {output_root}")
+                        target_file = TargetFileInfo(output_root)
                         if record.top_folder:
                             target_file.force_update_top_folder(record.top_folder)
-                        # 如果 record 中定义了剧集信息，则使用 record 中的信息
                         if record.isepisode:
                             target_file.force_update_episode(record.isepisode, record.season, record.episode)
                         # 开始转移
@@ -382,20 +385,56 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
         return done_list
 
 
+def _other_task_destpaths(root_path: str, task_id: int) -> set:
+    """本输出目录下、由其他任务写入的目标路径。清理时保留这些文件。"""
+    root = os.path.abspath(root_path)
+    prefix = root if root.endswith(os.sep) else root + os.sep
+    protected = set()
+    session = SessionFactory()
+    try:
+        rows = session.query(TransRecords.destpath).filter(
+            TransRecords.task_id != task_id,
+            TransRecords.destpath.isnot(None),
+            TransRecords.destpath != "",
+        ).all()
+        for (destpath,) in rows:
+            if not destpath:
+                continue
+            normalized = os.path.normpath(os.path.abspath(destpath))
+            if normalized == root or normalized.startswith(prefix):
+                protected.add(normalized)
+    finally:
+        session.close()
+    return protected
+
+
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
              name='clean:clean_others')
-def celery_clean_others(self, root_path, done_list):
+def celery_clean_others(self, root_path, done_list, task_id=None):
     logger.info(f"## [清理任务] START - {root_path}")
 
+    protected = set()
+    if task_id is not None:
+        try:
+            protected = _other_task_destpaths(root_path, task_id)
+        except Exception as e:
+            logger.error(f"  ✗ 读取其他任务的目标路径失败，跳过清理: {e}")
+            return []
+
     cleaned_files = []
+    kept = 0
     dest_list = findAllFilesWithSuffix(root_path, video_type)
     for dest in dest_list:
-        if dest not in done_list:
-            cleaned_files.append(dest)
+        if dest in done_list:
+            continue
+        if os.path.normpath(os.path.abspath(dest)) in protected:
+            kept += 1
+            continue
+        cleaned_files.append(dest)
     for torm in cleaned_files:
         logger.info(f"  ✗ 删除: {os.path.basename(torm)}")
         os.remove(torm)
     cleanFolderWithoutSuffix(root_path, video_type)
 
-    logger.info(f"## [清理任务] END - 删除 {len(cleaned_files)} 个文件")
+    logger.info(f"## [清理任务] END - 删除 {len(cleaned_files)} 个文件，保留其他任务 {kept} 个")
     return cleaned_files
