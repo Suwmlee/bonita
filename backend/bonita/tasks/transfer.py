@@ -8,7 +8,6 @@ from celery.result import allow_join_result
 from bonita import schemas
 from bonita.core.config import settings
 from bonita.db import SessionFactory
-from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
 from bonita.db.models.scraping import ScrapingConfig
 from bonita.modules.scraping.scraping import add_mark, process_cover, process_nfo_file, scraping
@@ -244,7 +243,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
 
                         while retry_count < max_retries:
                             try:
-                                cache_cover_filepath = process_cached_file(session, metamixed.cover, metamixed.number)
+                                cache_cover_filepath = process_cached_file(session, cover_url, metamixed.number)
                                 break
                             except Exception as e:
                                 retry_count += 1
@@ -289,19 +288,8 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                             logger.info(f"      → 使用 extrafanart 作为封面: {ef_url}")
                             try:
                                 cache_cover_filepath = download_file(ef_url, metamixed.number, proxy)
-                                cover_url = ef_url
                             except Exception as e:
                                 logger.warning(f"      ⊘ extrafanart 下载失败: {e}")
-
-                        # 更新 metadata_mixed 中的 cover 为实际使用的 URL，同时回写数据库
-                        if cover_url:
-                            metamixed.cover = cover_url
-                            metadata_record = session.query(Metadata).filter(
-                                Metadata.number == metamixed.number
-                            ).order_by(Metadata.id.desc()).first()
-                            if metadata_record:
-                                metadata_record.cover = cover_url
-                                session.commit()
 
                         # 有封面则处理封面图片，否则跳过
                         pics = []
