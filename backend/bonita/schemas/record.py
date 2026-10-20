@@ -56,6 +56,7 @@ class TransferRecordsPublic(BaseModel):
 class RecordPublic(BaseModel):
     transfer_record: TransferRecordPublic
     extra_info: Optional[ExtraInfoPublic] = None
+    subtitle_count: int = 0
 
     class Config:
         from_attributes = True

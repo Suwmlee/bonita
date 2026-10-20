@@ -13,6 +13,7 @@ from bonita.db.models.scraping import ScrapingConfig
 from bonita.modules.scraping.scraping import add_mark, process_cover, process_nfo_file, scraping
 from bonita.modules.transfer.transfer import transSingleFile, transferfile
 from bonita.services.celery_service import TaskProgressTracker
+from bonita.services.subtitle_service import SubtitleService
 from bonita.tasks.decorators import manage_celery_task
 from bonita.tasks.media import celery_emby_scan
 from bonita.tasks.scraping import celery_scrapping
@@ -32,6 +33,21 @@ def _safe_filesize(path):
         return os.path.getsize(path)
     except OSError:
         return -1
+
+
+def _apply_library_subtitles(session, srcpath, destpath, part_number, number):
+    """字幕库里已有同番号字幕时，复制到本次目标旁边。失败不影响转移结果。"""
+    try:
+        copied = SubtitleService(session).deliver_for_transfer(
+            srcpath=srcpath,
+            destpath=destpath,
+            part_number=part_number,
+            number=number,
+        )
+        if copied:
+            logger.info(f"      ✓ 字幕库投递 {copied} 个")
+    except Exception as e:
+        logger.warning(f"      ⊘ 字幕库投递失败: {e}")
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
@@ -178,6 +194,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     continue
 
                 logger.info(f"    [{idx+1}/{total_files}] {original_file.filename}")
+                subtitle_number = None
 
                 try:
                     record = session.query(TransRecords).filter(TransRecords.srcpath == original_file.full_path).first()
@@ -214,6 +231,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                             record.success = False
                             continue
                         metamixed = schemas.MetadataMixed.model_validate(metabase_json)
+                        subtitle_number = metamixed.number
 
                         # 验证结果路径在 output_folder 下，例如：extra_folder 不能"/"开头导致join失败
                         output_folder = os.path.abspath(os.path.join(task_info.output_folder, metamixed.extra_folder))
@@ -342,6 +360,13 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                     # 更新 record 状态
                     record.deleted = False
                     record.success = True
+                    _apply_library_subtitles(
+                        session,
+                        original_file.full_path,
+                        record.destpath,
+                        record.part_number or 0,
+                        subtitle_number,
+                    )
                 except Exception as e:
                     failed_count += 1
                     logger.error(f"      ✗ 转移失败: {original_file.filename} — {e}")
