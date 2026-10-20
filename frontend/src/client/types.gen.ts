@@ -45,6 +45,20 @@ export type BodyResourceUploadImage = {
 };
 
 /**
+ * Body_subtitle-upload_subtitles
+ */
+export type BodySubtitleUploadSubtitles = {
+    /**
+     * Files
+     */
+    files: Array<Blob | File>;
+    /**
+     * Number
+     */
+    number?: string | null;
+};
+
+/**
  * CollectionAddItems
  */
 export type CollectionAddItems = {
@@ -1079,6 +1093,10 @@ export type QBittorrentSettings = {
 export type RecordPublic = {
     transfer_record: TransferRecordPublic;
     extra_info?: ExtraInfoPublic | null;
+    /**
+     * Subtitle Count
+     */
+    subtitle_count?: number;
 };
 
 /**
@@ -1315,6 +1333,138 @@ export type StatusResponse = {
      * Version
      */
     version: string;
+};
+
+/**
+ * SubtitleCollection
+ */
+export type SubtitleCollection = {
+    /**
+     * Data
+     */
+    data: Array<SubtitlePublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * SubtitleDeliverRequest
+ */
+export type SubtitleDeliverRequest = {
+    /**
+     * Number
+     */
+    number: string;
+    /**
+     * Part Number
+     */
+    part_number?: number | null;
+    /**
+     * Overwrite
+     */
+    overwrite?: boolean;
+};
+
+/**
+ * SubtitleDeliverResult
+ */
+export type SubtitleDeliverResult = {
+    /**
+     * Copied
+     */
+    copied?: number;
+    /**
+     * Skipped
+     */
+    skipped?: number;
+    /**
+     * Missing
+     */
+    missing?: number;
+};
+
+/**
+ * SubtitlePublic
+ */
+export type SubtitlePublic = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Identity Type
+     */
+    identity_type?: string;
+    /**
+     * Identity Key
+     */
+    identity_key?: string;
+    /**
+     * Language
+     */
+    language?: string;
+    /**
+     * Part Number
+     */
+    part_number?: number;
+    /**
+     * Original Name
+     */
+    original_name?: string;
+    /**
+     * File Extension
+     */
+    file_extension?: string;
+    /**
+     * Createtime
+     */
+    createtime?: string | null;
+    /**
+     * Updatetime
+     */
+    updatetime?: string | null;
+};
+
+/**
+ * SubtitleUpdate
+ */
+export type SubtitleUpdate = {
+    /**
+     * Identity Key
+     */
+    identity_key?: string;
+    /**
+     * Language
+     */
+    language?: string;
+    /**
+     * Part Number
+     */
+    part_number?: number;
+};
+
+/**
+ * SubtitleUploadResult
+ */
+export type SubtitleUploadResult = {
+    /**
+     * Data
+     */
+    data: Array<SubtitlePublic>;
+    /**
+     * Unmatched
+     */
+    unmatched?: number;
+    /**
+     * Replaced
+     */
+    replaced?: number;
+    /**
+     * Failed
+     */
+    failed?: Array<string>;
 };
 
 /**
@@ -2942,6 +3092,197 @@ export type UpdateMetadataResponses = {
 };
 
 export type UpdateMetadataResponse = UpdateMetadataResponses[keyof UpdateMetadataResponses];
+
+export type ListSubtitlesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Filter
+         */
+        filter?: string;
+        /**
+         * Number
+         */
+        number?: string;
+        /**
+         * Unmatched
+         */
+        unmatched?: boolean;
+    };
+    url: '/api/v1/subtitles/';
+};
+
+export type ListSubtitlesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListSubtitlesError = ListSubtitlesErrors[keyof ListSubtitlesErrors];
+
+export type ListSubtitlesResponses = {
+    /**
+     * Successful Response
+     */
+    200: SubtitleCollection;
+};
+
+export type ListSubtitlesResponse = ListSubtitlesResponses[keyof ListSubtitlesResponses];
+
+export type UploadSubtitlesData = {
+    body: BodySubtitleUploadSubtitles;
+    path?: never;
+    query?: never;
+    url: '/api/v1/subtitles/upload';
+};
+
+export type UploadSubtitlesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UploadSubtitlesError = UploadSubtitlesErrors[keyof UploadSubtitlesErrors];
+
+export type UploadSubtitlesResponses = {
+    /**
+     * Successful Response
+     */
+    200: SubtitleUploadResult;
+};
+
+export type UploadSubtitlesResponse = UploadSubtitlesResponses[keyof UploadSubtitlesResponses];
+
+export type DeliverSubtitlesData = {
+    body: SubtitleDeliverRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/subtitles/deliver';
+};
+
+export type DeliverSubtitlesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeliverSubtitlesError = DeliverSubtitlesErrors[keyof DeliverSubtitlesErrors];
+
+export type DeliverSubtitlesResponses = {
+    /**
+     * Successful Response
+     */
+    200: SubtitleDeliverResult;
+};
+
+export type DeliverSubtitlesResponse = DeliverSubtitlesResponses[keyof DeliverSubtitlesResponses];
+
+export type DeleteSubtitleData = {
+    body?: never;
+    path: {
+        /**
+         * Subtitle Id
+         */
+        subtitle_id: number;
+    };
+    query?: never;
+    url: '/api/v1/subtitles/{subtitle_id}';
+};
+
+export type DeleteSubtitleErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteSubtitleError = DeleteSubtitleErrors[keyof DeleteSubtitleErrors];
+
+export type DeleteSubtitleResponses = {
+    /**
+     * Successful Response
+     */
+    200: Response;
+};
+
+export type DeleteSubtitleResponse = DeleteSubtitleResponses[keyof DeleteSubtitleResponses];
+
+export type UpdateSubtitleData = {
+    body: SubtitleUpdate;
+    path: {
+        /**
+         * Subtitle Id
+         */
+        subtitle_id: number;
+    };
+    query?: never;
+    url: '/api/v1/subtitles/{subtitle_id}';
+};
+
+export type UpdateSubtitleErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateSubtitleError = UpdateSubtitleErrors[keyof UpdateSubtitleErrors];
+
+export type UpdateSubtitleResponses = {
+    /**
+     * Successful Response
+     */
+    200: SubtitlePublic;
+};
+
+export type UpdateSubtitleResponse = UpdateSubtitleResponses[keyof UpdateSubtitleResponses];
+
+export type DeliverOneSubtitleData = {
+    body?: never;
+    path: {
+        /**
+         * Subtitle Id
+         */
+        subtitle_id: number;
+    };
+    query?: {
+        /**
+         * Overwrite
+         */
+        overwrite?: boolean;
+    };
+    url: '/api/v1/subtitles/{subtitle_id}/deliver';
+};
+
+export type DeliverOneSubtitleErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeliverOneSubtitleError = DeliverOneSubtitleErrors[keyof DeliverOneSubtitleErrors];
+
+export type DeliverOneSubtitleResponses = {
+    /**
+     * Successful Response
+     */
+    200: SubtitleDeliverResult;
+};
+
+export type DeliverOneSubtitleResponse = DeliverOneSubtitleResponses[keyof DeliverOneSubtitleResponses];
 
 export type GetMediaItemsData = {
     body?: never;
