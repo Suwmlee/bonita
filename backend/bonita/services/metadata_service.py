@@ -18,14 +18,6 @@ class MetadataService:
     def __init__(self, session: Session):
         self.session = session
 
-    def sync_crop_by_number(self, number: str, crop: bool) -> None:
-        """将裁切标记同步到该番号对应的全部元数据。"""
-        if not number:
-            return
-        self.session.query(Metadata).filter(
-            func.upper(Metadata.number) == number.upper()
-        ).update({Metadata.crop: crop}, synchronize_session="fetch")
-
     def get_crop_by_numbers(self, numbers: List[Optional[str]]) -> dict:
         """按番号（大写）返回最新一条元数据的 crop。没有本地元数据的番号不会出现在结果中。"""
         result = {}

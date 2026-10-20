@@ -128,7 +128,7 @@ class RecordService:
         transfer_update: dict,
         extra_update: Optional[dict] = None,
     ) -> Tuple[Optional[TransRecords], Optional[ExtraInfo]]:
-        """更新转移记录及 ExtraInfo，并同步番号 crop。"""
+        """更新转移记录及 ExtraInfo。标签、裁切等只写在 ExtraInfo，不回写 metadata。"""
         transfer_record, extra_info = self.get_record_by_id(record_id)
         if not transfer_record:
             return None, None
@@ -143,11 +143,6 @@ class RecordService:
             for key, value in extra_payload.items():
                 if hasattr(extra_info, key):
                     setattr(extra_info, key, value)
-            if extra_info.number and extra_info.crop is not None:
-                from bonita.services.metadata_service import MetadataService
-                MetadataService(self.session).sync_crop_by_number(
-                    extra_info.number, bool(extra_info.crop)
-                )
 
         self.session.commit()
         return transfer_record, extra_info
