@@ -42,6 +42,11 @@ const { t } = useI18n()
     to: '/metadata',
   }" />
   <VerticalNavLink :item="{
+    title: t('navitems.subtitles'),
+    icon: 'bx-captions',
+    to: '/subtitles',
+  }" />
+  <VerticalNavLink :item="{
     title: t('navitems.tools'),
     icon: 'bxs-wrench',
     to: '/tools',

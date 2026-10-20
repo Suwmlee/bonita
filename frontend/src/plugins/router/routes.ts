@@ -9,6 +9,7 @@ import MetadataPage from "@/pages/Metadata.vue"
 import RecordsPage from "@/pages/Records.vue"
 import ScrapingConfigsPage from "@/pages/ScrapingConfigs.vue"
 import ServiceSettingsPage from "@/pages/ServiceSettings.vue"
+import SubtitlesPage from "@/pages/Subtitles.vue"
 import TaskPage from "@/pages/Task.vue"
 import ToolsPage from "@/pages/Tools.vue"
 import UserSettingsPage from "@/pages/UserSettings.vue"
@@ -44,6 +45,11 @@ export const routes = [
         path: "metadata",
         meta: { requiresAuth: true },
         component: MetadataPage,
+      },
+      {
+        path: "subtitles",
+        meta: { requiresAuth: true },
+        component: SubtitlesPage,
       },
       {
         path: "tools",

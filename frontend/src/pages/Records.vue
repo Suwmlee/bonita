@@ -1,11 +1,18 @@
 <script setup lang="ts">
+import {
+  type RecordPublic,
+  type SubtitleDeliverResult,
+  SubtitleService,
+} from "@/client"
 import { useRecordStore } from "@/stores/record.store"
 import { useTaskStore } from "@/stores/task.store"
+import { useToastStore } from "@/stores/toast.store"
 import { useI18n } from "vue-i18n"
 import { VIcon } from "vuetify/components"
 
 const recordStore = useRecordStore()
 const taskStore = useTaskStore()
+const toastStore = useToastStore()
 const { t } = useI18n() // 导入国际化工具函数
 
 const searchQuery = ref("")
@@ -89,6 +96,38 @@ const formatSeasonEpisode = (
 const formatPartNumber = (partNumber?: number | null) => {
   if (partNumber == null || partNumber <= 0) return ""
   return `P${String(partNumber).padStart(2, "0")}`
+}
+
+const subtitleCount = (item: RecordPublic) => item.subtitle_count || 0
+
+function apiErrorMessage(error: unknown, fallback: string) {
+  const detail = (error as { response?: { data?: { detail?: unknown } } })
+    ?.response?.data?.detail
+  if (typeof detail === "string" && detail.trim()) return detail
+  return fallback
+}
+
+function deliverSummary(result: SubtitleDeliverResult) {
+  if (!result.copied && !result.skipped && !result.missing) {
+    return t("pages.subtitles.deliverNone")
+  }
+  return t("pages.subtitles.deliverResult", result)
+}
+
+async function deliverRecordSubtitle(item: RecordPublic) {
+  const number = item.extra_info?.number
+  if (!number) return
+  try {
+    const { data: result } = await SubtitleService.deliverSubtitles({
+      subtitleDeliverRequest: {
+        number,
+        part_number: item.transfer_record.part_number || 0,
+      },
+    })
+    toastStore.success(deliverSummary(result))
+  } catch (error) {
+    toastStore.error(apiErrorMessage(error, t("pages.subtitles.deliverFailed")))
+  }
 }
 
 const headers = [
@@ -541,7 +580,19 @@ onMounted(() => {
       </template>
 
       <template #item.extra_info.number="{ item }">
-        <span class="nowrap-cell">{{ item.extra_info?.number || '' }}</span>
+        <span class="nowrap-cell d-inline-flex align-center">
+          <span>{{ item.extra_info?.number || '' }}</span>
+          <VBtn
+            v-if="subtitleCount(item) > 0"
+            size="x-small"
+            variant="text"
+            class="ms-1"
+            :title="t('pages.subtitles.deliver')"
+            @click.stop="deliverRecordSubtitle(item)"
+          >
+            <VIcon icon="bx-captions" size="18" />
+          </VBtn>
+        </span>
       </template>
 
       <template #item.extra_info.tag="{ item }">
