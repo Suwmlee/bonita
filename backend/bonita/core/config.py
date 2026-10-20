@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     SQLALCHEMY_DATABASE_URI: str = f"sqlite:///{DATABASE_LOCATION}"
     # CACHE_LOCATION
     CACHE_LOCATION: str = "./data/cache"
+    SUBTITLE_LOCATION: str = "./data/subtitles"
     # CELERY
     CELERY_BROKER_URL: str = os.environ.get("CELERY_BROKER_URL", f"sqla+sqlite:///{DATABASE_LOCATION}")
     CELERY_RESULT_BACKEND: str = os.environ.get("CELERY_RESULT_BACKEND", f"db+sqlite:///{DATABASE_LOCATION}")
