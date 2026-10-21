@@ -44,9 +44,12 @@ def handle_webhook_event(session, payload: dict, source=SOURCE_EMBY) -> str:
     if event.kind == WEBHOOK_TEST:
         logger.info(f"  ✓ 收到 {source_label(source)} Webhook 测试事件")
         return "test"
+    if event.kind == WEBHOOK_UNPLAYED:
+        logger.info("  ⊘ 忽略标记未观看事件")
+        return "skipped"
 
     if (
-        event.kind in (WEBHOOK_WATCH, WEBHOOK_UNPLAYED, WEBHOOK_FAVORITE)
+        event.kind in (WEBHOOK_WATCH, WEBHOOK_FAVORITE)
         and client.configured_user
         and event.user_name
         and event.user_name.lower() != client.configured_user.lower()
@@ -69,9 +72,6 @@ def handle_webhook_event(session, payload: dict, source=SOURCE_EMBY) -> str:
             apply_remote_watch(session, client, item, force=True)
             favorite = bool(item.watch and item.watch.favorite)
             logger.info(f"  ✓ Webhook 同步收藏: {item.title} favorite={favorite}")
-        elif event.kind == WEBHOOK_UNPLAYED:
-            apply_remote_watch(session, client, item, force=True)
-            logger.info(f"  ✓ Webhook 标记未观看: {item.title}")
         else:
             apply_remote_watch(session, client, item, force=False)
             logger.info(f"  ✓ Webhook 同步观看状态: {event.raw_event} {item.title}")

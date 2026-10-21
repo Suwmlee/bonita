@@ -301,7 +301,7 @@ export default {
         connectionError: "连接失败！",
         enable: "启用",
         webhookUrl: "Webhook 地址",
-        webhookHint: "填到 Emby「添加通知 → Webhooks」。事件勾选 Playback、Mark Played、Mark Unplayed、Rate（收藏）、New Media Added。Emby 和 Bonita 不在同一台机器时，把 localhost 改成 Bonita 的局域网 IP。",
+        webhookHint: "填到 Emby「添加通知 → Webhooks」。事件勾选 Playback、Mark Played、Rate（收藏）、New Media Added。Emby 和 Bonita 不在同一台机器时，把 localhost 改成 Bonita 的局域网 IP。",
       },
       transmission: {
         title: "Transmission 下载器设置",

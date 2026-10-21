@@ -311,7 +311,7 @@ export default {
         enable: "Enable Emby Integration",
         webhookUrl: "Webhook URL",
         webhookHint:
-          "Paste this into Emby Add Notification → Webhooks. Enable Playback, Mark Played, Mark Unplayed, Rate (favorites), and New Media Added. If Emby cannot reach localhost, replace it with Bonita’s LAN IP.",
+          "Paste this into Emby Add Notification → Webhooks. Enable Playback, Mark Played, Rate (favorites), and New Media Added. If Emby cannot reach localhost, replace it with Bonita’s LAN IP.",
       },
       transmission: {
         title: "Transmission Client Settings",
