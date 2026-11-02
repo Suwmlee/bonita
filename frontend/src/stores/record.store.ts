@@ -1,4 +1,8 @@
-import { type RecordPublic, RecordService } from "@/client"
+import {
+  type RecordGroupPublic,
+  type RecordPublic,
+  RecordService,
+} from "@/client"
 
 import { defineStore } from "pinia"
 
@@ -16,6 +20,8 @@ function loadItemsPerPage(): number {
 export const useRecordStore = defineStore("record-store", {
   state: () => ({
     records: [] as RecordPublic[],
+    groups: [] as RecordGroupPublic[],
+    totalGroups: 0,
     showDialog: false,
     editRecord: undefined as RecordPublic | undefined,
     totalRecords: 0,
@@ -66,6 +72,48 @@ export const useRecordStore = defineStore("record-store", {
         this.loading = false
       }
     },
+    async getRecordGroups(
+      options: {
+        page: number
+        itemsPerPage: number
+        search?: string
+        taskId?: number
+        sortBy?: string
+        sortDesc?: boolean
+      } = {
+        page: 1,
+        itemsPerPage: loadItemsPerPage(),
+      },
+    ) {
+      this.loading = true
+      try {
+        const skip = (options.page - 1) * options.itemsPerPage
+        const limit = options.itemsPerPage
+        const { data: response } = await RecordService.getRecordGroups({
+          skip,
+          limit,
+          search: options.search,
+          task_id: options.taskId,
+          sort_by: options.sortBy,
+          sort_desc: options.sortDesc,
+        })
+
+        this.groups = response.data
+        this.totalGroups = response.count
+        this.currentPage = options.page
+        this.itemsPerPage = options.itemsPerPage
+        if (ITEMS_PER_PAGE_OPTIONS.includes(options.itemsPerPage)) {
+          localStorage.setItem(ITEMS_PER_PAGE_KEY, String(options.itemsPerPage))
+        }
+
+        return this.groups
+      } catch (error) {
+        console.error("获取番号词条失败:", error)
+        return []
+      } finally {
+        this.loading = false
+      }
+    },
     showUpdateRecord(data: RecordPublic) {
       this.editRecord = data
       this.showDialog = true
@@ -84,35 +132,7 @@ export const useRecordStore = defineStore("record-store", {
         body: ids,
         force: force,
       })
-      if (response.success) {
-        if (force) {
-          // 如果force为true，直接从列表中移除这些记录
-          this.records = this.records.filter(
-            (record) => !ids.includes(record.transfer_record.id),
-          )
-        } else {
-          // 如果force为false，只将记录标记为已删除
-          // Use map instead of forEach for better performance with large arrays
-          this.records = this.records.map((record) => {
-            if (ids.includes(record.transfer_record.id)) {
-              return {
-                ...record,
-                transfer_record: {
-                  ...record.transfer_record,
-                  deleted: true,
-                },
-              }
-            }
-            return record
-          })
-        }
-
-        // 删除记录后刷新当前页，以保持页面数据完整
-        await this.getRecords({
-          page: this.currentPage,
-          itemsPerPage: this.itemsPerPage,
-        })
-      }
+      return Boolean(response.success)
     },
     updateRecordById(id: number, newValue: Partial<RecordPublic>) {
       const index = this.records.findIndex(
@@ -124,7 +144,22 @@ export const useRecordStore = defineStore("record-store", {
           ...this.records[index],
           ...newValue,
         }
-      } else {
+      }
+
+      let foundInGroup = index !== -1
+      for (const group of this.groups) {
+        const groupIndex = group.records.findIndex(
+          (record) => record.transfer_record.id === id,
+        )
+        if (groupIndex === -1) continue
+        group.records[groupIndex] = {
+          ...group.records[groupIndex],
+          ...newValue,
+        }
+        foundInGroup = true
+      }
+
+      if (!foundInGroup) {
         console.error(`Record with id ${id} not found.`)
       }
     },

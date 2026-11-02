@@ -375,6 +375,11 @@ export default {
     },
     records: {
       title: "Records",
+      viewList: "List",
+      viewGroup: "Entries",
+      totalGroups: "Total {count} entries",
+      groupFileCount: "{count} files",
+      noGroups: "No numbered entries",
       edit: "Edit Record",
       search: "Search Filename",
       filterTaskId: "Filter Task ID",

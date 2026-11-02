@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import {
+  type RecordGroupPublic,
   type RecordPublic,
   type SubtitleDeliverResult,
   SubtitleService,
 } from "@/client"
+import { getPosterUrl } from "@/composables/useMediaPoster"
 import { useRecordStore } from "@/stores/record.store"
 import { useTaskStore } from "@/stores/task.store"
 import { useToastStore } from "@/stores/toast.store"
@@ -14,6 +16,13 @@ const recordStore = useRecordStore()
 const taskStore = useTaskStore()
 const toastStore = useToastStore()
 const { t } = useI18n() // 导入国际化工具函数
+
+const VIEW_MODE_KEY = "records-view-mode"
+const viewMode = ref(
+  localStorage.getItem(VIEW_MODE_KEY) === "group" ? "group" : "list",
+)
+const posterBroken = ref<Record<string, boolean>>({})
+const posterPreview = ref<{ src: string; alt: string } | null>(null)
 
 const searchQuery = ref("")
 const taskIdQuery = ref("")
@@ -56,11 +65,61 @@ const refreshCountdown = computed(() => {
 })
 
 // 一个简单的函数来生成数据哈希，用于检测变化
-const generateDataHash = (data: any[]) => {
+const generateDataHash = () => {
+  if (viewMode.value === "group") {
+    return JSON.stringify(
+      recordStore.groups.map((item) => `${item.key}_${item.latest_updatetime}`),
+    )
+  }
   return JSON.stringify(
-    data.map(
+    recordStore.records.map(
       (item) => `${item.transfer_record.id}_${item.transfer_record.updatetime}`,
     ),
+  )
+}
+
+const pageTotal = computed(() =>
+  viewMode.value === "group"
+    ? recordStore.totalGroups
+    : recordStore.totalRecords,
+)
+
+const pageLength = computed(() => {
+  const pages = Math.ceil(pageTotal.value / recordStore.itemsPerPage)
+  return pages > 0 ? pages : 1
+})
+
+function groupPosterUrl(group: RecordGroupPublic) {
+  return getPosterUrl({
+    media_type: "number",
+    number: group.number,
+    title: group.title || "",
+  })
+}
+
+function markPosterBroken(key: string) {
+  posterBroken.value = { ...posterBroken.value, [key]: true }
+}
+
+function openPosterPreview(group: RecordGroupPublic) {
+  if (posterBroken.value[group.key]) return
+  posterPreview.value = {
+    src: groupPosterUrl(group),
+    alt: group.title ? `${group.number} ${group.title}` : group.number,
+  }
+}
+
+function setRecordSelected(id: number, checked: boolean | null) {
+  if (checked) {
+    if (!selected.value.includes(id)) selected.value = [...selected.value, id]
+    return
+  }
+  selected.value = selected.value.filter((item) => item !== id)
+}
+
+function isDeletedRecord(item: RecordPublic) {
+  return Boolean(
+    item.transfer_record.deleted || item.transfer_record.srcdeleted,
   )
 }
 
@@ -122,6 +181,24 @@ async function deliverRecordSubtitle(item: RecordPublic) {
       subtitleDeliverRequest: {
         number,
         part_number: item.transfer_record.part_number || 0,
+      },
+    })
+    toastStore.success(deliverSummary(result))
+  } catch (error) {
+    toastStore.error(apiErrorMessage(error, t("pages.subtitles.deliverFailed")))
+  }
+}
+
+function groupHasSubtitles(group: RecordGroupPublic) {
+  return group.records.some((item) => subtitleCount(item) > 0)
+}
+
+async function deliverGroupSubtitle(group: RecordGroupPublic) {
+  if (!group.number) return
+  try {
+    const { data: result } = await SubtitleService.deliverSubtitles({
+      subtitleDeliverRequest: {
+        number: group.number,
       },
     })
     toastStore.success(deliverSummary(result))
@@ -288,24 +365,30 @@ const loadData = async (
     searchParams.search = searchQuery.value.trim()
   }
 
-  // 添加排序参数
-  if (sortBy.value.length > 0) {
-    const sortKey = sortBy.value[0].key
-    // 只有 transfer_record 前缀的字段才可以排序
-    if (sortKey.startsWith("transfer_record.")) {
-      // 去掉 "transfer_record." 前缀，只传入字段名
-      searchParams.sortBy = sortKey.replace("transfer_record.", "")
-      searchParams.sortDesc = sortBy.value[0].order === "desc"
+  if (viewMode.value === "group") {
+    searchParams.sortBy = "updatetime"
+    searchParams.sortDesc = true
+    await recordStore.getRecordGroups(searchParams)
+  } else {
+    // 添加排序参数
+    if (sortBy.value.length > 0) {
+      const sortKey = sortBy.value[0].key
+      // 只有 transfer_record 前缀的字段才可以排序
+      if (sortKey.startsWith("transfer_record.")) {
+        // 去掉 "transfer_record." 前缀，只传入字段名
+        searchParams.sortBy = sortKey.replace("transfer_record.", "")
+        searchParams.sortDesc = sortBy.value[0].order === "desc"
+      }
     }
+    await recordStore.getRecords(searchParams)
   }
-  await recordStore.getRecords(searchParams)
 
   // 刷新后处理
   lastRefreshTime.value = new Date()
 
   // 如果是自动刷新，检查数据是否有变化
   if (isAutoRefresh) {
-    const newDataHash = generateDataHash(recordStore.records)
+    const newDataHash = generateDataHash()
     if (lastDataHash.value && newDataHash !== lastDataHash.value) {
       hasNewData.value = true
     }
@@ -313,7 +396,7 @@ const loadData = async (
   } else {
     // 如果是手动刷新，重置新数据标志
     hasNewData.value = false
-    lastDataHash.value = generateDataHash(recordStore.records)
+    lastDataHash.value = generateDataHash()
   }
 
   // 设置下一次自动刷新
@@ -378,12 +461,33 @@ const handleDelete = () => {
 }
 
 const confirmDelete = async () => {
-  await recordStore.deleteRecords(selected.value, forceDelete.value)
+  const deleted = await recordStore.deleteRecords(
+    selected.value,
+    forceDelete.value,
+  )
   deleteDialog.value = false
   forceDelete.value = false
-  // 清空选中项
   selected.value = []
+  if (deleted) {
+    await loadData(recordStore.currentPage, recordStore.itemsPerPage)
+  }
 }
+
+watch(viewMode, (mode) => {
+  localStorage.setItem(VIEW_MODE_KEY, mode)
+  selected.value = []
+  posterBroken.value = {}
+  loadData(1, recordStore.itemsPerPage)
+})
+
+watch(
+  () => recordStore.showDialog,
+  (open, wasOpen) => {
+    if (wasOpen && !open && viewMode.value === "group") {
+      loadData(recordStore.currentPage, recordStore.itemsPerPage)
+    }
+  },
+)
 
 // 更新 watch 函数以实现搜索功能，添加防抖
 watch([searchQuery, taskIdQuery], () => {
@@ -443,6 +547,10 @@ onMounted(() => {
         </div>
         
         <div class="d-flex align-center gap-2">
+          <v-btn-toggle v-model="viewMode" mandatory density="comfortable" divided class="view-toggle">
+            <v-btn value="list" size="small">{{ t('pages.records.viewList') }}</v-btn>
+            <v-btn value="group" size="small">{{ t('pages.records.viewGroup') }}</v-btn>
+          </v-btn-toggle>
           <!-- 刷新状态和控件 -->
           <div class="refresh-controls d-flex align-center">
             <v-tooltip :text="autoRefresh ? t('pages.records.refreshOn') : t('pages.records.refreshOff')">
@@ -503,7 +611,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <v-data-table v-model="selected" :headers="headers" :items="recordStore.records" item-value="transfer_record.id"
+    <v-data-table v-if="viewMode === 'list'" v-model="selected" :headers="headers" :items="recordStore.records" item-value="transfer_record.id"
       show-select :loading="recordStore.loading" :sort-by="sortBy" height="auto" :items-per-page="-1"
       :row-props="getRowProps" class="records-table" @update:sort-by="handleSortChange">
       <template #item.transfer_record.srcname="{ item }">
@@ -541,7 +649,7 @@ onMounted(() => {
             <template #activator="{ props }">
               <v-chip
                 v-bind="props"
-                color="grey"
+                color="warning"
                 variant="flat"
                 size="small"
                 class="status-chip"
@@ -581,7 +689,7 @@ onMounted(() => {
 
       <template #item.extra_info.number="{ item }">
         <span class="nowrap-cell d-inline-flex align-center">
-          <span>{{ item.extra_info?.number || '' }}</span>
+          <span v-if="item.extra_info?.number" class="record-number">{{ item.extra_info.number }}</span>
           <VBtn
             v-if="subtitleCount(item) > 0"
             size="x-small"
@@ -631,19 +739,162 @@ onMounted(() => {
             <v-select :model-value="recordStore.itemsPerPage" :items="pageSizeOptions" density="compact"
               style="width: 80px" hide-details variant="plain" @update:model-value="handleItemsPerPageChange" />
             <div class="ms-4 text-caption text-grey">
-              {{ t('pages.records.totalRecords', { count: recordStore.totalRecords }) }}
+              {{ t('pages.records.totalRecords', { count: pageTotal }) }}
             </div>
           </div>
 
           <v-pagination v-model="recordStore.currentPage"
-            :length="Math.ceil(recordStore.totalRecords / recordStore.itemsPerPage)"
+            :length="pageLength"
             @update:model-value="handlePageChange" :total-visible="5" :show-first-last-page="false" />
         </div>
       </template>
     </v-data-table>
+
+    <div v-else class="record-groups">
+      <div v-if="recordStore.loading && recordStore.groups.length === 0" class="d-flex justify-center pa-8">
+        <v-progress-circular indeterminate color="primary" />
+      </div>
+      <div v-else-if="recordStore.groups.length === 0" class="text-medium-emphasis text-center pa-8">
+        {{ t('pages.records.noGroups') }}
+      </div>
+      <article v-for="group in recordStore.groups" :key="group.key" class="record-group">
+        <aside class="record-group-entry">
+          <button type="button" class="record-poster" :class="{ 'show-full': group.crop === false }"
+            :disabled="posterBroken[group.key]"
+            :title="posterBroken[group.key] ? undefined : t('components.metadata.form.clickToView')"
+            @click="openPosterPreview(group)">
+            <img v-if="group.crop === false && !posterBroken[group.key]" class="record-poster-fill"
+              :src="groupPosterUrl(group)" alt="" aria-hidden="true" loading="lazy" decoding="async"
+              referrerpolicy="no-referrer" @error="markPosterBroken(group.key)">
+            <img v-show="!posterBroken[group.key]" class="record-poster-image" :src="groupPosterUrl(group)"
+              :alt="group.number" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+              @error="markPosterBroken(group.key)">
+            <div v-if="posterBroken[group.key]" class="record-poster-empty">
+              <v-icon icon="mdi-image-off" size="small" />
+            </div>
+          </button>
+        </aside>
+        <div class="record-group-main">
+          <div class="record-group-meta">
+            <div class="record-number">{{ group.number }}</div>
+            <div v-if="group.title" class="record-group-title">{{ group.title }}</div>
+            <VBtn
+              v-if="groupHasSubtitles(group)"
+              class="record-group-subtitle record-group-action"
+              :title="t('pages.subtitles.deliver')"
+              @click="deliverGroupSubtitle(group)"
+            >
+              <VIcon icon="bx-captions" size="18" />
+            </VBtn>
+            <div class="text-caption text-medium-emphasis record-group-count">
+              {{ t('pages.records.groupFileCount', { count: group.record_count }) }}
+            </div>
+          </div>
+          <div class="record-group-list">
+            <div class="record-group-row record-group-columns">
+              <span />
+              <span class="record-group-status">{{ t('pages.records.status') }}</span>
+              <span>{{ t('pages.records.name') }}</span>
+              <span>{{ t('pages.records.destPath') }}</span>
+              <span>{{ t('pages.records.seasonEpisode') }}</span>
+              <span>{{ t('pages.records.partNumber') }}</span>
+              <span>{{ t('pages.records.tag') }}</span>
+              <span>{{ t('pages.records.updateTime') }}</span>
+              <span>{{ t('pages.records.actions') }}</span>
+            </div>
+            <div v-for="item in group.records" :key="item.transfer_record.id" class="record-group-row"
+              :class="{ 'deleted-row': isDeletedRecord(item) }">
+              <v-checkbox :model-value="selected.includes(item.transfer_record.id)" hide-details density="compact"
+                class="group-check" @update:model-value="setRecordSelected(item.transfer_record.id, $event)" />
+              <div class="record-group-status">
+                <v-tooltip v-if="item.transfer_record.success !== null"
+                  :text="item.transfer_record.success ? t('pages.records.success') : t('pages.records.failed')">
+                  <template #activator="{ props }">
+                    <v-icon v-bind="props" size="18"
+                      :icon="item.transfer_record.success ? 'bx-check' : 'bx-x'"
+                      :color="item.transfer_record.success ? 'success' : 'error'" />
+                  </template>
+                </v-tooltip>
+                <v-tooltip v-if="item.transfer_record.ignored" :text="t('pages.records.ignored')">
+                  <template #activator="{ props }">
+                    <v-icon v-bind="props" icon="bx-minus-circle" size="18" color="warning" />
+                  </template>
+                </v-tooltip>
+              </div>
+              <div class="record-group-cell">
+                <v-tooltip :text="item.transfer_record.srcpath">
+                  <template #activator="{ props }">
+                    <button v-bind="props" type="button" class="record-group-filename"
+                      :class="{ 'text-decoration-line-through': isDeletedRecord(item) }"
+                      @click="showSelectedRecord(item)">
+                      {{ item.transfer_record.srcname }}
+                    </button>
+                  </template>
+                </v-tooltip>
+              </div>
+              <div class="record-group-cell">
+                <v-tooltip :text="item.transfer_record.destpath || ''">
+                  <template #activator="{ props }">
+                    <span v-bind="props" class="record-group-text"
+                      :class="{ 'text-decoration-line-through': item.transfer_record.deleted }">
+                      {{ item.transfer_record.destpath || '' }}
+                    </span>
+                  </template>
+                </v-tooltip>
+              </div>
+              <span class="record-group-cell record-group-fixed">
+                {{ formatSeasonEpisode(item.transfer_record.season, item.transfer_record.episode) }}
+              </span>
+              <span class="record-group-cell record-group-fixed">
+                {{ formatPartNumber(item.transfer_record.part_number) }}
+              </span>
+              <div class="tag-cell">
+                <template v-if="item.extra_info?.tag">
+                  <v-chip v-for="tag in item.extra_info.tag.split(',')" :key="tag" :color="getTagColor(tag)"
+                    variant="flat" class="tag-chip" size="small">
+                    {{ tag.trim() }}
+                  </v-chip>
+                </template>
+              </div>
+              <div class="record-group-cell">
+                <span class="record-group-time">
+                  {{ formatDateTime(item.transfer_record.updatetime) }}
+                </span>
+              </div>
+              <div class="actions-cell">
+                <VBtn class="record-group-action" @click="showSelectedRecord(item)">
+                  <VIcon icon="bx-edit-alt" size="18" />
+                </VBtn>
+                <VBtn class="record-group-action" @click="rerunThisRecord(item)">
+                  <VIcon icon="bx-refresh" size="18" />
+                </VBtn>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+      <div class="d-flex align-center justify-end px-4 py-3 w-100">
+        <div class="d-flex align-center me-4">
+          <span class="text-caption text-grey me-2">{{ t('pages.records.itemsPerPage') }}</span>
+          <v-select :model-value="recordStore.itemsPerPage" :items="pageSizeOptions" density="compact"
+            style="width: 80px" hide-details variant="plain" @update:model-value="handleItemsPerPageChange" />
+          <div class="ms-4 text-caption text-grey">
+            {{ t('pages.records.totalGroups', { count: pageTotal }) }}
+          </div>
+        </div>
+        <v-pagination v-model="recordStore.currentPage" :length="pageLength" @update:model-value="handlePageChange"
+          :total-visible="5" :show-first-last-page="false" />
+      </div>
+    </div>
   </VCard>
 
   <RecordDetailDialog />
+
+  <VDialog :model-value="posterPreview !== null" max-width="96vw"
+    @update:model-value="(open) => { if (!open) posterPreview = null }">
+    <img v-if="posterPreview" class="record-poster-lightbox" :src="posterPreview.src" :alt="posterPreview.alt"
+      @click="posterPreview = null">
+  </VDialog>
 
   <!-- 删除确认对话框 -->
   <VDialog v-model="deleteDialog" max-width="500">
@@ -857,6 +1108,255 @@ onMounted(() => {
   min-width: 100px;
 }
 
+.view-toggle {
+  flex: 0 0 auto;
+}
+
+.record-groups {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.record-group {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.record-group-entry {
+  flex: 0 0 112px;
+  width: 112px;
+  display: flex;
+  align-items: flex-start;
+  padding: 12px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-inline-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.record-poster {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background-color: #1a1a1a;
+  cursor: zoom-in;
+}
+
+.record-poster:disabled {
+  cursor: default;
+}
+
+.record-poster-lightbox {
+  display: block;
+  max-width: 96vw;
+  max-height: 90vh;
+  margin: auto;
+  cursor: zoom-out;
+}
+
+.record-poster-fill,
+.record-poster-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.record-poster-fill {
+  object-fit: cover;
+  object-position: center;
+  filter: blur(20px) saturate(1.1) brightness(0.65);
+  transform: scale(1.2);
+}
+
+.record-poster-image {
+  object-fit: cover;
+  object-position: right center;
+  z-index: 1;
+}
+
+.record-poster.show-full .record-poster-image {
+  object-fit: contain;
+  object-position: center;
+}
+
+.record-poster-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.record-group-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.record-group-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 16px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.record-group-list {
+  display: grid;
+  grid-template-columns:
+    32px
+    40px
+    minmax(0, 0.7fr)
+    minmax(0, 1fr)
+    72px
+    96px
+    160px
+    184px
+    86px;
+  column-gap: 10px;
+  min-width: 0;
+  padding: 0 8px 0 12px;
+  overflow: hidden;
+}
+
+.record-group-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  min-width: 0;
+  padding: 6px 0;
+}
+
+.record-group-row + .record-group-row {
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.record-group-columns {
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.record-group-columns span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-group-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.record-number {
+  flex: 0 0 auto;
+  padding: 1px 8px;
+  border-radius: 4px;
+  background: rgb(var(--v-theme-primary-darken-1));
+  color: rgb(var(--v-theme-on-primary));
+  font-weight: 600;
+  font-size: 0.8125rem;
+  line-height: 1.7;
+  letter-spacing: 0.03em;
+}
+
+.record-group-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  font-size: 0.875rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-group-subtitle {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+}
+
+.record-group-count {
+  flex: 0 0 auto;
+  margin-inline-start: 4px;
+  white-space: nowrap;
+}
+
+.record-group-meta:not(:has(.record-group-subtitle)) .record-group-count {
+  margin-inline-start: auto;
+}
+
+.record-group-cell {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.record-group-filename,
+.record-group-text,
+.record-group-time {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-group-filename {
+  text-align: start;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
+.record-group-time {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8125rem;
+}
+
+.group-check {
+  flex: 0 0 auto;
+  width: 32px;
+  margin-inline: 0;
+  overflow: hidden;
+}
+
+.group-check :deep(.v-selection-control) {
+  min-height: 32px;
+}
+
+.record-group-row .actions-cell {
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.record-group-action.v-btn {
+  --v-btn-height: 24px;
+  height: 24px;
+  min-width: 40px;
+  padding: 0 6px;
+}
+
+.record-group-row .tag-cell {
+  min-width: 0;
+  overflow: hidden;
+}
+
 @media (max-width: 768px) {
   /* ... existing responsive styles ... */
   
@@ -868,6 +1368,15 @@ onMounted(() => {
   
   .refresh-counter {
     text-align: right;
+  }
+
+  .record-group-meta {
+    flex-wrap: wrap;
+  }
+
+  .record-group-title {
+    flex-basis: 100%;
+    white-space: normal;
   }
 }
 </style>

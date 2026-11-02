@@ -356,6 +356,11 @@ export default {
     },
     records: {
       title: "记录",
+      viewList: "列表",
+      viewGroup: "词条",
+      totalGroups: "总计 {count} 个词条",
+      groupFileCount: "{count} 个文件",
+      noGroups: "没有可归并的番号",
       edit: "编辑记录",
       search: "文件名搜索",
       filterTaskId: "过滤任务ID",
