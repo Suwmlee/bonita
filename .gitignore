@@ -139,3 +139,4 @@ cache/
 *.log.*
 .cursor/
 */data/
+docs/
