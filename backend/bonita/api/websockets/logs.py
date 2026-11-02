@@ -2,9 +2,10 @@ import asyncio
 import logging
 from typing import List, Optional
 
+import jwt
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, status
 from fastapi.websockets import WebSocketState
-from jose import jwt, JWTError
+from jwt.exceptions import InvalidTokenError as JWTError
 from pydantic import ValidationError
 from starlette.requests import ClientDisconnect
 

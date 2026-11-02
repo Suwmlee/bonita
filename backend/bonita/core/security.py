@@ -1,8 +1,9 @@
 
-import bcrypt
 from datetime import datetime, timedelta, timezone
 from typing import Any
-from jose import jwt
+
+import bcrypt
+import jwt
 
 from bonita.core.config import settings
 
