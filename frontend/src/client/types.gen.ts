@@ -1088,6 +1088,60 @@ export type QBittorrentSettings = {
 };
 
 /**
+ * RecordGroupPublic
+ *
+ * 同一番号、且能对上 metadata 的转移记录。
+ */
+export type RecordGroupPublic = {
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Number
+     */
+    number: string;
+    /**
+     * Title
+     */
+    title?: string;
+    /**
+     * Cover
+     */
+    cover?: string;
+    /**
+     * Crop
+     */
+    crop?: boolean;
+    /**
+     * Record Count
+     */
+    record_count: number;
+    /**
+     * Latest Updatetime
+     */
+    latest_updatetime?: string | null;
+    /**
+     * Records
+     */
+    records: Array<RecordPublic>;
+};
+
+/**
+ * RecordGroupsPublic
+ */
+export type RecordGroupsPublic = {
+    /**
+     * Data
+     */
+    data: Array<RecordGroupPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * RecordPublic
  */
 export type RecordPublic = {
@@ -2749,6 +2803,56 @@ export type GetRecordsResponses = {
 };
 
 export type GetRecordsResponse = GetRecordsResponses[keyof GetRecordsResponses];
+
+export type GetRecordGroupsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Task Id
+         */
+        task_id?: number;
+        /**
+         * Search
+         */
+        search?: string;
+        /**
+         * Sort By
+         */
+        sort_by?: string;
+        /**
+         * Sort Desc
+         */
+        sort_desc?: boolean;
+    };
+    url: '/api/v1/records/groups';
+};
+
+export type GetRecordGroupsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetRecordGroupsError = GetRecordGroupsErrors[keyof GetRecordGroupsErrors];
+
+export type GetRecordGroupsResponses = {
+    /**
+     * Successful Response
+     */
+    200: RecordGroupsPublic;
+};
+
+export type GetRecordGroupsResponse = GetRecordGroupsResponses[keyof GetRecordGroupsResponses];
 
 export type UpdateRecordData = {
     body: RecordPublic;
