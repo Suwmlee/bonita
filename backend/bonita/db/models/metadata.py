@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Date, FLOAT
+from sqlalchemy import Boolean, Column, DateTime, Index, Integer, String, Date, FLOAT, func
 
 from bonita.db import Base
 
@@ -38,3 +38,7 @@ class Metadata(Base):
 
     createtime = Column(DateTime, default=datetime.now, comment="创建时间")
     updatetime = Column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+
+    __table_args__ = (
+        Index("ix_metadata_number_key", func.upper(func.trim(number))),
+    )

@@ -90,31 +90,46 @@ class RecordService:
         count = count_query.count()
         return records, count
 
-    def _number_group_query(self, task_id: Optional[int] = None):
-        """只保留番号能对上 metadata 的转移记录。同一番号取 id 最大的 metadata。"""
+    def _number_records_query(self, task_id: Optional[int] = None):
+        """只保留番号能对上 metadata 的转移记录，不读取 metadata 正文。"""
         number_expr = func.upper(func.trim(ExtraInfo.number))
         meta_number = func.upper(func.trim(Metadata.number))
-        latest_meta = (
-            self.session.query(
-                meta_number.label("number_key"),
-                func.max(Metadata.id).label("metadata_id"),
-            )
+        valid_numbers = (
+            self.session.query(meta_number.label("number_key"))
             .filter(Metadata.number.isnot(None))
             .filter(func.length(func.trim(Metadata.number)) > 0)
-            .group_by(meta_number)
+            .distinct()
             .subquery()
         )
         query = (
-            self.session.query(TransRecords, ExtraInfo, Metadata)
+            self.session.query(TransRecords, ExtraInfo)
             .join(ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath)
-            .join(latest_meta, number_expr == latest_meta.c.number_key)
-            .join(Metadata, Metadata.id == latest_meta.c.metadata_id)
-            .filter(ExtraInfo.number.isnot(None))
-            .filter(func.length(func.trim(ExtraInfo.number)) > 0)
+            .join(valid_numbers, number_expr == valid_numbers.c.number_key)
         )
         if task_id is not None:
             query = query.filter(TransRecords.task_id == task_id)
         return query, number_expr
+
+    def _latest_metadata_by_number(self, keys: List[str]) -> dict:
+        """每个番号取 id 最大的一条 metadata。只查当前页的番号。"""
+        if not keys:
+            return {}
+        meta_number = func.upper(func.trim(Metadata.number))
+        latest = (
+            self.session.query(
+                meta_number.label("number_key"),
+                func.max(Metadata.id).label("metadata_id"),
+            )
+            .filter(meta_number.in_(keys))
+            .group_by(meta_number)
+            .subquery()
+        )
+        rows = (
+            self.session.query(Metadata)
+            .join(latest, Metadata.id == latest.c.metadata_id)
+            .all()
+        )
+        return {normalize_number(row.number): row for row in rows}
 
     def get_record_groups(
         self,
@@ -131,7 +146,7 @@ class RecordService:
         搜索命中番号、源文件名或源路径时，返回该词条里符合 task_id 的全部记录。
         排序按词条内最新记录的 updatetime。
         """
-        query, number_expr = self._number_group_query(task_id)
+        query, number_expr = self._number_records_query(task_id)
         if search and search.strip():
             term = search.strip()
             matched = (
@@ -170,14 +185,14 @@ class RecordService:
             .order_by(desc(TransRecords.updatetime), desc(TransRecords.id))
             .all()
         )
-        bucket = {key: {"rows": [], "metadata": None, "latest": None} for key in keys}
-        for trans_record, extra_info, metadata in rows:
+        metadata_by_number = self._latest_metadata_by_number(keys)
+        bucket = {key: {"rows": [], "latest": None} for key in keys}
+        for trans_record, extra_info in rows:
             key = normalize_number(extra_info.number if extra_info else "")
             item = bucket.get(key)
             if item is None:
                 continue
             item["rows"].append((trans_record, extra_info))
-            item["metadata"] = metadata
             updated = trans_record.updatetime
             if item["latest"] is None or (updated is not None and updated > item["latest"]):
                 item["latest"] = updated
@@ -185,7 +200,7 @@ class RecordService:
         groups = []
         for key in keys:
             item = bucket[key]
-            metadata = item["metadata"]
+            metadata = metadata_by_number.get(key)
             groups.append({
                 "key": key,
                 "number": metadata.number if metadata and metadata.number else key,

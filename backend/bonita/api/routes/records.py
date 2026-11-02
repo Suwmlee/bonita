@@ -84,9 +84,17 @@ def get_record_groups(
         sort_by=sort_by,
         sort_desc=sort_desc,
     )
-    data = []
+    flat_rows = []
+    offsets = []
     for group in groups:
-        records = _records_public(session, group["rows"])
+        offsets.append(len(flat_rows))
+        flat_rows.extend(group["rows"])
+    publics = _records_public(session, flat_rows)
+    data = []
+    for index, group in enumerate(groups):
+        start = offsets[index]
+        end = offsets[index + 1] if index + 1 < len(offsets) else len(publics)
+        records = publics[start:end]
         data.append(schemas.RecordGroupPublic(
             key=group["key"],
             number=group["number"],

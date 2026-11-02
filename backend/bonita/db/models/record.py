@@ -12,7 +12,7 @@ class TransRecords(Base):
     """
     id = Column(Integer, primary_key=True)
     srcname = Column(String, default='')
-    srcpath = Column(String, default='')
+    srcpath = Column(String, default='', index=True)
     srcfolder = Column(String, default='')
     task_id = Column(Integer, default=0, server_default='0', comment='任务ID')
 
