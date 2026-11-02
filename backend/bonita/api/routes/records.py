@@ -9,6 +9,29 @@ from bonita.services.subtitle_service import normalize_number, SubtitleService
 router = APIRouter()
 
 
+def _records_public(session, joined_results) -> List[schemas.RecordPublic]:
+    pairs = []
+    for trans_record, extra_info in joined_results:
+        number = extra_info.number if extra_info else ""
+        pairs.append((number, trans_record.part_number or 0))
+    subtitle_counts = SubtitleService(session).counts_for(pairs)
+
+    record_list = []
+    for trans_record, extra_info in joined_results:
+        extra_info_public = None
+        number = ""
+        if extra_info:
+            extra_info_public = schemas.ExtraInfoPublic.model_validate(extra_info)
+            number = extra_info.number or ""
+        subtitle_count = subtitle_counts.get((normalize_number(number), trans_record.part_number or 0), 0)
+        record_list.append(schemas.RecordPublic(
+            transfer_record=schemas.TransferRecordPublic.model_validate(trans_record),
+            extra_info=extra_info_public,
+            subtitle_count=subtitle_count,
+        ))
+    return record_list
+
+
 @router.get("/all", response_model=schemas.RecordsPublic)
 def get_records(
     session: SessionDep,
@@ -35,28 +58,46 @@ def get_records(
         sort_desc=sort_desc
     )
 
-    pairs = []
-    for trans_record, extra_info in joined_results:
-        number = extra_info.number if extra_info else ""
-        pairs.append((number, trans_record.part_number or 0))
-    subtitle_counts = SubtitleService(session).counts_for(pairs)
+    return schemas.RecordsPublic(data=_records_public(session, joined_results), count=count)
 
-    record_list = []
-    for trans_record, extra_info in joined_results:
-        transfer_record_public = schemas.TransferRecordPublic.model_validate(trans_record)
-        extra_info_public = None
-        number = ""
-        if extra_info:
-            extra_info_public = schemas.ExtraInfoPublic.model_validate(extra_info)
-            number = extra_info.number or ""
-        subtitle_count = subtitle_counts.get((normalize_number(number), trans_record.part_number or 0), 0)
-        record_list.append(schemas.RecordPublic(
-            transfer_record=transfer_record_public,
-            extra_info=extra_info_public,
-            subtitle_count=subtitle_count,
+
+@router.get("/groups", response_model=schemas.RecordGroupsPublic)
+def get_record_groups(
+    session: SessionDep,
+    skip: int = 0,
+    limit: int = 100,
+    task_id: int = None,
+    search: str = None,
+    sort_by: str = "updatetime",
+    sort_desc: bool = True
+) -> Any:
+    """按番号返回词条。
+
+    只包含能对上 metadata 的番号。搜索命中番号、源文件名或源路径时返回整张词条。
+    分页单位是词条。sort_by 目前按词条内最新记录的 updatetime 排序。
+    """
+    groups, count = RecordService(session).get_record_groups(
+        skip=skip,
+        limit=limit,
+        task_id=task_id,
+        search=search,
+        sort_by=sort_by,
+        sort_desc=sort_desc,
+    )
+    data = []
+    for group in groups:
+        records = _records_public(session, group["rows"])
+        data.append(schemas.RecordGroupPublic(
+            key=group["key"],
+            number=group["number"],
+            title=group["title"] or "",
+            cover=group["cover"] or "",
+            crop=group["crop"],
+            record_count=len(records),
+            latest_updatetime=group["latest_updatetime"],
+            records=records,
         ))
-
-    return schemas.RecordsPublic(data=record_list, count=count)
+    return schemas.RecordGroupsPublic(data=data, count=count)
 
 
 @router.put("/record", response_model=schemas.RecordPublic)

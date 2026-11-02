@@ -4,10 +4,12 @@ from threading import Thread
 from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from sqlalchemy import or_, desc, asc
+from sqlalchemy import func, or_, desc, asc
 
 from bonita.db.models.record import TransRecords
 from bonita.db.models.extrainfo import ExtraInfo
+from bonita.db.models.metadata import Metadata
+from bonita.services.subtitle_service import normalize_number
 from bonita.utils.filehelper import cleanFilebyFilter, cleanFolderWithoutSuffix, video_type
 
 logger = logging.getLogger(__name__)
@@ -87,6 +89,113 @@ class RecordService:
 
         count = count_query.count()
         return records, count
+
+    def _number_group_query(self, task_id: Optional[int] = None):
+        """只保留番号能对上 metadata 的转移记录。同一番号取 id 最大的 metadata。"""
+        number_expr = func.upper(func.trim(ExtraInfo.number))
+        meta_number = func.upper(func.trim(Metadata.number))
+        latest_meta = (
+            self.session.query(
+                meta_number.label("number_key"),
+                func.max(Metadata.id).label("metadata_id"),
+            )
+            .filter(Metadata.number.isnot(None))
+            .filter(func.length(func.trim(Metadata.number)) > 0)
+            .group_by(meta_number)
+            .subquery()
+        )
+        query = (
+            self.session.query(TransRecords, ExtraInfo, Metadata)
+            .join(ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath)
+            .join(latest_meta, number_expr == latest_meta.c.number_key)
+            .join(Metadata, Metadata.id == latest_meta.c.metadata_id)
+            .filter(ExtraInfo.number.isnot(None))
+            .filter(func.length(func.trim(ExtraInfo.number)) > 0)
+        )
+        if task_id is not None:
+            query = query.filter(TransRecords.task_id == task_id)
+        return query, number_expr
+
+    def get_record_groups(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        task_id: Optional[int] = None,
+        search: Optional[str] = None,
+        sort_by: str = "updatetime",
+        sort_desc: bool = True,
+    ) -> Tuple[list, int]:
+        """按番号分页返回词条。
+
+        没有番号、或番号对不上 metadata 的记录不进入结果。
+        搜索命中番号、源文件名或源路径时，返回该词条里符合 task_id 的全部记录。
+        排序按词条内最新记录的 updatetime。
+        """
+        query, number_expr = self._number_group_query(task_id)
+        if search and search.strip():
+            term = search.strip()
+            matched = (
+                query.filter(
+                    or_(
+                        number_expr.like(f"%{term.upper()}%"),
+                        TransRecords.srcname.like(f"%{term}%"),
+                        TransRecords.srcpath.like(f"%{term}%"),
+                    )
+                )
+                .with_entities(number_expr.label("number_key"))
+                .distinct()
+                .subquery()
+            )
+            query = query.filter(number_expr.in_(self.session.query(matched.c.number_key)))
+
+        count = query.with_entities(func.count(func.distinct(number_expr))).scalar() or 0
+        latest_time = func.max(TransRecords.updatetime)
+        if sort_by != "updatetime":
+            logger.info("词条排序仅支持 updatetime，收到 %s", sort_by)
+        time_order = desc(latest_time) if sort_desc else asc(latest_time)
+        page_rows = (
+            query.with_entities(number_expr.label("number_key"), latest_time.label("latest"))
+            .group_by(number_expr)
+            .order_by(time_order, desc(func.max(TransRecords.id)))
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+        keys = [row.number_key for row in page_rows if row.number_key]
+        if not keys:
+            return [], count
+
+        rows = (
+            query.filter(number_expr.in_(keys))
+            .order_by(desc(TransRecords.updatetime), desc(TransRecords.id))
+            .all()
+        )
+        bucket = {key: {"rows": [], "metadata": None, "latest": None} for key in keys}
+        for trans_record, extra_info, metadata in rows:
+            key = normalize_number(extra_info.number if extra_info else "")
+            item = bucket.get(key)
+            if item is None:
+                continue
+            item["rows"].append((trans_record, extra_info))
+            item["metadata"] = metadata
+            updated = trans_record.updatetime
+            if item["latest"] is None or (updated is not None and updated > item["latest"]):
+                item["latest"] = updated
+
+        groups = []
+        for key in keys:
+            item = bucket[key]
+            metadata = item["metadata"]
+            groups.append({
+                "key": key,
+                "number": metadata.number if metadata and metadata.number else key,
+                "title": (metadata.title or "") if metadata else "",
+                "cover": (metadata.cover or "") if metadata else "",
+                "crop": bool(metadata.crop) if metadata and metadata.crop is not None else True,
+                "latest_updatetime": item["latest"],
+                "rows": item["rows"],
+            })
+        return groups, count
 
     def get_record_by_id(self, record_id: int) -> Tuple[Optional[TransRecords], Optional[ExtraInfo]]:
         """通过ID获取转移记录和额外信息

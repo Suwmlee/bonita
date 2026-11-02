@@ -66,6 +66,26 @@ class RecordsPublic(BaseModel):
     count: int
 
 
+class RecordGroupPublic(BaseModel):
+    """同一番号、且能对上 metadata 的转移记录。"""
+    key: str
+    number: str
+    title: str = ""
+    cover: str = ""
+    crop: bool = True
+    record_count: int
+    latest_updatetime: Optional[datetime] = None
+    records: List[RecordPublic]
+
+    class Config:
+        from_attributes = True
+
+
+class RecordGroupsPublic(BaseModel):
+    data: List[RecordGroupPublic]
+    count: int
+
+
 class TransRecordsPathSyncParam(BaseModel):
     """转移记录路径批量替换参数"""
     old_prefix: str = Field(..., description="旧路径前缀")
