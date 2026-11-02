@@ -26,7 +26,6 @@ const i18n = createI18n({
     en,
   },
   globalInjection: true, // 全局注入 $t 函数
-  allowComposition: true, // 允许组合式 API
 })
 
 // 导出 i18n 实例供组件内使用
