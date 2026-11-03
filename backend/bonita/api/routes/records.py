@@ -71,9 +71,10 @@ def get_record_groups(
     sort_by: str = "updatetime",
     sort_desc: bool = True
 ) -> Any:
-    """按番号返回词条。
+    """按媒体项返回词条。
 
-    只包含能对上 metadata 的番号。搜索命中番号、源文件名或源路径时返回整张词条。
+    只包含已经挂上 media_item_id 的记录。单集收到父剧。
+    搜索命中番号、标题、外部编号、源文件名或源路径时返回整张词条。
     分页单位是词条。sort_by 目前按词条内最新记录的 updatetime 排序。
     """
     groups, count = RecordService(session).get_record_groups(
@@ -97,8 +98,12 @@ def get_record_groups(
         records = publics[start:end]
         data.append(schemas.RecordGroupPublic(
             key=group["key"],
+            kind=group["kind"],
             number=group["number"],
             title=group["title"] or "",
+            imdb_id=group["imdb_id"] or "",
+            tmdb_id=group["tmdb_id"] or "",
+            tvdb_id=group["tvdb_id"] or "",
             cover=group["cover"] or "",
             crop=group["crop"],
             record_count=len(records),

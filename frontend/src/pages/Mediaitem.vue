@@ -312,6 +312,9 @@ const formatDateTime = (dateStr: string | null | undefined) => {
 
 // 获取媒体类型的显示文本
 const getMediaTypeLabel = (mediaType: string) => {
+  if (mediaType === "number") {
+    return t("pages.mediaitem.hasNumber")
+  }
   if (mediaType === "movie") {
     return t("pages.mediaitem.typeMovie")
   }

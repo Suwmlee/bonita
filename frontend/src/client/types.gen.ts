@@ -1090,7 +1090,7 @@ export type QBittorrentSettings = {
 /**
  * RecordGroupPublic
  *
- * 同一番号、且能对上 metadata 的转移记录。
+ * 挂到同一个媒体项上的转移记录。单集收到父剧。
  */
 export type RecordGroupPublic = {
     /**
@@ -1098,9 +1098,25 @@ export type RecordGroupPublic = {
      */
     key: string;
     /**
+     * Kind
+     */
+    kind?: string;
+    /**
      * Number
      */
-    number: string;
+    number?: string;
+    /**
+     * Imdb Id
+     */
+    imdb_id?: string;
+    /**
+     * Tmdb Id
+     */
+    tmdb_id?: string;
+    /**
+     * Tvdb Id
+     */
+    tvdb_id?: string;
     /**
      * Title
      */

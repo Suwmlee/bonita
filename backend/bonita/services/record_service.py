@@ -2,13 +2,15 @@ import os
 import logging
 from threading import Thread
 from typing import List, Optional, Tuple
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 from datetime import datetime, timedelta
-from sqlalchemy import func, or_, desc, asc
+from sqlalchemy import and_, case, func, or_, desc, asc
 
 from bonita.db.models.record import TransRecords
 from bonita.db.models.extrainfo import ExtraInfo
+from bonita.db.models.mediaitem import MediaItem
 from bonita.db.models.metadata import Metadata
+from bonita.modules.media_service.record_link import relink_record_for_number
 from bonita.services.subtitle_service import normalize_number
 from bonita.utils.filehelper import cleanFilebyFilter, cleanFolderWithoutSuffix, video_type
 
@@ -90,25 +92,43 @@ class RecordService:
         count = count_query.count()
         return records, count
 
-    def _number_records_query(self, task_id: Optional[int] = None):
-        """只保留番号能对上 metadata 的转移记录，不读取 metadata 正文。"""
-        number_expr = func.upper(func.trim(ExtraInfo.number))
-        meta_number = func.upper(func.trim(Metadata.number))
-        valid_numbers = (
-            self.session.query(meta_number.label("number_key"))
-            .filter(Metadata.number.isnot(None))
-            .filter(func.length(func.trim(Metadata.number)) > 0)
-            .distinct()
-            .subquery()
+    def _group_records_query(self, task_id: Optional[int] = None):
+        """只保留已挂上媒体项、且能单独成词条的记录。单集收到父剧。"""
+        file_item = aliased(MediaItem)
+        group_item = aliased(MediaItem)
+        group_id = case(
+            (
+                and_(
+                    file_item.media_type == "episode",
+                    file_item.series_id.isnot(None),
+                ),
+                file_item.series_id,
+            ),
+            else_=file_item.id,
+        )
+        has_external_id = or_(
+            and_(group_item.imdb_id.isnot(None), func.length(func.trim(group_item.imdb_id)) > 0),
+            and_(group_item.tmdb_id.isnot(None), func.length(func.trim(group_item.tmdb_id)) > 0),
+            and_(group_item.tvdb_id.isnot(None), func.length(func.trim(group_item.tvdb_id)) > 0),
         )
         query = (
-            self.session.query(TransRecords, ExtraInfo)
-            .join(ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath)
-            .join(valid_numbers, number_expr == valid_numbers.c.number_key)
+            self.session.query(TransRecords, ExtraInfo, group_item)
+            .join(file_item, TransRecords.media_item_id == file_item.id)
+            .join(group_item, group_item.id == group_id)
+            .outerjoin(ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath)
+            .filter(
+                or_(
+                    group_item.media_type == "number",
+                    and_(
+                        group_item.media_type.in_(("movie", "video", "tvshow")),
+                        has_external_id,
+                    ),
+                )
+            )
         )
         if task_id is not None:
             query = query.filter(TransRecords.task_id == task_id)
-        return query, number_expr
+        return query, group_item
 
     def _latest_metadata_by_number(self, keys: List[str]) -> dict:
         """每个番号取 id 最大的一条 metadata。只查当前页的番号。"""
@@ -140,73 +160,94 @@ class RecordService:
         sort_by: str = "updatetime",
         sort_desc: bool = True,
     ) -> Tuple[list, int]:
-        """按番号分页返回词条。
+        """按媒体项分页返回词条。
 
-        没有番号、或番号对不上 metadata 的记录不进入结果。
-        搜索命中番号、源文件名或源路径时，返回该词条里符合 task_id 的全部记录。
+        没有 media_item_id 的记录不进入结果。单集收到父剧。
+        父剧没有外部编号的单集不进入结果。
+        搜索命中番号、标题、外部编号、源文件名或源路径时，返回整张词条。
         排序按词条内最新记录的 updatetime。
         """
-        query, number_expr = self._number_records_query(task_id)
+        query, group_item = self._group_records_query(task_id)
         if search and search.strip():
             term = search.strip()
+            like = f"%{term}%"
             matched = (
                 query.filter(
                     or_(
-                        number_expr.like(f"%{term.upper()}%"),
-                        TransRecords.srcname.like(f"%{term}%"),
-                        TransRecords.srcpath.like(f"%{term}%"),
+                        group_item.number.like(like),
+                        group_item.title.like(like),
+                        group_item.original_title.like(like),
+                        group_item.imdb_id.like(like),
+                        group_item.tmdb_id.like(like),
+                        group_item.tvdb_id.like(like),
+                        TransRecords.srcname.like(like),
+                        TransRecords.srcpath.like(like),
                     )
                 )
-                .with_entities(number_expr.label("number_key"))
+                .with_entities(group_item.id.label("group_id"))
                 .distinct()
                 .subquery()
             )
-            query = query.filter(number_expr.in_(self.session.query(matched.c.number_key)))
+            query = query.filter(group_item.id.in_(self.session.query(matched.c.group_id)))
 
-        count = query.with_entities(func.count(func.distinct(number_expr))).scalar() or 0
+        count = query.with_entities(func.count(func.distinct(group_item.id))).scalar() or 0
         latest_time = func.max(TransRecords.updatetime)
         if sort_by != "updatetime":
             logger.info("词条排序仅支持 updatetime，收到 %s", sort_by)
         time_order = desc(latest_time) if sort_desc else asc(latest_time)
         page_rows = (
-            query.with_entities(number_expr.label("number_key"), latest_time.label("latest"))
-            .group_by(number_expr)
+            query.with_entities(group_item.id.label("group_id"), latest_time.label("latest"))
+            .group_by(group_item.id)
             .order_by(time_order, desc(func.max(TransRecords.id)))
             .offset(skip)
             .limit(limit)
             .all()
         )
-        keys = [row.number_key for row in page_rows if row.number_key]
-        if not keys:
+        group_ids = [row.group_id for row in page_rows if row.group_id]
+        if not group_ids:
             return [], count
 
         rows = (
-            query.filter(number_expr.in_(keys))
+            query.filter(group_item.id.in_(group_ids))
             .order_by(desc(TransRecords.updatetime), desc(TransRecords.id))
             .all()
         )
-        metadata_by_number = self._latest_metadata_by_number(keys)
-        bucket = {key: {"rows": [], "latest": None} for key in keys}
-        for trans_record, extra_info in rows:
-            key = normalize_number(extra_info.number if extra_info else "")
-            item = bucket.get(key)
+        number_keys = []
+        for _record, _extra, media_item in rows:
+            if media_item.media_type == "number" and media_item.number:
+                number_keys.append(normalize_number(media_item.number))
+        metadata_by_number = self._latest_metadata_by_number(list(dict.fromkeys(number_keys)))
+        bucket = {group_id: {"rows": [], "latest": None, "media_item": None} for group_id in group_ids}
+        for trans_record, extra_info, media_item in rows:
+            item = bucket.get(media_item.id)
             if item is None:
                 continue
+            item["media_item"] = media_item
             item["rows"].append((trans_record, extra_info))
             updated = trans_record.updatetime
             if item["latest"] is None or (updated is not None and updated > item["latest"]):
                 item["latest"] = updated
 
         groups = []
-        for key in keys:
-            item = bucket[key]
-            metadata = metadata_by_number.get(key)
+        for group_id in group_ids:
+            item = bucket[group_id]
+            media_item = item["media_item"]
+            if media_item is None:
+                continue
+            is_series = media_item.media_type == "tvshow"
+            is_number = media_item.media_type == "number"
+            number_key = normalize_number(media_item.number) if is_number else ""
+            metadata = metadata_by_number.get(number_key) if number_key else None
             groups.append({
-                "key": key,
-                "number": metadata.number if metadata and metadata.number else key,
-                "title": (metadata.title or "") if metadata else "",
+                "key": f"series:{media_item.id}" if is_series else f"media:{media_item.id}",
+                "kind": "series" if is_series else media_item.media_type,
+                "number": (media_item.number or "") if is_number else "",
+                "title": media_item.title or "",
+                "imdb_id": media_item.imdb_id or "",
+                "tmdb_id": media_item.tmdb_id or "",
+                "tvdb_id": media_item.tvdb_id or "",
                 "cover": (metadata.cover or "") if metadata else "",
-                "crop": bool(metadata.crop) if metadata and metadata.crop is not None else True,
+                "crop": bool(metadata.crop) if metadata and metadata.crop is not None else (True if is_number else False),
                 "latest_updatetime": item["latest"],
                 "rows": item["rows"],
             })
@@ -267,6 +308,8 @@ class RecordService:
             for key, value in extra_payload.items():
                 if hasattr(extra_info, key):
                     setattr(extra_info, key, value)
+            if "number" in extra_update:
+                relink_record_for_number(self.session, transfer_record, extra_info.number)
 
         self.session.commit()
         return transfer_record, extra_info

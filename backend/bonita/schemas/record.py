@@ -67,10 +67,14 @@ class RecordsPublic(BaseModel):
 
 
 class RecordGroupPublic(BaseModel):
-    """同一番号、且能对上 metadata 的转移记录。"""
+    """挂到同一个媒体项上的转移记录。单集收到父剧。"""
     key: str
-    number: str
+    kind: str = "number"
+    number: str = ""
     title: str = ""
+    imdb_id: str = ""
+    tmdb_id: str = ""
+    tvdb_id: str = ""
     cover: str = ""
     crop: bool = True
     record_count: int

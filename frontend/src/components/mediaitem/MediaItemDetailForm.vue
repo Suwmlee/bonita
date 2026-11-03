@@ -28,7 +28,7 @@ type FormKind = "movie" | "number" | "tvshow" | "episode" | "video"
 
 function kindFromItem(item?: Partial<MediaItemWithWatches> | null): FormKind {
   const mediaType = item?.media_type
-  if (mediaType === "movie" && !isBlank(item?.number)) return "number"
+  if (mediaType === "number" || (mediaType === "movie" && !isBlank(item?.number))) return "number"
   if (mediaType === "tvshow" || mediaType === "episode" || mediaType === "video" || mediaType === "movie") {
     return mediaType
   }
@@ -155,7 +155,7 @@ watch(selectedSeriesId, (id) => {
 
 watch(formKind, (kind, previous) => {
   if (kind === "number") {
-    formData.value.media_type = "movie"
+    formData.value.media_type = "number"
     return
   }
   formData.value.media_type = kind
@@ -190,6 +190,9 @@ async function saveForm() {
   ) {
     toastStore.error(t("pages.mediaitem.seasonEpisodeRequired"))
     return
+  }
+  if (isNumbered.value) {
+    formData.value.media_type = "number"
   }
   if (isEditMode.value) {
     await mediaItemStore.updateMediaItem(formData.value as MediaItemWithWatches)
