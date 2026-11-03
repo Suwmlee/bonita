@@ -6,6 +6,9 @@ import {
   SubtitleService,
 } from "@/client"
 import { getPosterUrl } from "@/composables/useMediaPoster"
+import imdbLogo from "@/assets/logos/imdb.png"
+import tmdbLogo from "@/assets/logos/tmdb.png"
+import tvdbLogo from "@/assets/logos/tvdb.png"
 import { useRecordStore } from "@/stores/record.store"
 import { useTaskStore } from "@/stores/task.store"
 import { useToastStore } from "@/stores/toast.store"
@@ -89,11 +92,49 @@ const pageLength = computed(() => {
   return pages > 0 ? pages : 1
 })
 
+function externalLinks(group: RecordGroupPublic) {
+  const links: { kind: string, href: string, label: string, logo: string }[] = []
+  const imdb = group.imdb_id?.trim()
+  if (imdb) {
+    const id = imdb.startsWith("tt") ? imdb : `tt${imdb}`
+    links.push({ kind: "imdb", href: `https://www.imdb.com/title/${id}/`, label: "IMDb", logo: imdbLogo })
+  }
+  const tmdb = group.tmdb_id?.trim()
+  if (tmdb) {
+    const type = group.kind === "series" ? "tv" : "movie"
+    links.push({
+      kind: "tmdb",
+      href: `https://www.themoviedb.org/${type}/${encodeURIComponent(tmdb)}`,
+      label: "TMDB",
+      logo: tmdbLogo,
+    })
+  }
+  const tvdb = group.tvdb_id?.trim()
+  if (tvdb) {
+    const type = group.kind === "series" ? "series" : "movie"
+    links.push({
+      kind: "tvdb",
+      href: `https://www.thetvdb.com/dereferrer/${type}/${encodeURIComponent(tvdb)}`,
+      label: "TVDB",
+      logo: tvdbLogo,
+    })
+  }
+  return links
+}
+
 function groupPosterUrl(group: RecordGroupPublic) {
+  if (group.number) {
+    return getPosterUrl({
+      media_type: "number",
+      number: group.number,
+      title: group.title || "",
+    })
+  }
   return getPosterUrl({
-    media_type: "number",
-    number: group.number,
+    media_type: group.kind === "series" ? "tvshow" : "movie",
     title: group.title || "",
+    imdb_id: group.imdb_id || "",
+    tmdb_id: group.tmdb_id || "",
   })
 }
 
@@ -105,7 +146,7 @@ function openPosterPreview(group: RecordGroupPublic) {
   if (posterBroken.value[group.key]) return
   posterPreview.value = {
     src: groupPosterUrl(group),
-    alt: group.title ? `${group.number} ${group.title}` : group.number,
+    alt: group.number && group.title ? `${group.number} ${group.title}` : (group.title || group.number || ""),
   }
 }
 
@@ -767,7 +808,7 @@ onMounted(() => {
               :src="groupPosterUrl(group)" alt="" aria-hidden="true" loading="lazy" decoding="async"
               referrerpolicy="no-referrer" @error="markPosterBroken(group.key)">
             <img v-show="!posterBroken[group.key]" class="record-poster-image" :src="groupPosterUrl(group)"
-              :alt="group.number" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+              :alt="group.number || group.title || ''" loading="lazy" decoding="async" referrerpolicy="no-referrer"
               @error="markPosterBroken(group.key)">
             <div v-if="posterBroken[group.key]" class="record-poster-empty">
               <v-icon icon="mdi-image-off" size="small" />
@@ -776,10 +817,17 @@ onMounted(() => {
         </aside>
         <div class="record-group-main">
           <div class="record-group-meta">
-            <div class="record-number">{{ group.number }}</div>
+            <div v-if="group.number" class="record-number">{{ group.number }}</div>
+            <div v-if="externalLinks(group).length" class="record-external-links">
+              <a v-for="link in externalLinks(group)" :key="link.kind" class="record-external-link"
+                :class="link.kind" :href="link.href" target="_blank" rel="noopener noreferrer" :title="link.label"
+                :aria-label="link.label">
+                <img :src="link.logo" alt="">
+              </a>
+            </div>
             <div v-if="group.title" class="record-group-title">{{ group.title }}</div>
             <VBtn
-              v-if="groupHasSubtitles(group)"
+              v-if="group.number && groupHasSubtitles(group)"
               class="record-group-subtitle record-group-action"
               :title="t('pages.subtitles.deliver')"
               @click="deliverGroupSubtitle(group)"
@@ -1125,11 +1173,11 @@ onMounted(() => {
 }
 
 .record-group-entry {
-  flex: 0 0 112px;
-  width: 112px;
+  flex: 0 0 128px;
+  width: 128px;
   display: flex;
   align-items: flex-start;
-  padding: 12px;
+  padding: 4px;
   background: rgba(var(--v-theme-on-surface), 0.04);
   border-inline-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
@@ -1260,6 +1308,27 @@ onMounted(() => {
   justify-content: center;
   gap: 4px;
   text-align: center;
+}
+
+.record-external-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.record-external-link {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  line-height: 0;
+  text-decoration: none;
+}
+
+.record-external-link img {
+  display: block;
+  width: 18px;
+  height: 18px;
 }
 
 .record-number {

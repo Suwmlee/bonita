@@ -379,7 +379,7 @@ export default {
       viewGroup: "Entries",
       totalGroups: "Total {count} entries",
       groupFileCount: "{count} files",
-      noGroups: "No numbered entries",
+      noGroups: "No grouped entries",
       edit: "Edit Record",
       search: "Search Filename",
       filterTaskId: "Filter Task ID",
