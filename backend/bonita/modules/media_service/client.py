@@ -54,6 +54,7 @@ class RemoteItem:
     title: str = ""
     original_title: str = ""
     path: Optional[str] = None
+    source_paths: List[str] = field(default_factory=list)
     provider_ids: Dict[str, str] = field(default_factory=dict)
     season: int = -1
     episode: int = -1

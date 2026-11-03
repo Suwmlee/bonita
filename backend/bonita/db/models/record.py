@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy import Column, ForeignKey, Integer, String, Boolean, DateTime
 
 from bonita.db import Base
 
@@ -15,6 +15,13 @@ class TransRecords(Base):
     srcpath = Column(String, default='', index=True)
     srcfolder = Column(String, default='')
     task_id = Column(Integer, default=0, server_default='0', comment='任务ID')
+    media_item_id = Column(
+        Integer,
+        ForeignKey("mediaitem.id"),
+        index=True,
+        nullable=True,
+        comment="关联的媒体项",
+    )
 
     success = Column(Boolean, default=False, comment='是否成功')
     ignored = Column(Boolean, default=False, comment='是否忽略')

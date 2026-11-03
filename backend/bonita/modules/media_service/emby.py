@@ -72,6 +72,27 @@ def _as_int(value, default=-1) -> int:
         return default
 
 
+def _media_source_paths(raw: dict) -> list:
+    """条目自身 Path 加上 MediaSources 里的其它版本路径。"""
+    paths = []
+    seen = set()
+
+    def add(path):
+        if not isinstance(path, str) or not path.strip():
+            return
+        key = path.replace("\\", "/").rstrip("/").lower()
+        if not key or key in seen:
+            return
+        seen.add(key)
+        paths.append(path)
+
+    add(raw.get("Path"))
+    for source in raw.get("MediaSources") or []:
+        if isinstance(source, dict):
+            add(source.get("Path"))
+    return paths
+
+
 class EmbyClient(MediaServerClient, metaclass=Singleton):
     """Emby HTTP 适配器。对外只暴露归一化类型。"""
 
@@ -289,7 +310,7 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
                     "ParentId": library_id,
                     "IncludeItemTypes": "Movie",
                     "Recursive": "True",
-                    "Fields": "ItemCounts,ProviderIds,Path,DateCreated,UserDataLastPlayedDate"
+                    "Fields": "ItemCounts,ProviderIds,Path,MediaSources,DateCreated,UserDataLastPlayedDate"
                 }
             )
 
@@ -331,7 +352,7 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
                         params={
                             "userId": user_id,
                             "isPlaceHolder": "false",
-                            "Fields": "ProviderIds,Path,DateCreated,UserDataLastPlayedDate,SeriesName,SeriesId,IndexNumber,ParentIndexNumber,RunTimeTicks"
+                            "Fields": "ProviderIds,Path,MediaSources,DateCreated,UserDataLastPlayedDate,SeriesName,SeriesId,IndexNumber,ParentIndexNumber,RunTimeTicks"
                         }
                     )
 
@@ -388,7 +409,7 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
                 f"/Users/{user_id}/Items/{item_id}",
                 params={
                     "Fields": (
-                        "ProviderIds,Path,UserData,OriginalTitle,SeriesName,SeriesId,"
+                        "ProviderIds,Path,MediaSources,UserData,OriginalTitle,SeriesName,SeriesId,"
                         "IndexNumber,ParentIndexNumber,RunTimeTicks,ImageTags"
                     ),
                 },
@@ -449,7 +470,7 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
                     "Recursive": "False",
                     "IncludeItemTypes": "Movie,Episode,Series,Video",
                     "Fields": (
-                        "ProviderIds,Path,SeriesName,SeriesId,"
+                        "ProviderIds,Path,MediaSources,SeriesName,SeriesId,"
                         "IndexNumber,ParentIndexNumber,RunTimeTicks"
                     ),
                     "StartIndex": start,
@@ -480,7 +501,7 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
             "Recursive": "True",
             "IncludeItemTypes": include_item_types,
             "Fields": (
-                "ProviderIds,Path,SeriesName,SeriesId,"
+                "ProviderIds,Path,MediaSources,SeriesName,SeriesId,"
                 "IndexNumber,ParentIndexNumber,ImageTags"
             ),
             "Limit": limit,
@@ -667,6 +688,7 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
             episode = _as_int(raw.get("IndexNumber"))
         elif item_type == ITEM_SEASON:
             season = _as_int(raw.get("IndexNumber"))
+        source_paths = _media_source_paths(raw)
         providers = raw.get("ProviderIds") or {}
         provider_ids = {}
         if providers.get("Imdb"):
@@ -695,6 +717,7 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
             title=raw.get("Name") or "",
             original_title=raw.get("OriginalTitle") or "",
             path=raw.get("Path"),
+            source_paths=source_paths,
             provider_ids=provider_ids,
             season=season,
             episode=episode,
@@ -857,7 +880,7 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
             return item
         merged = {**details, **item}
         for key in (
-            "Path", "ProviderIds", "UserData", "SeriesName", "SeriesId",
+            "Path", "MediaSources", "ProviderIds", "UserData", "SeriesName", "SeriesId",
             "ParentIndexNumber", "IndexNumber", "RunTimeTicks",
         ):
             if not merged.get(key) and details.get(key) is not None:

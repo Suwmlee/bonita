@@ -130,6 +130,9 @@ def celery_scrapping(self, file_path, scraping_dict):
         # 过滤掉空字符串
         combined_tags = {tag for tag in combined_tags if tag.strip()}
         metadata_mixed.tag = ", ".join(combined_tags) if combined_tags else ''
+        if metadata_record and metadata_record.number:
+            from bonita.modules.media_service.record_link import attach_number_records
+            attach_number_records(session, metadata_record.number, metadata_record.title or "")
         # 更新文件名称，part -C -EP01
         if part_number:
             metadata_mixed.extra_filename += format_part_suffix(part_number)
@@ -229,6 +232,8 @@ def celery_import_nfo(self, folder_path, option):
                 if metadata_base.number:
                     metadata_db.crop = need_crop(metadata_base.number)
                 metadata_db.create(session)
+                from bonita.modules.media_service.record_link import attach_number_records
+                attach_number_records(session, metadata_db.number, metadata_db.title or "")
             except Exception as e:
                 logger.error(f"  ✗ 导入失败 {os.path.basename(nfo_dict['nfo_path'])}: {str(e)}")
                 continue

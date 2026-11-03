@@ -3,7 +3,6 @@ import os
 
 from bonita.db.models.collection import Collection, CollectionItem
 from bonita.db.models.extrainfo import ExtraInfo
-from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
 from bonita.db.models.mediaitem import MediaItem
 from bonita.modules.media_service.client import (
@@ -13,6 +12,11 @@ from bonita.modules.media_service.client import (
     ITEM_VIDEO,
     MediaServerClient,
     RemoteItem,
+)
+from bonita.modules.media_service.record_link import (
+    ensure_number_media_item,
+    media_item_for_numbered_record,
+    metadata_for_number,
 )
 from bonita.modules.scraping.number_parser import get_number
 
@@ -41,11 +45,15 @@ def requires_external_ids(media_type: str, number: str = None) -> bool:
 
 def resolve_media_item(session, item: RemoteItem, client: MediaServerClient, create=True):
     if item.item_type == ITEM_EPISODE:
-        return _resolve_episode(session, item, client, create)
-    if item.item_type == ITEM_SERIES:
+        media_item = _resolve_episode(session, item, client, create)
+    elif item.item_type == ITEM_SERIES:
         record, _extra = find_transfer_record(session, item.path)
         return ensure_series(session, item, record, client, create)
-    return _resolve_movie(session, item, create)
+    else:
+        media_item = _resolve_movie(session, item, create)
+    if media_item and item.item_type in (ITEM_MOVIE, ITEM_VIDEO, ITEM_EPISODE):
+        link_remote_files(session, item, media_item)
+    return media_item
 
 
 def resolve_collection_member(session, item: RemoteItem, client: MediaServerClient):
@@ -171,6 +179,19 @@ def _titles_match(media_item: MediaItem, remote: RemoteItem) -> bool:
     return bool(original and remote_title and original == remote_title)
 
 
+def fill_blank_external_ids(session, media_item: MediaItem, remote: RemoteItem) -> bool:
+    """路径已经对上时补空编号，不要求标题相同，也不覆盖已有编号。"""
+    if not media_item or not remote or not _ids_compatible(media_item, remote):
+        return False
+    return update_media_fields(
+        session,
+        media_item,
+        imdb_id=remote.imdb_id or media_item.imdb_id,
+        tmdb_id=remote.tmdb_id or media_item.tmdb_id,
+        tvdb_id=remote.tvdb_id or media_item.tvdb_id,
+    )
+
+
 def fill_blank_provider_ids(session, media_item: MediaItem, remote: RemoteItem) -> bool:
     """只补空的 IMDb/TMDB/TVDB，不覆盖已有编号。调用方须传入同一层级的远端条目。"""
     if (
@@ -181,13 +202,7 @@ def fill_blank_provider_ids(session, media_item: MediaItem, remote: RemoteItem) 
     ):
         return False
     before = (media_item.imdb_id, media_item.tmdb_id, media_item.tvdb_id)
-    changed = update_media_fields(
-        session,
-        media_item,
-        imdb_id=remote.imdb_id or media_item.imdb_id,
-        tmdb_id=remote.tmdb_id or media_item.tmdb_id,
-        tvdb_id=remote.tvdb_id or media_item.tvdb_id,
-    )
+    changed = fill_blank_external_ids(session, media_item, remote)
     if changed:
         logger.info(
             "    ✓ 补全编号 %s: IMDb %s→%s TMDB %s→%s TVDB %s→%s",
@@ -220,6 +235,10 @@ def _fill_series_ids_from_client(session, client: MediaServerClient, media_item:
 
 
 def _resolve_movie(session, item: RemoteItem, create=True):
+    number_item = number_item_for_remote(session, item)
+    if number_item:
+        return number_item
+
     title = item.title or ""
     original_title = item.original_title or ""
     imdb_id, tmdb_id, tvdb_id = item.imdb_id, item.tmdb_id, item.tvdb_id
@@ -239,33 +258,16 @@ def _resolve_movie(session, item: RemoteItem, create=True):
         return media_item
 
     filepath = item.path
-    number = None
     _record, extra = find_transfer_record(session, filepath)
-    if extra and extra.number:
-        number = extra.number
-    elif filepath:
+    number = None
+    if not (extra and extra.number) and filepath:
         number = get_number(filepath)
-
-    if number:
-        meta_and_item = session.query(Metadata, MediaItem).outerjoin(
-            MediaItem, MediaItem.number == Metadata.number
-        ).filter(Metadata.number == number).first()
-        if meta_and_item and meta_and_item[0]:
-            meta = meta_and_item[0]
-            media_item = meta_and_item[1]
+    if number and create:
+        meta = metadata_for_number(session, number)
+        if meta:
+            media_item = ensure_number_media_item(session, number, meta.title or number)
             if media_item:
-                if media_item.title != meta.title:
-                    media_item.title = meta.title
-                    session.commit()
-                return media_item
-            if create:
-                media_item = MediaItem(
-                    media_type="movie",
-                    title=meta.title,
-                    number=number,
-                )
-                media_item.create(session)
-                logger.info(f"    ✓ 创建媒体项: {meta.title} ({number})")
+                fill_blank_external_ids(session, media_item, item)
                 return media_item
 
     media_item = find_media_item_by_remote_id(session, item.remote_id, item.source)
@@ -482,6 +484,92 @@ def paths_match(remote_path: str, destpath: str) -> bool:
     if left == right:
         return True
     return left.endswith(right) or right.endswith(left)
+
+
+def remote_file_paths(item: RemoteItem) -> list:
+    paths = []
+    seen = set()
+    candidates = []
+    if item.path:
+        candidates.append(item.path)
+    candidates.extend(item.source_paths or [])
+    for path in candidates:
+        key = (path or "").replace("\\", "/").rstrip("/").lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        paths.append(path)
+    return paths
+
+
+def _like_escape(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def find_record_for_path(session, remote_path: str):
+    """一条远端路径对到一条记录。先全等，再按后缀比较。"""
+    if not remote_path:
+        return None
+    record, _extra = find_transfer_record(session, remote_path)
+    if record:
+        return record
+    basename = os.path.basename(remote_path.replace("\\", "/").rstrip("/"))
+    if not basename:
+        return None
+    rows = (
+        session.query(TransRecords)
+        .filter(TransRecords.destpath.ilike(f"%{_like_escape(basename)}", escape="\\"))
+        .all()
+    )
+    matches = [row for row in rows if paths_match(remote_path, row.destpath or "")]
+    if not matches:
+        return None
+    norm = remote_path.replace("\\", "/").rstrip("/").lower()
+    matches.sort(
+        key=lambda row: (
+            (row.destpath or "").replace("\\", "/").rstrip("/").lower() == norm,
+            len(row.destpath or ""),
+        ),
+        reverse=True,
+    )
+    return matches[0]
+
+
+def number_item_for_remote(session, item: RemoteItem):
+    if item.item_type not in (ITEM_MOVIE, ITEM_VIDEO):
+        return None
+    for path in remote_file_paths(item):
+        record = find_record_for_path(session, path)
+        if not record:
+            continue
+        number_item = media_item_for_numbered_record(session, record, create=True)
+        if number_item:
+            return number_item
+    return None
+
+
+def link_remote_files(session, item: RemoteItem, media_item: MediaItem) -> None:
+    """电影、视频、单集按路径写上 media_item_id。剧和季不绑。"""
+    if not media_item or item.item_type not in (ITEM_MOVIE, ITEM_VIDEO, ITEM_EPISODE):
+        return
+    changed = False
+    seen = set()
+    for path in remote_file_paths(item):
+        record = find_record_for_path(session, path)
+        if not record or record.id in seen:
+            continue
+        seen.add(record.id)
+        target = media_item
+        if item.item_type in (ITEM_MOVIE, ITEM_VIDEO):
+            number_item = media_item_for_numbered_record(session, record, create=True)
+            if number_item:
+                fill_blank_external_ids(session, number_item, item)
+                target = number_item
+        if record.media_item_id != target.id:
+            record.media_item_id = target.id
+            changed = True
+    if changed or session.new or session.dirty:
+        session.commit()
 
 
 def find_remote_id_for_media_item(session, client: MediaServerClient, media_item: MediaItem) -> str:

@@ -95,6 +95,8 @@ class MetadataService:
         self._cache_cover_if_needed(metadata_dict)
         db_metadata = Metadata(**metadata_dict)
         db_metadata.create(self.session)
+        from bonita.modules.media_service.record_link import attach_number_records
+        attach_number_records(self.session, db_metadata.number or "", db_metadata.title or "")
         return db_metadata
 
     def update_metadata(self, metadata_id: int, update_dict: dict) -> Optional[Metadata]:
@@ -106,6 +108,8 @@ class MetadataService:
         db_metadata.update(self.session, update_dict)
         self.session.commit()
         self.session.refresh(db_metadata)
+        from bonita.modules.media_service.record_link import attach_number_records
+        attach_number_records(self.session, db_metadata.number or "", db_metadata.title or "")
         return db_metadata
 
     def delete_metadata(self, metadata_id: int) -> bool:
