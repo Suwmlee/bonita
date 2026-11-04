@@ -73,14 +73,6 @@ const taskOptions = computed(() => {
   return options
 })
 
-const taskFilterLabel = computed(() => {
-  if (taskIdQuery.value == null) return ""
-  const task = taskStore.allTasks.find((item) => item.id === taskIdQuery.value)
-  if (task) return `${task.name} (#${task.id})`
-  if (!tasksLoaded.value) return ""
-  return `#${taskIdQuery.value}`
-})
-
 function persistViewState() {
   const state: RecordsViewState = {
     taskId: taskIdQuery.value,
@@ -699,8 +691,8 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="search-filters mt-2 mb-1 d-flex flex-wrap align-center gap-2" v-if="searchQuery || taskFilterLabel">
-        <v-chip v-if="searchQuery" color="primary" size="default" variant="elevated" class="search-chip">
+      <div class="search-filters mt-2 mb-1 d-flex flex-wrap align-center gap-2" v-if="searchQuery">
+        <v-chip color="primary" size="default" variant="elevated" class="search-chip">
           <v-icon start size="small" class="mr-1">mdi-magnify</v-icon>
           {{ t('pages.records.nameFilter') }}: {{ searchQuery }}
           <template v-slot:append>
@@ -708,15 +700,7 @@ onMounted(async () => {
           </template>
         </v-chip>
 
-        <v-chip v-if="taskFilterLabel" color="info" size="default" variant="elevated" class="search-chip">
-          <v-icon start size="small" class="mr-1">mdi-pound</v-icon>
-          {{ t('pages.records.taskIdFilter') }}: {{ taskFilterLabel }}
-          <template v-slot:append>
-            <v-icon size="small" @click="taskIdQuery = null; loadData(1, recordStore.itemsPerPage)">mdi-close</v-icon>
-          </template>
-        </v-chip>
-
-        <v-btn v-if="searchQuery || taskFilterLabel" icon="mdi-close-circle" size="small" color="error" variant="text"
+        <v-btn icon="mdi-close-circle" size="small" color="error" variant="text"
           @click="handleClearSearch" class="ml-1 clear-all-btn">
           <v-tooltip activator="parent" location="top">{{ t('pages.records.clearFilters') }}</v-tooltip>
         </v-btn>

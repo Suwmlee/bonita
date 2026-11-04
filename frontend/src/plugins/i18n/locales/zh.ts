@@ -372,7 +372,6 @@ export default {
       filterTaskId: "过滤任务",
       deleteSelected: "删除选中项",
       nameFilter: "文件名",
-      taskIdFilter: "任务",
       clearFilters: "清除所有筛选条件",
       itemsPerPage: "每页显示",
       totalRecords: "总计 {count} 条记录",

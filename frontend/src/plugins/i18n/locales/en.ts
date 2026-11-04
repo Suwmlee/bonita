@@ -391,7 +391,6 @@ export default {
       filterTaskId: "Filter by task",
       deleteSelected: "Delete Selected ({count})",
       nameFilter: "Filename",
-      taskIdFilter: "Task",
       clearFilters: "Clear All Filters",
       itemsPerPage: "Items per page",
       totalRecords: "Total {count} records",

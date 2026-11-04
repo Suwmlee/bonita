@@ -444,7 +444,7 @@ onMounted(load)
             <span class="subtitle-group-cell">{{ formatPart(item.part_number) }}</span>
             <span class="subtitle-group-cell">{{ formatSize(item.file_size) }}</span>
             <span class="subtitle-group-cell">{{ formatTime(item.updatetime) }}</span>
-            <div class="d-flex gap-1">
+            <div class="subtitle-group-actions">
               <VBtn size="small" variant="text" :title="t('common.edit')" @click="openEdit(item)">
                 <VIcon icon="bx-edit-alt" />
               </VBtn>
@@ -711,8 +711,8 @@ onMounted(load)
 
 .subtitle-group-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 88px 56px 88px 168px 132px;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 88px 48px 80px 148px 172px;
+  gap: 12px;
   align-items: center;
   padding: 8px 16px;
 }
@@ -737,5 +737,12 @@ onMounted(load)
 
 .subtitle-group-cell {
   color: rgba(var(--v-theme-on-surface), 0.75);
+  white-space: nowrap;
+}
+
+.subtitle-group-actions {
+  display: flex;
+  gap: 4px;
+  justify-self: start;
 }
 </style>
