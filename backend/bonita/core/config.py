@@ -1,6 +1,5 @@
 import os
 import logging
-import secrets
 import yaml
 from typing import Any, Dict, Tuple
 from pydantic_settings import (
@@ -68,8 +67,8 @@ class Settings(BaseSettings):
     LOGGING_FORMAT: str = "[%(asctime)s] %(levelname)s %(module)s%(task_suffix)s: %(message)s"
     LOGGING_LOCATION: str = "./data/bonita.log"
     LOGGING_LEVEL: int = logging.INFO
-    # SECRET_KEY: str = secrets.token_urlsafe(32)
-    SECRET_KEY: str = "secret key"
+    # HS256 要求 HMAC 密钥至少 32 字节（RFC 7518 §3.2）；生产环境请在配置里覆盖
+    SECRET_KEY: str = "bonita-dev-secret-key-change-me-32b"
     # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     # 跨域
