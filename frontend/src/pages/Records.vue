@@ -599,13 +599,6 @@ watch([searchQuery, taskIdQuery], () => {
   }, 300) as unknown as number
 })
 
-// 清除搜索并重新加载数据
-const handleClearSearch = () => {
-  searchQuery.value = ""
-  taskIdQuery.value = null
-  loadData(1, recordStore.itemsPerPage)
-}
-
 // 处理排序变化
 const handleSortChange = (newSortBy: any) => {
   sortBy.value = newSortBy
@@ -640,7 +633,7 @@ onMounted(async () => {
     <div class="search-toolbar px-4 py-4">
       <div class="d-flex align-center justify-space-between flex-wrap gap-4">
         <div class="search-fields d-flex gap-4 align-center flex-grow-1 flex-wrap">
-          <v-text-field v-model="searchQuery" :placeholder="t('pages.records.search')" hide-details density="comfortable"
+          <v-text-field v-model="searchQuery" :placeholder="t(viewMode === 'group' ? 'pages.records.searchGroup' : 'pages.records.search')" hide-details density="comfortable"
             class="search-input" prepend-inner-icon="mdi-magnify" clearable
             @click:clear="searchQuery = ''; loadData(1, recordStore.itemsPerPage)" />
 
@@ -691,20 +684,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="search-filters mt-2 mb-1 d-flex flex-wrap align-center gap-2" v-if="searchQuery">
-        <v-chip color="primary" size="default" variant="elevated" class="search-chip">
-          <v-icon start size="small" class="mr-1">mdi-magnify</v-icon>
-          {{ t('pages.records.nameFilter') }}: {{ searchQuery }}
-          <template v-slot:append>
-            <v-icon size="small" @click="searchQuery = ''; loadData(1, recordStore.itemsPerPage)">mdi-close</v-icon>
-          </template>
-        </v-chip>
-
-        <v-btn icon="mdi-close-circle" size="small" color="error" variant="text"
-          @click="handleClearSearch" class="ml-1 clear-all-btn">
-          <v-tooltip activator="parent" location="top">{{ t('pages.records.clearFilters') }}</v-tooltip>
-        </v-btn>
-      </div>
     </div>
 
     <v-data-table v-if="viewMode === 'list'" v-model="selected" :headers="headers" :items="recordStore.records" item-value="transfer_record.id"
@@ -1174,19 +1153,6 @@ onMounted(async () => {
 
 .delete-btn {
   white-space: nowrap;
-}
-
-.search-filters {
-  min-height: 36px;
-}
-
-.search-chip {
-  height: 32px;
-  font-size: 14px;
-}
-
-.clear-all-btn {
-  margin-left: 4px;
 }
 
 @media (max-width: 768px) {
