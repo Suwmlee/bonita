@@ -1,9 +1,10 @@
+import filecmp
+import json
 import logging
 import os
 import re
 import shutil
 import stat
-import uuid
 from datetime import datetime
 from typing import List, Optional, Tuple
 
@@ -12,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from bonita.core.config import settings
 from bonita.db.models.extrainfo import ExtraInfo
+from bonita.db.models.mediaitem import MediaItem
 from bonita.db.models.record import TransRecords
 from bonita.db.models.subtitle import Subtitle
 from bonita.modules.scraping.number_parser import FileNumInfo, rules_parser
@@ -19,7 +21,6 @@ from bonita.utils.filehelper import subext_type
 
 logger = logging.getLogger(__name__)
 
-IDENTITY_NUMBER = "number"
 DEFAULT_LANGUAGE = "zh-Hans"
 
 _LANG_RULES = (
@@ -91,6 +92,81 @@ def dest_subtitle_path(video_path: str, language: str, extension: str) -> str:
     return os.path.join(folder, f"{stem}{deliver_suffix(language)}{ext}")
 
 
+def target_visible(path: str) -> bool:
+    """目录列举里真有这个文件。网络盘的 stat 缓存有时会把已删除文件报成存在。"""
+    folder = os.path.dirname(path) or "."
+    name = os.path.basename(path)
+    try:
+        with os.scandir(folder) as entries:
+            for entry in entries:
+                if entry.name != name:
+                    continue
+                try:
+                    return entry.is_file(follow_symlinks=True)
+                except OSError:
+                    return False
+    except OSError:
+        return False
+    return False
+
+
+def same_subtitle(source: str, target: str) -> bool:
+    if not target_visible(target):
+        return False
+    try:
+        return filecmp.cmp(source, target, shallow=False)
+    except OSError:
+        return False
+
+
+def source_is_newer(source: str, target: str) -> bool:
+    try:
+        return os.stat(source).st_mtime > os.stat(target).st_mtime + 1
+    except OSError:
+        return False
+
+
+def safe_filename(name: str, extension: str) -> str:
+    """保留上传时的文件名，只去掉路径分隔符。"""
+    base = os.path.basename(name or "").replace("\x00", "").strip()
+    base = re.sub(r"[\\/]+", "_", base).strip(" .")
+    ext = extension if str(extension).startswith(".") else f".{extension}" if extension else ""
+    if not base:
+        base = f"subtitle{ext or '.srt'}"
+    elif ext and not base.lower().endswith(ext.lower()):
+        base = f"{base}{ext}"
+    stem, found = os.path.splitext(base)
+    if len(base) > 180:
+        base = f"{stem[:180 - len(found)]}{found}"
+    return base or "subtitle.srt"
+
+
+def load_delivered_paths(raw: Optional[str]) -> List[str]:
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except (TypeError, json.JSONDecodeError):
+        return []
+    if not isinstance(data, list):
+        return []
+    return [item for item in data if isinstance(item, str) and item.strip()]
+
+
+def dump_delivered_paths(paths: List[str]) -> str:
+    unique = []
+    seen = set()
+    for path in paths:
+        norm = os.path.normpath(path)
+        if norm in seen:
+            continue
+        seen.add(norm)
+        unique.append(norm)
+    if not unique:
+        return ""
+    return json.dumps(unique, ensure_ascii=False)
+
+
 def safe_storage_key(number: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", (number or "").strip())
     cleaned = cleaned.strip("._")
@@ -101,6 +177,28 @@ class SubtitleService:
     def __init__(self, session: Session):
         self.session = session
 
+    def _filtered_query(
+        self,
+        filter_text: Optional[str] = None,
+        number: Optional[str] = None,
+        unmatched: bool = False,
+    ):
+        query = self.session.query(Subtitle)
+        if unmatched:
+            query = query.filter(Subtitle.media_item_id.is_(None))
+        elif number:
+            item_ids = [item.id for item in self._items_for_number(number)]
+            query = query.filter(Subtitle.media_item_id.in_(item_ids or [-1]))
+        if filter_text:
+            like = f"%{filter_text.strip()}%"
+            query = query.outerjoin(MediaItem, Subtitle.media_item_id == MediaItem.id).filter(or_(
+                Subtitle.original_name.like(like),
+                MediaItem.number.like(like),
+                MediaItem.title.like(like),
+                MediaItem.imdb_id.like(like),
+            ))
+        return query
+
     def list_subtitles(
         self,
         skip: int = 0,
@@ -109,20 +207,101 @@ class SubtitleService:
         number: Optional[str] = None,
         unmatched: bool = False,
     ) -> Tuple[List[Subtitle], int]:
-        query = self.session.query(Subtitle).filter(Subtitle.identity_type == IDENTITY_NUMBER)
-        if unmatched:
-            query = query.filter(or_(Subtitle.identity_key.is_(None), Subtitle.identity_key == ""))
-        elif number:
-            query = query.filter(func.upper(Subtitle.identity_key) == normalize_number(number))
-        if filter_text:
-            like = f"%{filter_text.strip()}%"
-            query = query.filter(or_(
-                Subtitle.identity_key.like(like),
-                Subtitle.original_name.like(like),
-            ))
+        query = self._filtered_query(filter_text, number, unmatched)
         count = query.count()
         rows = query.order_by(Subtitle.updatetime.desc(), Subtitle.id.desc()).offset(skip).limit(limit).all()
         return rows, count
+
+    def list_groups(
+        self,
+        skip: int = 0,
+        limit: int = 20,
+        filter_text: Optional[str] = None,
+        number: Optional[str] = None,
+        unmatched: bool = False,
+    ) -> Tuple[list, int]:
+        matched = self._filtered_query(filter_text, number, unmatched)
+        grouped = (
+            matched.with_entities(
+                Subtitle.media_item_id,
+                func.max(Subtitle.updatetime).label("latest"),
+            )
+            .group_by(Subtitle.media_item_id)
+            .order_by(func.max(Subtitle.updatetime).desc())
+        )
+        total = grouped.order_by(None).count()
+        page = grouped.offset(skip).limit(limit).all()
+        ids = [row.media_item_id for row in page if row.media_item_id]
+        include_unmatched = any(row.media_item_id is None for row in page)
+        clauses = []
+        if ids:
+            clauses.append(Subtitle.media_item_id.in_(ids))
+        if include_unmatched:
+            clauses.append(Subtitle.media_item_id.is_(None))
+        rows = []
+        if clauses:
+            rows = (
+                self.session.query(Subtitle)
+                .filter(or_(*clauses))
+                .order_by(Subtitle.updatetime.desc(), Subtitle.id.desc())
+                .all()
+            )
+        bucket = {}
+        for row in rows:
+            bucket.setdefault(row.media_item_id, []).append(row)
+        groups = [self._group_payload(media_item_id, bucket.get(media_item_id, [])) for media_item_id, _latest in page]
+        return groups, total
+
+    def _group_payload(self, media_item_id: Optional[int], rows: List[Subtitle]) -> dict:
+        item = self.session.get(MediaItem, media_item_id) if media_item_id else None
+        number = normalize_number(item.number) if item and item.number else ""
+        meta = None
+        if number:
+            from bonita.modules.media_service.record_link import metadata_for_number
+            meta = metadata_for_number(self.session, number)
+        title = ""
+        if meta and (meta.title or "").strip():
+            title = meta.title.strip()
+        elif item and item.title and normalize_number(item.title) != number:
+            title = item.title
+        return {
+            "key": str(media_item_id) if media_item_id else "unmatched",
+            "media_item_id": media_item_id,
+            "number": number,
+            "title": title,
+            "imdb_id": (item.imdb_id or "") if item else "",
+            "tmdb_id": (item.tmdb_id or "") if item else "",
+            "crop": bool(meta.crop) if meta is not None and meta.crop is not None else True,
+            "count": len(rows),
+            "subtitles": [self.describe(row, item) for row in rows],
+        }
+
+    def describe(self, row: Subtitle, item: Optional[MediaItem] = None) -> dict:
+        data = row.to_dict()
+        data.pop("delivered_paths", None)
+        data.pop("stored_path", None)
+        data["preferred"] = bool(row.preferred)
+        try:
+            path = self._absolute(row.stored_path) if row.stored_path else ""
+        except ValueError:
+            path = ""
+        file_size = None
+        if path and os.path.isfile(path):
+            try:
+                file_size = os.path.getsize(path)
+            except OSError:
+                file_size = None
+        data["file_size"] = file_size
+        if row.media_item_id:
+            if item is None or item.id != row.media_item_id:
+                item = self.session.get(MediaItem, row.media_item_id)
+        else:
+            item = None
+        data["media_item_id"] = row.media_item_id
+        data["number"] = (item.number or "") if item else ""
+        data["title"] = (item.title or "") if item else ""
+        data["imdb_id"] = (item.imdb_id or "") if item else ""
+        return data
 
     def get(self, subtitle_id: int) -> Optional[Subtitle]:
         return self.session.get(Subtitle, subtitle_id)
@@ -133,15 +312,17 @@ class SubtitleService:
         if not keys:
             return {}
         rows = (
-            self.session.query(Subtitle.identity_key, Subtitle.part_number, func.count(Subtitle.id))
-            .filter(
-                Subtitle.identity_type == IDENTITY_NUMBER,
-                func.upper(Subtitle.identity_key).in_(keys),
-            )
-            .group_by(Subtitle.identity_key, Subtitle.part_number)
+            self.session.query(MediaItem.number, Subtitle.part_number, func.count(Subtitle.id))
+            .join(MediaItem, Subtitle.media_item_id == MediaItem.id)
+            .filter(func.upper(func.trim(MediaItem.number)).in_(keys))
+            .group_by(MediaItem.number, Subtitle.part_number)
             .all()
         )
-        return {(normalize_number(key), part or 0): count for key, part, count in rows}
+        counts = {}
+        for number, part, count in rows:
+            key = (normalize_number(number), part or 0)
+            counts[key] = counts.get(key, 0) + count
+        return counts
 
     def save_bytes(self, filename: str, content: bytes, number: Optional[str] = None) -> dict:
         original_name = os.path.basename(filename or "").strip()
@@ -154,121 +335,157 @@ class SubtitleService:
             raise ValueError(f"文件为空: {original_name}")
 
         explicit = normalize_number(number)
-        identity_key = explicit or parse_number(original_name)
+        number_key = explicit or parse_number(original_name)
+        item = self._resolve_number_item(number_key) if number_key else None
         language = parse_language(original_name)
         part_number = parse_part(original_name)
         now = datetime.now()
 
-        existing = None
-        if identity_key:
-            existing = (
-                self.session.query(Subtitle)
-                .filter(
-                    Subtitle.identity_type == IDENTITY_NUMBER,
-                    func.upper(Subtitle.identity_key) == identity_key,
-                    Subtitle.language == language,
-                    Subtitle.part_number == part_number,
-                    Subtitle.file_extension == extension,
-                )
-                .first()
-            )
+        existing_query = self.session.query(Subtitle).filter(Subtitle.original_name == original_name)
+        if item:
+            existing_query = existing_query.filter(Subtitle.media_item_id == item.id)
+        else:
+            existing_query = existing_query.filter(Subtitle.media_item_id.is_(None))
+        existing = existing_query.order_by(Subtitle.id.desc()).first()
 
         if existing:
-            relative = self._storage_relative(identity_key, language, part_number, extension)
+            old_group = self._group_key(existing)
+            was_preferred = bool(existing.preferred)
+            relative = self._storage_relative(item, original_name, extension)
             self._write(relative, content)
             self._remove_file(existing.stored_path, keep=relative)
+            existing.media_item_id = item.id if item else None
             existing.original_name = original_name
+            existing.language = language
+            existing.part_number = part_number
+            existing.file_extension = extension
             existing.stored_path = relative
             existing.updatetime = now
+            self._place_in_group(existing, old_group, was_preferred)
             self.session.commit()
-            return {"subtitle": existing, "replaced": True, "unmatched": False}
+            self._follow_group_change(existing, old_group, was_preferred)
+            return {"subtitle": existing, "replaced": True, "unmatched": item is None}
 
-        relative = self._storage_relative(identity_key, language, part_number, extension)
+        relative = self._storage_relative(item, original_name, extension)
         self._write(relative, content)
         row = Subtitle(
-            identity_type=IDENTITY_NUMBER,
-            identity_key=identity_key,
+            media_item_id=item.id if item else None,
             language=language,
             part_number=part_number,
             original_name=original_name,
             stored_path=relative,
             file_extension=extension,
+            preferred=False,
+            delivered_paths="",
             createtime=now,
             updatetime=now,
         )
         row.create(self.session)
-        return {"subtitle": row, "replaced": False, "unmatched": not bool(identity_key)}
+        if item and self._preferred_other(item.id, language, part_number, row.id) is None:
+            row.preferred = True
+            self.session.commit()
+        return {"subtitle": row, "replaced": False, "unmatched": item is None}
 
-    def update_subtitle(self, subtitle_id: int, identity_key: str, language: str, part_number: int) -> Optional[Subtitle]:
+    def update_subtitle(self, subtitle_id: int, number: str, language: str, part_number: int) -> Optional[Subtitle]:
         row = self.get(subtitle_id)
         if not row:
             return None
-        key = normalize_number(identity_key)
+        old_group = self._group_key(row)
+        was_preferred = bool(row.preferred)
+        key = normalize_number(number)
+        item = self._resolve_number_item(key) if key else None
+        if key and not item:
+            raise ValueError("没有对应的媒体项")
         language = (language or DEFAULT_LANGUAGE).strip() or DEFAULT_LANGUAGE
         part_number = int(part_number or 0)
         extension = row.file_extension or os.path.splitext(row.original_name or "")[1].lower()
-
-        if key:
-            conflict = (
-                self.session.query(Subtitle)
-                .filter(
-                    Subtitle.id != row.id,
-                    Subtitle.identity_type == IDENTITY_NUMBER,
-                    func.upper(Subtitle.identity_key) == key,
-                    Subtitle.language == language,
-                    Subtitle.part_number == part_number,
-                    Subtitle.file_extension == extension,
-                )
-                .first()
-            )
-            if conflict:
-                raise ValueError("已有相同番号、语言、部次和格式的字幕")
-
-        relative = self._storage_relative(key, language, part_number, extension)
+        relative = self._storage_relative(item, row.original_name or "", extension)
         self._move_stored(row.stored_path, relative)
-        row.identity_type = IDENTITY_NUMBER
-        row.identity_key = key
+        row.media_item_id = item.id if item else None
         row.language = language
         row.part_number = part_number
         row.file_extension = extension
         row.stored_path = relative
         row.updatetime = datetime.now()
+        self._place_in_group(row, old_group, was_preferred)
         self.session.commit()
+        self._follow_group_change(row, old_group, was_preferred)
         return row
 
     def delete_subtitle(self, subtitle_id: int) -> bool:
         row = self.get(subtitle_id)
         if not row:
             return False
+        media_item_id, language, part = self._group_key(row)
+        was_preferred = bool(row.preferred)
+        if was_preferred:
+            self._release(row)
         self._remove_file(row.stored_path)
         self.session.delete(row)
         self.session.commit()
+        if was_preferred and media_item_id:
+            try:
+                self._promote_if_single(media_item_id, language, part)
+            except Exception:
+                logger.exception("删除字幕后同步影片旁边的文件失败: %s", media_item_id)
         return True
 
     def deliver_subtitle(self, subtitle_id: int, overwrite: bool = False):
         row = self.get(subtitle_id)
         if not row:
             return None
-        if not normalize_number(row.identity_key):
-            raise ValueError("字幕尚未关联番号")
+        if not row.media_item_id:
+            raise ValueError("字幕尚未关联媒体项")
+        if not row.preferred:
+            raise ValueError("这份不是当前使用的字幕")
         return self._deliver_rows([row], overwrite=overwrite)
 
-    def deliver_number(self, number: str, part_number: Optional[int] = None, overwrite: bool = False) -> dict:
-        key = normalize_number(number)
-        if not key:
-            raise ValueError("缺少番号")
-        query = self.session.query(Subtitle).filter(
-            Subtitle.identity_type == IDENTITY_NUMBER,
-            func.upper(Subtitle.identity_key) == key,
+    def use_subtitle(self, subtitle_id: int, overwrite: bool = False):
+        """把这一份标成在用，清掉原来那份记下的文件，再投递。"""
+        row = self.get(subtitle_id)
+        if not row:
+            return None
+        if not row.media_item_id:
+            raise ValueError("字幕尚未关联媒体项")
+        details = []
+        others = (
+            self._group_query(row.media_item_id, row.language or "", int(row.part_number or 0))
+            .filter(Subtitle.id != row.id, Subtitle.preferred.is_(True))
+            .all()
         )
+        for other in others:
+            details.extend(self._release(other))
+        row.preferred = True
+        self.session.commit()
+        result = self._deliver_rows([row], overwrite=overwrite)
+        result["details"] = details + result["details"]
+        return result
+
+    def deliver_number(self, number: str, part_number: Optional[int] = None, overwrite: bool = False) -> dict:
+        if not normalize_number(number):
+            raise ValueError("缺少番号")
+        item = self._resolve_number_item(number)
+        if not item:
+            raise ValueError("没有对应的媒体项")
+        query = self.session.query(Subtitle).filter(Subtitle.media_item_id == item.id)
         if part_number is not None:
             query = query.filter(Subtitle.part_number == part_number)
         return self._deliver_rows(query.all(), overwrite=overwrite)
 
-    def deliver_for_transfer(self, srcpath: str, destpath: str, part_number: int = 0, number: Optional[str] = None) -> int:
+    def deliver_for_transfer(
+        self,
+        srcpath: str,
+        destpath: str,
+        part_number: int = 0,
+        number: Optional[str] = None,
+        media_item_id: Optional[int] = None,
+    ) -> int:
         """转移完成后，把字幕库里匹配的字幕复制到这次的目标文件旁边。"""
         if not destpath:
             return 0
+        ids = set()
+        if media_item_id:
+            ids.add(media_item_id)
         key = normalize_number(number)
         if not key and srcpath:
             extra = self.session.query(ExtraInfo).filter(ExtraInfo.filepath == srcpath).first()
@@ -276,56 +493,258 @@ class SubtitleService:
                 key = normalize_number(extra.number)
         if not key and srcpath:
             key = parse_number(srcpath)
-        if not key:
+        for item in self._items_for_number(key):
+            ids.add(item.id)
+        ids.discard(None)
+        if not ids:
             return 0
         part = int(part_number or 0)
         rows = (
             self.session.query(Subtitle)
             .filter(
-                Subtitle.identity_type == IDENTITY_NUMBER,
-                func.upper(Subtitle.identity_key) == key,
+                Subtitle.media_item_id.in_(ids),
                 Subtitle.part_number == part,
             )
             .all()
         )
-        return sum(
-            self._copy_to_video(row, destpath, overwrite=False) == "copied"
-            for row in rows
-        )
+        if rows and not any(row.preferred for row in rows):
+            logger.info("字幕投递跳过：媒体项 %s 部次 %s 没有标成在用的字幕", sorted(ids), part)
+            return 0
+        return self._deliver_rows(rows, only_path=destpath)["copied"]
 
-    def _deliver_rows(self, rows: List[Subtitle], overwrite: bool = False) -> dict:
-        result = {"copied": 0, "skipped": 0, "missing": 0}
+    def _deliver_rows(self, rows: List[Subtitle], overwrite: bool = False, only_path: Optional[str] = None) -> dict:
+        result = {"copied": 0, "skipped": 0, "missing": 0, "failed": 0, "details": []}
+        rows = [row for row in rows if row.preferred and row.media_item_id]
         if not rows:
             return result
-        keys = {normalize_number(row.identity_key) for row in rows if row.identity_key}
-        records = self._records_for_numbers(keys)
+        item_ids = {row.media_item_id for row in rows}
+        records = self._records_for_items(item_ids)
         seen = set()
         for row in rows:
-            key = normalize_number(row.identity_key)
-            targets = [
-                destpath
-                for destpath, number, part in records
-                if normalize_number(number) == key and int(part or 0) == int(row.part_number or 0)
-            ]
-            if not targets:
-                result["missing"] += 1
-                continue
-            for destpath in targets:
+            targets = []
+            for destpath, media_item_id, part in records:
+                if media_item_id != row.media_item_id or int(part or 0) != int(row.part_number or 0):
+                    continue
                 marker = (row.id, os.path.normpath(destpath))
                 if marker in seen:
                     continue
                 seen.add(marker)
-                result[self._copy_to_video(row, destpath, overwrite=overwrite)] += 1
+                targets.append(destpath)
+            if only_path:
+                targets = [only_path]
+            if not targets:
+                detail = f"没有可投递的视频：{self._row_label(row)}"
+                logger.info("字幕投递缺失：%s", detail)
+                result["missing"] += 1
+                result["details"].append(detail)
+                continue
+            written = []
+            hold_dirs = set()
+            for destpath in targets:
+                status, detail, target = self._copy_to_video(row, destpath, overwrite=overwrite)
+                result[status] += 1
+                if detail:
+                    result["details"].append(detail)
+                if status in ("copied", "skipped") and target:
+                    written.append(target)
+                elif destpath:
+                    hold_dirs.add(os.path.dirname(os.path.normpath(destpath)))
+            limit_dirs = None
+            if only_path:
+                limit_dirs = {os.path.dirname(os.path.normpath(only_path))}
+            for removed in self._settle_paths(row, written, hold_dirs, limit_dirs):
+                logger.info("字幕投递清理：%s", removed)
+                result["details"].append(removed)
+        self.session.commit()
         return result
 
-    def _records_for_numbers(self, keys: set):
-        if not keys:
+    def _group_key(self, row: Subtitle):
+        return (
+            row.media_item_id or None,
+            row.language or "",
+            int(row.part_number or 0),
+        )
+
+    def _group_query(self, media_item_id: Optional[int], language: str, part: int):
+        query = self.session.query(Subtitle).filter(
+            Subtitle.language == (language or ""),
+            Subtitle.part_number == int(part or 0),
+        )
+        if not media_item_id:
+            return query.filter(Subtitle.id == -1)
+        return query.filter(Subtitle.media_item_id == media_item_id)
+
+    def _preferred_other(self, media_item_id: Optional[int], language: str, part: int, exclude_id: Optional[int]):
+        query = self._group_query(media_item_id, language, part).filter(Subtitle.preferred.is_(True))
+        if exclude_id is not None:
+            query = query.filter(Subtitle.id != exclude_id)
+        return query.first()
+
+    def _place_in_group(self, row: Subtitle, old_group, was_preferred: bool) -> None:
+        """字段已经改完后，决定这一份还是不是在用的。不提交。"""
+        new_group = self._group_key(row)
+        if was_preferred and old_group != new_group and old_group[0]:
+            self._release(row)
+        if not new_group[0]:
+            row.preferred = False
+            return
+        if old_group == new_group:
+            return
+        other = self._preferred_other(new_group[0], new_group[1], new_group[2], row.id)
+        row.preferred = other is None
+
+    def _follow_group_change(self, row: Subtitle, old_group, was_preferred: bool) -> None:
+        new_group = self._group_key(row)
+        if was_preferred and old_group != new_group and old_group[0]:
+            try:
+                self._promote_if_single(old_group[0], old_group[1], old_group[2])
+            except Exception:
+                logger.exception("字幕换组后同步旧组失败: %s", old_group[0])
+        if was_preferred and row.preferred:
+            try:
+                self._deliver_rows([row])
+            except Exception:
+                logger.exception("字幕换组后投递失败: %s", row.id)
+
+    def _promote_if_single(self, media_item_id: Optional[int], language: str, part: int) -> None:
+        if not media_item_id:
+            return
+        rows = self._group_query(media_item_id, language, part).all()
+        if len(rows) != 1 or rows[0].preferred:
+            return
+        rows[0].preferred = True
+        self.session.commit()
+        self._deliver_rows([rows[0]])
+
+    def _release(self, row: Subtitle) -> List[str]:
+        """删掉这条记录记下的影片旁边的文件，并取消在用。不提交。"""
+        kept = []
+        details = []
+        for path in load_delivered_paths(row.delivered_paths):
+            deleted, gone = self._remove_delivered(path)
+            if deleted:
+                detail = f"已清理不再使用的字幕：{path}"
+                details.append(detail)
+            elif not gone:
+                kept.append(path)
+        row.delivered_paths = dump_delivered_paths(kept)
+        row.preferred = False
+        return details
+
+    def _settle_paths(
+        self,
+        row: Subtitle,
+        written: List[str],
+        hold_dirs: set,
+        limit_dirs: Optional[set] = None,
+    ) -> List[str]:
+        """这次写成功的路径记下来。只清理这次动过的目录里、已经不再使用的旧路径。"""
+        previous = load_delivered_paths(row.delivered_paths)
+        current = []
+        seen = set()
+        for path in written:
+            norm = os.path.normpath(path)
+            if norm in seen:
+                continue
+            seen.add(norm)
+            current.append(norm)
+        kept = list(current)
+        details = []
+        for old in previous:
+            norm = os.path.normpath(old)
+            if norm in seen:
+                continue
+            folder = os.path.dirname(norm)
+            if limit_dirs is not None and folder not in limit_dirs:
+                kept.append(norm)
+                continue
+            if folder in hold_dirs:
+                kept.append(norm)
+                continue
+            deleted, gone = self._remove_delivered(norm)
+            if deleted:
+                details.append(f"已清理不再使用的字幕：{norm}")
+            elif not gone:
+                kept.append(norm)
+        row.delivered_paths = dump_delivered_paths(kept)
+        return details
+
+    def _remove_delivered(self, path: str) -> Tuple[bool, bool]:
+        """删除记下的字幕文件。返回 (已删除, 本来就不在)。"""
+        if not path:
+            return False, True
+        extension = os.path.splitext(path)[1].lower()
+        if extension not in subext_type:
+            logger.info("拒绝删除非字幕路径：%s", path)
+            return False, False
+        try:
+            root = os.path.abspath(settings.SUBTITLE_LOCATION)
+            target = os.path.abspath(path)
+            if os.path.commonpath([root, target]) == root:
+                logger.info("拒绝删除字幕库内的文件：%s", path)
+                return False, False
+        except ValueError:
+            return False, False
+        if not os.path.lexists(path):
+            return False, True
+        try:
+            if os.path.isdir(path):
+                logger.info("拒绝删除目录：%s", path)
+                return False, False
+            os.remove(path)
+            return True, False
+        except OSError as exc:
+            logger.info("清理字幕失败 %s: %s", path, exc)
+            return False, False
+
+    def _items_for_number(self, number: str) -> List[MediaItem]:
+        key = normalize_number(number)
+        if not key:
+            return []
+        return (
+            self.session.query(MediaItem)
+            .filter(func.upper(func.trim(MediaItem.number)) == key)
+            .order_by(MediaItem.id.desc())
+            .all()
+        )
+
+    def _resolve_number_item(self, number: str) -> Optional[MediaItem]:
+        """按番号找到媒体项。已有 metadata 而媒体项还不存在时才新建，并把同番号的转移记录挂上去。"""
+        key = normalize_number(number)
+        if not key:
+            return None
+        from bonita.modules.media_service.record_link import (
+            ensure_number_media_item,
+            find_number_media_item,
+            link_records_with_number,
+            metadata_for_number,
+        )
+
+        item = find_number_media_item(self.session, key)
+        meta = metadata_for_number(self.session, key)
+        if not meta:
+            return item
+        if not item:
+            item = ensure_number_media_item(self.session, key, meta.title or key)
+        if item:
+            link_records_with_number(self.session, key, item)
+        return item
+
+    def _row_label(self, row: Subtitle) -> str:
+        item = self.session.get(MediaItem, row.media_item_id) if row.media_item_id else None
+        if item and item.number:
+            return item.number
+        if item and item.title:
+            return item.title
+        return row.original_name or str(row.id)
+
+    def _records_for_items(self, item_ids: set):
+        if not item_ids:
             return []
         rows = (
-            self.session.query(TransRecords.destpath, ExtraInfo.number, TransRecords.part_number)
-            .join(ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath)
+            self.session.query(TransRecords.destpath, TransRecords.media_item_id, TransRecords.part_number)
             .filter(
-                func.upper(ExtraInfo.number).in_(keys),
+                TransRecords.media_item_id.in_(item_ids),
                 TransRecords.success.is_(True),
                 TransRecords.deleted.is_(False),
                 TransRecords.destpath.isnot(None),
@@ -333,30 +752,68 @@ class SubtitleService:
             )
             .all()
         )
-        return [(destpath, number, part or 0) for destpath, number, part in rows]
+        return [(destpath, media_item_id, part or 0) for destpath, media_item_id, part in rows]
 
-    def _copy_to_video(self, row: Subtitle, video_path: str, overwrite: bool) -> str:
-        if not video_path or not os.path.exists(video_path):
-            return "missing"
+    def _copy_to_video(self, row: Subtitle, video_path: str, overwrite: bool) -> Tuple[str, str, str]:
+        label = f"{self._row_label(row)}#{row.id}"
+        if not video_path or not os.path.isfile(video_path):
+            detail = f"{label} 视频不存在：{video_path}"
+            logger.info("字幕投递缺失：%s", detail)
+            return "missing", detail, ""
         source = self._absolute(row.stored_path)
-        if not source or not os.path.exists(source):
-            return "missing"
+        if not source or not os.path.isfile(source):
+            detail = f"{label} 字幕库文件不存在：{source}"
+            logger.info("字幕投递缺失：%s", detail)
+            return "missing", detail, ""
         extension = row.file_extension or os.path.splitext(source)[1]
         target = dest_subtitle_path(video_path, row.language, extension)
-        if os.path.exists(target) and not overwrite:
-            return "skipped"
-        folder = os.path.dirname(target)
-        if folder and not os.path.exists(folder):
-            os.makedirs(folder)
-        shutil.copyfile(source, target)
-        os.chmod(target, _FILE_MODE)
-        return "copied"
+        identical = same_subtitle(source, target)
+        newer = source_is_newer(source, target)
+        if identical and not newer and not overwrite:
+            detail = f"{label} 已跳过，目标与字幕库一致：{target}"
+            logger.info("字幕投递跳过：%s（视频 %s）", detail, video_path)
+            return "skipped", detail, target
+        replaced = target_visible(target) or os.path.lexists(target)
+        try:
+            self._place_file(source, target)
+        except OSError as exc:
+            detail = f"{label} 写入失败 {target}：{exc}"
+            logger.exception("字幕投递失败：%s（视频 %s，来源 %s）", detail, video_path, source)
+            return "failed", detail, ""
+        if replaced:
+            reason = "字幕库文件较新" if identical and newer else "目标内容不同或不在目录中"
+            detail = f"{label} 已覆盖 {target}（{reason}）"
+            logger.info("字幕投递覆盖：%s（视频 %s，来源 %s）", detail, video_path, source)
+            return "copied", detail, target
+        logger.info("字幕投递复制：%s -> %s（视频 %s）", source, target, video_path)
+        return "copied", "", target
 
-    def _storage_relative(self, identity_key: str, language: str, part_number: int, extension: str) -> str:
-        if not identity_key:
-            return f"inbox/{uuid.uuid4().hex}{extension}"
-        part = f"-EP{int(part_number):02d}" if part_number else ""
-        return f"number/{safe_storage_key(identity_key)}/{language}{part}{extension}"
+    def _place_file(self, source: str, target: str) -> None:
+        folder = os.path.dirname(target)
+        if folder and not os.path.isdir(folder):
+            os.makedirs(folder, exist_ok=True)
+        temporary = f"{target}.{os.getpid()}.bonita-tmp"
+        try:
+            shutil.copyfile(source, temporary)
+            os.chmod(temporary, _FILE_MODE)
+            os.replace(temporary, target)
+            os.chmod(target, _FILE_MODE)
+        except Exception:
+            if os.path.lexists(temporary):
+                try:
+                    os.remove(temporary)
+                except OSError:
+                    pass
+            raise
+
+    def _storage_relative(self, item: Optional[MediaItem], original_name: str, extension: str) -> str:
+        filename = safe_filename(original_name, extension)
+        number = normalize_number(item.number) if item and item.number else ""
+        if item and number:
+            return f"number/{safe_storage_key(number)}/{filename}"
+        if item:
+            return f"item/{item.id}/{filename}"
+        return filename
 
     def _write(self, relative: str, content: bytes) -> str:
         path = self._absolute(relative)

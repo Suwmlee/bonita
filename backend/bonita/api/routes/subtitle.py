@@ -10,8 +10,8 @@ from bonita.services.subtitle_service import SubtitleService
 router = APIRouter()
 
 
-def _public(row) -> schemas.SubtitlePublic:
-    return schemas.SubtitlePublic.model_validate(row.to_dict())
+def _public(service: SubtitleService, row) -> schemas.SubtitlePublic:
+    return schemas.SubtitlePublic.model_validate(service.describe(row))
 
 
 @router.get("/", response_model=schemas.SubtitleCollection)
@@ -24,14 +24,39 @@ def list_subtitles(
     unmatched: bool = False,
 ) -> Any:
     """字幕列表。number 为精确番号，filter 模糊匹配番号和文件名。"""
-    rows, count = SubtitleService(session).list_subtitles(
+    service = SubtitleService(session)
+    rows, count = service.list_subtitles(
         skip=skip,
         limit=limit,
         filter_text=filter,
         number=number,
         unmatched=unmatched,
     )
-    return schemas.SubtitleCollection(data=[_public(row) for row in rows], count=count)
+    return schemas.SubtitleCollection(data=[_public(service, row) for row in rows], count=count)
+
+
+@router.get("/groups", response_model=schemas.SubtitleGroupCollection)
+def list_subtitle_groups(
+    session: SessionDep,
+    skip: int = 0,
+    limit: int = 20,
+    filter: str = None,
+    number: str = None,
+    unmatched: bool = False,
+) -> Any:
+    """按媒体项分组。同一媒体项的字幕在一组里，未关联的单独一组。"""
+    service = SubtitleService(session)
+    groups, count = service.list_groups(
+        skip=skip,
+        limit=limit,
+        filter_text=filter,
+        number=number,
+        unmatched=unmatched,
+    )
+    return schemas.SubtitleGroupCollection(
+        data=[schemas.SubtitleGroupPublic.model_validate(group) for group in groups],
+        count=count,
+    )
 
 
 @router.post("/upload", response_model=schemas.SubtitleUploadResult)
@@ -53,7 +78,7 @@ async def upload_subtitles(
         except ValueError as exc:
             failed.append(str(exc))
             continue
-        saved.append(_public(result["subtitle"]))
+        saved.append(_public(service, result["subtitle"]))
         unmatched += int(result["unmatched"])
         replaced += int(result["replaced"])
     if not saved and failed:
@@ -81,7 +106,7 @@ def update_subtitle(session: SessionDep, subtitle_id: int, body: schemas.Subtitl
     try:
         row = SubtitleService(session).update_subtitle(
             subtitle_id,
-            identity_key=body.identity_key,
+            number=body.number,
             language=body.language,
             part_number=body.part_number,
         )
@@ -89,7 +114,7 @@ def update_subtitle(session: SessionDep, subtitle_id: int, body: schemas.Subtitl
         raise HTTPException(status_code=400, detail=str(exc))
     if not row:
         raise HTTPException(status_code=404, detail="字幕不存在")
-    return _public(row)
+    return _public(SubtitleService(session), row)
 
 
 @router.delete("/{subtitle_id}", response_model=schemas.Response)
@@ -99,9 +124,21 @@ def delete_subtitle(session: SessionDep, subtitle_id: int) -> Any:
     return schemas.Response(success=True, message="字幕已删除")
 
 
+@router.post("/{subtitle_id}/prefer", response_model=schemas.SubtitleDeliverResult)
+def prefer_subtitle(session: SessionDep, subtitle_id: int) -> Any:
+    """改用这一份，并投递到匹配番号和部次的目标文件旁边。"""
+    try:
+        result = SubtitleService(session).use_subtitle(subtitle_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if result is None:
+        raise HTTPException(status_code=404, detail="字幕不存在")
+    return schemas.SubtitleDeliverResult(**result)
+
+
 @router.post("/{subtitle_id}/deliver", response_model=schemas.SubtitleDeliverResult)
 def deliver_one_subtitle(session: SessionDep, subtitle_id: int, overwrite: bool = False) -> Any:
-    """把一条字幕复制到匹配番号和部次的目标文件旁边。"""
+    """把当前在用的这一条复制到匹配番号和部次的目标文件旁边。"""
     try:
         result = SubtitleService(session).deliver_subtitle(subtitle_id, overwrite=overwrite)
     except ValueError as exc:

@@ -35,14 +35,15 @@ def _safe_filesize(path):
         return -1
 
 
-def _apply_library_subtitles(session, srcpath, destpath, part_number, number):
-    """字幕库里已有同番号字幕时，复制到本次目标旁边。失败不影响转移结果。"""
+def _apply_library_subtitles(session, srcpath, destpath, part_number, number, media_item_id=None):
+    """字幕库里已有同一媒体项的字幕时，复制到本次目标旁边。失败不影响转移结果。"""
     try:
         copied = SubtitleService(session).deliver_for_transfer(
             srcpath=srcpath,
             destpath=destpath,
             part_number=part_number,
             number=number,
+            media_item_id=media_item_id,
         )
         if copied:
             logger.info(f"      ✓ 字幕库投递 {copied} 个")
@@ -366,6 +367,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                         record.destpath,
                         record.part_number or 0,
                         subtitle_number,
+                        record.media_item_id,
                     )
                 except Exception as e:
                     failed_count += 1

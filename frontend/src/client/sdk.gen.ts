@@ -2,6 +2,7 @@
 
 import { buildClientParams, type Client, formDataBodySerializer, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
+import type { SubtitleGroupCollection } from './types.gen';
 import type { AddCollectionErrors, AddCollectionResponses, AddItemsToCollectionErrors, AddItemsToCollectionResponses, BodyLoginLoginAccessToken, BodyResourceUploadImage, BodySubtitleUploadSubtitles, CleanMediaItemResponses, CleanupDataErrors, CleanupDataResponses, CleanupRunningTasksResponses, CollectionAddItems, CollectionCreate, CreateConfigErrors, CreateConfigResponses, CreateMediaItemErrors, CreateMediaItemResponses, CreateMetadataErrors, CreateMetadataResponses, CreateTaskConfigErrors, CreateTaskConfigResponses, CreateUserErrors, CreateUserResponses, DeleteConfigErrors, DeleteConfigResponses, DeleteMediaItemErrors, DeleteMediaItemResponses, DeleteMediaItemsErrors, DeleteMediaItemsResponses, DeleteMetadataErrors, DeleteMetadataResponses, DeleteRecordsErrors, DeleteRecordsResponses, DeleteSubtitleErrors, DeleteSubtitleResponses, DeleteTaskConfigErrors, DeleteTaskConfigResponses, DeleteUserErrors, DeleteUserMeResponses, DeleteUserResponses, DeliverOneSubtitleErrors, DeliverOneSubtitleResponses, DeliverSubtitlesErrors, DeliverSubtitlesResponses, EmbySettings, EmbySyncParam, EmbyWebhookResponses, GetAllConfigsErrors, GetAllConfigsResponses, GetAllTaskConfigsErrors, GetAllTaskConfigsResponses, GetAllTasksStatusErrors, GetAllTasksStatusResponses, GetCollectionErrors, GetCollectionResponses, GetEmbySettingsResponses, GetImageByQueryErrors, GetImageByQueryResponses, GetMediaItemErrors, GetMediaItemResponses, GetMediaItemsErrors, GetMediaItemsResponses, GetMetadataErrors, GetMetadataResponses, GetPosterErrors, GetPosterResponses, GetProxySettingsResponses, GetQbittorrentSettingsResponses, GetRecordGroupsErrors, GetRecordGroupsResponses, GetRecordsErrors, GetRecordsResponses, GetScrapinglibVersionResponses, GetTransmissionSettingsResponses, GetTransRecordsErrors, GetTransRecordsResponses, HealthCheckResponses, ListCollectionsResponses, ListDirectoryErrors, ListDirectoryResponses, ListMetadataSitesResponses, ListSubtitlesErrors, ListSubtitlesResponses, LoginAccessTokenErrors, LoginAccessTokenResponses, MediaItemBatchDelete, MediaItemCreate, MediaItemUpdate, MetadataBase, MetadataCreate, MetadataRefreshParam, ProxySettings, QBittorrentSettings, ReadUserByIdErrors, ReadUserByIdResponses, ReadUserMeResponses, ReadUsersErrors, ReadUsersResponses, RecordPublic, RefreshMetadataErrors, RefreshMetadataResponses, RegisterUserErrors, RegisterUserResponses, RemoveCollectionErrors, RemoveCollectionResponses, RemoveItemFromCollectionErrors, RemoveItemFromCollectionResponses, RunEmbyScanErrors, RunEmbyScanResponses, RunImportNfoErrors, RunImportNfoResponses, RunTransferTaskErrors, RunTransferTaskResponses, ScrapingConfigCreate, ScrapingConfigPublic, SearchCollectionCandidatesErrors, SearchCollectionCandidatesResponses, SearchEmbyCollectionsErrors, SearchEmbyCollectionsResponses, SubtitleDeliverRequest, SubtitleUpdate, SyncAllCollectionsErrors, SyncAllCollectionsResponses, SyncEmbyWatchHistoryErrors, SyncEmbyWatchHistoryResponses, SyncOneCollectionErrors, SyncOneCollectionResponses, SyncRecordPathErrors, SyncRecordPathResponses, TaskPathParam, TestEmbyConnectionErrors, TestEmbyConnectionResponses, TestQbittorrentConnectionErrors, TestQbittorrentConnectionResponses, TestTransmissionConnectionErrors, TestTransmissionConnectionResponses, ToolArgsParam, TransferConfigCreate, TransferConfigPublic, TransmissionSettings, TransRecordsPathSyncParam, UpdateConfigErrors, UpdateConfigResponses, UpdateEmbySettingsErrors, UpdateEmbySettingsResponses, UpdateMediaItemErrors, UpdateMediaItemResponses, UpdateMetadataErrors, UpdateMetadataResponses, UpdatePassword, UpdatePasswordMeErrors, UpdatePasswordMeResponses, UpdateProxySettingsErrors, UpdateProxySettingsResponses, UpdateQbittorrentSettingsErrors, UpdateQbittorrentSettingsResponses, UpdateRecordErrors, UpdateRecordResponses, UpdateScrapinglibResponses, UpdateSeasonErrors, UpdateSeasonResponses, UpdateSubtitleErrors, UpdateSubtitleResponses, UpdateTaskConfigErrors, UpdateTaskConfigResponses, UpdateTopFolderErrors, UpdateTopFolderResponses, UpdateTransmissionSettingsErrors, UpdateTransmissionSettingsResponses, UpdateUserErrors, UpdateUserMeErrors, UpdateUserMeResponses, UpdateUserResponses, UploadImageErrors, UploadImageResponses, UploadSubtitlesErrors, UploadSubtitlesResponses, UserCreate, UserRegister, UserUpdate, UserUpdateMe } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
@@ -818,6 +819,34 @@ export class SubtitleService {
             ...params
         });
     }
+
+    /**
+     * List Subtitle Groups
+     *
+     * 按媒体项分组。同一媒体项的字幕在一组里，未关联的单独一组。
+     */
+    public static listSubtitleGroups<ThrowOnError extends boolean = true>(parameters?: {
+        skip?: number;
+        limit?: number;
+        filter?: string;
+        number?: string;
+        unmatched?: boolean;
+    }, options?: Options<never, ThrowOnError>) {
+        const params = buildClientParams([parameters], [{ args: [
+                    { in: 'query', key: 'skip' },
+                    { in: 'query', key: 'limit' },
+                    { in: 'query', key: 'filter' },
+                    { in: 'query', key: 'number' },
+                    { in: 'query', key: 'unmatched' }
+                ] }]);
+        return (options?.client ?? client).get<{ 200: SubtitleGroupCollection }, ListSubtitlesErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/subtitles/groups',
+            ...options,
+            ...params
+        });
+    }
     
     /**
      * Upload Subtitles
@@ -920,6 +949,24 @@ export class SubtitleService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/subtitles/{subtitle_id}/deliver',
+            ...options,
+            ...params
+        });
+    }
+    
+    /**
+     * Prefer Subtitle
+     *
+     * 改用这一份，并投递到匹配番号和部次的目标文件旁边。
+     */
+    public static useSubtitle<ThrowOnError extends boolean = true>(parameters: {
+        subtitle_id: number;
+    }, options?: Options<never, ThrowOnError>) {
+        const params = buildClientParams([parameters], [{ args: [{ in: 'path', key: 'subtitle_id' }] }]);
+        return (options?.client ?? client).post<DeliverOneSubtitleResponses, DeliverOneSubtitleErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/subtitles/{subtitle_id}/prefer',
             ...options,
             ...params
         });

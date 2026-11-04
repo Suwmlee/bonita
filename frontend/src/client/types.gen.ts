@@ -1420,6 +1420,29 @@ export type SubtitleCollection = {
 };
 
 /**
+ * SubtitleGroupPublic
+ */
+export type SubtitleGroupPublic = {
+    key: string;
+    media_item_id?: number | null;
+    number?: string;
+    title?: string;
+    imdb_id?: string;
+    tmdb_id?: string;
+    crop?: boolean;
+    count?: number;
+    subtitles?: Array<SubtitlePublic>;
+};
+
+/**
+ * SubtitleGroupCollection
+ */
+export type SubtitleGroupCollection = {
+    data: Array<SubtitleGroupPublic>;
+    count: number;
+};
+
+/**
  * SubtitleDeliverRequest
  */
 export type SubtitleDeliverRequest = {
@@ -1453,6 +1476,14 @@ export type SubtitleDeliverResult = {
      * Missing
      */
     missing?: number;
+    /**
+     * Failed
+     */
+    failed?: number;
+    /**
+     * Details
+     */
+    details?: Array<string>;
 };
 
 /**
@@ -1464,13 +1495,21 @@ export type SubtitlePublic = {
      */
     id: number;
     /**
-     * Identity Type
+     * Media Item Id
      */
-    identity_type?: string;
+    media_item_id?: number | null;
     /**
-     * Identity Key
+     * Number
      */
-    identity_key?: string;
+    number?: string;
+    /**
+     * Title
+     */
+    title?: string;
+    /**
+     * Imdb Id
+     */
+    imdb_id?: string;
     /**
      * Language
      */
@@ -1488,6 +1527,14 @@ export type SubtitlePublic = {
      */
     file_extension?: string;
     /**
+     * Preferred
+     */
+    preferred?: boolean;
+    /**
+     * File Size
+     */
+    file_size?: number | null;
+    /**
      * Createtime
      */
     createtime?: string | null;
@@ -1502,9 +1549,9 @@ export type SubtitlePublic = {
  */
 export type SubtitleUpdate = {
     /**
-     * Identity Key
+     * Number
      */
-    identity_key?: string;
+    number?: string;
     /**
      * Language
      */

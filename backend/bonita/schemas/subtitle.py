@@ -6,12 +6,16 @@ from pydantic import BaseModel, Field
 
 class SubtitlePublic(BaseModel):
     id: int
-    identity_type: str = "number"
-    identity_key: str = ""
+    media_item_id: Optional[int] = None
+    number: str = ""
+    title: str = ""
+    imdb_id: str = ""
     language: str = "zh-Hans"
     part_number: int = 0
     original_name: str = ""
     file_extension: str = ""
+    preferred: bool = False
+    file_size: Optional[int] = None
     createtime: Optional[datetime] = None
     updatetime: Optional[datetime] = None
 
@@ -24,6 +28,23 @@ class SubtitleCollection(BaseModel):
     count: int
 
 
+class SubtitleGroupPublic(BaseModel):
+    key: str
+    media_item_id: Optional[int] = None
+    number: str = ""
+    title: str = ""
+    imdb_id: str = ""
+    tmdb_id: str = ""
+    crop: bool = True
+    count: int = 0
+    subtitles: List[SubtitlePublic] = Field(default_factory=list)
+
+
+class SubtitleGroupCollection(BaseModel):
+    data: List[SubtitleGroupPublic]
+    count: int
+
+
 class SubtitleUploadResult(BaseModel):
     data: List[SubtitlePublic]
     unmatched: int = 0
@@ -32,7 +53,7 @@ class SubtitleUploadResult(BaseModel):
 
 
 class SubtitleUpdate(BaseModel):
-    identity_key: str = ""
+    number: str = ""
     language: str = "zh-Hans"
     part_number: int = Field(default=0, ge=0)
 
@@ -47,3 +68,5 @@ class SubtitleDeliverResult(BaseModel):
     copied: int = 0
     skipped: int = 0
     missing: int = 0
+    failed: int = 0
+    details: List[str] = Field(default_factory=list)

@@ -4,6 +4,8 @@ import {
   type SubtitlePublic,
   SubtitleService,
 } from "@/client"
+import type { SubtitleGroupPublic } from "@/client/types.gen"
+import { getPosterUrl } from "@/composables/useMediaPoster"
 import { useConfirmationStore } from "@/stores/confirmation.store"
 import { useToastStore } from "@/stores/toast.store"
 import { computed, onMounted, ref, watch } from "vue"
@@ -19,9 +21,11 @@ const toastStore = useToastStore()
 const confirmationStore = useConfirmationStore()
 
 const items = ref<SubtitlePublic[]>([])
+const groups = ref<SubtitleGroupPublic[]>([])
+const posterBroken = ref<Record<string, boolean>>({})
 const total = ref(0)
 const page = ref(1)
-const itemsPerPage = 20
+const itemsPerPage = 12
 const loading = ref(false)
 const uploading = ref(false)
 const searchQuery = ref("")
@@ -46,8 +50,8 @@ const headers = computed(() => {
   const columns = [
     { title: t("pages.subtitles.file"), key: "original_name", sortable: false },
     {
-      title: t("pages.subtitles.number"),
-      key: "identity_key",
+      title: t("pages.subtitles.mediaItem"),
+      key: "media_item_id",
       sortable: false,
     },
     {
@@ -70,7 +74,7 @@ const headers = computed(() => {
     },
   ]
   if (props.fixedNumber) {
-    return columns.filter((column) => column.key !== "identity_key")
+    return columns.filter((column) => column.key !== "media_item_id")
   }
   return columns
 })
@@ -92,6 +96,34 @@ function formatPart(part?: number) {
   return `EP${String(part).padStart(2, "0")}`
 }
 
+function formatSize(size?: number | null) {
+  if (size == null) return ""
+  if (size < 1024) return `${size} B`
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
+  return `${(size / 1024 / 1024).toFixed(1)} MB`
+}
+
+function formatTime(value?: string | null) {
+  if (!value) return ""
+  const normalized = value.includes("T") ? value : value.replace(" ", "T")
+  const date = new Date(normalized)
+  if (Number.isNaN(date.getTime())) return ""
+  return date.toLocaleString()
+}
+
+function mediaLabel(item: SubtitlePublic) {
+  return item.number || item.title || item.imdb_id || ""
+}
+
+function compareLabel(item: SubtitlePublic) {
+  const parts: string[] = []
+  const size = formatSize(item.file_size)
+  const time = formatTime(item.updatetime)
+  if (size) parts.push(size)
+  if (time) parts.push(time)
+  return parts.join(" · ")
+}
+
 function apiErrorMessage(error: unknown, fallback: string) {
   const detail = (error as { response?: { data?: { detail?: unknown } } })
     ?.response?.data?.detail
@@ -100,25 +132,59 @@ function apiErrorMessage(error: unknown, fallback: string) {
 }
 
 function deliverSummary(result: SubtitleDeliverResult) {
-  if (!result.copied && !result.skipped && !result.missing) {
-    return t("pages.subtitles.deliverNone")
-  }
-  return t("pages.subtitles.deliverResult", result)
+  const failed = result.failed || 0
+  const hasCount = result.copied || result.skipped || result.missing || failed
+  const base = hasCount
+    ? t("pages.subtitles.deliverResult", { ...result, failed })
+    : t("pages.subtitles.deliverNone")
+  const details = (result.details || []).filter(Boolean)
+  if (!hasCount && details.length) return details.join("；")
+  if (details.length) return `${base}。${details.join("；")}`
+  return base
+}
+
+function searchKeyword() {
+  return typeof searchQuery.value === "string" ? searchQuery.value.trim() : ""
+}
+
+function groupPosterUrl(group: SubtitleGroupPublic) {
+  if (!group.media_item_id) return ""
+  return getPosterUrl({
+    media_type: group.number ? "number" : "movie",
+    number: group.number || "",
+    title: group.title || group.number || "",
+    imdb_id: group.imdb_id || "",
+    tmdb_id: group.tmdb_id || "",
+  })
+}
+
+function markPosterBroken(key: string) {
+  posterBroken.value = { ...posterBroken.value, [key]: true }
 }
 
 async function load() {
   loading.value = true
   try {
-    const { data: response } = await SubtitleService.listSubtitles({
+    const keyword = searchKeyword()
+    if (props.compact || props.fixedNumber) {
+      const { data: response } = await SubtitleService.listSubtitles({
+        skip: (page.value - 1) * itemsPerPage,
+        limit: props.compact ? 50 : itemsPerPage,
+        filter: props.fixedNumber ? undefined : keyword || undefined,
+        number: props.fixedNumber || undefined,
+        unmatched: props.fixedNumber ? false : unmatchedOnly.value,
+      })
+      items.value = response.data || []
+      total.value = response.count || 0
+      return
+    }
+    const { data: response } = await SubtitleService.listSubtitleGroups({
       skip: (page.value - 1) * itemsPerPage,
-      limit: props.compact ? 50 : itemsPerPage,
-      filter: props.fixedNumber
-        ? undefined
-        : searchQuery.value.trim() || undefined,
-      number: props.fixedNumber || undefined,
-      unmatched: props.fixedNumber ? false : unmatchedOnly.value,
+      limit: itemsPerPage,
+      filter: keyword || undefined,
+      unmatched: unmatchedOnly.value,
     })
-    items.value = response.data || []
+    groups.value = response.data || []
     total.value = response.count || 0
   } catch (error) {
     toastStore.error(apiErrorMessage(error, t("pages.subtitles.loadFailed")))
@@ -130,6 +196,11 @@ async function load() {
 function search() {
   page.value = 1
   load()
+}
+
+function clearSearch() {
+  searchQuery.value = ""
+  search()
 }
 
 function changePage(value: number) {
@@ -177,7 +248,7 @@ async function onFiles(event: Event) {
 
 function openEdit(item: SubtitlePublic) {
   editing.value = item
-  editKey.value = props.fixedNumber || item.identity_key || ""
+  editKey.value = props.fixedNumber || item.number || ""
   editLanguage.value = item.language || "zh-Hans"
   editPart.value = item.part_number || 0
   editOpen.value = true
@@ -190,7 +261,7 @@ async function saveEdit() {
     await SubtitleService.updateSubtitle({
       subtitle_id: editing.value.id,
       subtitleUpdate: {
-        identity_key: props.fixedNumber || editKey.value,
+        number: props.fixedNumber || editKey.value,
         language: editLanguage.value,
         part_number: Number(editPart.value) || 0,
       },
@@ -208,7 +279,9 @@ async function saveEdit() {
 async function remove(item: SubtitlePublic) {
   const confirmed = await confirmationStore.openConfirmation({
     title: t("pages.subtitles.deleteTitle"),
-    message: t("pages.subtitles.deleteMessage", { name: item.original_name }),
+    message: t(item.preferred ? "pages.subtitles.deleteMessageInUse" : "pages.subtitles.deleteMessage", {
+      name: item.original_name,
+    }),
     type: "delete",
   })
   if (!confirmed) return
@@ -227,6 +300,18 @@ async function deliver(item: SubtitlePublic) {
       subtitle_id: item.id,
     })
     toastStore.success(deliverSummary(result))
+  } catch (error) {
+    toastStore.error(apiErrorMessage(error, t("pages.subtitles.deliverFailed")))
+  }
+}
+
+async function useThis(item: SubtitlePublic) {
+  try {
+    const { data: result } = await SubtitleService.useSubtitle({
+      subtitle_id: item.id,
+    })
+    toastStore.success(deliverSummary(result))
+    await load()
   } catch (error) {
     toastStore.error(apiErrorMessage(error, t("pages.subtitles.deliverFailed")))
   }
@@ -263,7 +348,7 @@ onMounted(load)
         prepend-inner-icon="bx-search"
         style="max-width: 280px"
         @keyup.enter="search"
-        @click:clear="search"
+        @click:clear="clearSearch"
       />
       <VTextField
         v-if="!fixedNumber"
@@ -298,7 +383,114 @@ onMounted(load)
       />
     </div>
 
+    <div v-if="!compact && !fixedNumber" class="subtitle-groups">
+      <div v-if="loading && groups.length === 0" class="d-flex justify-center pa-8">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+      <div v-else-if="groups.length === 0" class="text-medium-emphasis text-center pa-8">
+        {{ t("pages.subtitles.empty") }}
+      </div>
+      <article v-for="group in groups" :key="group.key" class="subtitle-group">
+        <aside class="subtitle-group-poster">
+          <div
+            v-if="group.media_item_id"
+            class="subtitle-poster"
+            :class="{ 'show-full': group.crop === false }"
+          >
+            <img
+              v-if="group.crop === false && !posterBroken[group.key]"
+              class="subtitle-poster-fill"
+              :src="groupPosterUrl(group)"
+              alt=""
+              aria-hidden="true"
+              @error="markPosterBroken(group.key)"
+            />
+            <img
+              v-show="!posterBroken[group.key]"
+              class="subtitle-poster-image"
+              :src="groupPosterUrl(group)"
+              :alt="group.number || group.title || ''"
+              @error="markPosterBroken(group.key)"
+            />
+            <div v-if="posterBroken[group.key]" class="subtitle-poster-empty">
+              <VIcon icon="bx-image" size="small" />
+            </div>
+          </div>
+        </aside>
+        <div class="subtitle-group-main">
+          <div class="subtitle-group-meta">
+            <div class="subtitle-group-number">
+              {{ group.media_item_id ? (group.number || group.title || group.imdb_id) : t("pages.subtitles.unmatched") }}
+            </div>
+            <div v-if="group.media_item_id && group.title && group.title !== group.number" class="subtitle-group-title">
+              {{ group.title }}
+            </div>
+            <div class="subtitle-group-count text-caption text-medium-emphasis">
+              {{ t("pages.subtitles.groupCount", { count: group.count || group.subtitles?.length || 0 }) }}
+            </div>
+          </div>
+          <div
+            v-for="item in group.subtitles || []"
+            :key="item.id"
+            class="subtitle-group-row"
+          >
+            <div class="subtitle-group-file">
+              <span class="subtitle-group-name">{{ item.original_name }}</span>
+              <VChip v-if="item.preferred" size="x-small" color="primary" variant="tonal">
+                {{ t("pages.subtitles.inUse") }}
+              </VChip>
+            </div>
+            <span class="subtitle-group-cell">{{ languageLabel(item.language) }}</span>
+            <span class="subtitle-group-cell">{{ formatPart(item.part_number) }}</span>
+            <span class="subtitle-group-cell">{{ formatSize(item.file_size) }}</span>
+            <span class="subtitle-group-cell">{{ formatTime(item.updatetime) }}</span>
+            <div class="d-flex gap-1">
+              <VBtn size="small" variant="text" :title="t('common.edit')" @click="openEdit(item)">
+                <VIcon icon="bx-edit-alt" />
+              </VBtn>
+              <VBtn
+                v-if="item.preferred"
+                size="small"
+                variant="text"
+                :title="t('pages.subtitles.deliver')"
+                :disabled="!item.media_item_id"
+                @click="deliver(item)"
+              >
+                <VIcon icon="bx-captions" />
+              </VBtn>
+              <VBtn
+                v-else
+                size="small"
+                variant="text"
+                :title="t('pages.subtitles.useThis')"
+                :disabled="!item.media_item_id"
+                @click="useThis(item)"
+              >
+                <VIcon icon="bx-check-circle" />
+              </VBtn>
+              <VBtn size="small" variant="text" color="error" :title="t('common.delete')" @click="remove(item)">
+                <VIcon icon="bx-trash" />
+              </VBtn>
+            </div>
+          </div>
+        </div>
+      </article>
+      <div v-if="groups.length" class="d-flex align-center justify-end px-2 py-3">
+        <span class="text-caption text-medium-emphasis me-4">
+          {{ t("pages.subtitles.totalGroups", { count: total }) }}
+        </span>
+        <VPagination
+          :model-value="page"
+          :length="pageCount"
+          :total-visible="5"
+          density="compact"
+          @update:model-value="changePage"
+        />
+      </div>
+    </div>
+
     <VDataTable
+      v-else
       :headers="headers"
       :items="items"
       :loading="loading"
@@ -307,8 +499,27 @@ onMounted(load)
       density="compact"
       hide-default-footer
     >
-      <template #item.identity_key="{ item }">
-        <span v-if="item.identity_key">{{ item.identity_key }}</span>
+      <template #item.original_name="{ item }">
+        <div class="d-flex align-center flex-wrap gap-2">
+          <span>{{ item.original_name }}</span>
+          <VChip v-if="item.preferred" size="x-small" color="primary" variant="tonal">
+            {{ t("pages.subtitles.inUse") }}
+          </VChip>
+        </div>
+        <div v-if="compareLabel(item)" class="text-caption text-medium-emphasis">
+          {{ compareLabel(item) }}
+        </div>
+      </template>
+      <template #item.media_item_id="{ item }">
+        <div v-if="item.media_item_id">
+          <div>{{ mediaLabel(item) }}</div>
+          <div
+            v-if="item.number && item.title && item.title !== item.number"
+            class="text-caption text-medium-emphasis"
+          >
+            {{ item.title }}
+          </div>
+        </div>
         <VChip v-else size="small" color="warning" variant="tonal">{{ t("pages.subtitles.unmatched") }}</VChip>
       </template>
       <template #item.language="{ item }">
@@ -323,13 +534,24 @@ onMounted(load)
             <VIcon icon="bx-edit-alt" />
           </VBtn>
           <VBtn
+            v-if="item.preferred"
             size="small"
             variant="text"
             :title="t('pages.subtitles.deliver')"
-            :disabled="!item.identity_key && !fixedNumber"
+            :disabled="!item.media_item_id && !fixedNumber"
             @click="deliver(item)"
           >
             <VIcon icon="bx-captions" />
+          </VBtn>
+          <VBtn
+            v-else
+            size="small"
+            variant="text"
+            :title="t('pages.subtitles.useThis')"
+            :disabled="!item.media_item_id && !fixedNumber"
+            @click="useThis(item)"
+          >
+            <VIcon icon="bx-check-circle" />
           </VBtn>
           <VBtn size="small" variant="text" color="error" :title="t('common.delete')" @click="remove(item)">
             <VIcon icon="bx-trash" />
@@ -388,3 +610,132 @@ onMounted(load)
     </VDialog>
   </div>
 </template>
+
+<style scoped>
+.subtitle-groups {
+  min-width: 0;
+}
+
+.subtitle-group {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.subtitle-group-poster {
+  flex: 0 0 112px;
+  width: 112px;
+  display: flex;
+  align-items: flex-start;
+  padding: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-inline-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.subtitle-poster {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border-radius: 4px;
+  background-color: #1a1a1a;
+}
+
+.subtitle-poster-fill,
+.subtitle-poster-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.subtitle-poster-fill {
+  object-fit: cover;
+  filter: blur(18px) brightness(0.65);
+  transform: scale(1.15);
+}
+
+.subtitle-poster-image {
+  object-fit: cover;
+  object-position: right center;
+  z-index: 1;
+}
+
+.subtitle-poster.show-full .subtitle-poster-image {
+  object-fit: contain;
+  object-position: center;
+}
+
+.subtitle-poster-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.subtitle-group-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.subtitle-group-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 16px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.subtitle-group-number {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+
+.subtitle-group-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtitle-group-count {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+  white-space: nowrap;
+}
+
+.subtitle-group-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 88px 56px 88px 168px 132px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 16px;
+}
+
+.subtitle-group-row + .subtitle-group-row {
+  border-top: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6));
+}
+
+.subtitle-group-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.subtitle-group-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtitle-group-cell {
+  color: rgba(var(--v-theme-on-surface), 0.75);
+}
+</style>

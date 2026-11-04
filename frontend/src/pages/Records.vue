@@ -266,10 +266,15 @@ function apiErrorMessage(error: unknown, fallback: string) {
 }
 
 function deliverSummary(result: SubtitleDeliverResult) {
-  if (!result.copied && !result.skipped && !result.missing) {
-    return t("pages.subtitles.deliverNone")
-  }
-  return t("pages.subtitles.deliverResult", result)
+  const failed = result.failed || 0
+  const hasCount = result.copied || result.skipped || result.missing || failed
+  const base = hasCount
+    ? t("pages.subtitles.deliverResult", { ...result, failed })
+    : t("pages.subtitles.deliverNone")
+  const details = (result.details || []).filter(Boolean)
+  if (!hasCount && details.length) return details.join("；")
+  if (details.length) return `${base}。${details.join("；")}`
+  return base
 }
 
 async function deliverRecordSubtitle(item: RecordPublic) {
