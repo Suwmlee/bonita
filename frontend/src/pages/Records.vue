@@ -21,6 +21,31 @@ const toastStore = useToastStore()
 const { t } = useI18n() // 导入国际化工具函数
 
 const VIEW_MODE_KEY = "records-view-mode"
+const VIEW_STATE_KEY = "records-view-state"
+
+type RecordsViewState = {
+  taskId: number | null
+}
+
+function loadViewState(): Partial<RecordsViewState> {
+  try {
+    const raw = localStorage.getItem(VIEW_STATE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Partial<RecordsViewState>
+    if (
+      typeof parsed.taskId === "number" &&
+      Number.isInteger(parsed.taskId) &&
+      parsed.taskId > 0
+    ) {
+      return { taskId: parsed.taskId }
+    }
+    return {}
+  } catch {
+    return {}
+  }
+}
+
+const savedViewState = loadViewState()
 const viewMode = ref(
   localStorage.getItem(VIEW_MODE_KEY) === "group" ? "group" : "list",
 )
@@ -28,7 +53,40 @@ const posterBroken = ref<Record<string, boolean>>({})
 const posterPreview = ref<{ src: string; alt: string } | null>(null)
 
 const searchQuery = ref("")
-const taskIdQuery = ref("")
+const taskIdQuery = ref<number | null>(savedViewState.taskId ?? null)
+const tasksLoaded = ref(false)
+
+const taskOptions = computed(() => {
+  const options = [...taskStore.allTasks]
+    .sort((a, b) => a.name.localeCompare(b.name, "zh"))
+    .map((task) => ({
+      id: task.id,
+      title: `${task.name} (#${task.id})`,
+    }))
+  const selectedId = taskIdQuery.value
+  if (selectedId != null && !options.some((item) => item.id === selectedId)) {
+    options.unshift({
+      id: selectedId,
+      title: tasksLoaded.value ? `#${selectedId}` : "",
+    })
+  }
+  return options
+})
+
+const taskFilterLabel = computed(() => {
+  if (taskIdQuery.value == null) return ""
+  const task = taskStore.allTasks.find((item) => item.id === taskIdQuery.value)
+  if (task) return `${task.name} (#${task.id})`
+  if (!tasksLoaded.value) return ""
+  return `#${taskIdQuery.value}`
+})
+
+function persistViewState() {
+  const state: RecordsViewState = {
+    taskId: taskIdQuery.value,
+  }
+  localStorage.setItem(VIEW_STATE_KEY, JSON.stringify(state))
+}
 const searchTimeout = ref<number | null>(null)
 const selected = ref<number[]>([])
 const tagColorMap = {
@@ -393,12 +451,8 @@ const loadData = async (
     itemsPerPage,
   }
 
-  // 如果有任务ID输入，则添加到搜索参数
-  if (taskIdQuery.value.trim()) {
-    const taskId = Number.parseInt(taskIdQuery.value.trim())
-    if (!Number.isNaN(taskId)) {
-      searchParams.taskId = taskId
-    }
+  if (taskIdQuery.value != null) {
+    searchParams.taskId = taskIdQuery.value
   }
 
   // 如果有搜索内容，则添加到搜索参数
@@ -530,6 +584,10 @@ watch(
   },
 )
 
+watch(taskIdQuery, () => {
+  persistViewState()
+}, { flush: "sync" })
+
 // 更新 watch 函数以实现搜索功能，添加防抖
 watch([searchQuery, taskIdQuery], () => {
   // 清除之前的定时器
@@ -547,7 +605,7 @@ watch([searchQuery, taskIdQuery], () => {
 // 清除搜索并重新加载数据
 const handleClearSearch = () => {
   searchQuery.value = ""
-  taskIdQuery.value = ""
+  taskIdQuery.value = null
   loadData(1, recordStore.itemsPerPage)
 }
 
@@ -565,8 +623,15 @@ onBeforeUnmount(() => {
   }
 })
 
-onMounted(() => {
-  initial()
+onMounted(async () => {
+  try {
+    await taskStore.getAllTasks()
+  } catch (error) {
+    console.error("Failed to load tasks", error)
+  } finally {
+    tasksLoaded.value = true
+  }
+  await initial()
 })
 </script>
 
@@ -582,9 +647,10 @@ onMounted(() => {
             class="search-input" prepend-inner-icon="mdi-magnify" clearable
             @click:clear="searchQuery = ''; loadData(1, recordStore.itemsPerPage)" />
 
-          <v-text-field v-model="taskIdQuery" :placeholder="t('pages.records.filterTaskId')" hide-details density="comfortable"
-            class="task-id-input" prepend-inner-icon="mdi-pound" clearable type="number"
-            @click:clear="taskIdQuery = ''; loadData(1, recordStore.itemsPerPage)" />
+          <v-autocomplete v-model="taskIdQuery" :items="taskOptions" item-title="title" item-value="id"
+            :placeholder="t('pages.records.filterTaskId')" hide-details density="comfortable"
+            class="task-id-input" prepend-inner-icon="mdi-pound" clearable
+            @click:clear="taskIdQuery = null; loadData(1, recordStore.itemsPerPage)" />
         </div>
         
         <div class="d-flex align-center gap-2">
@@ -628,7 +694,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="search-filters mt-2 mb-1 d-flex flex-wrap align-center gap-2" v-if="searchQuery || taskIdQuery">
+      <div class="search-filters mt-2 mb-1 d-flex flex-wrap align-center gap-2" v-if="searchQuery || taskFilterLabel">
         <v-chip v-if="searchQuery" color="primary" size="default" variant="elevated" class="search-chip">
           <v-icon start size="small" class="mr-1">mdi-magnify</v-icon>
           {{ t('pages.records.nameFilter') }}: {{ searchQuery }}
@@ -637,15 +703,15 @@ onMounted(() => {
           </template>
         </v-chip>
 
-        <v-chip v-if="taskIdQuery" color="info" size="default" variant="elevated" class="search-chip">
+        <v-chip v-if="taskFilterLabel" color="info" size="default" variant="elevated" class="search-chip">
           <v-icon start size="small" class="mr-1">mdi-pound</v-icon>
-          {{ t('pages.records.taskIdFilter') }}: {{ taskIdQuery }}
+          {{ t('pages.records.taskIdFilter') }}: {{ taskFilterLabel }}
           <template v-slot:append>
-            <v-icon size="small" @click="taskIdQuery = ''; loadData(1, recordStore.itemsPerPage)">mdi-close</v-icon>
+            <v-icon size="small" @click="taskIdQuery = null; loadData(1, recordStore.itemsPerPage)">mdi-close</v-icon>
           </template>
         </v-chip>
 
-        <v-btn v-if="searchQuery || taskIdQuery" icon="mdi-close-circle" size="small" color="error" variant="text"
+        <v-btn v-if="searchQuery || taskFilterLabel" icon="mdi-close-circle" size="small" color="error" variant="text"
           @click="handleClearSearch" class="ml-1 clear-all-btn">
           <v-tooltip activator="parent" location="top">{{ t('pages.records.clearFilters') }}</v-tooltip>
         </v-btn>
@@ -1113,8 +1179,8 @@ onMounted(() => {
 }
 
 .task-id-input {
-  max-width: 180px;
-  min-width: 150px;
+  max-width: 320px;
+  min-width: 220px;
 }
 
 .delete-btn {
