@@ -154,10 +154,14 @@ class MediaItemService:
         )
 
         if search:
+            like = f"%{search}%"
             query = query.filter(
-                MediaItem.title.ilike(f"%{search}%") |
-                MediaItem.original_title.ilike(f"%{search}%") |
-                MediaItem.number.ilike(f"%{search}%")
+                MediaItem.title.ilike(like)
+                | MediaItem.original_title.ilike(like)
+                | MediaItem.number.ilike(like)
+                | MediaItem.imdb_id.ilike(like)
+                | MediaItem.tmdb_id.ilike(like)
+                | MediaItem.tvdb_id.ilike(like)
             )
 
         if media_type == "tvshow":

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import {
+  type MediaItemWithWatches,
+  MediaitemService,
   type SubtitleDeliverResult,
   type SubtitlePublic,
   SubtitleService,
@@ -8,13 +10,36 @@ import type { SubtitleGroupPublic } from "@/client/types.gen"
 import { getPosterUrl } from "@/composables/useMediaPoster"
 import { useConfirmationStore } from "@/stores/confirmation.store"
 import { useToastStore } from "@/stores/toast.store"
-import { computed, onMounted, ref, watch } from "vue"
+import { watchDebounced } from "@vueuse/core"
+import { computed, onMounted, onUnmounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
 
+type MediaOption = {
+  id: number
+  label: string
+  kind: string
+  media_type: string
+}
+
 const props = defineProps<{
-  fixedNumber?: string
+  fixedMediaId?: number
   compact?: boolean
 }>()
+
+const emit = defineEmits<{
+  count: [value: number]
+}>()
+
+const SUBTITLE_EXTENSIONS = new Set([
+  ".ass",
+  ".srt",
+  ".ssa",
+  ".vtt",
+  ".sub",
+  ".idx",
+  ".sup",
+  ".ttml",
+])
 
 const { t } = useI18n()
 const toastStore = useToastStore()
@@ -30,14 +55,26 @@ const loading = ref(false)
 const uploading = ref(false)
 const searchQuery = ref("")
 const forcedNumber = ref("")
+const linkedMediaId = ref<number | null>(null)
+const linkSearch = ref("")
+const linkItems = ref<MediaOption[]>([])
+const linkLoading = ref(false)
+const editMediaId = ref<number | null>(null)
+const editSearch = ref("")
+const editItems = ref<MediaOption[]>([])
+const editMediaLoading = ref(false)
 const unmatchedOnly = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+const dragDepth = ref(0)
+const dragOver = computed(() => dragDepth.value > 0)
 const editOpen = ref(false)
 const saving = ref(false)
 const editing = ref<SubtitlePublic | null>(null)
 const editKey = ref("")
 const editLanguage = ref("zh-Hans")
 const editPart = ref(0)
+
+const pinned = computed(() => !!props.fixedMediaId)
 
 const languages = computed(() => [
   { title: t("pages.subtitles.lang.zhHans"), value: "zh-Hans" },
@@ -73,7 +110,7 @@ const headers = computed(() => {
       width: "148px",
     },
   ]
-  if (props.fixedNumber) {
+  if (pinned.value) {
     return columns.filter((column) => column.key !== "media_item_id")
   }
   return columns
@@ -82,6 +119,8 @@ const headers = computed(() => {
 const pageCount = computed(() =>
   Math.max(1, Math.ceil(total.value / itemsPerPage)),
 )
+
+watch(total, (value) => emit("count", value))
 
 function languageLabel(language?: string) {
   return (
@@ -111,8 +150,112 @@ function formatTime(value?: string | null) {
   return date.toLocaleString()
 }
 
+function episodeCode(item: {
+  season_number?: number | null
+  episode_number?: number | null
+}) {
+  const season = item.season_number
+  const episode = item.episode_number
+  if (season == null || episode == null || season < 0 || episode < 0) return ""
+  return `S${String(season).padStart(2, "0")}E${String(episode).padStart(2, "0")}`
+}
+
+function mediaKind(mediaType?: string) {
+  if (mediaType === "tvshow") return t("pages.mediaitem.tvshow")
+  if (mediaType === "episode") return t("pages.mediaitem.episode")
+  if (mediaType === "number") return t("pages.mediaitem.hasNumber")
+  if (mediaType === "video") return t("pages.mediaitem.video")
+  return t("pages.mediaitem.movie")
+}
+
+function mediaOptionLabel(item: {
+  media_type?: string
+  title?: string | null
+  original_title?: string | null
+  number?: string | null
+  imdb_id?: string | null
+  season_number?: number | null
+  episode_number?: number | null
+}) {
+  if (item.media_type === "episode") {
+    const show = item.original_title || item.title || ""
+    return [episodeCode(item), show].filter(Boolean).join(" ")
+  }
+  if (item.media_type === "tvshow") return item.title || ""
+  if (item.number) {
+    const title = item.title && item.title !== item.number ? item.title : ""
+    return [item.number, title].filter(Boolean).join(" · ")
+  }
+  return [item.title || "", item.imdb_id || ""].filter(Boolean).join(" · ")
+}
+
+function toOption(item: MediaItemWithWatches): MediaOption {
+  return {
+    id: item.id,
+    media_type: item.media_type,
+    label: mediaOptionLabel(item),
+    kind: mediaKind(item.media_type),
+  }
+}
+
+function optionFromSubtitle(item: SubtitlePublic): MediaOption {
+  const mediaType = item.media_type || (item.number ? "number" : "movie")
+  return {
+    id: item.media_item_id || 0,
+    media_type: mediaType,
+    label: mediaOptionLabel({
+      media_type: mediaType,
+      title: item.title,
+      original_title: item.series_title,
+      number: item.number,
+      season_number: item.season_number,
+      episode_number: item.episode_number,
+    }),
+    kind: mediaKind(mediaType),
+  }
+}
+
+function mergeSelected(
+  current: MediaOption[],
+  incoming: MediaOption[],
+  selectedId: number | null,
+) {
+  const selected = selectedId
+    ? current.find((item) => item.id === selectedId)
+    : undefined
+  const seen = new Set<number>()
+  const merged: MediaOption[] = []
+  for (const item of selected ? [selected, ...incoming] : incoming) {
+    if (seen.has(item.id)) continue
+    seen.add(item.id)
+    merged.push(item)
+  }
+  return merged
+}
+
 function mediaLabel(item: SubtitlePublic) {
-  return item.number || item.title || item.imdb_id || ""
+  if (item.media_type === "episode") {
+    return [episodeCode(item), item.series_title || item.title || ""]
+      .filter(Boolean)
+      .join(" ")
+  }
+  return item.number || item.title || ""
+}
+
+function groupHeading(group: SubtitleGroupPublic) {
+  if (!group.media_item_id) return t("pages.subtitles.unmatched")
+  if (group.number) return group.number
+  return group.title || group.imdb_id || ""
+}
+
+function groupSubheading(group: SubtitleGroupPublic) {
+  if (!group.media_item_id || !group.number || !group.title) return ""
+  if (group.title === group.number) return ""
+  return group.title
+}
+
+function hasEpisodes(group: SubtitleGroupPublic) {
+  return (group.subtitles || []).some((item) => item.media_type === "episode")
 }
 
 function compareLabel(item: SubtitlePublic) {
@@ -149,13 +292,58 @@ function searchKeyword() {
 
 function groupPosterUrl(group: SubtitleGroupPublic) {
   if (!group.media_item_id) return ""
+  const mediaType = group.media_type || (group.number ? "number" : "movie")
   return getPosterUrl({
-    media_type: group.number ? "number" : "movie",
-    number: group.number || "",
+    media_type: mediaType,
+    number: mediaType === "number" ? group.number || "" : "",
     title: group.title || group.number || "",
     imdb_id: group.imdb_id || "",
     tmdb_id: group.tmdb_id || "",
   })
+}
+
+async function loadLinkOptions(term: string) {
+  linkLoading.value = true
+  try {
+    const query = term.trim()
+    const { data: response } = await MediaitemService.getMediaItems({
+      search: query || undefined,
+      limit: 20,
+      sort_by: "updatetime",
+      sort_desc: true,
+    })
+    linkItems.value = mergeSelected(
+      linkItems.value,
+      (response.data || []).map(toOption),
+      linkedMediaId.value,
+    )
+  } catch (error) {
+    console.error("搜索媒体项失败:", error)
+  } finally {
+    linkLoading.value = false
+  }
+}
+
+async function loadEditOptions(term: string) {
+  editMediaLoading.value = true
+  try {
+    const query = term.trim()
+    const { data: response } = await MediaitemService.getMediaItems({
+      search: query || undefined,
+      limit: 20,
+      sort_by: "updatetime",
+      sort_desc: true,
+    })
+    editItems.value = mergeSelected(
+      editItems.value,
+      (response.data || []).map(toOption),
+      editMediaId.value,
+    )
+  } catch (error) {
+    console.error("搜索媒体项失败:", error)
+  } finally {
+    editMediaLoading.value = false
+  }
 }
 
 function markPosterBroken(key: string) {
@@ -166,13 +354,13 @@ async function load() {
   loading.value = true
   try {
     const keyword = searchKeyword()
-    if (props.compact || props.fixedNumber) {
+    if (props.compact || pinned.value) {
       const { data: response } = await SubtitleService.listSubtitles({
         skip: (page.value - 1) * itemsPerPage,
         limit: props.compact ? 50 : itemsPerPage,
-        filter: props.fixedNumber ? undefined : keyword || undefined,
-        number: props.fixedNumber || undefined,
-        unmatched: props.fixedNumber ? false : unmatchedOnly.value,
+        filter: pinned.value ? undefined : keyword || undefined,
+        media_item_id: props.fixedMediaId || undefined,
+        unmatched: pinned.value ? false : unmatchedOnly.value,
       })
       items.value = response.data || []
       total.value = response.count || 0
@@ -208,22 +396,82 @@ function changePage(value: number) {
   load()
 }
 
+const suppressClick = ref(false)
+
 function chooseFiles() {
+  if (suppressClick.value) {
+    suppressClick.value = false
+    return
+  }
+  if (uploading.value) return
   fileInput.value?.click()
+}
+
+function acceptedSubtitles(files: File[]) {
+  return files.filter((file) => {
+    const dot = file.name.lastIndexOf(".")
+    const extension = dot >= 0 ? file.name.slice(dot).toLowerCase() : ""
+    return SUBTITLE_EXTENSIONS.has(extension)
+  })
+}
+
+function hasDraggedFiles(event: DragEvent) {
+  return Array.from(event.dataTransfer?.types || []).includes("Files")
+}
+
+function clearDrag() {
+  dragDepth.value = 0
+  window.removeEventListener("dragend", clearDrag)
+  window.removeEventListener("drop", clearDrag)
+}
+
+onUnmounted(clearDrag)
+
+function onDragEnter(event: DragEvent) {
+  if (!hasDraggedFiles(event)) return
+  if (dragDepth.value === 0) {
+    window.addEventListener("dragend", clearDrag)
+    window.addEventListener("drop", clearDrag)
+  }
+  dragDepth.value += 1
+}
+
+function onDragOver(event: DragEvent) {
+  if (event.dataTransfer) event.dataTransfer.dropEffect = "copy"
+}
+
+function onDragLeave() {
+  dragDepth.value = Math.max(0, dragDepth.value - 1)
+}
+
+function onDrop(event: DragEvent) {
+  suppressClick.value = true
+  clearDrag()
+  uploadFiles(Array.from(event.dataTransfer?.files || []))
 }
 
 async function onFiles(event: Event) {
   const input = event.target as HTMLInputElement
   const files = Array.from(input.files || [])
   input.value = ""
-  if (!files.length) return
+  uploadFiles(files)
+}
+
+async function uploadFiles(files: File[]) {
+  const accepted = acceptedSubtitles(files)
+  if (!accepted.length) {
+    if (files.length) toastStore.error(t("pages.subtitles.dropEmpty"))
+    return
+  }
   uploading.value = true
   try {
-    const number = (props.fixedNumber || forcedNumber.value).trim()
+    const mediaId = props.fixedMediaId || linkedMediaId.value
+    const number = mediaId ? "" : forcedNumber.value.trim()
     const { data: result } = await SubtitleService.uploadSubtitles({
       bodySubtitleUploadSubtitles: {
-        files,
-        number: number || null,
+        files: accepted,
+        number: mediaId ? null : number || null,
+        media_item_id: mediaId,
       },
     })
     const failed = result.failed?.length || 0
@@ -248,10 +496,15 @@ async function onFiles(event: Event) {
 
 function openEdit(item: SubtitlePublic) {
   editing.value = item
-  editKey.value = props.fixedNumber || item.number || ""
+  editKey.value = item.number || ""
   editLanguage.value = item.language || "zh-Hans"
   editPart.value = item.part_number || 0
+  editMediaId.value = props.fixedMediaId || item.media_item_id || null
+  editSearch.value = ""
+  editItems.value =
+    !pinned.value && item.media_item_id ? [optionFromSubtitle(item)] : []
   editOpen.value = true
+  if (!pinned.value) loadEditOptions("")
 }
 
 async function saveEdit() {
@@ -261,7 +514,8 @@ async function saveEdit() {
     await SubtitleService.updateSubtitle({
       subtitle_id: editing.value.id,
       subtitleUpdate: {
-        number: props.fixedNumber || editKey.value,
+        media_item_id: props.fixedMediaId || editMediaId.value,
+        number: props.fixedMediaId || editMediaId.value ? "" : editKey.value,
         language: editLanguage.value,
         part_number: Number(editPart.value) || 0,
       },
@@ -279,9 +533,14 @@ async function saveEdit() {
 async function remove(item: SubtitlePublic) {
   const confirmed = await confirmationStore.openConfirmation({
     title: t("pages.subtitles.deleteTitle"),
-    message: t(item.preferred ? "pages.subtitles.deleteMessageInUse" : "pages.subtitles.deleteMessage", {
-      name: item.original_name,
-    }),
+    message: t(
+      item.preferred
+        ? "pages.subtitles.deleteMessageInUse"
+        : "pages.subtitles.deleteMessage",
+      {
+        name: item.original_name,
+      },
+    ),
     type: "delete",
   })
   if (!confirmed) return
@@ -318,14 +577,35 @@ async function useThis(item: SubtitlePublic) {
 }
 
 watch(
-  () => props.fixedNumber,
+  () => props.fixedMediaId,
   () => {
     page.value = 1
     load()
   },
 )
 
-onMounted(load)
+watchDebounced(
+  linkSearch,
+  (term) => {
+    if (pinned.value) return
+    loadLinkOptions(term || "")
+  },
+  { debounce: 300 },
+)
+
+watchDebounced(
+  editSearch,
+  (term) => {
+    if (!editOpen.value || pinned.value) return
+    loadEditOptions(term || "")
+  },
+  { debounce: 300 },
+)
+
+onMounted(() => {
+  load()
+  if (!pinned.value) loadLinkOptions("")
+})
 </script>
 
 <template>
@@ -337,9 +617,9 @@ onMounted(load)
       </div>
     </div>
 
-    <div class="d-flex align-center flex-wrap gap-3 mb-3">
+    <div v-if="!compact" class="d-flex align-center flex-wrap gap-3 mb-3">
       <VTextField
-        v-if="!compact && !fixedNumber"
+        v-if="!compact && !pinned"
         v-model="searchQuery"
         :placeholder="t('pages.subtitles.search')"
         density="compact"
@@ -350,10 +630,30 @@ onMounted(load)
         @keyup.enter="search"
         @click:clear="clearSearch"
       />
+      <VAutocomplete
+        v-if="!pinned"
+        v-model="linkedMediaId"
+        v-model:search="linkSearch"
+        :items="linkItems"
+        item-title="label"
+        item-value="id"
+        no-filter
+        clearable
+        hide-details
+        density="compact"
+        :loading="linkLoading"
+        :placeholder="t('pages.subtitles.linkMedia')"
+        style="max-width: 320px; min-width: 220px"
+      >
+        <template #item="{ props: itemProps, item }">
+          <VListItem v-bind="itemProps" :subtitle="item.raw.kind" />
+        </template>
+      </VAutocomplete>
       <VTextField
-        v-if="!fixedNumber"
+        v-if="!pinned"
         v-model="forcedNumber"
         :placeholder="t('pages.subtitles.forceNumber')"
+        :disabled="!!linkedMediaId"
         density="compact"
         hide-details
         clearable
@@ -366,7 +666,7 @@ onMounted(load)
         {{ t("common.refresh") }}
       </VBtn>
       <VCheckbox
-        v-if="!fixedNumber"
+        v-if="!pinned"
         v-model="unmatchedOnly"
         :label="t('pages.subtitles.unmatchedOnly')"
         density="compact"
@@ -383,14 +683,19 @@ onMounted(load)
       />
     </div>
 
-    <div v-if="!compact && !fixedNumber" class="subtitle-groups">
+    <div v-if="!compact && !pinned" class="subtitle-groups">
       <div v-if="loading && groups.length === 0" class="d-flex justify-center pa-8">
         <VProgressCircular indeterminate color="primary" />
       </div>
       <div v-else-if="groups.length === 0" class="text-medium-emphasis text-center pa-8">
         {{ t("pages.subtitles.empty") }}
       </div>
-      <article v-for="group in groups" :key="group.key" class="subtitle-group">
+      <article
+        v-for="group in groups"
+        :key="group.key"
+        class="subtitle-group"
+        :class="{ 'with-episode': hasEpisodes(group) }"
+      >
         <aside class="subtitle-group-poster">
           <div
             v-if="group.media_item_id"
@@ -409,7 +714,7 @@ onMounted(load)
               v-show="!posterBroken[group.key]"
               class="subtitle-poster-image"
               :src="groupPosterUrl(group)"
-              :alt="group.number || group.title || ''"
+              :alt="groupHeading(group)"
               @error="markPosterBroken(group.key)"
             />
             <div v-if="posterBroken[group.key]" class="subtitle-poster-empty">
@@ -420,10 +725,10 @@ onMounted(load)
         <div class="subtitle-group-main">
           <div class="subtitle-group-meta">
             <div class="subtitle-group-number">
-              {{ group.media_item_id ? (group.number || group.title || group.imdb_id) : t("pages.subtitles.unmatched") }}
+              {{ groupHeading(group) }}
             </div>
-            <div v-if="group.media_item_id && group.title && group.title !== group.number" class="subtitle-group-title">
-              {{ group.title }}
+            <div v-if="groupSubheading(group)" class="subtitle-group-title">
+              {{ groupSubheading(group) }}
             </div>
             <div class="subtitle-group-count text-caption text-medium-emphasis">
               {{ t("pages.subtitles.groupCount", { count: group.count || group.subtitles?.length || 0 }) }}
@@ -434,6 +739,9 @@ onMounted(load)
             :key="item.id"
             class="subtitle-group-row"
           >
+            <span v-if="hasEpisodes(group)" class="subtitle-group-cell">
+              {{ episodeCode(item) }}
+            </span>
             <div class="subtitle-group-file">
               <span class="subtitle-group-name">{{ item.original_name }}</span>
               <VChip v-if="item.preferred" size="x-small" color="primary" variant="tonal">
@@ -489,6 +797,89 @@ onMounted(load)
       </div>
     </div>
 
+    <div v-else-if="compact" class="subtitle-attached">
+      <div
+        class="subtitle-drop"
+        :class="{ 'is-over': dragOver, 'is-busy': uploading }"
+        role="button"
+        tabindex="0"
+        @click="chooseFiles"
+        @keydown.enter.prevent="chooseFiles"
+        @keydown.space.prevent="chooseFiles"
+        @dragenter.prevent="onDragEnter"
+        @dragover.prevent="onDragOver"
+        @dragleave="onDragLeave"
+        @drop.prevent="onDrop"
+      >
+        <VProgressCircular v-if="uploading" indeterminate size="22" width="2" color="primary" />
+        <VIcon v-else icon="bx-cloud-upload" size="28" />
+        <span>{{ t("pages.subtitles.dropHint") }}</span>
+        <input
+          ref="fileInput"
+          class="d-none"
+          type="file"
+          multiple
+          accept=".ass,.srt,.ssa,.vtt,.sub,.idx,.sup,.ttml"
+          @change="onFiles"
+        />
+      </div>
+      <div v-if="loading && items.length === 0" class="d-flex justify-center py-6">
+        <VProgressCircular indeterminate size="24" width="2" color="primary" />
+      </div>
+      <div v-else-if="items.length === 0" class="subtitle-attached-empty text-medium-emphasis">
+        {{ t("pages.subtitles.empty") }}
+      </div>
+      <div v-else class="subtitle-file-list">
+        <div v-for="item in items" :key="item.id" class="subtitle-file">
+          <div class="subtitle-file-main">
+            <div class="subtitle-file-name">
+              <span>{{ item.original_name }}</span>
+              <VChip v-if="item.preferred" size="x-small" color="primary" variant="tonal">
+                {{ t("pages.subtitles.inUse") }}
+              </VChip>
+            </div>
+            <div class="text-caption text-medium-emphasis">
+              {{ languageLabel(item.language) }}
+              <span class="mx-1">·</span>
+              {{ formatPart(item.part_number) }}
+              <template v-if="formatSize(item.file_size)">
+                <span class="mx-1">·</span>
+                {{ formatSize(item.file_size) }}
+              </template>
+            </div>
+          </div>
+          <div class="subtitle-file-actions">
+            <VBtn size="small" variant="text" :title="t('common.edit')" @click="openEdit(item)">
+              <VIcon icon="bx-edit-alt" />
+            </VBtn>
+            <VBtn
+              v-if="item.preferred"
+              size="small"
+              variant="text"
+              :title="t('pages.subtitles.deliver')"
+              :disabled="!item.media_item_id"
+              @click="deliver(item)"
+            >
+              <VIcon icon="bx-captions" />
+            </VBtn>
+            <VBtn
+              v-else
+              size="small"
+              variant="text"
+              :title="t('pages.subtitles.useThis')"
+              :disabled="!item.media_item_id"
+              @click="useThis(item)"
+            >
+              <VIcon icon="bx-check-circle" />
+            </VBtn>
+            <VBtn size="small" variant="text" color="error" :title="t('common.delete')" @click="remove(item)">
+              <VIcon icon="bx-trash" />
+            </VBtn>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <VDataTable
       v-else
       :headers="headers"
@@ -538,7 +929,7 @@ onMounted(load)
             size="small"
             variant="text"
             :title="t('pages.subtitles.deliver')"
-            :disabled="!item.media_item_id && !fixedNumber"
+            :disabled="!item.media_item_id"
             @click="deliver(item)"
           >
             <VIcon icon="bx-captions" />
@@ -548,7 +939,7 @@ onMounted(load)
             size="small"
             variant="text"
             :title="t('pages.subtitles.useThis')"
-            :disabled="!item.media_item_id && !fixedNumber"
+            :disabled="!item.media_item_id"
             @click="useThis(item)"
           >
             <VIcon icon="bx-check-circle" />
@@ -577,15 +968,34 @@ onMounted(load)
       </template>
     </VDataTable>
 
-    <VDialog v-model="editOpen" max-width="420">
+    <VDialog v-model="editOpen" max-width="520">
       <VCard>
         <VCardTitle class="pt-5 px-6">{{ t("pages.subtitles.edit") }}</VCardTitle>
         <VCardText class="d-flex flex-column gap-3">
+          <VAutocomplete
+            v-if="!pinned"
+            v-model="editMediaId"
+            v-model:search="editSearch"
+            :items="editItems"
+            item-title="label"
+            item-value="id"
+            no-filter
+            clearable
+            hide-details
+            :loading="editMediaLoading"
+            :label="t('pages.subtitles.mediaItem')"
+          >
+            <template #item="{ props: itemProps, item }">
+              <VListItem v-bind="itemProps" :subtitle="item.raw.kind" />
+            </template>
+          </VAutocomplete>
           <VTextField
+            v-if="!pinned"
             v-model="editKey"
             :label="t('pages.subtitles.number')"
-            :readonly="!!fixedNumber"
-            hide-details="auto"
+            :hint="t('pages.subtitles.numberFallback')"
+            persistent-hint
+            :disabled="!!editMediaId"
           />
           <VSelect
             v-model="editLanguage"
@@ -612,6 +1022,73 @@ onMounted(load)
 </template>
 
 <style scoped>
+.subtitle-drop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 88px;
+  padding: 16px;
+  border: 1px dashed rgba(var(--v-theme-primary), 0.45);
+  border-radius: 8px;
+  background: rgba(var(--v-theme-primary), 0.04);
+  color: rgba(var(--v-theme-on-surface), 0.75);
+  cursor: pointer;
+  text-align: center;
+}
+
+.subtitle-drop.is-over,
+.subtitle-drop:focus-visible {
+  border-color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.12);
+  outline: none;
+}
+
+.subtitle-drop.is-busy {
+  cursor: progress;
+}
+
+.subtitle-attached-empty {
+  padding: 20px 8px 8px;
+  text-align: center;
+}
+
+.subtitle-file-list {
+  margin-top: 12px;
+}
+
+.subtitle-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.subtitle-file-main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.subtitle-file-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.subtitle-file-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtitle-file-actions {
+  display: flex;
+  flex: 0 0 auto;
+}
+
 .subtitle-groups {
   min-width: 0;
 }
@@ -715,6 +1192,10 @@ onMounted(load)
   gap: 12px;
   align-items: center;
   padding: 8px 16px;
+}
+
+.subtitle-group.with-episode .subtitle-group-row {
+  grid-template-columns: 72px minmax(0, 1fr) 88px 48px 80px 148px 172px;
 }
 
 .subtitle-group-row + .subtitle-group-row {

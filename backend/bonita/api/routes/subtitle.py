@@ -20,17 +20,17 @@ def list_subtitles(
     skip: int = 0,
     limit: int = 50,
     filter: str = None,
-    number: str = None,
     unmatched: bool = False,
+    media_item_id: int = None,
 ) -> Any:
-    """字幕列表。number 为精确番号，filter 模糊匹配番号和文件名。"""
+    """字幕列表。media_item_id 为指定媒体项，filter 模糊匹配番号、标题、剧名和文件名。"""
     service = SubtitleService(session)
     rows, count = service.list_subtitles(
         skip=skip,
         limit=limit,
         filter_text=filter,
-        number=number,
         unmatched=unmatched,
+        media_item_id=media_item_id,
     )
     return schemas.SubtitleCollection(data=[_public(service, row) for row in rows], count=count)
 
@@ -41,16 +41,14 @@ def list_subtitle_groups(
     skip: int = 0,
     limit: int = 20,
     filter: str = None,
-    number: str = None,
     unmatched: bool = False,
 ) -> Any:
-    """按媒体项分组。同一媒体项的字幕在一组里，未关联的单独一组。"""
+    """按媒体项分组。单集收到所属剧下面，未关联的单独一组。"""
     service = SubtitleService(session)
     groups, count = service.list_groups(
         skip=skip,
         limit=limit,
         filter_text=filter,
-        number=number,
         unmatched=unmatched,
     )
     return schemas.SubtitleGroupCollection(
@@ -64,8 +62,9 @@ async def upload_subtitles(
     session: SessionDep,
     files: List[UploadFile] = File(...),
     number: Optional[str] = Form(default=None),
+    media_item_id: Optional[int] = Form(default=None),
 ) -> Any:
-    """上传字幕。指定番号时全部关联到该番号，否则从文件名识别。"""
+    """上传字幕。指定媒体项或番号时按该目标关联，否则从文件名识别番号。电影和剧集不从文件名猜测。"""
     service = SubtitleService(session)
     saved = []
     failed = []
@@ -74,7 +73,13 @@ async def upload_subtitles(
     for upload in files:
         content = await upload.read()
         try:
-            result = await asyncio.to_thread(service.save_bytes, upload.filename or "", content, number)
+            result = await asyncio.to_thread(
+                service.save_bytes,
+                upload.filename or "",
+                content,
+                number,
+                media_item_id,
+            )
         except ValueError as exc:
             failed.append(str(exc))
             continue
@@ -88,10 +93,10 @@ async def upload_subtitles(
 
 @router.post("/deliver", response_model=schemas.SubtitleDeliverResult)
 def deliver_subtitles(session: SessionDep, body: schemas.SubtitleDeliverRequest) -> Any:
-    """把该番号已关联的字幕复制到转移记录的目标文件旁边。"""
+    """把这些媒体项上的在用字幕复制到转移记录的目标文件旁边。"""
     try:
-        result = SubtitleService(session).deliver_number(
-            number=body.number,
+        result = SubtitleService(session).deliver_items(
+            media_item_ids=body.media_item_ids,
             part_number=body.part_number,
             overwrite=body.overwrite,
         )
@@ -102,13 +107,14 @@ def deliver_subtitles(session: SessionDep, body: schemas.SubtitleDeliverRequest)
 
 @router.put("/{subtitle_id}", response_model=schemas.SubtitlePublic)
 def update_subtitle(session: SessionDep, subtitle_id: int, body: schemas.SubtitleUpdate) -> Any:
-    """修改字幕的番号、语言和部次。"""
+    """修改字幕关联的媒体项或番号，以及语言和部次。"""
     try:
         row = SubtitleService(session).update_subtitle(
             subtitle_id,
             number=body.number,
             language=body.language,
             part_number=body.part_number,
+            media_item_id=body.media_item_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -126,7 +132,7 @@ def delete_subtitle(session: SessionDep, subtitle_id: int) -> Any:
 
 @router.post("/{subtitle_id}/prefer", response_model=schemas.SubtitleDeliverResult)
 def prefer_subtitle(session: SessionDep, subtitle_id: int) -> Any:
-    """改用这一份，并投递到匹配番号和部次的目标文件旁边。"""
+    """改用这一份，并投递到该媒体项、相同部次的目标文件旁边。"""
     try:
         result = SubtitleService(session).use_subtitle(subtitle_id)
     except ValueError as exc:
@@ -138,7 +144,7 @@ def prefer_subtitle(session: SessionDep, subtitle_id: int) -> Any:
 
 @router.post("/{subtitle_id}/deliver", response_model=schemas.SubtitleDeliverResult)
 def deliver_one_subtitle(session: SessionDep, subtitle_id: int, overwrite: bool = False) -> Any:
-    """把当前在用的这一条复制到匹配番号和部次的目标文件旁边。"""
+    """把当前在用的这一条复制到该媒体项、相同部次的目标文件旁边。"""
     try:
         result = SubtitleService(session).deliver_subtitle(subtitle_id, overwrite=overwrite)
     except ValueError as exc:

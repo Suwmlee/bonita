@@ -8,11 +8,10 @@ import stat
 from datetime import datetime
 from typing import List, Optional, Tuple
 
-from sqlalchemy import func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, case, func, or_
+from sqlalchemy.orm import Session, aliased
 
 from bonita.core.config import settings
-from bonita.db.models.extrainfo import ExtraInfo
 from bonita.db.models.mediaitem import MediaItem
 from bonita.db.models.record import TransRecords
 from bonita.db.models.subtitle import Subtitle
@@ -40,6 +39,7 @@ _DELIVER_SUFFIX = {
 }
 
 _FILE_MODE = stat.S_IRWXU | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH
+_BINDABLE_TYPES = {"movie", "video", "number", "episode"}
 
 
 def normalize_number(value: Optional[str]) -> str:
@@ -180,34 +180,50 @@ class SubtitleService:
     def _filtered_query(
         self,
         filter_text: Optional[str] = None,
-        number: Optional[str] = None,
         unmatched: bool = False,
+        media_item_id: Optional[int] = None,
     ):
-        query = self.session.query(Subtitle)
-        if unmatched:
+        file_item = aliased(MediaItem)
+        series_item = aliased(MediaItem)
+        group_id = case(
+            (
+                and_(file_item.media_type == "episode", file_item.series_id.isnot(None)),
+                file_item.series_id,
+            ),
+            else_=Subtitle.media_item_id,
+        )
+        query = (
+            self.session.query(Subtitle)
+            .outerjoin(file_item, Subtitle.media_item_id == file_item.id)
+            .outerjoin(series_item, series_item.id == file_item.series_id)
+        )
+        if media_item_id:
+            query = query.filter(Subtitle.media_item_id == media_item_id)
+        elif unmatched:
             query = query.filter(Subtitle.media_item_id.is_(None))
-        elif number:
-            item_ids = [item.id for item in self._items_for_number(number)]
-            query = query.filter(Subtitle.media_item_id.in_(item_ids or [-1]))
         if filter_text:
             like = f"%{filter_text.strip()}%"
-            query = query.outerjoin(MediaItem, Subtitle.media_item_id == MediaItem.id).filter(or_(
+            query = query.filter(or_(
                 Subtitle.original_name.like(like),
-                MediaItem.number.like(like),
-                MediaItem.title.like(like),
-                MediaItem.imdb_id.like(like),
+                file_item.number.like(like),
+                file_item.title.like(like),
+                file_item.original_title.like(like),
+                file_item.imdb_id.like(like),
+                series_item.title.like(like),
+                series_item.original_title.like(like),
+                series_item.imdb_id.like(like),
             ))
-        return query
+        return query, group_id
 
     def list_subtitles(
         self,
         skip: int = 0,
         limit: int = 50,
         filter_text: Optional[str] = None,
-        number: Optional[str] = None,
         unmatched: bool = False,
+        media_item_id: Optional[int] = None,
     ) -> Tuple[List[Subtitle], int]:
-        query = self._filtered_query(filter_text, number, unmatched)
+        query, _group_id = self._filtered_query(filter_text, unmatched, media_item_id)
         count = query.count()
         rows = query.order_by(Subtitle.updatetime.desc(), Subtitle.id.desc()).offset(skip).limit(limit).all()
         return rows, count
@@ -217,46 +233,65 @@ class SubtitleService:
         skip: int = 0,
         limit: int = 20,
         filter_text: Optional[str] = None,
-        number: Optional[str] = None,
         unmatched: bool = False,
     ) -> Tuple[list, int]:
-        matched = self._filtered_query(filter_text, number, unmatched)
+        matched, group_id = self._filtered_query(filter_text, unmatched)
         grouped = (
             matched.with_entities(
-                Subtitle.media_item_id,
+                group_id.label("group_id"),
                 func.max(Subtitle.updatetime).label("latest"),
             )
-            .group_by(Subtitle.media_item_id)
+            .group_by(group_id)
             .order_by(func.max(Subtitle.updatetime).desc())
         )
         total = grouped.order_by(None).count()
         page = grouped.offset(skip).limit(limit).all()
-        ids = [row.media_item_id for row in page if row.media_item_id]
-        include_unmatched = any(row.media_item_id is None for row in page)
+        ids = [row.group_id for row in page if row.group_id]
+        include_unmatched = any(row.group_id is None for row in page)
         clauses = []
         if ids:
-            clauses.append(Subtitle.media_item_id.in_(ids))
+            clauses.append(group_id.in_(ids))
         if include_unmatched:
-            clauses.append(Subtitle.media_item_id.is_(None))
+            clauses.append(group_id.is_(None))
         rows = []
         if clauses:
             rows = (
-                self.session.query(Subtitle)
-                .filter(or_(*clauses))
+                matched.filter(or_(*clauses))
                 .order_by(Subtitle.updatetime.desc(), Subtitle.id.desc())
                 .all()
             )
         bucket = {}
         for row in rows:
-            bucket.setdefault(row.media_item_id, []).append(row)
-        groups = [self._group_payload(media_item_id, bucket.get(media_item_id, [])) for media_item_id, _latest in page]
+            bucket.setdefault(self._row_group_id(row), []).append(row)
+        groups = [
+            self._group_payload(row.group_id, bucket.get(row.group_id, []))
+            for row in page
+        ]
         return groups, total
 
+    def _row_group_id(self, row: Subtitle) -> Optional[int]:
+        item = self._cached_item(row.media_item_id)
+        if item and item.media_type == "episode" and item.series_id:
+            return item.series_id
+        return row.media_item_id
+
+    def _subtitle_sort_key(self, row: Subtitle):
+        item = self._cached_item(row.media_item_id)
+        updated = row.updatetime.timestamp() if row.updatetime else 0
+        if item and item.media_type == "episode":
+            season = item.season_number if isinstance(item.season_number, int) and item.season_number >= 0 else 10**6
+            episode = item.episode_number if isinstance(item.episode_number, int) and item.episode_number >= 0 else 10**6
+            return (0, season, episode, int(row.part_number or 0), row.language or "", row.id or 0)
+        return (1, -updated, int(row.part_number or 0), row.language or "", row.id or 0)
+
     def _group_payload(self, media_item_id: Optional[int], rows: List[Subtitle]) -> dict:
-        item = self.session.get(MediaItem, media_item_id) if media_item_id else None
-        number = normalize_number(item.number) if item and item.number else ""
+        item = self._cached_item(media_item_id)
+        rows = sorted(rows, key=self._subtitle_sort_key)
+        number = ""
+        if item and item.number and item.media_type in ("number", "movie", "video"):
+            number = normalize_number(item.number)
         meta = None
-        if number:
+        if number and item and item.media_type == "number":
             from bonita.modules.media_service.record_link import metadata_for_number
             meta = metadata_for_number(self.session, number)
         title = ""
@@ -267,13 +302,14 @@ class SubtitleService:
         return {
             "key": str(media_item_id) if media_item_id else "unmatched",
             "media_item_id": media_item_id,
+            "media_type": item.media_type if item else "",
             "number": number,
             "title": title,
             "imdb_id": (item.imdb_id or "") if item else "",
             "tmdb_id": (item.tmdb_id or "") if item else "",
             "crop": bool(meta.crop) if meta is not None and meta.crop is not None else True,
             "count": len(rows),
-            "subtitles": [self.describe(row, item) for row in rows],
+            "subtitles": [self.describe(row) for row in rows],
         }
 
     def describe(self, row: Subtitle, item: Optional[MediaItem] = None) -> dict:
@@ -294,37 +330,53 @@ class SubtitleService:
         data["file_size"] = file_size
         if row.media_item_id:
             if item is None or item.id != row.media_item_id:
-                item = self.session.get(MediaItem, row.media_item_id)
+                item = self._cached_item(row.media_item_id)
         else:
             item = None
+        series_title = ""
+        if item and item.media_type == "episode" and item.series_id:
+            series = self._cached_item(item.series_id)
+            if series:
+                series_title = series.title or ""
         data["media_item_id"] = row.media_item_id
+        data["media_type"] = item.media_type if item else ""
         data["number"] = (item.number or "") if item else ""
         data["title"] = (item.title or "") if item else ""
-        data["imdb_id"] = (item.imdb_id or "") if item else ""
+        data["series_title"] = series_title
+        data["season_number"] = item.season_number if item else None
+        data["episode_number"] = item.episode_number if item else None
         return data
+
+    def _cached_item(self, item_id: Optional[int]) -> Optional[MediaItem]:
+        if not item_id:
+            return None
+        cache = self.__dict__.setdefault("_item_cache", {})
+        if item_id not in cache:
+            cache[item_id] = self.session.get(MediaItem, item_id)
+        return cache[item_id]
 
     def get(self, subtitle_id: int) -> Optional[Subtitle]:
         return self.session.get(Subtitle, subtitle_id)
 
-    def counts_for(self, pairs: List[Tuple[str, int]]) -> dict:
-        keys = {normalize_number(number) for number, _part in pairs if number}
-        keys.discard("")
-        if not keys:
+    def counts_for(self, pairs: List[Tuple[Optional[int], int]]) -> dict:
+        ids = {item_id for item_id, _part in pairs if item_id}
+        if not ids:
             return {}
         rows = (
-            self.session.query(MediaItem.number, Subtitle.part_number, func.count(Subtitle.id))
-            .join(MediaItem, Subtitle.media_item_id == MediaItem.id)
-            .filter(func.upper(func.trim(MediaItem.number)).in_(keys))
-            .group_by(MediaItem.number, Subtitle.part_number)
+            self.session.query(Subtitle.media_item_id, Subtitle.part_number, func.count(Subtitle.id))
+            .filter(Subtitle.media_item_id.in_(ids))
+            .group_by(Subtitle.media_item_id, Subtitle.part_number)
             .all()
         )
-        counts = {}
-        for number, part, count in rows:
-            key = (normalize_number(number), part or 0)
-            counts[key] = counts.get(key, 0) + count
-        return counts
+        return {(item_id, part or 0): count for item_id, part, count in rows}
 
-    def save_bytes(self, filename: str, content: bytes, number: Optional[str] = None) -> dict:
+    def save_bytes(
+        self,
+        filename: str,
+        content: bytes,
+        number: Optional[str] = None,
+        media_item_id: Optional[int] = None,
+    ) -> dict:
         original_name = os.path.basename(filename or "").strip()
         if not original_name:
             raise ValueError("缺少文件名")
@@ -334,9 +386,7 @@ class SubtitleService:
         if not content:
             raise ValueError(f"文件为空: {original_name}")
 
-        explicit = normalize_number(number)
-        number_key = explicit or parse_number(original_name)
-        item = self._resolve_number_item(number_key) if number_key else None
+        item = self._resolve_upload_item(original_name, number, media_item_id)
         language = parse_language(original_name)
         part_number = parse_part(original_name)
         now = datetime.now()
@@ -386,16 +436,28 @@ class SubtitleService:
             self.session.commit()
         return {"subtitle": row, "replaced": False, "unmatched": item is None}
 
-    def update_subtitle(self, subtitle_id: int, number: str, language: str, part_number: int) -> Optional[Subtitle]:
+    def update_subtitle(
+        self,
+        subtitle_id: int,
+        number: str,
+        language: str,
+        part_number: int,
+        media_item_id: Optional[int] = None,
+    ) -> Optional[Subtitle]:
         row = self.get(subtitle_id)
         if not row:
             return None
         old_group = self._group_key(row)
         was_preferred = bool(row.preferred)
-        key = normalize_number(number)
-        item = self._resolve_number_item(key) if key else None
-        if key and not item:
-            raise ValueError("没有对应的媒体项")
+        if media_item_id:
+            item = self.session.get(MediaItem, int(media_item_id))
+            if not item or item.media_type not in _BINDABLE_TYPES:
+                raise ValueError("请选择具体的电影、单集或番号")
+        else:
+            key = normalize_number(number)
+            item = self._resolve_number_item(key) if key else None
+            if key and not item:
+                raise ValueError("没有对应的媒体项")
         language = (language or DEFAULT_LANGUAGE).strip() or DEFAULT_LANGUAGE
         part_number = int(part_number or 0)
         extension = row.file_extension or os.path.splitext(row.original_name or "")[1].lower()
@@ -461,54 +523,40 @@ class SubtitleService:
         result["details"] = details + result["details"]
         return result
 
-    def deliver_number(self, number: str, part_number: Optional[int] = None, overwrite: bool = False) -> dict:
-        if not normalize_number(number):
-            raise ValueError("缺少番号")
-        item = self._resolve_number_item(number)
-        if not item:
-            raise ValueError("没有对应的媒体项")
-        query = self.session.query(Subtitle).filter(Subtitle.media_item_id == item.id)
+    def deliver_items(
+        self,
+        media_item_ids: List[int],
+        part_number: Optional[int] = None,
+        overwrite: bool = False,
+    ) -> dict:
+        ids = [item_id for item_id in media_item_ids if item_id]
+        if not ids:
+            raise ValueError("缺少媒体项")
+        query = self.session.query(Subtitle).filter(Subtitle.media_item_id.in_(ids))
         if part_number is not None:
             query = query.filter(Subtitle.part_number == part_number)
         return self._deliver_rows(query.all(), overwrite=overwrite)
 
     def deliver_for_transfer(
         self,
-        srcpath: str,
         destpath: str,
         part_number: int = 0,
-        number: Optional[str] = None,
         media_item_id: Optional[int] = None,
     ) -> int:
-        """转移完成后，把字幕库里匹配的字幕复制到这次的目标文件旁边。"""
-        if not destpath:
-            return 0
-        ids = set()
-        if media_item_id:
-            ids.add(media_item_id)
-        key = normalize_number(number)
-        if not key and srcpath:
-            extra = self.session.query(ExtraInfo).filter(ExtraInfo.filepath == srcpath).first()
-            if extra and extra.number:
-                key = normalize_number(extra.number)
-        if not key and srcpath:
-            key = parse_number(srcpath)
-        for item in self._items_for_number(key):
-            ids.add(item.id)
-        ids.discard(None)
-        if not ids:
+        """转移完成后，把该媒体项的在用字幕复制到这次的目标文件旁边。"""
+        if not destpath or not media_item_id:
             return 0
         part = int(part_number or 0)
         rows = (
             self.session.query(Subtitle)
             .filter(
-                Subtitle.media_item_id.in_(ids),
+                Subtitle.media_item_id == media_item_id,
                 Subtitle.part_number == part,
             )
             .all()
         )
         if rows and not any(row.preferred for row in rows):
-            logger.info("字幕投递跳过：媒体项 %s 部次 %s 没有标成在用的字幕", sorted(ids), part)
+            logger.info("字幕投递跳过：媒体项 %s 部次 %s 没有标成在用的字幕", media_item_id, part)
             return 0
         return self._deliver_rows(rows, only_path=destpath)["copied"]
 
@@ -697,16 +745,25 @@ class SubtitleService:
             logger.info("清理字幕失败 %s: %s", path, exc)
             return False, False
 
-    def _items_for_number(self, number: str) -> List[MediaItem]:
-        key = normalize_number(number)
-        if not key:
-            return []
-        return (
-            self.session.query(MediaItem)
-            .filter(func.upper(func.trim(MediaItem.number)) == key)
-            .order_by(MediaItem.id.desc())
-            .all()
-        )
+    def _resolve_upload_item(
+        self,
+        filename: str,
+        number: Optional[str],
+        media_item_id: Optional[int],
+    ) -> Optional[MediaItem]:
+        """上传时决定挂到哪一条媒体项。指定的媒体项优先，否则用指定番号或文件名里的番号。"""
+        if media_item_id:
+            item = self.session.get(MediaItem, int(media_item_id))
+            if not item or item.media_type not in _BINDABLE_TYPES:
+                raise ValueError("请选择具体的电影、单集或番号")
+            return item
+        explicit = normalize_number(number)
+        if explicit:
+            return self._resolve_number_item(explicit)
+        number_key = parse_number(filename)
+        if number_key:
+            return self._resolve_number_item(number_key)
+        return None
 
     def _resolve_number_item(self, number: str) -> Optional[MediaItem]:
         """按番号找到媒体项。已有 metadata 而媒体项还不存在时才新建，并把同番号的转移记录挂上去。"""

@@ -7,9 +7,12 @@ from pydantic import BaseModel, Field
 class SubtitlePublic(BaseModel):
     id: int
     media_item_id: Optional[int] = None
+    media_type: str = ""
     number: str = ""
     title: str = ""
-    imdb_id: str = ""
+    series_title: str = ""
+    season_number: Optional[int] = None
+    episode_number: Optional[int] = None
     language: str = "zh-Hans"
     part_number: int = 0
     original_name: str = ""
@@ -31,6 +34,7 @@ class SubtitleCollection(BaseModel):
 class SubtitleGroupPublic(BaseModel):
     key: str
     media_item_id: Optional[int] = None
+    media_type: str = ""
     number: str = ""
     title: str = ""
     imdb_id: str = ""
@@ -53,13 +57,14 @@ class SubtitleUploadResult(BaseModel):
 
 
 class SubtitleUpdate(BaseModel):
+    media_item_id: Optional[int] = None
     number: str = ""
     language: str = "zh-Hans"
     part_number: int = Field(default=0, ge=0)
 
 
 class SubtitleDeliverRequest(BaseModel):
-    number: str
+    media_item_ids: List[int] = Field(default_factory=list)
     part_number: Optional[int] = Field(default=None, ge=0)
     overwrite: bool = False
 

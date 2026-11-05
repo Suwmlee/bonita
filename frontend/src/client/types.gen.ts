@@ -56,6 +56,10 @@ export type BodySubtitleUploadSubtitles = {
      * Number
      */
     number?: string | null;
+    /**
+     * Media Item Id
+     */
+    media_item_id?: number | null;
 };
 
 /**
@@ -1425,6 +1429,7 @@ export type SubtitleCollection = {
 export type SubtitleGroupPublic = {
     key: string;
     media_item_id?: number | null;
+    media_type?: string;
     number?: string;
     title?: string;
     imdb_id?: string;
@@ -1447,9 +1452,9 @@ export type SubtitleGroupCollection = {
  */
 export type SubtitleDeliverRequest = {
     /**
-     * Number
+     * Media Item Ids
      */
-    number: string;
+    media_item_ids?: Array<number>;
     /**
      * Part Number
      */
@@ -1499,6 +1504,10 @@ export type SubtitlePublic = {
      */
     media_item_id?: number | null;
     /**
+     * Media Type
+     */
+    media_type?: string;
+    /**
      * Number
      */
     number?: string;
@@ -1507,9 +1516,17 @@ export type SubtitlePublic = {
      */
     title?: string;
     /**
-     * Imdb Id
+     * Series Title
      */
-    imdb_id?: string;
+    series_title?: string;
+    /**
+     * Season Number
+     */
+    season_number?: number | null;
+    /**
+     * Episode Number
+     */
+    episode_number?: number | null;
     /**
      * Language
      */
@@ -1548,6 +1565,10 @@ export type SubtitlePublic = {
  * SubtitleUpdate
  */
 export type SubtitleUpdate = {
+    /**
+     * Media Item Id
+     */
+    media_item_id?: number | null;
     /**
      * Number
      */
@@ -1969,6 +1990,10 @@ export type TransferRecordPublic = {
      * Id
      */
     id: number;
+    /**
+     * Media Item Id
+     */
+    media_item_id?: number | null;
 };
 
 /**
@@ -3277,13 +3302,13 @@ export type ListSubtitlesData = {
          */
         filter?: string;
         /**
-         * Number
-         */
-        number?: string;
-        /**
          * Unmatched
          */
         unmatched?: boolean;
+        /**
+         * Media Item Id
+         */
+        media_item_id?: number;
     };
     url: '/api/v1/subtitles/';
 };

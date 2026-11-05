@@ -4,26 +4,24 @@ from typing import Any, List
 from bonita import schemas
 from bonita.api.deps import SessionDep
 from bonita.services.record_service import RecordService
-from bonita.services.subtitle_service import normalize_number, SubtitleService
+from bonita.services.subtitle_service import SubtitleService
 
 router = APIRouter()
 
 
 def _records_public(session, joined_results) -> List[schemas.RecordPublic]:
-    pairs = []
-    for trans_record, extra_info in joined_results:
-        number = extra_info.number if extra_info else ""
-        pairs.append((number, trans_record.part_number or 0))
+    pairs = [
+        (trans_record.media_item_id, trans_record.part_number or 0)
+        for trans_record, _extra_info in joined_results
+    ]
     subtitle_counts = SubtitleService(session).counts_for(pairs)
 
     record_list = []
     for trans_record, extra_info in joined_results:
         extra_info_public = None
-        number = ""
         if extra_info:
             extra_info_public = schemas.ExtraInfoPublic.model_validate(extra_info)
-            number = extra_info.number or ""
-        subtitle_count = subtitle_counts.get((normalize_number(number), trans_record.part_number or 0), 0)
+        subtitle_count = subtitle_counts.get((trans_record.media_item_id, trans_record.part_number or 0), 0)
         record_list.append(schemas.RecordPublic(
             transfer_record=schemas.TransferRecordPublic.model_validate(trans_record),
             extra_info=extra_info_public,

@@ -6,7 +6,7 @@ from bonita.db import Base
 
 
 class Subtitle(Base):
-    """字幕库。挂在媒体项上，番号和 IMDb 由媒体项区分。"""
+    """字幕库。挂在媒体项上：番号、电影，或剧的单集。"""
 
     id = Column(Integer, primary_key=True, index=True)
     media_item_id = Column(

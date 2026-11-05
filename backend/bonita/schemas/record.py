@@ -43,6 +43,7 @@ class TransferRecordPublic(TransferRecordBase):
     Properties to return via API, id is always required
     """
     id: int
+    media_item_id: Optional[int] = None
 
     class Config:
         from_attributes = True

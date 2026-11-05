@@ -795,21 +795,21 @@ export class SubtitleService {
     /**
      * List Subtitles
      *
-     * 字幕列表。number 为精确番号，filter 模糊匹配番号和文件名。
+     * 字幕列表。media_item_id 为指定媒体项，filter 模糊匹配番号、标题和文件名。
      */
     public static listSubtitles<ThrowOnError extends boolean = true>(parameters?: {
         skip?: number;
         limit?: number;
         filter?: string;
-        number?: string;
         unmatched?: boolean;
+        media_item_id?: number;
     }, options?: Options<never, ThrowOnError>) {
         const params = buildClientParams([parameters], [{ args: [
                     { in: 'query', key: 'skip' },
                     { in: 'query', key: 'limit' },
                     { in: 'query', key: 'filter' },
-                    { in: 'query', key: 'number' },
-                    { in: 'query', key: 'unmatched' }
+                    { in: 'query', key: 'unmatched' },
+                    { in: 'query', key: 'media_item_id' }
                 ] }]);
         return (options?.client ?? client).get<ListSubtitlesResponses, ListSubtitlesErrors, ThrowOnError>({
             responseType: 'json',
@@ -829,14 +829,12 @@ export class SubtitleService {
         skip?: number;
         limit?: number;
         filter?: string;
-        number?: string;
         unmatched?: boolean;
     }, options?: Options<never, ThrowOnError>) {
         const params = buildClientParams([parameters], [{ args: [
                     { in: 'query', key: 'skip' },
                     { in: 'query', key: 'limit' },
                     { in: 'query', key: 'filter' },
-                    { in: 'query', key: 'number' },
                     { in: 'query', key: 'unmatched' }
                 ] }]);
         return (options?.client ?? client).get<{ 200: SubtitleGroupCollection }, ListSubtitlesErrors, ThrowOnError>({

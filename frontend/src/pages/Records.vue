@@ -270,12 +270,12 @@ function deliverSummary(result: SubtitleDeliverResult) {
 }
 
 async function deliverRecordSubtitle(item: RecordPublic) {
-  const number = item.extra_info?.number
-  if (!number) return
+  const mediaId = item.transfer_record.media_item_id
+  if (!mediaId) return
   try {
     const { data: result } = await SubtitleService.deliverSubtitles({
       subtitleDeliverRequest: {
-        number,
+        media_item_ids: [mediaId],
         part_number: item.transfer_record.part_number || 0,
       },
     })
@@ -290,11 +290,18 @@ function groupHasSubtitles(group: RecordGroupPublic) {
 }
 
 async function deliverGroupSubtitle(group: RecordGroupPublic) {
-  if (!group.number) return
+  const mediaIds = [
+    ...new Set(
+      group.records
+        .map((item) => item.transfer_record.media_item_id)
+        .filter((id): id is number => !!id),
+    ),
+  ]
+  if (!mediaIds.length) return
   try {
     const { data: result } = await SubtitleService.deliverSubtitles({
       subtitleDeliverRequest: {
-        number: group.number,
+        media_item_ids: mediaIds,
       },
     })
     toastStore.success(deliverSummary(result))
@@ -861,7 +868,7 @@ onMounted(async () => {
             </div>
             <div v-if="group.title" class="record-group-title">{{ group.title }}</div>
             <VBtn
-              v-if="group.number && groupHasSubtitles(group)"
+              v-if="groupHasSubtitles(group)"
               class="record-group-subtitle record-group-action"
               :title="t('pages.subtitles.deliver')"
               @click="deliverGroupSubtitle(group)"
@@ -944,6 +951,14 @@ onMounted(async () => {
                 </span>
               </div>
               <div class="actions-cell">
+                <VBtn
+                  v-if="subtitleCount(item) > 0"
+                  class="record-group-action"
+                  :title="t('pages.subtitles.deliver')"
+                  @click="deliverRecordSubtitle(item)"
+                >
+                  <VIcon icon="bx-captions" size="18" />
+                </VBtn>
                 <VBtn class="record-group-action" @click="showSelectedRecord(item)">
                   <VIcon icon="bx-edit-alt" size="18" />
                 </VBtn>
