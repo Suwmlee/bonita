@@ -12,6 +12,9 @@ import { useConfirmationStore } from "./confirmation.store"
 import { useTaskStore } from "./task.store"
 import { useToastStore } from "./toast.store"
 
+let embySearchRequestId = 0
+let memberSearchRequestId = 0
+
 export const useCollectionStore = defineStore("collection-store", {
   state: () => ({
     collections: [] as CollectionPublic[],
@@ -38,16 +41,21 @@ export const useCollectionStore = defineStore("collection-store", {
     },
 
     async searchEmby(search: string) {
+      const requestId = ++embySearchRequestId
       this.isSearching = true
       try {
         const { data } = await CollectionService.searchEmbyCollections({ search })
+        if (requestId !== embySearchRequestId) return
         this.embyCandidates = data
       } catch (error) {
+        if (requestId !== embySearchRequestId) return
         console.error("Error searching Emby collections:", error)
         useToastStore().error(i18n.global.t("pages.collection.searchFailed") as string)
         this.embyCandidates = []
       } finally {
-        this.isSearching = false
+        if (requestId === embySearchRequestId) {
+          this.isSearching = false
+        }
       }
     },
 
@@ -145,19 +153,24 @@ export const useCollectionStore = defineStore("collection-store", {
     },
 
     async searchMembers(collectionId: number, search: string) {
+      const requestId = ++memberSearchRequestId
       this.isSearchingMembers = true
       try {
         const { data } = await CollectionService.searchCollectionCandidates({
           collection_id: collectionId,
           search,
         })
+        if (requestId !== memberSearchRequestId) return
         this.memberCandidates = data
       } catch (error) {
+        if (requestId !== memberSearchRequestId) return
         console.error("Error searching collection members:", error)
         useToastStore().error(i18n.global.t("pages.collection.searchMembersFailed") as string)
         this.memberCandidates = []
       } finally {
-        this.isSearchingMembers = false
+        if (requestId === memberSearchRequestId) {
+          this.isSearchingMembers = false
+        }
       }
     },
 

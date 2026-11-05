@@ -59,6 +59,9 @@ const linkedMediaId = ref<number | null>(null)
 const linkSearch = ref("")
 const linkItems = ref<MediaOption[]>([])
 const linkLoading = ref(false)
+let linkOptionsRequestId = 0
+let editOptionsRequestId = 0
+let subtitleLoadId = 0
 const editMediaId = ref<number | null>(null)
 const editSearch = ref("")
 const editItems = ref<MediaOption[]>([])
@@ -303,6 +306,7 @@ function groupPosterUrl(group: SubtitleGroupPublic) {
 }
 
 async function loadLinkOptions(term: string) {
+  const requestId = ++linkOptionsRequestId
   linkLoading.value = true
   try {
     const query = term.trim()
@@ -312,19 +316,22 @@ async function loadLinkOptions(term: string) {
       sort_by: "updatetime",
       sort_desc: true,
     })
+    if (requestId !== linkOptionsRequestId) return
     linkItems.value = mergeSelected(
       linkItems.value,
       (response.data || []).map(toOption),
       linkedMediaId.value,
     )
   } catch (error) {
+    if (requestId !== linkOptionsRequestId) return
     console.error("搜索媒体项失败:", error)
   } finally {
-    linkLoading.value = false
+    if (requestId === linkOptionsRequestId) linkLoading.value = false
   }
 }
 
 async function loadEditOptions(term: string) {
+  const requestId = ++editOptionsRequestId
   editMediaLoading.value = true
   try {
     const query = term.trim()
@@ -334,15 +341,17 @@ async function loadEditOptions(term: string) {
       sort_by: "updatetime",
       sort_desc: true,
     })
+    if (requestId !== editOptionsRequestId) return
     editItems.value = mergeSelected(
       editItems.value,
       (response.data || []).map(toOption),
       editMediaId.value,
     )
   } catch (error) {
+    if (requestId !== editOptionsRequestId) return
     console.error("搜索媒体项失败:", error)
   } finally {
-    editMediaLoading.value = false
+    if (requestId === editOptionsRequestId) editMediaLoading.value = false
   }
 }
 
@@ -351,6 +360,7 @@ function markPosterBroken(key: string) {
 }
 
 async function load() {
+  const requestId = ++subtitleLoadId
   loading.value = true
   try {
     const keyword = searchKeyword()
@@ -362,6 +372,7 @@ async function load() {
         media_item_id: props.fixedMediaId || undefined,
         unmatched: pinned.value ? false : unmatchedOnly.value,
       })
+      if (requestId !== subtitleLoadId) return
       items.value = response.data || []
       total.value = response.count || 0
       return
@@ -372,12 +383,14 @@ async function load() {
       filter: keyword || undefined,
       unmatched: unmatchedOnly.value,
     })
+    if (requestId !== subtitleLoadId) return
     groups.value = response.data || []
     total.value = response.count || 0
   } catch (error) {
+    if (requestId !== subtitleLoadId) return
     toastStore.error(apiErrorMessage(error, t("pages.subtitles.loadFailed")))
   } finally {
-    loading.value = false
+    if (requestId === subtitleLoadId) loading.value = false
   }
 }
 

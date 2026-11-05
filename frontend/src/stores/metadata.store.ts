@@ -21,6 +21,8 @@ function loadItemsPerPage(): number {
     : DEFAULT_ITEMS_PER_PAGE
 }
 
+let metadataListRequestId = 0
+
 export const useMetadataStore = defineStore("metadata-store", {
   state: () => ({
     allMetadata: [] as MetadataPublic[],
@@ -42,6 +44,7 @@ export const useMetadataStore = defineStore("metadata-store", {
       sortBy?: string,
       sortDesc?: boolean,
     ) {
+      const requestId = ++metadataListRequestId
       const skip =
         page !== undefined
           ? (page - 1) * (itemsPerPage || this.itemsPerPage)
@@ -49,33 +52,40 @@ export const useMetadataStore = defineStore("metadata-store", {
       const limit =
         itemsPerPage !== undefined ? itemsPerPage : this.itemsPerPage
 
-      const { data: response } = await MetadataService.getMetadata({
-        filter: filter,
-        skip: skip,
-        limit: limit,
-        sort_by: sortBy,
-        sort_desc: sortDesc,
-      })
+      try {
+        const { data: response } = await MetadataService.getMetadata({
+          filter: filter,
+          skip: skip,
+          limit: limit,
+          sort_by: sortBy,
+          sort_desc: sortDesc,
+        })
 
-      this.allMetadata = response.data
+        if (requestId !== metadataListRequestId) return null
 
-      // MetadataCollection has count property instead of meta.total
-      this.totalCount = response.count
+        this.allMetadata = response.data
 
-      // Update currentPage if page parameter was provided
-      if (page !== undefined) {
-        this.currentPage = page
-      }
+        // MetadataCollection has count property instead of meta.total
+        this.totalCount = response.count
 
-      // Update itemsPerPage if it was provided
-      if (itemsPerPage !== undefined) {
-        this.itemsPerPage = itemsPerPage
-        if (ITEMS_PER_PAGE_OPTIONS.includes(itemsPerPage)) {
-          localStorage.setItem(ITEMS_PER_PAGE_KEY, String(itemsPerPage))
+        // Update currentPage if page parameter was provided
+        if (page !== undefined) {
+          this.currentPage = page
         }
-      }
 
-      return this.allMetadata
+        // Update itemsPerPage if it was provided
+        if (itemsPerPage !== undefined) {
+          this.itemsPerPage = itemsPerPage
+          if (ITEMS_PER_PAGE_OPTIONS.includes(itemsPerPage)) {
+            localStorage.setItem(ITEMS_PER_PAGE_KEY, String(itemsPerPage))
+          }
+        }
+
+        return this.allMetadata
+      } catch (error) {
+        if (requestId !== metadataListRequestId) return null
+        throw error
+      }
     },
     showUpdateMetadata(data: MetadataPublic) {
       this.editMetadata = data

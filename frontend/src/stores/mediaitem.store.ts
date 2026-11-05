@@ -24,6 +24,9 @@ function loadItemsPerPage(): number {
     : DEFAULT_ITEMS_PER_PAGE
 }
 
+// 后发出的列表请求作废仍在途的上一次，避免旧搜索结果盖掉新结果。
+let mediaListRequestId = 0
+
 export const useMediaItemStore = defineStore("mediaitem-store", {
   state: () => ({
     allMediaItems: [] as MediaItemWithWatches[],
@@ -49,6 +52,7 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
       watched?: boolean,
       favorite?: boolean,
     ) {
+      const requestId = ++mediaListRequestId
       this.isLoading = true
       try {
         const skip =
@@ -70,6 +74,8 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
           favorite,
         })
 
+        if (requestId !== mediaListRequestId) return null
+
         this.allMediaItems = response.data
 
         // Update total count
@@ -89,8 +95,13 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
         }
 
         return this.allMediaItems
+      } catch (error) {
+        if (requestId !== mediaListRequestId) return null
+        throw error
       } finally {
-        this.isLoading = false
+        if (requestId === mediaListRequestId) {
+          this.isLoading = false
+        }
       }
     },
 

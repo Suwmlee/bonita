@@ -125,8 +125,8 @@ async function deleteSelected() {
     const deleted = new Set(deletedIds)
     selectedIds.value = selectedIds.value.filter((id) => !deleted.has(id))
     const page = currentPage.value
-    await fetchMediaItems(page)
-    if (mediaItemStore.allMediaItems.length === 0 && page > 1) {
+    const loaded = await fetchMediaItems(page)
+    if (loaded && mediaItemStore.allMediaItems.length === 0 && page > 1) {
       await fetchMediaItems(page - 1)
     }
   } finally {
@@ -271,9 +271,10 @@ function persistViewState() {
 
 async function fetchMediaItems(page: number, perPage?: number) {
   isSearching.value = true
+  let stale = false
   try {
-    await mediaItemStore.getMediaItems(
-      searchQuery.value,
+    const items = await mediaItemStore.getMediaItems(
+      searchQuery.value?.trim() || undefined,
       page,
       perPage,
       getMediaTypeValue(),
@@ -283,9 +284,14 @@ async function fetchMediaItems(page: number, perPage?: number) {
       watchedFilter.value === null ? undefined : watchedFilter.value,
       favoriteFilter.value === null ? undefined : favoriteFilter.value,
     )
+    if (items == null) {
+      stale = true
+      return false
+    }
     persistViewState()
+    return true
   } finally {
-    isSearching.value = false
+    if (!stale) isSearching.value = false
   }
 }
 

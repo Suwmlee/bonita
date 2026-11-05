@@ -105,16 +105,21 @@ function ensureSelectedSeriesOption() {
   seriesItems.value = [{ id, title }, ...seriesItems.value]
 }
 
+let seriesRequestId = 0
+
 async function loadSeries(term: string) {
+  const requestId = ++seriesRequestId
   seriesLoading.value = true
   try {
     const items = await mediaItemStore.searchSeries(term)
+    if (requestId !== seriesRequestId) return
     seriesItems.value = items.map(seriesOptionFromItem)
     ensureSelectedSeriesOption()
   } catch (error) {
+    if (requestId !== seriesRequestId) return
     console.error("Error searching series:", error)
   } finally {
-    seriesLoading.value = false
+    if (requestId === seriesRequestId) seriesLoading.value = false
   }
 }
 

@@ -460,14 +460,16 @@ const loadData = async (
   }
 
   // 如果有搜索内容，则添加到搜索参数
-  if (searchQuery.value.trim()) {
-    searchParams.search = searchQuery.value.trim()
+  const keyword = searchQuery.value?.trim() ?? ""
+  if (keyword) {
+    searchParams.search = keyword
   }
 
+  let loaded: unknown
   if (viewMode.value === "group") {
     searchParams.sortBy = "updatetime"
     searchParams.sortDesc = true
-    await recordStore.getRecordGroups(searchParams)
+    loaded = await recordStore.getRecordGroups(searchParams)
   } else {
     // 添加排序参数
     if (sortBy.value.length > 0) {
@@ -479,8 +481,11 @@ const loadData = async (
         searchParams.sortDesc = sortBy.value[0].order === "desc"
       }
     }
-    await recordStore.getRecords(searchParams)
+    loaded = await recordStore.getRecords(searchParams)
   }
+
+  // 已有更新的请求在途或已返回，丢弃这次结果，避免旧搜索覆盖新搜索
+  if (loaded == null) return
 
   // 刷新后处理
   lastRefreshTime.value = new Date()
@@ -642,12 +647,12 @@ onMounted(async () => {
         <div class="search-fields d-flex gap-4 align-center flex-grow-1 flex-wrap">
           <v-text-field v-model="searchQuery" :placeholder="t(viewMode === 'group' ? 'pages.records.searchGroup' : 'pages.records.search')" hide-details density="comfortable"
             class="search-input" prepend-inner-icon="mdi-magnify" clearable
-            @click:clear="searchQuery = ''; loadData(1, recordStore.itemsPerPage)" />
+            @click:clear="searchQuery = ''" />
 
           <v-autocomplete v-model="taskIdQuery" :items="taskOptions" item-title="title" item-value="id"
             :placeholder="t('pages.records.filterTaskId')" hide-details density="comfortable"
             class="task-id-input" prepend-inner-icon="mdi-pound" clearable
-            @click:clear="taskIdQuery = null; loadData(1, recordStore.itemsPerPage)" />
+            @click:clear="taskIdQuery = null" />
         </div>
         
         <div class="d-flex align-center gap-2">

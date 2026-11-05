@@ -17,6 +17,9 @@ function loadItemsPerPage(): number {
   return ITEMS_PER_PAGE_OPTIONS.includes(parsed) ? parsed : 10
 }
 
+// 列表和词条共用序号，后发出的请求作废仍在途的上一次。
+let recordListRequestId = 0
+
 export const useRecordStore = defineStore("record-store", {
   state: () => ({
     records: [] as RecordPublic[],
@@ -43,6 +46,7 @@ export const useRecordStore = defineStore("record-store", {
         itemsPerPage: loadItemsPerPage(),
       },
     ) {
+      const requestId = ++recordListRequestId
       this.loading = true
       try {
         const skip = (options.page - 1) * options.itemsPerPage
@@ -56,6 +60,8 @@ export const useRecordStore = defineStore("record-store", {
           sort_desc: options.sortDesc,
         })
 
+        if (requestId !== recordListRequestId) return null
+
         this.records = response.data
         this.totalRecords = response.count
         this.currentPage = options.page
@@ -66,10 +72,13 @@ export const useRecordStore = defineStore("record-store", {
 
         return this.records
       } catch (error) {
+        if (requestId !== recordListRequestId) return null
         console.error("获取记录失败:", error)
         return []
       } finally {
-        this.loading = false
+        if (requestId === recordListRequestId) {
+          this.loading = false
+        }
       }
     },
     async getRecordGroups(
@@ -85,6 +94,7 @@ export const useRecordStore = defineStore("record-store", {
         itemsPerPage: loadItemsPerPage(),
       },
     ) {
+      const requestId = ++recordListRequestId
       this.loading = true
       try {
         const skip = (options.page - 1) * options.itemsPerPage
@@ -98,6 +108,8 @@ export const useRecordStore = defineStore("record-store", {
           sort_desc: options.sortDesc,
         })
 
+        if (requestId !== recordListRequestId) return null
+
         this.groups = response.data
         this.totalGroups = response.count
         this.currentPage = options.page
@@ -108,10 +120,13 @@ export const useRecordStore = defineStore("record-store", {
 
         return this.groups
       } catch (error) {
+        if (requestId !== recordListRequestId) return null
         console.error("获取番号词条失败:", error)
         return []
       } finally {
-        this.loading = false
+        if (requestId === recordListRequestId) {
+          this.loading = false
+        }
       }
     },
     showUpdateRecord(data: RecordPublic) {

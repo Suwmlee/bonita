@@ -10,7 +10,19 @@ import { useI18n } from "vue-i18n"
 const metadataStore = useMetadataStore()
 const searchQuery = ref("")
 const isSearching = ref(false)
+let metadataFetchId = 0
 const { t } = useI18n() // 导入国际化工具函数
+
+async function fetchMetadata(page: number, perPage?: number) {
+  const fetchId = ++metadataFetchId
+  isSearching.value = true
+  try {
+    const keyword = typeof searchQuery.value === "string" ? searchQuery.value.trim() : ""
+    await metadataStore.getMetadata(keyword, page, perPage)
+  } finally {
+    if (fetchId === metadataFetchId) isSearching.value = false
+  }
+}
 
 // Pagination
 const currentPage = computed(() => metadataStore.currentPage)
@@ -18,7 +30,7 @@ const totalItems = computed(() => metadataStore.totalCount)
 const itemsPerPage = computed({
   get: () => metadataStore.itemsPerPage,
   set: async (value) => {
-    await metadataStore.getMetadata(searchQuery.value, 1, value)
+    await fetchMetadata(1, value)
   },
 })
 const totalPages = computed(() =>
@@ -45,19 +57,9 @@ function getImageUrl(path: string) {
   return url
 }
 
-// Function to search metadata with filter
-async function searchMetadata() {
-  isSearching.value = true
-  try {
-    await metadataStore.getMetadata(searchQuery.value, 1)
-  } finally {
-    isSearching.value = false
-  }
-}
-
 // Change page function
 async function changePage(page: number) {
-  await metadataStore.getMetadata(searchQuery.value, page)
+  await fetchMetadata(page)
 }
 
 const formatDateTime = (dateStr: string | null | undefined) => {
@@ -108,17 +110,12 @@ function getTagColor(tag: string): string {
   return tagColorPalette[Math.abs(hash) % tagColorPalette.length]
 }
 
-// Watch for changes in search query
-watch(searchQuery, async (newValue) => {
-  if (newValue === "") {
-    await metadataStore.getMetadata("", 1)
-  } else {
-    await searchMetadata()
-  }
+watch(searchQuery, () => {
+  fetchMetadata(1)
 })
 
 onMounted(() => {
-  metadataStore.getMetadata()
+  fetchMetadata(metadataStore.currentPage)
 })
 </script>
 
