@@ -5,6 +5,7 @@ import {
   type SubtitleDeliverResult,
   SubtitleService,
 } from "@/client"
+import PosterFrame from "@/components/common/PosterFrame.vue"
 import { getPosterUrl } from "@/composables/useMediaPoster"
 import imdbLogo from "@/assets/logos/imdb.png"
 import tmdbLogo from "@/assets/logos/tmdb.png"
@@ -846,20 +847,15 @@ onMounted(async () => {
       </div>
       <article v-for="group in recordStore.groups" :key="group.key" class="record-group">
         <aside class="record-group-entry">
-          <button type="button" class="record-poster" :class="{ 'show-full': group.crop === false }"
-            :disabled="posterBroken[group.key]"
+          <PosterFrame tag="button" class="record-poster" :src="groupPosterUrl(group)"
+            :alt="group.number || group.title || ''" :crop="group.crop" :broken="!!posterBroken[group.key]"
+            :disabled="!!posterBroken[group.key]"
             :title="posterBroken[group.key] ? undefined : t('components.metadata.form.clickToView')"
-            @click="openPosterPreview(group)">
-            <img v-if="group.crop === false && !posterBroken[group.key]" class="record-poster-fill"
-              :src="groupPosterUrl(group)" alt="" aria-hidden="true" loading="lazy" decoding="async"
-              referrerpolicy="no-referrer" @error="markPosterBroken(group.key)">
-            <img v-show="!posterBroken[group.key]" class="record-poster-image" :src="groupPosterUrl(group)"
-              :alt="group.number || group.title || ''" loading="lazy" decoding="async" referrerpolicy="no-referrer"
-              @error="markPosterBroken(group.key)">
-            <div v-if="posterBroken[group.key]" class="record-poster-empty">
+            @error="markPosterBroken(group.key)" @click="openPosterPreview(group)">
+            <template #empty>
               <v-icon icon="mdi-image-off" size="small" />
-            </div>
-          </button>
+            </template>
+          </PosterFrame>
         </aside>
         <div class="record-group-main">
           <div class="record-group-meta">
@@ -1224,20 +1220,8 @@ onMounted(async () => {
 }
 
 .record-poster {
-  position: relative;
-  display: block;
-  width: 100%;
-  aspect-ratio: 2 / 3;
-  overflow: hidden;
-  padding: 0;
-  border: 0;
   border-radius: 4px;
-  background-color: #1a1a1a;
   cursor: zoom-in;
-}
-
-.record-poster:disabled {
-  cursor: default;
 }
 
 .record-poster-lightbox {
@@ -1246,41 +1230,6 @@ onMounted(async () => {
   max-height: 90vh;
   margin: auto;
   cursor: zoom-out;
-}
-
-.record-poster-fill,
-.record-poster-image {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.record-poster-fill {
-  object-fit: cover;
-  object-position: center;
-  filter: blur(20px) saturate(1.1) brightness(0.65);
-  transform: scale(1.2);
-}
-
-.record-poster-image {
-  object-fit: cover;
-  object-position: right center;
-  z-index: 1;
-}
-
-.record-poster.show-full .record-poster-image {
-  object-fit: contain;
-  object-position: center;
-}
-
-.record-poster-empty {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .record-group-main {

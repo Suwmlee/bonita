@@ -175,8 +175,6 @@ export default {
       title: "Subtitles",
       hint: "Linked to a movie, episode, or number, keeping the uploaded filename. Without a chosen media item, a number found in the filename is linked; movies and episodes stay unlinked until you attach them. Several files can share one language on the same item; a transfer copies only the one marked in use. The first file is marked automatically. Later uploads stay in the library until you compare the name, size, and time and switch to one.",
       search: "Search number, title, series, or filename",
-      forceNumber: "Number (optional)",
-      linkMedia: "Link a movie, episode, or number (optional)",
       numberFallback: "Used when no media item is selected",
       upload: "Upload",
       dropHint: "Drop subtitles here, or click to choose",

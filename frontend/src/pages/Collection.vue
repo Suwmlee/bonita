@@ -5,6 +5,7 @@ import type {
   MediaItemWithWatches,
 } from "@/client"
 import { client } from "@/client/client.gen"
+import PosterFrame from "@/components/common/PosterFrame.vue"
 import MediaItemDetailDialog from "@/components/mediaitem/MediaItemDetailDialog.vue"
 import { useMediaPoster } from "@/composables/useMediaPoster"
 import { useCollectionStore } from "@/stores/collection.store"
@@ -144,28 +145,13 @@ function getCardTitle(item: MediaItemWithWatches) {
         <div class="custom-grid">
           <div v-for="item in selected.items ?? []" :key="item.id" class="grid-item">
             <VCard class="media-card d-flex flex-column" @click="mediaItemStore.showUpdateMediaItem(item)">
-              <div class="poster-wrapper" :class="{ 'show-full': !item.crop }">
-                <img
-                  v-if="!item.crop && !posterBroken[item.id]"
-                  class="poster-fill"
-                  :src="getDisplayPosterUrl(item)"
-                  alt=""
-                  aria-hidden="true"
-                  loading="lazy"
-                  decoding="async"
-                  referrerpolicy="no-referrer"
-                  @error="handlePosterError(item, $event)"
-                />
-                <img
-                  v-show="!posterBroken[item.id]"
-                  class="poster-image"
-                  :src="getDisplayPosterUrl(item)"
-                  :alt="item.title"
-                  loading="lazy"
-                  decoding="async"
-                  referrerpolicy="no-referrer"
-                  @error="handlePosterError(item, $event)"
-                />
+              <PosterFrame
+                :src="getDisplayPosterUrl(item)"
+                :alt="item.title"
+                :crop="item.crop"
+                :broken="!!posterBroken[item.id]"
+                @error="handlePosterError(item, $event)"
+              >
                 <div class="content-overlay">
                   <div class="watched-badge">
                     <VBtn
@@ -209,7 +195,7 @@ function getCardTitle(item: MediaItemWithWatches) {
                     </div>
                   </div>
                 </div>
-              </div>
+              </PosterFrame>
               <div class="card-title">
                 <span class="text-truncate">{{ getCardTitle(item) }}</span>
               </div>
@@ -244,7 +230,7 @@ function getCardTitle(item: MediaItemWithWatches) {
           <div v-for="item in collectionStore.collections" :key="item.id" class="grid-item">
             <VCard class="media-card d-flex flex-column" @click="openCollection(item)">
               <div class="poster-wrapper collection-poster">
-                <img class="poster-image collection-cover" :src="getCollectionPosterUrl(item)" :alt="item.name" loading="lazy" />
+                <img class="collection-cover" :src="getCollectionPosterUrl(item)" :alt="item.name" loading="lazy" />
                 <div class="content-overlay">
                   <div class="collection-card-name" :title="item.name">{{ item.name }}</div>
                   <div class="media-info">
@@ -344,29 +330,14 @@ function getCardTitle(item: MediaItemWithWatches) {
               @click="addMemberCandidate(item)"
             >
               <template #prepend>
-                <div class="picker-poster" :class="{ 'show-full': !item.crop }">
-                  <img
-                    v-if="!item.crop && !posterBroken[item.id]"
-                    class="poster-fill"
-                    :src="getDisplayPosterUrl(item)"
-                    alt=""
-                    aria-hidden="true"
-                    loading="lazy"
-                    decoding="async"
-                    referrerpolicy="no-referrer"
-                    @error="handlePosterError(item, $event)"
-                  />
-                  <img
-                    v-show="!posterBroken[item.id]"
-                    class="poster-image"
-                    :src="getDisplayPosterUrl(item)"
-                    :alt="item.title"
-                    loading="lazy"
-                    decoding="async"
-                    referrerpolicy="no-referrer"
-                    @error="handlePosterError(item, $event)"
-                  />
-                </div>
+                <PosterFrame
+                  class="picker-poster"
+                  :src="getDisplayPosterUrl(item)"
+                  :alt="item.title"
+                  :crop="item.crop"
+                  :broken="!!posterBroken[item.id]"
+                  @error="handlePosterError(item, $event)"
+                />
               </template>
               <VListItemTitle>{{ getCardTitle(item) }}</VListItemTitle>
               <VListItemSubtitle>
@@ -480,46 +451,19 @@ function getCardTitle(item: MediaItemWithWatches) {
 .poster-wrapper {
   position: relative;
   width: 100%;
-  aspect-ratio: 2/3;
+  aspect-ratio: 2 / 3;
   overflow: hidden;
   background-color: #1a1a1a;
 }
 
-.poster-fill,
-.poster-image {
+.collection-cover {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  object-fit: cover;
+  object-position: center;
   pointer-events: none;
-  user-select: none;
-}
-
-.poster-fill {
-  object-fit: cover;
-  object-position: center;
-  filter: blur(20px) saturate(1.1) brightness(0.65);
-  transform: scale(1.2);
-}
-
-.poster-image {
-  object-fit: cover;
-  object-position: right center;
-  z-index: 1;
-}
-
-.poster-wrapper.collection-poster {
-  aspect-ratio: 2 / 3;
-}
-
-.poster-image.collection-cover {
-  object-fit: cover;
-  object-position: center;
-}
-
-.poster-wrapper.show-full .poster-image {
-  object-fit: contain;
-  object-position: center;
 }
 
 .collection-card-name {
@@ -627,28 +571,8 @@ function getCardTitle(item: MediaItemWithWatches) {
 }
 
 .picker-poster {
-  position: relative;
+  --poster-width: 84px;
   flex-shrink: 0;
-  width: 84px;
-  aspect-ratio: 2 / 3;
-  overflow: hidden;
   border-radius: 6px;
-  background-color: #1a1a1a;
-}
-
-.picker-poster img {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.picker-poster > img:not(.poster-fill):not(.poster-image) {
-  object-fit: cover;
-  object-position: center;
-}
-
-.picker-poster.show-full .poster-image {
-  object-fit: contain;
-  object-position: center;
 }
 </style>

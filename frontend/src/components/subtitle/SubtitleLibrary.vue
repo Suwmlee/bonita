@@ -7,11 +7,13 @@ import {
   SubtitleService,
 } from "@/client"
 import type { SubtitleGroupPublic } from "@/client/types.gen"
+import PosterFrame from "@/components/common/PosterFrame.vue"
+import SubtitleRowActions from "@/components/subtitle/SubtitleRowActions.vue"
 import { getPosterUrl } from "@/composables/useMediaPoster"
 import { useConfirmationStore } from "@/stores/confirmation.store"
 import { useToastStore } from "@/stores/toast.store"
 import { watchDebounced } from "@vueuse/core"
-import { computed, onMounted, onUnmounted, ref, watch } from "vue"
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
 
 type MediaOption = {
@@ -54,18 +56,29 @@ const itemsPerPage = 12
 const loading = ref(false)
 const uploading = ref(false)
 const searchQuery = ref("")
-const forcedNumber = ref("")
-const linkedMediaId = ref<number | null>(null)
-const linkSearch = ref("")
-const linkItems = ref<MediaOption[]>([])
-const linkLoading = ref(false)
-let linkOptionsRequestId = 0
 let editOptionsRequestId = 0
 let subtitleLoadId = 0
 const editMediaId = ref<number | null>(null)
 const editSearch = ref("")
 const editItems = ref<MediaOption[]>([])
 const editMediaLoading = ref(false)
+const editMediaField = ref<{ $el?: HTMLElement } | null>(null)
+const mediaMenuWidth = ref(488)
+const mediaMenuProps = computed(() => ({
+  contentClass: "subtitle-media-menu",
+  minWidth: mediaMenuWidth.value,
+  maxWidth: mediaMenuWidth.value,
+}))
+
+async function syncMediaMenuWidth() {
+  await nextTick()
+  const width = editMediaField.value?.$el?.getBoundingClientRect().width
+  if (width && width > 0) mediaMenuWidth.value = Math.round(width)
+}
+
+function onMediaMenu(open: boolean) {
+  if (open) syncMediaMenuWidth()
+}
 const unmatchedOnly = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 const dragDepth = ref(0)
@@ -85,39 +98,6 @@ const languages = computed(() => [
   { title: t("pages.subtitles.lang.ja"), value: "ja" },
   { title: t("pages.subtitles.lang.en"), value: "en" },
 ])
-
-const headers = computed(() => {
-  const columns = [
-    { title: t("pages.subtitles.file"), key: "original_name", sortable: false },
-    {
-      title: t("pages.subtitles.mediaItem"),
-      key: "media_item_id",
-      sortable: false,
-    },
-    {
-      title: t("pages.subtitles.language"),
-      key: "language",
-      sortable: false,
-      width: "120px",
-    },
-    {
-      title: t("pages.subtitles.part"),
-      key: "part_number",
-      sortable: false,
-      width: "88px",
-    },
-    {
-      title: t("common.actions"),
-      key: "actions",
-      sortable: false,
-      width: "148px",
-    },
-  ]
-  if (pinned.value) {
-    return columns.filter((column) => column.key !== "media_item_id")
-  }
-  return columns
-})
 
 const pageCount = computed(() =>
   Math.max(1, Math.ceil(total.value / itemsPerPage)),
@@ -236,15 +216,6 @@ function mergeSelected(
   return merged
 }
 
-function mediaLabel(item: SubtitlePublic) {
-  if (item.media_type === "episode") {
-    return [episodeCode(item), item.series_title || item.title || ""]
-      .filter(Boolean)
-      .join(" ")
-  }
-  return item.number || item.title || ""
-}
-
 function groupHeading(group: SubtitleGroupPublic) {
   if (!group.media_item_id) return t("pages.subtitles.unmatched")
   if (group.number) return group.number
@@ -259,15 +230,6 @@ function groupSubheading(group: SubtitleGroupPublic) {
 
 function hasEpisodes(group: SubtitleGroupPublic) {
   return (group.subtitles || []).some((item) => item.media_type === "episode")
-}
-
-function compareLabel(item: SubtitlePublic) {
-  const parts: string[] = []
-  const size = formatSize(item.file_size)
-  const time = formatTime(item.updatetime)
-  if (size) parts.push(size)
-  if (time) parts.push(time)
-  return parts.join(" · ")
 }
 
 function apiErrorMessage(error: unknown, fallback: string) {
@@ -305,31 +267,6 @@ function groupPosterUrl(group: SubtitleGroupPublic) {
   })
 }
 
-async function loadLinkOptions(term: string) {
-  const requestId = ++linkOptionsRequestId
-  linkLoading.value = true
-  try {
-    const query = term.trim()
-    const { data: response } = await MediaitemService.getMediaItems({
-      search: query || undefined,
-      limit: 20,
-      sort_by: "updatetime",
-      sort_desc: true,
-    })
-    if (requestId !== linkOptionsRequestId) return
-    linkItems.value = mergeSelected(
-      linkItems.value,
-      (response.data || []).map(toOption),
-      linkedMediaId.value,
-    )
-  } catch (error) {
-    if (requestId !== linkOptionsRequestId) return
-    console.error("搜索媒体项失败:", error)
-  } finally {
-    if (requestId === linkOptionsRequestId) linkLoading.value = false
-  }
-}
-
 async function loadEditOptions(term: string) {
   const requestId = ++editOptionsRequestId
   editMediaLoading.value = true
@@ -340,6 +277,7 @@ async function loadEditOptions(term: string) {
       limit: 20,
       sort_by: "updatetime",
       sort_desc: true,
+      match_external_ids: true,
     })
     if (requestId !== editOptionsRequestId) return
     editItems.value = mergeSelected(
@@ -478,12 +416,11 @@ async function uploadFiles(files: File[]) {
   }
   uploading.value = true
   try {
-    const mediaId = props.fixedMediaId || linkedMediaId.value
-    const number = mediaId ? "" : forcedNumber.value.trim()
+    const mediaId = props.fixedMediaId || null
     const { data: result } = await SubtitleService.uploadSubtitles({
       bodySubtitleUploadSubtitles: {
         files: accepted,
-        number: mediaId ? null : number || null,
+        number: null,
         media_item_id: mediaId,
       },
     })
@@ -598,15 +535,6 @@ watch(
 )
 
 watchDebounced(
-  linkSearch,
-  (term) => {
-    if (pinned.value) return
-    loadLinkOptions(term || "")
-  },
-  { debounce: 300 },
-)
-
-watchDebounced(
   editSearch,
   (term) => {
     if (!editOpen.value || pinned.value) return
@@ -617,7 +545,6 @@ watchDebounced(
 
 onMounted(() => {
   load()
-  if (!pinned.value) loadLinkOptions("")
 })
 </script>
 
@@ -642,35 +569,6 @@ onMounted(() => {
         style="max-width: 280px"
         @keyup.enter="search"
         @click:clear="clearSearch"
-      />
-      <VAutocomplete
-        v-if="!pinned"
-        v-model="linkedMediaId"
-        v-model:search="linkSearch"
-        :items="linkItems"
-        item-title="label"
-        item-value="id"
-        no-filter
-        clearable
-        hide-details
-        density="compact"
-        :loading="linkLoading"
-        :placeholder="t('pages.subtitles.linkMedia')"
-        style="max-width: 320px; min-width: 220px"
-      >
-        <template #item="{ props: itemProps, item }">
-          <VListItem v-bind="itemProps" :subtitle="item.raw.kind" />
-        </template>
-      </VAutocomplete>
-      <VTextField
-        v-if="!pinned"
-        v-model="forcedNumber"
-        :placeholder="t('pages.subtitles.forceNumber')"
-        :disabled="!!linkedMediaId"
-        density="compact"
-        hide-details
-        clearable
-        style="max-width: 220px"
       />
       <VBtn color="primary" prepend-icon="bx-upload" :loading="uploading" @click="chooseFiles">
         {{ t("pages.subtitles.upload") }}
@@ -710,30 +608,19 @@ onMounted(() => {
         :class="{ 'with-episode': hasEpisodes(group) }"
       >
         <aside class="subtitle-group-poster">
-          <div
+          <PosterFrame
             v-if="group.media_item_id"
             class="subtitle-poster"
-            :class="{ 'show-full': group.crop === false }"
+            :src="groupPosterUrl(group)"
+            :alt="groupHeading(group)"
+            :crop="group.crop"
+            :broken="!!posterBroken[group.key]"
+            @error="markPosterBroken(group.key)"
           >
-            <img
-              v-if="group.crop === false && !posterBroken[group.key]"
-              class="subtitle-poster-fill"
-              :src="groupPosterUrl(group)"
-              alt=""
-              aria-hidden="true"
-              @error="markPosterBroken(group.key)"
-            />
-            <img
-              v-show="!posterBroken[group.key]"
-              class="subtitle-poster-image"
-              :src="groupPosterUrl(group)"
-              :alt="groupHeading(group)"
-              @error="markPosterBroken(group.key)"
-            />
-            <div v-if="posterBroken[group.key]" class="subtitle-poster-empty">
+            <template #empty>
               <VIcon icon="bx-image" size="small" />
-            </div>
-          </div>
+            </template>
+          </PosterFrame>
         </aside>
         <div class="subtitle-group-main">
           <div class="subtitle-group-meta">
@@ -765,34 +652,14 @@ onMounted(() => {
             <span class="subtitle-group-cell">{{ formatPart(item.part_number) }}</span>
             <span class="subtitle-group-cell">{{ formatSize(item.file_size) }}</span>
             <span class="subtitle-group-cell">{{ formatTime(item.updatetime) }}</span>
-            <div class="subtitle-group-actions">
-              <VBtn size="small" variant="text" :title="t('common.edit')" @click="openEdit(item)">
-                <VIcon icon="bx-edit-alt" />
-              </VBtn>
-              <VBtn
-                v-if="item.preferred"
-                size="small"
-                variant="text"
-                :title="t('pages.subtitles.deliver')"
-                :disabled="!item.media_item_id"
-                @click="deliver(item)"
-              >
-                <VIcon icon="bx-captions" />
-              </VBtn>
-              <VBtn
-                v-else
-                size="small"
-                variant="text"
-                :title="t('pages.subtitles.useThis')"
-                :disabled="!item.media_item_id"
-                @click="useThis(item)"
-              >
-                <VIcon icon="bx-check-circle" />
-              </VBtn>
-              <VBtn size="small" variant="text" color="error" :title="t('common.delete')" @click="remove(item)">
-                <VIcon icon="bx-trash" />
-              </VBtn>
-            </div>
+            <SubtitleRowActions
+              class="subtitle-group-actions"
+              :item="item"
+              @edit="openEdit(item)"
+              @deliver="deliver(item)"
+              @use="useThis(item)"
+              @remove="remove(item)"
+            />
           </div>
         </div>
       </article>
@@ -861,125 +728,17 @@ onMounted(() => {
               </template>
             </div>
           </div>
-          <div class="subtitle-file-actions">
-            <VBtn size="small" variant="text" :title="t('common.edit')" @click="openEdit(item)">
-              <VIcon icon="bx-edit-alt" />
-            </VBtn>
-            <VBtn
-              v-if="item.preferred"
-              size="small"
-              variant="text"
-              :title="t('pages.subtitles.deliver')"
-              :disabled="!item.media_item_id"
-              @click="deliver(item)"
-            >
-              <VIcon icon="bx-captions" />
-            </VBtn>
-            <VBtn
-              v-else
-              size="small"
-              variant="text"
-              :title="t('pages.subtitles.useThis')"
-              :disabled="!item.media_item_id"
-              @click="useThis(item)"
-            >
-              <VIcon icon="bx-check-circle" />
-            </VBtn>
-            <VBtn size="small" variant="text" color="error" :title="t('common.delete')" @click="remove(item)">
-              <VIcon icon="bx-trash" />
-            </VBtn>
-          </div>
+          <SubtitleRowActions
+            class="subtitle-file-actions"
+            :item="item"
+            @edit="openEdit(item)"
+            @deliver="deliver(item)"
+            @use="useThis(item)"
+            @remove="remove(item)"
+          />
         </div>
       </div>
     </div>
-
-    <VDataTable
-      v-else
-      :headers="headers"
-      :items="items"
-      :loading="loading"
-      item-value="id"
-      :items-per-page="-1"
-      density="compact"
-      hide-default-footer
-    >
-      <template #item.original_name="{ item }">
-        <div class="d-flex align-center flex-wrap gap-2">
-          <span>{{ item.original_name }}</span>
-          <VChip v-if="item.preferred" size="x-small" color="primary" variant="tonal">
-            {{ t("pages.subtitles.inUse") }}
-          </VChip>
-        </div>
-        <div v-if="compareLabel(item)" class="text-caption text-medium-emphasis">
-          {{ compareLabel(item) }}
-        </div>
-      </template>
-      <template #item.media_item_id="{ item }">
-        <div v-if="item.media_item_id">
-          <div>{{ mediaLabel(item) }}</div>
-          <div
-            v-if="item.number && item.title && item.title !== item.number"
-            class="text-caption text-medium-emphasis"
-          >
-            {{ item.title }}
-          </div>
-        </div>
-        <VChip v-else size="small" color="warning" variant="tonal">{{ t("pages.subtitles.unmatched") }}</VChip>
-      </template>
-      <template #item.language="{ item }">
-        {{ languageLabel(item.language) }}
-      </template>
-      <template #item.part_number="{ item }">
-        {{ formatPart(item.part_number) }}
-      </template>
-      <template #item.actions="{ item }">
-        <div class="d-flex gap-1">
-          <VBtn size="small" variant="text" :title="t('common.edit')" @click="openEdit(item)">
-            <VIcon icon="bx-edit-alt" />
-          </VBtn>
-          <VBtn
-            v-if="item.preferred"
-            size="small"
-            variant="text"
-            :title="t('pages.subtitles.deliver')"
-            :disabled="!item.media_item_id"
-            @click="deliver(item)"
-          >
-            <VIcon icon="bx-captions" />
-          </VBtn>
-          <VBtn
-            v-else
-            size="small"
-            variant="text"
-            :title="t('pages.subtitles.useThis')"
-            :disabled="!item.media_item_id"
-            @click="useThis(item)"
-          >
-            <VIcon icon="bx-check-circle" />
-          </VBtn>
-          <VBtn size="small" variant="text" color="error" :title="t('common.delete')" @click="remove(item)">
-            <VIcon icon="bx-trash" />
-          </VBtn>
-        </div>
-      </template>
-      <template #no-data>
-        <div class="text-medium-emphasis py-6">{{ t("pages.subtitles.empty") }}</div>
-      </template>
-      <template v-if="!compact" #bottom>
-        <div class="d-flex align-center justify-end px-2 py-3">
-          <span class="text-caption text-medium-emphasis me-4">
-            {{ t("pages.subtitles.total", { count: total }) }}
-          </span>
-          <VPagination
-            :model-value="page"
-            :length="pageCount"
-            :total-visible="5"
-            density="compact"
-            @update:model-value="changePage"
-          />
-        </div>
-      </template>
-    </VDataTable>
 
     <VDialog v-model="editOpen" max-width="520">
       <VCard>
@@ -987,6 +746,7 @@ onMounted(() => {
         <VCardText class="d-flex flex-column gap-3">
           <VAutocomplete
             v-if="!pinned"
+            ref="editMediaField"
             v-model="editMediaId"
             v-model:search="editSearch"
             :items="editItems"
@@ -997,9 +757,15 @@ onMounted(() => {
             hide-details
             :loading="editMediaLoading"
             :label="t('pages.subtitles.mediaItem')"
+            :menu-props="mediaMenuProps"
+            @update:menu="onMediaMenu"
           >
             <template #item="{ props: itemProps, item }">
-              <VListItem v-bind="itemProps" :subtitle="item.raw.kind" />
+              <VListItem v-bind="itemProps" :subtitle="item.raw.kind">
+                <template #title>
+                  <span class="subtitle-media-label" :title="item.raw.label">{{ item.raw.label }}</span>
+                </template>
+              </VListItem>
             </template>
           </VAutocomplete>
           <VTextField
@@ -1124,47 +890,7 @@ onMounted(() => {
 }
 
 .subtitle-poster {
-  position: relative;
-  display: block;
-  width: 100%;
-  aspect-ratio: 2 / 3;
-  overflow: hidden;
   border-radius: 4px;
-  background-color: #1a1a1a;
-}
-
-.subtitle-poster-fill,
-.subtitle-poster-image {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.subtitle-poster-fill {
-  object-fit: cover;
-  filter: blur(18px) brightness(0.65);
-  transform: scale(1.15);
-}
-
-.subtitle-poster-image {
-  object-fit: cover;
-  object-position: right center;
-  z-index: 1;
-}
-
-.subtitle-poster.show-full .subtitle-poster-image {
-  object-fit: contain;
-  object-position: center;
-}
-
-.subtitle-poster-empty {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .subtitle-group-main {
@@ -1235,8 +961,24 @@ onMounted(() => {
 }
 
 .subtitle-group-actions {
-  display: flex;
-  gap: 4px;
   justify-self: start;
+}
+</style>
+
+<style>
+.subtitle-media-menu {
+  overflow: hidden;
+}
+
+.subtitle-media-menu .v-list-item__content {
+  overflow: hidden;
+}
+
+.subtitle-media-menu .v-list-item-title,
+.subtitle-media-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

@@ -1,6 +1,7 @@
 <!-- MediaItemDetailForm.vue -->
 <script setup lang="ts">
 import type { MediaItemWithWatches } from "@/client"
+import PosterFrame from "@/components/common/PosterFrame.vue"
 import { useMediaItemStore } from "@/stores/mediaitem.store"
 import { useToastStore } from "@/stores/toast.store"
 import {
@@ -105,21 +106,16 @@ function ensureSelectedSeriesOption() {
   seriesItems.value = [{ id, title }, ...seriesItems.value]
 }
 
-let seriesRequestId = 0
-
 async function loadSeries(term: string) {
-  const requestId = ++seriesRequestId
   seriesLoading.value = true
   try {
     const items = await mediaItemStore.searchSeries(term)
-    if (requestId !== seriesRequestId) return
     seriesItems.value = items.map(seriesOptionFromItem)
     ensureSelectedSeriesOption()
   } catch (error) {
-    if (requestId !== seriesRequestId) return
     console.error("Error searching series:", error)
   } finally {
-    if (requestId === seriesRequestId) seriesLoading.value = false
+    seriesLoading.value = false
   }
 }
 
@@ -270,7 +266,8 @@ const posterQuery = computed(() => ({
 
 const posterUrl = ref("")
 const posterFailed = ref(false)
-const showFullPoster = computed(() => formData.value.crop === false)
+const posterPreviewOpen = ref(false)
+const canPreviewPoster = computed(() => Boolean(posterUrl.value) && !posterFailed.value)
 
 watchDebounced(
   posterQuery,
@@ -299,25 +296,25 @@ function onPosterError(event: Event) {
 
 <template>
   <VForm class="mediaitem-form" @submit.prevent="saveForm">
-    <div
+    <PosterFrame
+      tag="button"
       class="form-poster"
-      :class="{
-        'show-full': showFullPoster,
-        'is-numbered': isNumbered,
-      }"
+      :src="posterUrl"
+      :alt="formData.title || t('pages.mediaitem.poster')"
+      :crop="formData.crop"
+      :broken="!canPreviewPoster"
+      :disabled="!canPreviewPoster"
+      :title="canPreviewPoster ? t('components.metadata.form.clickToView') : undefined"
+      @click="posterPreviewOpen = true"
+      @error="onPosterError"
     >
-      <img
-        v-if="posterUrl && !posterFailed"
-        class="form-poster-image"
-        :src="posterUrl"
-        :alt="formData.title || t('pages.mediaitem.poster')"
-        @error="onPosterError"
-      />
-      <div v-else class="form-poster-empty">
-        <VIcon icon="bx-image" size="32" />
-        <span>{{ t('pages.mediaitem.noPoster') }}</span>
-      </div>
-    </div>
+      <template #empty>
+        <div class="form-poster-empty">
+          <VIcon icon="bx-image" size="32" />
+          <span>{{ t('pages.mediaitem.noPoster') }}</span>
+        </div>
+      </template>
+    </PosterFrame>
     <VRow class="form-fields">
       <!-- Title -->
       <VCol cols="12">
@@ -590,6 +587,16 @@ function onPosterError(event: Event) {
       </VCol>
     </VRow>
   </VForm>
+
+  <VDialog v-model="posterPreviewOpen" max-width="96vw">
+    <img
+      v-if="canPreviewPoster"
+      class="form-poster-lightbox"
+      :src="posterUrl"
+      :alt="formData.title || t('pages.mediaitem.poster')"
+      @click="posterPreviewOpen = false"
+    />
+  </VDialog>
 </template>
 
 <style lang="scss" scoped>
@@ -600,39 +607,33 @@ function onPosterError(event: Event) {
 }
 
 .form-poster {
+  --poster-width: 180px;
   flex: 0 0 180px;
-  width: 180px;
-  aspect-ratio: 2 / 3;
   position: sticky;
   top: 0;
-  overflow: hidden;
   border-radius: 8px;
+  cursor: zoom-in;
+}
+
+.form-poster:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.form-poster-lightbox {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 96vw;
+  max-height: 90vh;
+  object-fit: contain;
+  object-position: center;
+  margin: auto;
+  cursor: zoom-out;
   background: #1a1a1a;
 }
 
-.form-poster.is-numbered {
-  flex-basis: 260px;
-  width: 260px;
-  aspect-ratio: 3 / 2;
-}
-
-.form-poster-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  display: block;
-}
-
-.form-poster.is-numbered .form-poster-image,
-.form-poster.show-full .form-poster-image {
-  object-fit: contain;
-  object-position: center;
-}
-
 .form-poster-empty {
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -670,7 +671,7 @@ function onPosterError(event: Event) {
   }
 
   .form-poster {
-    position: static;
+    position: relative;
   }
 }
 </style>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MediaItemWithWatches } from "@/client"
+import PosterFrame from "@/components/common/PosterFrame.vue"
 import MediaItemDetailDialog from "@/components/mediaitem/MediaItemDetailDialog.vue"
 import { useMediaPoster } from "@/composables/useMediaPoster"
 import { useConfirmationStore } from "@/stores/confirmation.store"
@@ -527,28 +528,13 @@ onUnmounted(() => {
       <div class="custom-grid" :class="{ 'is-selecting': selectedCount }">
         <div v-for="item in mediaItemStore.allMediaItems" :key="item.id" class="grid-item">
           <VCard class="media-card d-flex flex-column" @click="onCardClick(item)">
-            <div class="poster-wrapper" :class="{ 'show-full': !item.crop }">
-              <img
-                v-if="!item.crop && !posterBroken[item.id]"
-                class="poster-fill"
-                :src="getDisplayPosterUrl(item)"
-                alt=""
-                aria-hidden="true"
-                loading="lazy"
-                decoding="async"
-                referrerpolicy="no-referrer"
-                @error="handlePosterError(item, $event)"
-              />
-              <img
-                v-show="!posterBroken[item.id]"
-                class="poster-image"
-                :src="getDisplayPosterUrl(item)"
-                :alt="item.title"
-                loading="lazy"
-                decoding="async"
-                referrerpolicy="no-referrer"
-                @error="handlePosterError(item, $event)"
-              />
+            <PosterFrame
+              :src="getDisplayPosterUrl(item)"
+              :alt="item.title"
+              :crop="item.crop"
+              :broken="!!posterBroken[item.id]"
+              @error="handlePosterError(item, $event)"
+            >
               <div class="content-overlay">
                 <div class="watched-badge">
                   <VIcon
@@ -594,7 +580,7 @@ onUnmounted(() => {
               >
                 <VIcon v-if="isSelected(item.id)" icon="bx-check" size="18" />
               </button>
-            </div>
+            </PosterFrame>
             <div class="card-title">
               <VTooltip location="top" open-delay="300">
                 <template #activator="{ props }">
@@ -743,43 +729,6 @@ onUnmounted(() => {
   position: sticky;
   top: 8px;
   z-index: 6;
-}
-
-/* Poster: 2/3 card. Only crop when metadata.crop is true; otherwise show full. */
-.poster-wrapper {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 2/3;
-  overflow: hidden;
-  background-color: #1a1a1a;
-}
-
-.poster-fill,
-.poster-image {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  user-select: none;
-}
-
-.poster-fill {
-  object-fit: cover;
-  object-position: center;
-  filter: blur(20px) saturate(1.1) brightness(0.65);
-  transform: scale(1.2);
-}
-
-.poster-image {
-  object-fit: cover;
-  object-position: right center;
-  z-index: 1;
-}
-
-.poster-wrapper.show-full .poster-image {
-  object-fit: contain;
-  object-position: center;
 }
 
 .content-overlay {
