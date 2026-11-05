@@ -137,6 +137,7 @@ class MediaItemService:
         has_number: Optional[bool] = None,
         watched: Optional[bool] = None,
         favorite: Optional[bool] = None,
+        match_external_ids: bool = False,
     ) -> Tuple[List[schemas.MediaItemWithWatches], int]:
         watch_info = (
             self.session.query(
@@ -155,14 +156,18 @@ class MediaItemService:
 
         if search:
             like = f"%{search}%"
-            query = query.filter(
-                MediaItem.title.ilike(like)
-                | MediaItem.original_title.ilike(like)
-                | MediaItem.number.ilike(like)
-                | MediaItem.imdb_id.ilike(like)
-                | MediaItem.tmdb_id.ilike(like)
-                | MediaItem.tvdb_id.ilike(like)
-            )
+            clauses = [
+                MediaItem.title.ilike(like),
+                MediaItem.original_title.ilike(like),
+                MediaItem.number.ilike(like),
+            ]
+            if match_external_ids:
+                clauses.extend([
+                    MediaItem.imdb_id.ilike(like),
+                    MediaItem.tmdb_id.ilike(like),
+                    MediaItem.tvdb_id.ilike(like),
+                ])
+            query = query.filter(or_(*clauses))
 
         if media_type == "tvshow":
             query = query.filter(MediaItem.media_type == "episode")

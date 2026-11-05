@@ -173,6 +173,28 @@ def safe_storage_key(number: str) -> str:
     return cleaned or "unknown"
 
 
+def subtitle_group_id(
+    media_type: Optional[str],
+    series_id: Optional[int],
+    media_item_id: Optional[int],
+) -> Optional[int]:
+    """单集归到所属剧，其余归到字幕自己的媒体项。"""
+    if media_type == "episode" and series_id:
+        return series_id
+    return media_item_id
+
+
+def _group_id_expr(file_item):
+    """SQL 分组键，条件和 subtitle_group_id 一致。"""
+    return case(
+        (
+            and_(file_item.media_type == "episode", file_item.series_id.isnot(None)),
+            file_item.series_id,
+        ),
+        else_=Subtitle.media_item_id,
+    )
+
+
 class SubtitleService:
     def __init__(self, session: Session):
         self.session = session
@@ -185,13 +207,7 @@ class SubtitleService:
     ):
         file_item = aliased(MediaItem)
         series_item = aliased(MediaItem)
-        group_id = case(
-            (
-                and_(file_item.media_type == "episode", file_item.series_id.isnot(None)),
-                file_item.series_id,
-            ),
-            else_=Subtitle.media_item_id,
-        )
+        group_id = _group_id_expr(file_item)
         query = (
             self.session.query(Subtitle)
             .outerjoin(file_item, Subtitle.media_item_id == file_item.id)
@@ -271,9 +287,9 @@ class SubtitleService:
 
     def _row_group_id(self, row: Subtitle) -> Optional[int]:
         item = self._cached_item(row.media_item_id)
-        if item and item.media_type == "episode" and item.series_id:
-            return item.series_id
-        return row.media_item_id
+        if not item:
+            return subtitle_group_id(None, None, row.media_item_id)
+        return subtitle_group_id(item.media_type, item.series_id, row.media_item_id)
 
     def _subtitle_sort_key(self, row: Subtitle):
         item = self._cached_item(row.media_item_id)
@@ -307,10 +323,17 @@ class SubtitleService:
             "title": title,
             "imdb_id": (item.imdb_id or "") if item else "",
             "tmdb_id": (item.tmdb_id or "") if item else "",
-            "crop": bool(meta.crop) if meta is not None and meta.crop is not None else True,
+            "crop": self._group_crop(number),
             "count": len(rows),
             "subtitles": [self.describe(row) for row in rows],
         }
+
+    def _group_crop(self, number: str) -> bool:
+        if not number:
+            return False
+        from bonita.services.metadata_service import MetadataService
+
+        return MetadataService(self.session).resolve_crop(number)
 
     def describe(self, row: Subtitle, item: Optional[MediaItem] = None) -> dict:
         data = row.to_dict()
@@ -560,23 +583,37 @@ class SubtitleService:
         destpath: str,
         part_number: int = 0,
         media_item_id: Optional[int] = None,
+        number: Optional[str] = None,
     ) -> int:
-        """转移完成后，把该媒体项的在用字幕复制到这次的目标文件旁边。"""
-        if not destpath or not media_item_id:
+        """转移完成后，把在用字幕复制到这次的目标文件旁边。
+
+        有媒体项时按媒体项找。没有时用番号找到已有的番号媒体项再投递。
+        """
+        item_id = media_item_id or self._item_id_for_number(number)
+        if not destpath or not item_id:
             return 0
         part = int(part_number or 0)
         rows = (
             self.session.query(Subtitle)
             .filter(
-                Subtitle.media_item_id == media_item_id,
+                Subtitle.media_item_id == item_id,
                 Subtitle.part_number == part,
             )
             .all()
         )
         if rows and not any(row.preferred for row in rows):
-            logger.info("字幕投递跳过：媒体项 %s 部次 %s 没有标成在用的字幕", media_item_id, part)
+            logger.info("字幕投递跳过：媒体项 %s 部次 %s 没有标成在用的字幕", item_id, part)
             return 0
         return self._deliver_rows(rows, only_path=destpath)["copied"]
+
+    def _item_id_for_number(self, number: Optional[str]) -> Optional[int]:
+        key = normalize_number(number)
+        if not key:
+            return None
+        from bonita.modules.media_service.record_link import find_number_media_item
+
+        item = find_number_media_item(self.session, key)
+        return item.id if item else None
 
     def _deliver_rows(self, rows: List[Subtitle], overwrite: bool = False, only_path: Optional[str] = None) -> dict:
         result = {"copied": 0, "skipped": 0, "missing": 0, "failed": 0, "details": []}

@@ -19,7 +19,8 @@ async def get_media_items(
     sort_desc: bool = True,
     has_number: bool = None,
     watched: bool = None,
-    favorite: bool = None
+    favorite: bool = None,
+    match_external_ids: bool = False,
 ) -> Any:
     """
     获取媒体项列表
@@ -38,6 +39,7 @@ async def get_media_items(
         has_number=has_number,
         watched=watched,
         favorite=favorite,
+        match_external_ids=match_external_ids,
     )
     return schemas.MediaItemCollection(data=items, count=count)
 

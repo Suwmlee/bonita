@@ -991,6 +991,7 @@ export class MediaitemService {
         has_number?: boolean;
         watched?: boolean;
         favorite?: boolean;
+        match_external_ids?: boolean;
     }, options?: Options<never, ThrowOnError>) {
         const params = buildClientParams([parameters], [{ args: [
                     { in: 'query', key: 'skip' },
@@ -1001,7 +1002,8 @@ export class MediaitemService {
                     { in: 'query', key: 'sort_desc' },
                     { in: 'query', key: 'has_number' },
                     { in: 'query', key: 'watched' },
-                    { in: 'query', key: 'favorite' }
+                    { in: 'query', key: 'favorite' },
+                    { in: 'query', key: 'match_external_ids' }
                 ] }]);
         return (options?.client ?? client).get<GetMediaItemsResponses, GetMediaItemsErrors, ThrowOnError>({
             responseType: 'json',

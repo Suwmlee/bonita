@@ -3516,6 +3516,10 @@ export type GetMediaItemsData = {
          * Favorite
          */
         favorite?: boolean;
+        /**
+         * Match External Ids
+         */
+        match_external_ids?: boolean;
     };
     url: '/api/v1/mediaitems/';
 };

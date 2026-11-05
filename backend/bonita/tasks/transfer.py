@@ -13,7 +13,7 @@ from bonita.db.models.scraping import ScrapingConfig
 from bonita.modules.scraping.scraping import add_mark, process_cover, process_nfo_file, scraping
 from bonita.modules.transfer.transfer import transSingleFile, transferfile
 from bonita.services.celery_service import TaskProgressTracker
-from bonita.services.subtitle_service import SubtitleService
+from bonita.services.subtitle_service import SubtitleService, parse_number
 from bonita.tasks.decorators import manage_celery_task
 from bonita.tasks.media import celery_emby_scan
 from bonita.tasks.scraping import celery_scrapping
@@ -35,13 +35,14 @@ def _safe_filesize(path):
         return -1
 
 
-def _apply_library_subtitles(session, destpath, part_number, media_item_id=None):
-    """字幕库里已有同一媒体项的字幕时，复制到本次目标旁边。失败不影响转移结果。"""
+def _apply_library_subtitles(session, destpath, part_number, media_item_id=None, number=None):
+    """字幕库里已有同一媒体项或同一番号的字幕时，复制到本次目标旁边。失败不影响转移结果。"""
     try:
         copied = SubtitleService(session).deliver_for_transfer(
             destpath=destpath,
             part_number=part_number,
             media_item_id=media_item_id,
+            number=number,
         )
         if copied:
             logger.info(f"      ✓ 字幕库投递 {copied} 个")
@@ -213,6 +214,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                         continue
                     record.task_id = task_info.id
                     record.success = None
+                    library_number = None
                     if task_info.sc_enabled:
                         logger.info("      → 刮削模式")
                         scraping_conf = session.query(ScrapingConfig).filter(ScrapingConfig.id == task_info.sc_id).first()
@@ -228,6 +230,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                             record.success = False
                             continue
                         metamixed = schemas.MetadataMixed.model_validate(metabase_json)
+                        library_number = metamixed.number
 
                         # 验证结果路径在 output_folder 下，例如：extra_folder 不能"/"开头导致join失败
                         output_folder = os.path.abspath(os.path.join(task_info.output_folder, metamixed.extra_folder))
@@ -361,6 +364,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                         record.destpath,
                         record.part_number or 0,
                         record.media_item_id,
+                        library_number or parse_number(original_file.full_path),
                     )
                 except Exception as e:
                     failed_count += 1
