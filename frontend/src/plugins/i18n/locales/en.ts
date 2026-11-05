@@ -483,6 +483,7 @@ export default {
       itemsPerPage: "Items per page",
       totalItems: "Total {count} items",
       editMediaItem: "Edit Media Item",
+      details: "Details",
       addMediaItem: "Add Media Item",
       sortTitle: "Title",
       sortUpdatetime: "Update Time",

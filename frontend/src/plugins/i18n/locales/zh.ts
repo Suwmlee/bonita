@@ -461,6 +461,7 @@ export default {
       itemsPerPage: "每页显示",
       totalItems: "总计 {count} 条记录",
       editMediaItem: "编辑媒体项",
+      details: "资料",
       addMediaItem: "添加媒体项",
       sortTitle: "标题",
       sortUpdatetime: "更新时间",

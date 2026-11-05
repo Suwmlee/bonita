@@ -1,6 +1,5 @@
 <!-- MetadataDetailDialog.vue -->
 <script setup lang="ts">
-import SubtitleLibrary from "@/components/subtitle/SubtitleLibrary.vue"
 import { useMetadataStore } from "@/stores/metadata.store"
 import { ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
@@ -123,13 +122,6 @@ async function handleImport() {
       <template v-if="dialog.editMetadata">
         <VCardText style="flex: 1; overflow-y: auto;">
           <MetadataDetailForm :updateMetadata="dialog.editMetadata" />
-          <VDivider class="my-6" />
-          <div class="text-subtitle-1 mb-3">{{ t('pages.subtitles.section') }}</div>
-          <SubtitleLibrary
-            v-if="dialog.editMetadata.number"
-            compact
-            :fixed-number="dialog.editMetadata.number"
-          />
         </VCardText>
       </template>
 
