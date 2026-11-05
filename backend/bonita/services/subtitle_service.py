@@ -492,6 +492,24 @@ class SubtitleService:
                 logger.exception("删除字幕后同步影片旁边的文件失败: %s", media_item_id)
         return True
 
+    def detach_for_deleted_items(self, media_item_ids: List[int]) -> None:
+        """媒体项删除后，挂在上面的字幕改为未关联，并取消在用。不提交。"""
+        ids = [item_id for item_id in media_item_ids if item_id]
+        if not ids:
+            return
+        rows = self.session.query(Subtitle).filter(Subtitle.media_item_id.in_(ids)).all()
+        now = datetime.now()
+        for row in rows:
+            if row.preferred:
+                try:
+                    self._release(row)
+                except Exception:
+                    logger.exception("删除媒体项后清理已投递字幕失败: %s", row.id)
+                    row.preferred = False
+            row.media_item_id = None
+            row.preferred = False
+            row.updatetime = now
+
     def deliver_subtitle(self, subtitle_id: int, overwrite: bool = False):
         row = self.get(subtitle_id)
         if not row:

@@ -365,6 +365,8 @@ class MediaItemService:
         if not ids:
             return 0
         detach_media_from_collections(self.session, ids)
+        from bonita.services.subtitle_service import SubtitleService
+        SubtitleService(self.session).detach_for_deleted_items(ids)
         watch_history_deleted = self.session.query(WatchHistory).filter(
             WatchHistory.media_item_id.in_(ids)
         ).delete(synchronize_session=False)
