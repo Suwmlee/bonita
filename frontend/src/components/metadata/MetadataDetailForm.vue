@@ -10,6 +10,9 @@ interface Props {
   updateMetadata?: MetadataPublic
 }
 const props = defineProps<Props>()
+const emit = defineEmits<{
+  created: []
+}>()
 
 const metadataStore = useMetadataStore()
 const { t } = useI18n() // 导入国际化工具函数
@@ -114,7 +117,8 @@ async function handleSubmit() {
     if (updateMetadata) {
       await metadataStore.updateMetadata(currentMetadata.value)
     } else {
-      await metadataStore.addMetadata(currentMetadata.value)
+      const created = await metadataStore.addMetadata(currentMetadata.value)
+      if (created) emit("created")
     }
   } catch (error) {
     console.error("Error submitting form:", error)

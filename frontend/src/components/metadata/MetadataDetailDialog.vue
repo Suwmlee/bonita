@@ -5,6 +5,9 @@ import { ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
 
 const dialog = useMetadataStore()
+const emit = defineEmits<{
+  created: []
+}>()
 const { t } = useI18n()
 
 const activeTab = ref("manual")
@@ -90,6 +93,7 @@ async function handleImport() {
   try {
     const result = await dialog.importFromJson(parsed)
     importResult.value = result
+    if (result.success > 0) emit("created")
     if (result.failed === 0) {
       jsonText.value = ""
       previewCount.value = null
@@ -135,7 +139,7 @@ async function handleImport() {
 
         <!-- 手动填写 -->
         <VCardText v-if="activeTab === 'manual'" style="flex: 1; overflow-y: auto;">
-          <MetadataDetailForm />
+          <MetadataDetailForm @created="emit('created')" />
         </VCardText>
 
         <!-- JSON 导入 -->

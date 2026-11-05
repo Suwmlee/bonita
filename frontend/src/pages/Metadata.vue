@@ -10,17 +10,16 @@ import { useI18n } from "vue-i18n"
 const metadataStore = useMetadataStore()
 const searchQuery = ref("")
 const isSearching = ref(false)
-let metadataFetchId = 0
 const { t } = useI18n() // 导入国际化工具函数
 
 async function fetchMetadata(page: number, perPage?: number) {
-  const fetchId = ++metadataFetchId
   isSearching.value = true
   try {
     const keyword = typeof searchQuery.value === "string" ? searchQuery.value.trim() : ""
-    await metadataStore.getMetadata(keyword, page, perPage)
-  } finally {
-    if (fetchId === metadataFetchId) isSearching.value = false
+    const result = await metadataStore.getMetadata(keyword, page, perPage)
+    if (result !== null) isSearching.value = false
+  } catch {
+    isSearching.value = false
   }
 }
 
@@ -227,7 +226,7 @@ onMounted(() => {
     </VRow>
 
     <!-- Metadata add/edit dialog -->
-    <MetadataDetailDialog />
+    <MetadataDetailDialog @created="fetchMetadata(1)" />
     <MetadataRefreshDialog
       v-model="metadataStore.showRefreshDialog"
       :metadata="metadataStore.refreshTarget"

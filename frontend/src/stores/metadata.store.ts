@@ -54,7 +54,7 @@ export const useMetadataStore = defineStore("metadata-store", {
 
       try {
         const { data: response } = await MetadataService.getMetadata({
-          filter: filter,
+          filter: filter || undefined,
           skip: skip,
           limit: limit,
           sort_by: sortBy,
@@ -158,7 +158,6 @@ export const useMetadataStore = defineStore("metadata-store", {
       }
 
       if (success > 0) {
-        await this.getMetadata()
         this.showImportDialog = false
       }
 
@@ -202,18 +201,16 @@ export const useMetadataStore = defineStore("metadata-store", {
         })
 
         if (response) {
-          // Add the new metadata to the list
-          this.allMetadata.push(response)
           this.showDialog = false
-
-          // Refresh the list to ensure sorting and other data is updated
-          await this.getMetadata()
+          return true
         }
+        return false
       } catch (error) {
         console.error("Error creating metadata:", error)
         alert(
           "Failed to create metadata. Please check the console for details.",
         )
+        return false
       }
     },
     updateMetadataById(id: number, newValue: Partial<MetadataPublic>) {
