@@ -1110,6 +1110,10 @@ export type RecordGroupPublic = {
      */
     number?: string;
     /**
+     * Title
+     */
+    title?: string;
+    /**
      * Imdb Id
      */
     imdb_id?: string;
@@ -1121,10 +1125,6 @@ export type RecordGroupPublic = {
      * Tvdb Id
      */
     tvdb_id?: string;
-    /**
-     * Title
-     */
-    title?: string;
     /**
      * Cover
      */
@@ -1424,30 +1424,6 @@ export type SubtitleCollection = {
 };
 
 /**
- * SubtitleGroupPublic
- */
-export type SubtitleGroupPublic = {
-    key: string;
-    media_item_id?: number | null;
-    media_type?: string;
-    number?: string;
-    title?: string;
-    imdb_id?: string;
-    tmdb_id?: string;
-    crop?: boolean;
-    count?: number;
-    subtitles?: Array<SubtitlePublic>;
-};
-
-/**
- * SubtitleGroupCollection
- */
-export type SubtitleGroupCollection = {
-    data: Array<SubtitleGroupPublic>;
-    count: number;
-};
-
-/**
  * SubtitleDeliverRequest
  */
 export type SubtitleDeliverRequest = {
@@ -1489,6 +1465,66 @@ export type SubtitleDeliverResult = {
      * Details
      */
     details?: Array<string>;
+};
+
+/**
+ * SubtitleGroupCollection
+ */
+export type SubtitleGroupCollection = {
+    /**
+     * Data
+     */
+    data: Array<SubtitleGroupPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * SubtitleGroupPublic
+ */
+export type SubtitleGroupPublic = {
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Media Item Id
+     */
+    media_item_id?: number | null;
+    /**
+     * Media Type
+     */
+    media_type?: string;
+    /**
+     * Number
+     */
+    number?: string;
+    /**
+     * Title
+     */
+    title?: string;
+    /**
+     * Imdb Id
+     */
+    imdb_id?: string;
+    /**
+     * Tmdb Id
+     */
+    tmdb_id?: string;
+    /**
+     * Crop
+     */
+    crop?: boolean;
+    /**
+     * Count
+     */
+    count?: number;
+    /**
+     * Subtitles
+     */
+    subtitles?: Array<SubtitlePublic>;
 };
 
 /**
@@ -1559,6 +1595,16 @@ export type SubtitlePublic = {
      * Updatetime
      */
     updatetime?: string | null;
+};
+
+/**
+ * SubtitleRetransferResult
+ */
+export type SubtitleRetransferResult = {
+    /**
+     * Started
+     */
+    started?: number;
 };
 
 /**
@@ -3331,6 +3377,48 @@ export type ListSubtitlesResponses = {
 
 export type ListSubtitlesResponse = ListSubtitlesResponses[keyof ListSubtitlesResponses];
 
+export type ListSubtitleGroupsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Filter
+         */
+        filter?: string;
+        /**
+         * Unmatched
+         */
+        unmatched?: boolean;
+    };
+    url: '/api/v1/subtitles/groups';
+};
+
+export type ListSubtitleGroupsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListSubtitleGroupsError = ListSubtitleGroupsErrors[keyof ListSubtitleGroupsErrors];
+
+export type ListSubtitleGroupsResponses = {
+    /**
+     * Successful Response
+     */
+    200: SubtitleGroupCollection;
+};
+
+export type ListSubtitleGroupsResponse = ListSubtitleGroupsResponses[keyof ListSubtitleGroupsResponses];
+
 export type UploadSubtitlesData = {
     body: BodySubtitleUploadSubtitles;
     path?: never;
@@ -3440,6 +3528,66 @@ export type UpdateSubtitleResponses = {
 };
 
 export type UpdateSubtitleResponse = UpdateSubtitleResponses[keyof UpdateSubtitleResponses];
+
+export type RetransferSubtitleData = {
+    body?: never;
+    path: {
+        /**
+         * Subtitle Id
+         */
+        subtitle_id: number;
+    };
+    query?: never;
+    url: '/api/v1/subtitles/{subtitle_id}/retransfer';
+};
+
+export type RetransferSubtitleErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RetransferSubtitleError = RetransferSubtitleErrors[keyof RetransferSubtitleErrors];
+
+export type RetransferSubtitleResponses = {
+    /**
+     * Successful Response
+     */
+    200: SubtitleRetransferResult;
+};
+
+export type RetransferSubtitleResponse = RetransferSubtitleResponses[keyof RetransferSubtitleResponses];
+
+export type PreferSubtitleData = {
+    body?: never;
+    path: {
+        /**
+         * Subtitle Id
+         */
+        subtitle_id: number;
+    };
+    query?: never;
+    url: '/api/v1/subtitles/{subtitle_id}/prefer';
+};
+
+export type PreferSubtitleErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PreferSubtitleError = PreferSubtitleErrors[keyof PreferSubtitleErrors];
+
+export type PreferSubtitleResponses = {
+    /**
+     * Successful Response
+     */
+    200: SubtitleDeliverResult;
+};
+
+export type PreferSubtitleResponse = PreferSubtitleResponses[keyof PreferSubtitleResponses];
 
 export type DeliverOneSubtitleData = {
     body?: never;

@@ -609,6 +609,38 @@ class SubtitleService:
             query = query.filter(Subtitle.part_number == part_number)
         return self._deliver_rows(query.all(), overwrite=overwrite)
 
+    def retransfer_matches(self, media_item_id: Optional[int], part_number: int = 0) -> int:
+        """重新转移挂着这个媒体项、这部次的记录。刮削开着时会重写海报和 NFO，结束后再投递在用字幕。"""
+        if not media_item_id:
+            return 0
+        part = int(part_number or 0)
+        query = self.session.query(TransRecords.task_id, TransRecords.srcpath).filter(
+            TransRecords.media_item_id == media_item_id,
+            TransRecords.deleted.is_(False),
+            TransRecords.ignored.is_(False),
+            TransRecords.srcdeleted.is_(False),
+            TransRecords.task_id.isnot(None),
+            TransRecords.srcpath.isnot(None),
+            TransRecords.srcpath != "",
+        )
+        if part == 0:
+            query = query.filter(or_(TransRecords.part_number == 0, TransRecords.part_number.is_(None)))
+        else:
+            query = query.filter(TransRecords.part_number == part)
+        from bonita.services.transfer_config_service import TransferConfigService
+
+        service = TransferConfigService(self.session)
+        seen = set()
+        started = 0
+        for task_id, srcpath in query.all():
+            key = (task_id, os.path.normpath(srcpath))
+            if key in seen:
+                continue
+            seen.add(key)
+            if service.run_transfer(task_id, srcpath):
+                started += 1
+        return started
+
     def deliver_for_transfer(
         self,
         destpath: str,

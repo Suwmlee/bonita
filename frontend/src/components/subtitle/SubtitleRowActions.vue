@@ -25,11 +25,11 @@ const { t } = useI18n()
       v-if="item.preferred"
       size="small"
       variant="text"
-      :title="t('pages.subtitles.deliver')"
+      :title="t('pages.subtitles.retransfer')"
       :disabled="!item.media_item_id"
       @click="emit('deliver')"
     >
-      <VIcon icon="bx-captions" />
+      <VIcon icon="bx-refresh" />
     </VBtn>
     <VBtn
       v-else

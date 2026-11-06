@@ -502,26 +502,38 @@ async function remove(item: SubtitlePublic) {
   }
 }
 
-async function deliver(item: SubtitlePublic) {
+async function retransfer(item: SubtitlePublic) {
   try {
-    const { data: result } = await SubtitleService.deliverOneSubtitle({
+    const { data: result } = await SubtitleService.retransferSubtitle({
       subtitle_id: item.id,
     })
-    toastStore.success(deliverSummary(result))
+    if (result?.started) {
+      toastStore.success(t("pages.subtitles.retransferStarted", { count: result.started }))
+      return true
+    }
+    toastStore.info(t("pages.subtitles.retransferNone"))
+    return false
   } catch (error) {
-    toastStore.error(apiErrorMessage(error, t("pages.subtitles.deliverFailed")))
+    toastStore.error(apiErrorMessage(error, t("pages.subtitles.retransferFailed")))
+    return null
   }
 }
 
 async function useThis(item: SubtitlePublic) {
+  let delivered: SubtitleDeliverResult | undefined
   try {
-    const { data: result } = await SubtitleService.useSubtitle({
+    const { data: result } = await SubtitleService.preferSubtitle({
       subtitle_id: item.id,
     })
-    toastStore.success(deliverSummary(result))
+    delivered = result
     await load()
   } catch (error) {
     toastStore.error(apiErrorMessage(error, t("pages.subtitles.deliverFailed")))
+    return
+  }
+  const started = await retransfer(item)
+  if (started === false && delivered) {
+    toastStore.success(deliverSummary(delivered))
   }
 }
 
@@ -655,7 +667,7 @@ onMounted(() => {
               class="subtitle-group-actions"
               :item="item"
               @edit="openEdit(item)"
-              @deliver="deliver(item)"
+              @deliver="retransfer(item)"
               @use="useThis(item)"
               @remove="remove(item)"
             />
@@ -731,7 +743,7 @@ onMounted(() => {
             class="subtitle-file-actions"
             :item="item"
             @edit="openEdit(item)"
-            @deliver="deliver(item)"
+            @deliver="retransfer(item)"
             @use="useThis(item)"
             @remove="remove(item)"
           />

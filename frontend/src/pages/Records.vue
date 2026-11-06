@@ -2,8 +2,6 @@
 import {
   type RecordGroupPublic,
   type RecordPublic,
-  type SubtitleDeliverResult,
-  SubtitleService,
 } from "@/client"
 import PosterFrame from "@/components/common/PosterFrame.vue"
 import { getPosterUrl } from "@/composables/useMediaPoster"
@@ -249,65 +247,40 @@ const formatPartNumber = (partNumber?: number | null) => {
   return `P${String(partNumber).padStart(2, "0")}`
 }
 
-const subtitleCount = (item: RecordPublic) => item.subtitle_count || 0
-
-function apiErrorMessage(error: unknown, fallback: string) {
-  const detail = (error as { response?: { data?: { detail?: unknown } } })
-    ?.response?.data?.detail
-  if (typeof detail === "string" && detail.trim()) return detail
-  return fallback
-}
-
-function deliverSummary(result: SubtitleDeliverResult) {
-  const failed = result.failed || 0
-  const hasCount = result.copied || result.skipped || result.missing || failed
-  const base = hasCount
-    ? t("pages.subtitles.deliverResult", { ...result, failed })
-    : t("pages.subtitles.deliverNone")
-  const details = (result.details || []).filter(Boolean)
-  if (!hasCount && details.length) return details.join("；")
-  if (details.length) return `${base}。${details.join("；")}`
-  return base
-}
-
-async function deliverRecordSubtitle(item: RecordPublic) {
-  const mediaId = item.transfer_record.media_item_id
-  if (!mediaId) return
-  try {
-    const { data: result } = await SubtitleService.deliverSubtitles({
-      subtitleDeliverRequest: {
-        media_item_ids: [mediaId],
-        part_number: item.transfer_record.part_number || 0,
-      },
-    })
-    toastStore.success(deliverSummary(result))
-  } catch (error) {
-    toastStore.error(apiErrorMessage(error, t("pages.subtitles.deliverFailed")))
+function transferJobs(items: RecordPublic[]) {
+  const seen = new Set<string>()
+  const jobs: { taskId: number; path: string }[] = []
+  for (const item of items) {
+    const record = item.transfer_record
+    if (!record?.task_id || !record.srcpath) continue
+    const key = `${record.task_id}\0${record.srcpath}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    jobs.push({ taskId: record.task_id, path: record.srcpath })
   }
+  return jobs
 }
 
-function groupHasSubtitles(group: RecordGroupPublic) {
-  return group.records.some((item) => subtitleCount(item) > 0)
+function groupCanRetransfer(group: RecordGroupPublic) {
+  return transferJobs(group.records).length > 0
 }
 
-async function deliverGroupSubtitle(group: RecordGroupPublic) {
-  const mediaIds = [
-    ...new Set(
-      group.records
-        .map((item) => item.transfer_record.media_item_id)
-        .filter((id): id is number => !!id),
-    ),
-  ]
-  if (!mediaIds.length) return
+const retransferringKey = ref<string | null>(null)
+
+async function retransferGroup(group: RecordGroupPublic) {
+  const jobs = transferJobs(group.records)
+  if (!jobs.length || retransferringKey.value) return
+  retransferringKey.value = group.key
   try {
-    const { data: result } = await SubtitleService.deliverSubtitles({
-      subtitleDeliverRequest: {
-        media_item_ids: mediaIds,
-      },
-    })
-    toastStore.success(deliverSummary(result))
+    for (const job of jobs) {
+      await taskStore.runTaskByIdWithPath(job.taskId, job.path)
+    }
+    toastStore.success(t("pages.records.retransferStarted", { count: jobs.length }))
   } catch (error) {
-    toastStore.error(apiErrorMessage(error, t("pages.subtitles.deliverFailed")))
+    console.error("Failed to retransfer group", error)
+    toastStore.error(t("pages.records.retransferFailed"))
+  } finally {
+    retransferringKey.value = null
   }
 }
 
@@ -565,6 +538,39 @@ const handleDelete = () => {
   deleteDialog.value = true
 }
 
+const refreshingSelected = ref(false)
+
+function recordsInView(): RecordPublic[] {
+  if (viewMode.value === "group") {
+    return recordStore.groups.flatMap((group) => group.records || [])
+  }
+  return recordStore.records
+}
+
+async function refreshSelected() {
+  if (selected.value.length === 0 || refreshingSelected.value) return
+  const ids = new Set(selected.value)
+  const jobs = transferJobs(recordsInView().filter((item) => ids.has(item.transfer_record.id)))
+  if (jobs.length === 0) {
+    toastStore.error(t("pages.records.refreshSelectedNone"))
+    return
+  }
+  refreshingSelected.value = true
+  let started = 0
+  try {
+    for (const job of jobs) {
+      await taskStore.runTaskByIdWithPath(job.taskId, job.path)
+      started += 1
+    }
+    toastStore.success(t("pages.records.refreshSelectedDone", { count: started }))
+  } catch (error) {
+    console.error("Failed to refresh selected records", error)
+    toastStore.error(t("pages.records.refreshSelectedFailed"))
+  } finally {
+    refreshingSelected.value = false
+  }
+}
+
 const confirmDelete = async () => {
   const deleted = await recordStore.deleteRecords(
     selected.value,
@@ -690,10 +696,22 @@ onMounted(async () => {
             </div>
           </div>
           
-          <v-btn color="error" :disabled="selected.length === 0" prepend-icon="mdi-delete" @click="handleDelete"
-            size="default" class="delete-btn">
-            {{ t('pages.records.deleteSelected', { count: selected.length }) }}
-          </v-btn>
+          <v-tooltip :text="t('pages.records.refreshSelected')">
+            <template #activator="{ props }">
+              <v-btn v-bind="props" size="small" color="primary" :disabled="selected.length === 0"
+                :loading="refreshingSelected" @click="refreshSelected">
+                <v-icon>bx-refresh</v-icon>
+              </v-btn>
+            </template>
+          </v-tooltip>
+          <v-tooltip :text="t('pages.records.deleteSelected', { count: selected.length })">
+            <template #activator="{ props }">
+              <v-btn v-bind="props" size="small" color="error" :disabled="selected.length === 0"
+                @click="handleDelete">
+                <v-icon>mdi-delete</v-icon>
+              </v-btn>
+            </template>
+          </v-tooltip>
         </div>
       </div>
 
@@ -778,16 +796,6 @@ onMounted(async () => {
       <template #item.extra_info.number="{ item }">
         <span class="nowrap-cell d-inline-flex align-center">
           <span v-if="item.extra_info?.number" class="record-number">{{ item.extra_info.number }}</span>
-          <VBtn
-            v-if="subtitleCount(item) > 0"
-            size="x-small"
-            variant="text"
-            class="ms-1"
-            :title="t('pages.subtitles.deliver')"
-            @click.stop="deliverRecordSubtitle(item)"
-          >
-            <VIcon icon="bx-captions" size="18" />
-          </VBtn>
         </span>
       </template>
 
@@ -869,12 +877,12 @@ onMounted(async () => {
             </div>
             <div v-if="group.title" class="record-group-title">{{ group.title }}</div>
             <VBtn
-              v-if="groupHasSubtitles(group)"
+              v-if="groupCanRetransfer(group)"
               class="record-group-subtitle record-group-action"
-              :title="t('pages.subtitles.deliver')"
-              @click="deliverGroupSubtitle(group)"
+              :loading="retransferringKey === group.key"
+              @click="retransferGroup(group)"
             >
-              <VIcon icon="bx-captions" size="18" />
+              <VIcon icon="bx-revision" size="18" />
             </VBtn>
             <div class="text-caption text-medium-emphasis record-group-count">
               {{ t('pages.records.groupFileCount', { count: group.record_count }) }}
@@ -952,14 +960,6 @@ onMounted(async () => {
                 </span>
               </div>
               <div class="actions-cell">
-                <VBtn
-                  v-if="subtitleCount(item) > 0"
-                  class="record-group-action"
-                  :title="t('pages.subtitles.deliver')"
-                  @click="deliverRecordSubtitle(item)"
-                >
-                  <VIcon icon="bx-captions" size="18" />
-                </VBtn>
                 <VBtn class="record-group-action" @click="showSelectedRecord(item)">
                   <VIcon icon="bx-edit-alt" size="18" />
                 </VBtn>
@@ -1167,18 +1167,9 @@ onMounted(async () => {
   min-width: 220px;
 }
 
-.delete-btn {
-  white-space: nowrap;
-}
-
 @media (max-width: 768px) {
   .search-input, .task-id-input {
     min-width: 0;
-    width: 100%;
-  }
-  
-  .delete-btn {
-    margin-top: 8px;
     width: 100%;
   }
 }

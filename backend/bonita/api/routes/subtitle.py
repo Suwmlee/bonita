@@ -130,9 +130,24 @@ def delete_subtitle(session: SessionDep, subtitle_id: int) -> Any:
     return schemas.Response(success=True, message="字幕已删除")
 
 
+@router.post("/{subtitle_id}/retransfer", response_model=schemas.SubtitleRetransferResult)
+def retransfer_subtitle(session: SessionDep, subtitle_id: int) -> Any:
+    """重新转移挂着这条在用字幕的记录，重写海报、NFO，并在转移结束时带上字幕。"""
+    service = SubtitleService(session)
+    row = service.get(subtitle_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="字幕不存在")
+    if not row.media_item_id:
+        raise HTTPException(status_code=400, detail="字幕尚未关联媒体项")
+    if not row.preferred:
+        raise HTTPException(status_code=400, detail="这份不是当前使用的字幕")
+    started = service.retransfer_matches(row.media_item_id, row.part_number or 0)
+    return schemas.SubtitleRetransferResult(started=started)
+
+
 @router.post("/{subtitle_id}/prefer", response_model=schemas.SubtitleDeliverResult)
 def prefer_subtitle(session: SessionDep, subtitle_id: int) -> Any:
-    """改用这一份，并投递到该媒体项、相同部次的目标文件旁边。"""
+    """改用这一份，清掉原来那份记下的文件，再写到目标旁边。海报和 NFO 由随后的重新转移更新。"""
     try:
         result = SubtitleService(session).use_subtitle(subtitle_id)
     except ValueError as exc:

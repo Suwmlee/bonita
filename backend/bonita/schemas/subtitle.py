@@ -75,3 +75,7 @@ class SubtitleDeliverResult(BaseModel):
     missing: int = 0
     failed: int = 0
     details: List[str] = Field(default_factory=list)
+
+
+class SubtitleRetransferResult(BaseModel):
+    started: int = 0
