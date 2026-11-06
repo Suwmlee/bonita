@@ -95,7 +95,6 @@ const pinned = computed(() => !!props.fixedMediaId)
 const languages = computed(() => [
   { title: t("pages.subtitles.lang.zhHans"), value: "zh-Hans" },
   { title: t("pages.subtitles.lang.zhHant"), value: "zh-Hant" },
-  { title: t("pages.subtitles.lang.ja"), value: "ja" },
   { title: t("pages.subtitles.lang.en"), value: "en" },
 ])
 

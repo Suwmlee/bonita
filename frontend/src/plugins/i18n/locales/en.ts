@@ -212,7 +212,6 @@ export default {
       lang: {
         zhHans: "Chinese (Simplified)",
         zhHant: "Chinese (Traditional)",
-        ja: "Japanese",
         en: "English",
       },
     },

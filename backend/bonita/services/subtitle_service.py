@@ -21,11 +21,12 @@ from bonita.utils.filehelper import subext_type
 logger = logging.getLogger(__name__)
 
 DEFAULT_LANGUAGE = "zh-Hans"
+CHINESE_LANGUAGES = ("zh-Hans", "zh-Hant")
+SUPPORTED_LANGUAGES = ("zh-Hans", "zh-Hant", "en")
 
 _LANG_RULES = (
     (re.compile(r"(?:^|[.\-_])(?:zh[-_]?hant|zht|cht|zh[-_]?tw)(?=$|[.\-_])", re.I), "zh-Hant"),
     (re.compile(r"(?:^|[.\-_])(?:zh[-_]?hans|zhs|chs|zh[-_]?cn|chi|chn)(?=$|[.\-_])", re.I), "zh-Hans"),
-    (re.compile(r"(?:^|[.\-_])(?:jpn|jp|ja)(?=$|[.\-_])", re.I), "ja"),
     (re.compile(r"(?:^|[.\-_])(?:eng|en)(?=$|[.\-_])", re.I), "en"),
     (re.compile(r"(?:^|[.\-_])(?:tc)(?=$|[.\-_])", re.I), "zh-Hant"),
     (re.compile(r"(?:^|[.\-_])(?:sc|zh|cn|c)(?=$|[.\-_])", re.I), "zh-Hans"),
@@ -34,7 +35,6 @@ _LANG_RULES = (
 _DELIVER_SUFFIX = {
     "zh-Hans": ".chs",
     "zh-Hant": ".cht",
-    "ja": ".ja",
     "en": ".en",
 }
 
@@ -46,6 +46,37 @@ def normalize_number(value: Optional[str]) -> str:
     if not value:
         return ""
     return value.strip().upper()
+
+
+def has_preferred_chinese_subtitle(
+    session,
+    number: Optional[str] = None,
+    part: int = 0,
+    media_item_id: Optional[int] = None,
+) -> bool:
+    """ 这一部、这一部次有没有在用的简体或繁体字幕。 """
+    query = session.query(Subtitle.id).filter(
+        Subtitle.preferred.is_(True),
+        Subtitle.part_number == int(part or 0),
+        Subtitle.language.in_(CHINESE_LANGUAGES),
+    )
+    if media_item_id:
+        query = query.filter(Subtitle.media_item_id == media_item_id)
+    else:
+        key = normalize_number(number)
+        if not key:
+            return False
+        query = query.join(MediaItem, MediaItem.id == Subtitle.media_item_id).filter(
+            func.upper(func.trim(MediaItem.number)) == key
+        )
+    return query.first() is not None
+
+
+def normalize_language(value: Optional[str]) -> str:
+    language = (value or "").strip()
+    if language in SUPPORTED_LANGUAGES:
+        return language
+    return DEFAULT_LANGUAGE
 
 
 def parse_language(filename: str) -> str:
@@ -82,7 +113,7 @@ def parse_number(filename: str) -> str:
 
 
 def deliver_suffix(language: str) -> str:
-    return _DELIVER_SUFFIX.get(language or "", f".{language}" if language else ".chs")
+    return _DELIVER_SUFFIX.get(normalize_language(language), ".chs")
 
 
 def dest_subtitle_path(video_path: str, language: str, extension: str) -> str:
@@ -481,7 +512,7 @@ class SubtitleService:
             item = self._resolve_number_item(key) if key else None
             if key and not item:
                 raise ValueError("没有对应的媒体项")
-        language = (language or DEFAULT_LANGUAGE).strip() or DEFAULT_LANGUAGE
+        language = normalize_language(language)
         part_number = int(part_number or 0)
         extension = row.file_extension or os.path.splitext(row.original_name or "")[1].lower()
         relative = self._storage_relative(item, row.original_name or "", extension)

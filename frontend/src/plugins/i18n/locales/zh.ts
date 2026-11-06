@@ -208,7 +208,6 @@ export default {
       lang: {
         zhHans: "简体中文",
         zhHant: "繁体中文",
-        ja: "日语",
         en: "英语",
       },
     },
