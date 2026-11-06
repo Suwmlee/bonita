@@ -7,6 +7,14 @@ from scrapinglib import search
 from PIL import Image
 import xml.etree.ElementTree as ET
 
+from bonita.modules.scraping.number_parser import (
+    compose_output_tags,
+    format_part_suffix,
+    merge_stored_tags,
+    release_suffix,
+    release_tags_for,
+    render_scraped_name,
+)
 from bonita.utils.filehelper import sanitize_path
 
 logger = logging.getLogger(__name__)
@@ -34,6 +42,44 @@ def scraping(number, sources=None, specifiedsource="", specifiedurl="", proxy=No
         json_data['actor'] = '佚名'
     logger.info(f"        ✓ 元数据获取成功: {json_data.get('title', 'N/A')}")
     return json_data
+
+
+def prepare_scraped_output(
+    metadata_mixed, file_info, extrainfo, scraping_conf, *,
+    folder, library_chinese, part_number=0,
+):
+    """刮削转移的出口：文件名、分集和标签。"""
+    suffix = release_suffix(file_info, extrainfo.tag if extrainfo is not None else "")
+    filename = render_scraped_name(metadata_mixed, scraping_conf, suffix)
+    return apply_saved_output(
+        metadata_mixed, file_info, extrainfo,
+        filename=filename, folder=folder,
+        library_chinese=library_chinese, part_number=part_number,
+    )
+
+
+def apply_saved_output(metadata_mixed, file_info, extrainfo, *, filename, folder, library_chinese, part_number=0):
+    """ 在已保存的元数据上补文件名、裁剪和标签。 """
+    metadata_mixed.extra_folder = folder
+    metadata_mixed.extra_filename = filename
+    if metadata_mixed.crop is not None:
+        metadata_mixed.extra_crop = metadata_mixed.crop
+    elif extrainfo is not None:
+        metadata_mixed.extra_crop = extrainfo.crop
+    stored_tag = extrainfo.tag if extrainfo is not None else ""
+    release_tags = release_tags_for(file_info, stored_tag)
+    if extrainfo is not None and getattr(file_info, "num", None):
+        extrainfo.tag = merge_stored_tags(extrainfo.tag, release_tags)
+    metadata_mixed.tag = compose_output_tags(
+        metadata_mixed.tag,
+        extrainfo.tag if extrainfo else "",
+        release=release_tags,
+        library_chinese=library_chinese,
+    )
+    if part_number:
+        metadata_mixed.extra_filename += format_part_suffix(part_number)
+        metadata_mixed.extra_part = part_number
+    return metadata_mixed
 
 
 def process_nfo_file(output_folder, prefilename, metadata_dict):
@@ -207,6 +253,20 @@ def crop_poster(tmp_file, posterpath):
             shutil.copyfile(tmp_file, posterpath)
     except Exception as e:
         logger.error(f"        ✗ 封面裁剪失败: {e}")
+
+
+def watermark_params(config):
+    """ 刮削配置里的水印开关、位置、大小。没有配置时用模型默认值。 """
+    enabled, location, size = True, 2, 9
+    if config is None:
+        return enabled, location, size
+    if config.watermark_enabled is not None:
+        enabled = bool(config.watermark_enabled)
+    if config.watermark_location is not None:
+        location = int(config.watermark_location)
+    if config.watermark_size is not None:
+        size = int(config.watermark_size)
+    return enabled, location, size
 
 
 def add_mark(pics, meta_tags, count, size):

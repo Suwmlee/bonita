@@ -10,8 +10,8 @@ from bonita.db import SessionFactory
 from bonita.db.models.extrainfo import ExtraInfo
 from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
-from bonita.modules.scraping.number_parser import FileNumInfo, format_part_suffix
-from bonita.modules.scraping.scraping import load_all_NFO_from_folder, need_crop, scraping
+from bonita.modules.scraping.number_parser import FileNumInfo, merge_stored_tags, release_tags_for
+from bonita.modules.scraping.scraping import load_all_NFO_from_folder, need_crop, prepare_scraped_output, scraping
 from bonita.utils.downloader import update_cache_from_local
 from bonita.utils.http import get_active_proxy
 
@@ -36,7 +36,6 @@ def celery_scrapping(self, file_path, scraping_dict):
             extrainfo.number = fileNumInfo.num
             if not need_crop(extrainfo.number):
                 extrainfo.crop = False
-            extrainfo.tag = ', '.join(map(str, fileNumInfo.tags()))
             extrainfo.create(session)
             # 首次刮削：与原先 ExtraInfo.partNumber 一样，从文件名写入转移记录
             if transfer_record and not transfer_record.part_number:
@@ -47,6 +46,10 @@ def celery_scrapping(self, file_path, scraping_dict):
                     extrainfo.crop = True
                 else:
                     extrainfo.crop = False
+        if getattr(fileNumInfo, "num", None):
+            extrainfo.tag = merge_stored_tags(
+                extrainfo.tag, release_tags_for(fileNumInfo, extrainfo.tag),
+            )
         part_number = transfer_record.part_number if transfer_record else 0
         # 处理指定源/强制从网站更新
         metadata_record = None
@@ -90,24 +93,19 @@ def celery_scrapping(self, file_path, scraping_dict):
                 metadata_record.create(session)
             metadata_mixed = schemas.MetadataMixed(**metadata_record.to_dict())
 
-        # 根据规则生成文件夹和文件名
+        # 目录用纯番号。文件名由 prepare_scraped_output 统一生成，版本后缀只进番号
         maxlen = scraping_conf.max_title_len
         extra_folder = eval(scraping_conf.location_rule, metadata_mixed.__dict__)
-        extra_name = eval(scraping_conf.naming_rule, metadata_mixed.__dict__)
         if 'actor' in scraping_conf.location_rule and len(metadata_mixed.actor) > maxlen:
             extra_folder = eval(scraping_conf.location_rule.replace("actor", "'多人作品'"), metadata_mixed.__dict__)
-            extra_name = eval(scraping_conf.naming_rule.replace("actor", "'多人作品'"), metadata_mixed.__dict__)
         if 'title' in scraping_conf.location_rule and len(metadata_mixed.title) > maxlen:
             shorttitle = metadata_mixed.title[0:maxlen]
             extra_folder = extra_folder.replace(metadata_mixed.title, shorttitle)
-            extra_name = extra_name.replace(metadata_mixed.title, shorttitle)
 
         # 清理和验证生成的路径
-        # 移除路径中的非法字符
         illegal_chars = ['<', '>', ':', '"', '|', '?', '*']
         for char in illegal_chars:
             extra_folder = extra_folder.replace(char, '_')
-            extra_name = extra_name.replace(char, '_')
         # 确保路径不为空且不是绝对路径
         extra_folder = extra_folder.strip()
         if not extra_folder or extra_folder.startswith('/') or extra_folder.startswith('\\'):
@@ -117,27 +115,17 @@ def celery_scrapping(self, file_path, scraping_dict):
         # 替换路径遍历字符
         extra_folder = extra_folder.replace('..', '_')
 
-        metadata_mixed.extra_folder = extra_folder
-        metadata_mixed.extra_filename = extra_name
-        metadata_mixed.extra_crop = (
-            metadata_record.crop if metadata_record.crop is not None else extrainfo.crop
+        from bonita.services.subtitle_service import has_preferred_chinese_subtitle
+        library_chinese = has_preferred_chinese_subtitle(
+            session, number=metadata_mixed.number, part=part_number,
         )
-
-        # 将 extrainfo.tag 中的标签添加到 metadata_base.tag 中，过滤重复的标签
-        existing_tags = set(metadata_mixed.tag.split(", ")) if metadata_mixed.tag else set()
-        new_tags = set(extrainfo.tag.split(", ")) if extrainfo.tag else set()
-        combined_tags = existing_tags.union(new_tags)
-        # 过滤掉空字符串
-        combined_tags = {tag for tag in combined_tags if tag.strip()}
-        metadata_mixed.tag = ", ".join(combined_tags) if combined_tags else ''
+        metadata_mixed = prepare_scraped_output(
+            metadata_mixed, fileNumInfo, extrainfo, scraping_conf,
+            folder=extra_folder, library_chinese=library_chinese, part_number=part_number,
+        )
         if metadata_record and metadata_record.number:
             from bonita.modules.media_service.record_link import attach_number_records
             attach_number_records(session, metadata_record.number, metadata_record.title or "")
-        # 更新文件名称，part -C -EP01
-        if part_number:
-            metadata_mixed.extra_filename += format_part_suffix(part_number)
-            metadata_mixed.extra_part = part_number
-
         return metadata_mixed
     except Exception:
         logger.exception("      ✗ 刮削异常")

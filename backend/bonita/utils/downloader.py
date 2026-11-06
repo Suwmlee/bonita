@@ -25,6 +25,16 @@ DOWNLOAD_USER_AGENT = (
 )
 
 
+def cached_filepath(session: Session, url: str) -> str:
+    """ 已缓存的文件路径。没有缓存时返回空字符串，不下载。 """
+    if not url:
+        return ""
+    cache = session.query(Downloads).filter(Downloads.url == url).first()
+    if cache and cache.filepath and os.path.exists(cache.filepath):
+        return cache.filepath
+    return ""
+
+
 def process_cached_file(session: Session, url: str, folder) -> str:
     """ 获取缓存图片
     :param session: 数据库会话
@@ -32,10 +42,11 @@ def process_cached_file(session: Session, url: str, folder) -> str:
     :param folder: 下载文件保存的缓存目录
     :return: 缓存的文件路径
     """
-    cache = session.query(Downloads).filter(Downloads.url == url).first()
-    if cache and os.path.exists(cache.filepath):
-        return cache.filepath
+    cached = cached_filepath(session, url)
+    if cached:
+        return cached
     filepath = download_file(url, folder, get_active_proxy(session))
+    cache = session.query(Downloads).filter(Downloads.url == url).first()
     if cache:
         cache.filepath = filepath
         session.commit()

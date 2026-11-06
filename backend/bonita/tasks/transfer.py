@@ -10,7 +10,7 @@ from bonita.core.config import settings
 from bonita.db import SessionFactory
 from bonita.db.models.record import TransRecords
 from bonita.db.models.scraping import ScrapingConfig
-from bonita.modules.scraping.scraping import add_mark, process_cover, process_nfo_file, scraping
+from bonita.modules.scraping.scraping import add_mark, process_cover, process_nfo_file, scraping, watermark_params
 from bonita.modules.transfer.transfer import transSingleFile, transferfile
 from bonita.services.celery_service import TaskProgressTracker
 from bonita.services.subtitle_service import SubtitleService, parse_number
@@ -48,6 +48,84 @@ def _apply_library_subtitles(session, destpath, part_number, media_item_id=None,
             logger.info(f"      ✓ 字幕库投递 {copied} 个")
     except Exception as e:
         logger.warning(f"      ⊘ 字幕库投递失败: {e}")
+
+
+def write_scraped_sidecars(session, output_folder, metamixed, scraping_conf):
+    """写 NFO、封面和水印。不移动视频。"""
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    process_nfo_file(output_folder, metamixed.extra_filename, metamixed.__dict__)
+
+    proxy = get_active_proxy(session)
+    cache_cover_filepath = None
+    cover_url = metamixed.cover
+    retry_count = 0
+    max_retries = 3
+    used_sources = {metamixed.site} if metamixed.site else set()
+    extrafanart_list = []
+
+    raw_ef = metamixed.extrafanart or ''
+    if raw_ef:
+        ef_items = raw_ef.split(',') if isinstance(raw_ef, str) else raw_ef
+        extrafanart_list = [u.strip() for u in ef_items if u.strip()]
+
+    while retry_count < max_retries:
+        try:
+            cache_cover_filepath = process_cached_file(session, cover_url, metamixed.number)
+            break
+        except Exception as e:
+            retry_count += 1
+            logger.warning(f"      ✗ 封面下载失败 (尝试 {retry_count}/{max_retries}): {cover_url} — {e}")
+            if retry_count >= max_retries:
+                break
+            all_sources = scraping_conf.scraping_sites.split(',') if scraping_conf.scraping_sites else []
+            remaining_sources = [s.strip() for s in all_sources if s.strip() and s.strip() not in used_sources]
+            if not remaining_sources:
+                logger.warning("      ⊘ 没有可用源可继续尝试")
+                break
+            fallback_json = scraping(
+                metamixed.number,
+                sources=','.join(remaining_sources[:1]),
+                specifiedsource="",
+                specifiedurl="",
+                proxy=proxy
+            )
+            if fallback_json and fallback_json.get('cover'):
+                new_site = fallback_json.get('site', '')
+                if new_site:
+                    used_sources.add(new_site)
+                ef_raw = fallback_json.get('extrafanart')
+                if ef_raw:
+                    ef_items = ef_raw.split(',') if isinstance(ef_raw, str) else ef_raw
+                    for u in ef_items:
+                        u = u.strip()
+                        if u and u not in extrafanart_list:
+                            extrafanart_list.append(u)
+                new_cover = fallback_json.get('cover')
+                if new_cover and new_cover != cover_url:
+                    cover_url = new_cover
+                    continue
+            break
+
+    if cache_cover_filepath is None and extrafanart_list:
+        ef_url = extrafanart_list[0]
+        logger.info(f"      → 使用 extrafanart 作为封面: {ef_url}")
+        try:
+            cache_cover_filepath = download_file(ef_url, metamixed.number, proxy)
+        except Exception as e:
+            logger.warning(f"      ⊘ extrafanart 下载失败: {e}")
+
+    if cache_cover_filepath:
+        _mark_cover(cache_cover_filepath, output_folder, metamixed, scraping_conf)
+    else:
+        logger.warning("      ⊘ 封面获取失败，跳过封面图片处理")
+
+
+def _mark_cover(cache_cover_filepath, output_folder, metamixed, scraping_conf):
+    pics = process_cover(cache_cover_filepath, output_folder, metamixed.extra_filename, crop=metamixed.extra_crop)
+    enabled, location, size = watermark_params(scraping_conf)
+    if enabled:
+        add_mark(pics, metamixed.tag, location, size)
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
@@ -238,85 +316,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                         if not output_folder.startswith(base_output):
                             logger.error("      ✗ 安全检查失败，使用基础目录")
                             output_folder = base_output
-                        if not os.path.exists(output_folder):
-                            os.makedirs(output_folder)
-                        # 更新NFO文件/cover
-                        process_nfo_file(output_folder, metamixed.extra_filename, metamixed.__dict__)
-
-                        # 尝试下载封面，最多重试3次
-                        proxy = get_active_proxy(session)
-                        cache_cover_filepath = None
-                        cover_url = metamixed.cover
-                        retry_count = 0
-                        max_retries = 3
-                        used_sources = {metamixed.site} if metamixed.site else set()
-                        extrafanart_list = []
-
-                        # 收集首次刮削拿到的 extrafanart
-                        raw_ef = metamixed.extrafanart or ''
-                        if raw_ef:
-                            ef_items = raw_ef.split(',') if isinstance(raw_ef, str) else raw_ef
-                            extrafanart_list = [u.strip() for u in ef_items if u.strip()]
-
-                        while retry_count < max_retries:
-                            try:
-                                cache_cover_filepath = process_cached_file(session, cover_url, metamixed.number)
-                                break
-                            except Exception as e:
-                                retry_count += 1
-                                logger.warning(f"      ✗ 封面下载失败 (尝试 {retry_count}/{max_retries}): {cover_url} — {e}")
-                                if retry_count >= max_retries:
-                                    break
-                                # 用其他源重新刮削获取封面 URL
-                                all_sources = scraping_conf.scraping_sites.split(',') if scraping_conf.scraping_sites else []
-                                remaining_sources = [s.strip() for s in all_sources if s.strip() and s.strip() not in used_sources]
-                                if not remaining_sources:
-                                    logger.warning("      ⊘ 没有可用源可继续尝试")
-                                    break
-                                # 指定第一个未用过的源重新刮削
-                                fallback_json = scraping(
-                                    metamixed.number,
-                                    sources=','.join(remaining_sources[:1]),
-                                    specifiedsource="",
-                                    specifiedurl="",
-                                    proxy=proxy
-                                )
-                                if fallback_json and fallback_json.get('cover'):
-                                    new_site = fallback_json.get('site', '')
-                                    if new_site:
-                                        used_sources.add(new_site)
-                                    # 收集 extrafanart
-                                    ef_raw = fallback_json.get('extrafanart')
-                                    if ef_raw:
-                                        ef_items = ef_raw.split(',') if isinstance(ef_raw, str) else ef_raw
-                                        for u in ef_items:
-                                            u = u.strip()
-                                            if u and u not in extrafanart_list:
-                                                extrafanart_list.append(u)
-                                    new_cover = fallback_json.get('cover')
-                                    if new_cover and new_cover != cover_url:
-                                        cover_url = new_cover
-                                        continue
-                                break
-
-                        # 全部重试失败，降级到 extrafanart
-                        if cache_cover_filepath is None and extrafanart_list:
-                            ef_url = extrafanart_list[0]
-                            logger.info(f"      → 使用 extrafanart 作为封面: {ef_url}")
-                            try:
-                                cache_cover_filepath = download_file(ef_url, metamixed.number, proxy)
-                            except Exception as e:
-                                logger.warning(f"      ⊘ extrafanart 下载失败: {e}")
-
-                        # 有封面则处理封面图片，否则跳过
-                        pics = []
-                        if cache_cover_filepath:
-                            pics = process_cover(cache_cover_filepath, output_folder, metamixed.extra_filename, crop=metamixed.extra_crop)
-                            if scraping_conf.watermark_enabled:
-                                add_mark(pics, metamixed.tag, scraping_conf.watermark_location, scraping_conf.watermark_size)
-                        else:
-                            logger.warning("      ⊘ 封面获取失败，跳过封面图片处理")
-                        # 移动
+                        write_scraped_sidecars(session, output_folder, metamixed, scraping_conf)
                         destpath = transSingleFile(original_file, output_folder,
                                                    metamixed.extra_filename, task_info.operation)
                         done_list.append(destpath)

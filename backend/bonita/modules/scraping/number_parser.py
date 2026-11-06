@@ -12,7 +12,6 @@ G_spat = re.compile(
 # -EP01 是分集命名，编号固定补零到两位
 RE_EPISODE_PART = re.compile(r"(?:-|_)ep(\d{2,})(?![a-z0-9])", re.IGNORECASE)
 RE_NUMBER_PART = re.compile(r"(?:-|_)(\d{1,2})$", re.IGNORECASE | re.X | re.S)
-RE_SP_CHECK = re.compile(r"(?:-|_)sp(?:_|-|$)", re.IGNORECASE | re.X | re.S)
 RE_OUMEI = re.compile(r'[a-zA-Z]+\.\d{2}\.\d{2}\.\d{2}')
 RE_FILENAME = re.compile(r'[\w\-_]+', re.A)
 RE_SUB_C = re.compile(r"(-|_)c$", re.IGNORECASE)
@@ -23,6 +22,41 @@ RE_UNCENSORED_CHECK = re.compile(
     r'[\d-]{4,}|\d{6}_\d{2,3}|(cz|gedo|k|n|red-|se)\d{2,4}|heyzo.+|xxx-av-.+|heydouga-.+|x-art\.\d{2}\.\d{2}\.\d{2}',
     re.I
 )
+
+
+# 旁边字幕：没写语言，或写成这些中文标记，才算中文字幕。ja、en 以及其他标记都不算。
+_SIDECAR_CHINESE = re.compile(
+    r"(?:^|[.\-_])(?:zh[-_]?hant|zh[-_]?hans|zh[-_]?tw|zh[-_]?cn|zhs|zht|chs|cht|chi|chn|chinese|sc|tc|zh|cn|c|中文|字幕)(?=$|[.\-_])",
+    re.I,
+)
+# -U、-UC、-hack 是独立的一段。uncut、UHDrip 里的 u 不算破解。
+_HACK_MARKER = re.compile(r"(?:^|[.\-_])(?:hack|uc|u)(?=$|[.\-_])|破解", re.I)
+
+
+def _sidecar_has_chinese(filepath: str) -> bool:
+    """ 视频旁边没写语言，或写了中文标记的同名字幕，算有中文字幕。 """
+    folder = os.path.dirname(filepath) or ""
+    basename = os.path.splitext(os.path.basename(filepath))[0]
+    if not folder or not basename or not os.path.isdir(folder):
+        return False
+    from bonita.utils.filehelper import subext_type
+
+    try:
+        with os.scandir(folder) as entries:
+            for entry in entries:
+                if not entry.is_file():
+                    continue
+                stem, ext = os.path.splitext(entry.name)
+                if ext.lower() not in subext_type or not stem.startswith(basename):
+                    continue
+                rest = stem[len(basename):]
+                if rest and rest[0] not in ".-_":
+                    continue
+                if rest == "" or _SIDECAR_CHINESE.search(rest):
+                    return True
+    except OSError:
+        return False
+    return False
 
 
 def format_part_suffix(part_number) -> str:
@@ -53,11 +87,10 @@ class FileNumInfo():
 
         # 初始化所有标签
         self.chs_tag = False        # 中文字幕
-        self.uncensored_tag = False  # 无码
+        self.uncensored_tag = False  # 番号本身是无码
+        self.filename_uncensored = False  # 文件名里写了 uncensored
         self.leak_tag = False       # 流出
         self.hack_tag = False       # 破解
-        self.multipart_tag = False  # 多部分
-        self.special = False        # 特典
         self.partNumber = 0         # 部分编号
 
         # 检查番号是否存在及是否无码
@@ -70,11 +103,13 @@ class FileNumInfo():
         # 转为小写以便检查
         filepath_lower = filepath.lower()
 
-        # 检查是否破解/流出
-        if any(term in filepath_lower for term in ['流出', '-leak', '_leak', '-uncensored', '_uncensored']):
+        # 流出只看 leak / 流出。uncensored 是无码，其中的 -u 不能再记成破解
+        if any(term in filepath_lower for term in ['流出', '-leak', '_leak']):
             self.leak_tag = True
+        if 'uncensored' in filepath_lower:
+            self.filename_uncensored = True
 
-        if any(term in filepath_lower for term in ['破解', '-hack', '_hack', '-u', '_u']):
+        if _has_hack_marker(filepath_lower):
             self.hack_tag = True
 
         # 检查是否有中文字幕
@@ -82,50 +117,39 @@ class FileNumInfo():
         if any(indicator in filepath_lower for indicator in cn_indicators) or \
            re.search(r'[-_]C(\.\w+$|-\w+)|\d+ch(\.\w+$|-\w+)', filepath_lower, re.I):
             self.chs_tag = True
+        elif _sidecar_has_chinese(filepath):
+            self.chs_tag = True
 
-        # 处理文件名
-        basename = os.path.basename(filepath)
-        self.originalname = os.path.splitext(basename)[0]
+        self.partNumber = self.checkPart(os.path.basename(filepath))
 
-        # 检查是否为多部分
-        self.partNumber = self.checkPart(basename)
-        if self.partNumber:
-            self.multipart_tag = True
+    def version(self):
+        """ 一份文件只保留一个版本。番号本身是无码时，不再采纳流出和破解。 """
+        if not getattr(self, "num", None):
+            return None
+        if getattr(self, "uncensored_tag", False):
+            return "uncensored"
+        if getattr(self, "leak_tag", False):
+            return "leak"
+        if getattr(self, "hack_tag", False):
+            return "hack"
+        if getattr(self, "filename_uncensored", False):
+            return "uncensored"
+        return None
 
-        # 检查是否特典
-        self.special = self.checkSp(basename)
+    def version_suffix(self) -> str:
+        return version_suffix_for(self.version())
 
-    @property
-    def part(self):
-        """ 用于拼接文件名的分集后缀 """
-        if not self.multipart_tag:
-            return ''
-        return format_part_suffix(self.partNumber)
-
-    def fixedName(self):
-        name = self.num
-        if self.special:
-            return self.originalname
-        if self.uncensored_tag:
-            name += '-uncensored'
-        if self.leak_tag:
-            name += '-leak'
-        if self.hack_tag:
-            name += '-hack'
-        if self.chs_tag:
-            name += '-C'
-        if self.multipart_tag:
-            name += self.part
-        return name
-
-    def updatePart(self, partnum):
-        self.multipart_tag = True
-        self.partNumber = int(partnum)
-
-    def isPartOneOrSingle(self):
-        if not self.multipart_tag or self.partNumber == 1:
-            return True
-        return False
+    def release_tags(self):
+        """ 文件名识别出的字幕，以及互斥后的那一个版本标记。 """
+        if not getattr(self, "num", None):
+            return []
+        tags = []
+        if getattr(self, "chs_tag", False):
+            tags.append("中文字幕")
+        label = {"uncensored": "无码", "leak": "流出", "hack": "破解"}.get(self.version() or "")
+        if label:
+            tags.append(label)
+        return tags
 
     @staticmethod
     def checkPart(filename):
@@ -139,28 +163,6 @@ class FileNumInfo():
         except Exception:
             pass
         return 0
-
-    @staticmethod
-    def checkSp(filename):
-        try:
-            bname = os.path.splitext(filename)[0]
-            result = RE_SP_CHECK.findall(bname)
-            if result and len(result) == 1:
-                return True
-        except:
-            return False
-
-    def tags(self):
-        tags = []
-        if self.chs_tag:
-            tags.append('中文字幕')
-        if self.uncensored_tag:
-            tags.append('无码')
-        if self.leak_tag:
-            tags.append('流出')
-        if self.hack_tag:
-            tags.append('破解')
-        return tags
 
 
 def get_number(file_path: str) -> str:
@@ -311,7 +313,130 @@ class Cache_uncensored_conf:
 G_cache_uncensored_conf = Cache_uncensored_conf()
 
 
+_NATIVE_UNCENSORED_NUMBER = re.compile(
+    r"^(?:FC2-\d{5,7}|(?:CARIB|CARIBPR|1PON|PONDO|10MU)-\d{6}-\d{3})",
+    re.I,
+)
+
+RELEASE_TAG_NAMES = {"中文字幕", "无码", "破解", "流出"}
+_VERSION_LABELS = ("无码", "流出", "破解")
+_LABEL_TO_VERSION = {"无码": "uncensored", "流出": "leak", "破解": "hack"}
+_VERSION_TO_LABEL = {"uncensored": "无码", "leak": "流出", "hack": "破解"}
+
+
+def version_suffix_for(version) -> str:
+    return {"leak": "-leak", "hack": "-U"}.get(version or "", "")
+
+
+def release_suffix(file_info, stored_tag) -> str:
+    """出口用的版本后缀。ExtraInfo 里有版本时用它，否则用文件名识别。"""
+    stored = version_from_stored_tags(stored_tag)
+    if stored:
+        return version_suffix_for(stored)
+    if hasattr(file_info, "version_suffix"):
+        return file_info.version_suffix()
+    return ""
+
+
+def render_scraped_name(metadata_mixed, scraping_conf, suffix: str) -> str:
+    """按命名规则生成文件名。版本后缀只加在规则里的番号上。"""
+    maxlen = scraping_conf.max_title_len
+    context = dict(metadata_mixed.__dict__)
+    number = context.get("number") or ""
+    if suffix and number:
+        context["number"] = f"{number}{suffix}"
+    naming_rule = scraping_conf.naming_rule
+    location_rule = scraping_conf.location_rule or ""
+    extra_name = eval(naming_rule, context)
+    if "actor" in location_rule and len(metadata_mixed.actor or "") > maxlen:
+        extra_name = eval(naming_rule.replace("actor", "'多人作品'"), dict(context))
+    title = metadata_mixed.title or ""
+    if "title" in location_rule and title and len(title) > maxlen:
+        extra_name = extra_name.replace(title, title[:maxlen])
+    for char in ("<", ">", ":", '"', "|", "?", "*"):
+        extra_name = extra_name.replace(char, "_")
+    return extra_name
+
+
+def version_labels(value) -> set:
+    return {tag for tag in split_tags(value) if tag in _LABEL_TO_VERSION}
+
+
+def version_from_stored_tags(value):
+    """ExtraInfo 里已经写上的版本。多个同时在时按无码、流出、破解留一个。"""
+    labels = version_labels(value)
+    for label in _VERSION_LABELS:
+        if label in labels:
+            return _LABEL_TO_VERSION[label]
+    return None
+
+
+def split_tags(value) -> list:
+    if not value:
+        return []
+    return [part.strip() for part in str(value).replace("，", ",").split(",") if part.strip()]
+
+
+def merge_stored_tags(stored, release) -> str:
+    """ 保留用户另外写的标签。ExtraInfo 里已有的版本优先于文件名识别。 """
+    stored_version = version_from_stored_tags(stored)
+    kept = [tag for tag in split_tags(stored) if tag not in RELEASE_TAG_NAMES]
+    incoming = []
+    for tag in release or []:
+        if stored_version and tag in _LABEL_TO_VERSION:
+            continue
+        if tag not in incoming:
+            incoming.append(tag)
+    if stored_version:
+        label = _VERSION_TO_LABEL[stored_version]
+        if label not in incoming:
+            incoming.append(label)
+    for tag in incoming:
+        if tag not in kept:
+            kept.append(tag)
+    return ", ".join(kept)
+
+
+def release_tags_for(file_info, stored_tag) -> list:
+    """文件名识别出的字幕。ExtraInfo 里已有版本时用它；没有时才看文件名。"""
+    detected = []
+    if getattr(file_info, "num", None) and hasattr(file_info, "release_tags"):
+        detected = list(file_info.release_tags())
+    stored_version = version_from_stored_tags(stored_tag)
+    if not stored_version:
+        return detected
+    tags = [tag for tag in detected if tag not in _LABEL_TO_VERSION]
+    label = _VERSION_TO_LABEL[stored_version]
+    if label not in tags:
+        tags.append(label)
+    return tags
+
+
+def compose_output_tags(*sources, release=None, library_chinese=False) -> str:
+    """ 站点标签保留。无码、破解、流出只留识别后的一个，字幕由文件名或字幕库决定。 """
+    output = []
+    for source in sources:
+        for tag in split_tags(source):
+            if tag in RELEASE_TAG_NAMES or tag in output:
+                continue
+            output.append(tag)
+    for tag in release or []:
+        if tag not in output:
+            output.append(tag)
+    if library_chinese and "中文字幕" not in output:
+        output.append("中文字幕")
+    return ", ".join(output)
+
+
+def _has_hack_marker(filepath_lower: str) -> bool:
+    return _HACK_MARKER.search(filepath_lower) is not None
+
+
 def is_uncensored(number):
+    if not number:
+        return False
+    if _NATIVE_UNCENSORED_NUMBER.match(str(number)):
+        return True
     if RE_UNCENSORED_CHECK.match(number):
         return True
     uncensored_prefix = "S2M,BT,LAF,SMD,SMBD,SM3D2DBD,SKY-,SKYHD,CWP,CWDV,CWBD,CW3D2DBD,MKD,MKBD,MXBD,MK3D2DBD,MCB3DBD,MCBD,RHJ,MMDV"
@@ -354,4 +479,4 @@ if __name__ == "__main__":
         print(f"解析 {t} :")
         print(f"    番号: {fin.num}")
         print(f"    中文: {convert_emoji(fin.chs_tag)} 无码: {convert_emoji(fin.uncensored_tag)} 流出: {convert_emoji(fin.leak_tag)} 破解: {convert_emoji(fin.hack_tag)}")
-        print(f"    多集: {convert_emoji(fin.multipart_tag)} 特典: {convert_emoji(fin.special)}")
+        print(f"    分集: {getattr(fin, 'partNumber', 0)}")
