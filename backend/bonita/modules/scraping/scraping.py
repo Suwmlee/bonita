@@ -68,6 +68,8 @@ def apply_saved_output(metadata_mixed, file_info, extrainfo, *, filename, folder
         metadata_mixed.extra_crop = extrainfo.crop
     stored_tag = extrainfo.tag if extrainfo is not None else ""
     release_tags = release_tags_for(file_info, stored_tag)
+    if library_chinese and "中文字幕" not in release_tags:
+        release_tags.append("中文字幕")
     if extrainfo is not None and getattr(file_info, "num", None):
         extrainfo.tag = merge_stored_tags(extrainfo.tag, release_tags)
     metadata_mixed.tag = compose_output_tags(

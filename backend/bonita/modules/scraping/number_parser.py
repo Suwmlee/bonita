@@ -398,17 +398,20 @@ def merge_stored_tags(stored, release) -> str:
 
 
 def release_tags_for(file_info, stored_tag) -> list:
-    """文件名识别出的字幕。ExtraInfo 里已有版本时用它；没有时才看文件名。"""
+    """文件名识别出的字幕。记录里已有的版本和中文字幕继续带着。"""
     detected = []
     if getattr(file_info, "num", None) and hasattr(file_info, "release_tags"):
         detected = list(file_info.release_tags())
     stored_version = version_from_stored_tags(stored_tag)
     if not stored_version:
-        return detected
-    tags = [tag for tag in detected if tag not in _LABEL_TO_VERSION]
-    label = _VERSION_TO_LABEL[stored_version]
-    if label not in tags:
-        tags.append(label)
+        tags = detected
+    else:
+        tags = [tag for tag in detected if tag not in _LABEL_TO_VERSION]
+        label = _VERSION_TO_LABEL[stored_version]
+        if label not in tags:
+            tags.append(label)
+    if "中文字幕" in split_tags(stored_tag) and "中文字幕" not in tags:
+        tags.append("中文字幕")
     return tags
 
 
