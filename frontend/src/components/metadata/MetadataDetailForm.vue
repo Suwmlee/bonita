@@ -215,6 +215,77 @@ async function handleFileUpload(event: Event) {
       <VCol cols="12">
         <VRow no-gutters>
           <VCol cols="12" md="3" class="row-label">
+            <label for="actor">{{ t('components.metadata.form.actor') }} <span class="text-error">*</span></label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField v-model="currentMetadata.actor" :error-messages="formErrors.actor" required />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label for="actor_photo">{{ t('components.metadata.form.actorPhoto') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VTextField v-model="currentMetadata.actor_photo" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label align-self-start">
+            <label for="cover" class="pt-3">{{ t('components.metadata.form.cover') }} <span class="text-error">*</span></label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <div class="d-flex align-center">
+              <VTextField v-model="currentMetadata.cover" :error-messages="formErrors.cover" required class="flex-grow-1 mr-2" />
+              <VBtn :loading="isUploading" :disabled="isUploading" color="primary" @click="selectCoverImage"
+                variant="outlined" size="small">
+                <VIcon icon="bx-upload" class="mr-1" />
+                {{ t('components.metadata.form.uploadCover') }}
+              </VBtn>
+              <input ref="fileInput" type="file" accept="image/*" class="d-none" @change="handleFileUpload" />
+            </div>
+
+            <button
+              v-if="coverImageUrl"
+              type="button"
+              class="cover-preview-btn mt-2"
+              :title="t('components.metadata.form.clickToView')"
+              @click="coverPreviewOpen = true"
+            >
+              <img
+                class="cover-preview"
+                :src="coverImageUrl"
+                :alt="currentMetadata.title || t('components.metadata.form.cover')"
+              />
+            </button>
+
+            <div v-if="currentMetadata.cover" class="text-caption text-grey mt-1">
+              <VIcon icon="bx-info-circle" size="small" class="mr-1" />
+              Note: Uploading a new image will update the image content while keeping the same URL.
+            </div>
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
+            <label>{{ t('components.metadata.form.crop') }}</label>
+          </VCol>
+          <VCol cols="12" md="9">
+            <VCheckbox v-model="currentMetadata.crop" :label="t('components.metadata.form.cropPoster')" />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="3" class="row-label">
             <label for="studio">{{ t('components.metadata.form.studio') }}</label>
           </VCol>
           <VCol cols="12" md="9">
@@ -318,79 +389,6 @@ async function handleFileUpload(event: Event) {
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.director" />
-          </VCol>
-        </VRow>
-      </VCol>
-
-      <VCol cols="12">
-        <VRow no-gutters>
-          <VCol cols="12" md="3" class="row-label">
-            <label for="actor">{{ t('components.metadata.form.actor') }} <span class="text-error">*</span></label>
-          </VCol>
-          <VCol cols="12" md="9">
-            <VTextField v-model="currentMetadata.actor" :error-messages="formErrors.actor" required />
-          </VCol>
-        </VRow>
-      </VCol>
-
-      <VCol cols="12">
-        <VRow no-gutters>
-          <VCol cols="12" md="3" class="row-label">
-            <label for="actor_photo">{{ t('components.metadata.form.actorPhoto') }}</label>
-          </VCol>
-          <VCol cols="12" md="9">
-            <VTextField v-model="currentMetadata.actor_photo" />
-          </VCol>
-        </VRow>
-      </VCol>
-
-      <VCol cols="12">
-        <VRow no-gutters>
-          <VCol cols="12" md="3" class="row-label">
-            <label for="cover">{{ t('components.metadata.form.cover') }} <span class="text-error">*</span></label>
-          </VCol>
-          <VCol cols="12" md="9">
-            <div class="d-flex align-center">
-              <VTextField v-model="currentMetadata.cover" :error-messages="formErrors.cover" required class="flex-grow-1 mr-2" />
-              <VBtn :loading="isUploading" :disabled="isUploading" color="primary" @click="selectCoverImage"
-                variant="outlined" size="small">
-                <VIcon icon="bx-upload" class="mr-1" />
-                {{ t('components.metadata.form.uploadCover') }}
-              </VBtn>
-              <!-- Hidden file input for upload -->
-              <input ref="fileInput" type="file" accept="image/*" class="d-none" @change="handleFileUpload" />
-            </div>
-
-            <button
-              v-if="coverImageUrl"
-              type="button"
-              class="cover-preview-btn mt-2"
-              :title="t('components.metadata.form.clickToView')"
-              @click="coverPreviewOpen = true"
-            >
-              <img
-                class="cover-preview"
-                :src="coverImageUrl"
-                :alt="currentMetadata.title || t('components.metadata.form.cover')"
-              />
-            </button>
-            
-            <!-- Hint text about cover value behavior -->
-            <div v-if="currentMetadata.cover" class="text-caption text-grey mt-1">
-              <VIcon icon="bx-info-circle" size="small" class="mr-1" />
-              Note: Uploading a new image will update the image content while keeping the same URL.
-            </div>
-          </VCol>
-        </VRow>
-      </VCol>
-
-      <VCol cols="12">
-        <VRow no-gutters>
-          <VCol cols="12" md="3" class="row-label">
-            <label>{{ t('components.metadata.form.crop') }}</label>
-          </VCol>
-          <VCol cols="12" md="9">
-            <VCheckbox v-model="currentMetadata.crop" :label="t('components.metadata.form.cropPoster')" />
           </VCol>
         </VRow>
       </VCol>
