@@ -140,3 +140,4 @@ cache/
 .cursor/
 */data/
 docs/
+backend/tests/
