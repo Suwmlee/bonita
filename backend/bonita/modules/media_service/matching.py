@@ -18,7 +18,7 @@ from bonita.modules.media_service.record_link import (
     media_item_for_numbered_record,
     metadata_for_number,
 )
-from bonita.modules.scraping.number_parser import get_number
+from bonita.modules.scraping.number_parser import get_number, version_suffix_for
 
 logger = logging.getLogger(__name__)
 
@@ -601,17 +601,64 @@ def find_remote_id_for_media_item(session, client: MediaServerClient, media_item
     return None
 
 
+def _version_file_suffixes() -> list:
+    suffixes = []
+    for version in ("leak", "hack", "uncensored"):
+        suffix = version_suffix_for(version)
+        if suffix and suffix not in suffixes:
+            suffixes.append(suffix)
+    suffixes.sort(key=len, reverse=True)
+    return suffixes
+
+
+def _stem_without_version_suffix(stem: str, number: str) -> str:
+    """文件名把破解、流出写进番号（MIDD-791-U），NFO 标题里的番号没有这截。"""
+    number = (number or "").strip()
+    if not stem or not number:
+        return ""
+    for suffix in _version_file_suffixes():
+        tagged = f"{number}{suffix}"
+        if tagged in stem:
+            return stem.replace(tagged, number, 1)
+    return ""
+
+
+def _destpath_search_terms(destpath: str, number: str) -> list:
+    """Emby 的搜索看条目标题，不看文件路径。
+
+    只拿带版本后缀的文件名去搜会对不上标题。目录名、去掉后缀后的标题、番号
+    都可能出现在标题里，命中后再用路径确认是不是这一份文件。
+    """
+    normalized = (destpath or "").replace("\\", "/").rstrip("/")
+    filename = os.path.basename(normalized)
+    stem, _ext = os.path.splitext(filename)
+    folder = os.path.basename(os.path.dirname(normalized))
+    terms = []
+    for term in (
+        filename,
+        stem,
+        _stem_without_version_suffix(stem, number),
+        folder,
+        (number or "").strip(),
+    ):
+        cleaned = (term or "").strip()
+        if cleaned and cleaned not in terms:
+            terms.append(cleaned)
+    return terms
+
+
+def _item_matches_destpath(item: RemoteItem, destpath: str) -> bool:
+    return any(paths_match(path, destpath) for path in remote_file_paths(item))
+
+
 def _find_id_by_destpath(session, client: MediaServerClient, media_item: MediaItem) -> str:
     include_types = [ITEM_SERIES] if media_item.media_type == "tvshow" else [ITEM_MOVIE, ITEM_VIDEO]
+    number = (media_item.number or "").strip()
     for destpath in dest_paths_for_media_item(session, media_item):
-        filename = os.path.basename(destpath)
-        stem = os.path.splitext(filename)[0]
-        for term in dict.fromkeys([filename, stem]):
-            if not term:
-                continue
+        for term in _destpath_search_terms(destpath, number):
             items = client.query_items(include_types, search_term=term, limit=50)
             for item in items:
-                if paths_match(item.path, destpath):
+                if _item_matches_destpath(item, destpath):
                     return item.remote_id
     return None
 
