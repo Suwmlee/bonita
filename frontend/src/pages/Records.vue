@@ -265,6 +265,10 @@ function groupCanRetransfer(group: RecordGroupPublic) {
   return transferJobs(group.records).length > 0
 }
 
+function hasLibrarySubtitle(item: RecordPublic) {
+  return (item.subtitle_count || 0) > 0
+}
+
 const retransferringKey = ref<string | null>(null)
 
 async function retransferGroup(group: RecordGroupPublic) {
@@ -800,11 +804,19 @@ onMounted(async () => {
       </template>
 
       <template #item.extra_info.tag="{ item }">
-        <div v-if="item.extra_info?.tag" class="tag-cell">
-          <v-chip v-for="tag in item.extra_info.tag.split(',')" :key="tag" :color="getTagColor(tag)" variant="flat"
-            class="tag-chip" size="small">
-            {{ tag.trim() }}
-          </v-chip>
+        <div v-if="item.extra_info?.tag || hasLibrarySubtitle(item)" class="tag-cell">
+          <VIcon
+            v-if="hasLibrarySubtitle(item)"
+            icon="bx-captions"
+            size="18"
+            class="record-subtitle-mark"
+          />
+          <template v-if="item.extra_info?.tag">
+            <v-chip v-for="tag in item.extra_info.tag.split(',')" :key="tag" :color="getTagColor(tag)" variant="flat"
+              class="tag-chip" size="small">
+              {{ tag.trim() }}
+            </v-chip>
+          </template>
         </div>
       </template>
 
@@ -947,6 +959,12 @@ onMounted(async () => {
                 {{ formatPartNumber(item.transfer_record.part_number) }}
               </span>
               <div class="tag-cell">
+                <VIcon
+                  v-if="hasLibrarySubtitle(item)"
+                  icon="bx-captions"
+                  size="18"
+                  class="record-subtitle-mark"
+                />
                 <template v-if="item.extra_info?.tag">
                   <v-chip v-for="tag in item.extra_info.tag.split(',')" :key="tag" :color="getTagColor(tag)"
                     variant="flat" class="tag-chip" size="small">
@@ -1108,6 +1126,7 @@ onMounted(async () => {
 
 .tag-cell {
   display: flex;
+  align-items: center;
   flex-wrap: nowrap;
   gap: 4px;
   overflow: hidden;
@@ -1310,6 +1329,11 @@ onMounted(async () => {
   display: block;
   width: 18px;
   height: 18px;
+}
+
+.record-subtitle-mark {
+  flex: 0 0 auto;
+  color: rgb(var(--v-theme-primary));
 }
 
 .record-number {
