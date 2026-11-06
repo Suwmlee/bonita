@@ -708,8 +708,8 @@ export default {
         extraInfo: "Extra Info",
         number: "Number",
         tags: "Tags",
-        tagsPlaceholder: "Separate multiple tags with commas",
-        tagsHint: "Example: Chinese subtitles, cracked",
+        tagsPlaceholder: "Select or type a tag",
+        tagsHint: "Pick 中文字幕, 无码, 流出, or 破解. Type any other tag and press Enter",
         partNumber: "Part Number",
         partNumberHint:
           "For multi-part titles, enter the current part (starting from 1); otherwise enter 0",

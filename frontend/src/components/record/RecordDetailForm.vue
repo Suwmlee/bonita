@@ -27,6 +27,27 @@ currentTransferRecord.value = { ...updateRecord.transfer_record }
 currentExtraInfo.value = { ...updateRecord.extra_info }
 originalTopFolder.value = currentTransferRecord.value.top_folder
 
+const presetTags = ["中文字幕", "无码", "流出", "破解"]
+
+function parseTags(value?: string | null) {
+  if (!value) return [] as string[]
+  const tags: string[] = []
+  for (const part of String(value).replace(/，/g, ",").split(",")) {
+    const tag = part.trim()
+    if (tag && !tags.includes(tag)) tags.push(tag)
+  }
+  return tags
+}
+
+const selectedTags = ref<string[]>(parseTags(currentExtraInfo.value?.tag))
+
+function updateTags(values: unknown) {
+  const raw = Array.isArray(values) ? values : [values]
+  const tags = parseTags(raw.map((item) => (typeof item === "string" ? item : "")).join(","))
+  selectedTags.value = tags
+  currentExtraInfo.value.tag = tags.join(",")
+}
+
 onMounted(async () => {
   if (!taskStore.allTasks.length) {
     await taskStore.getAllTasks()
@@ -245,8 +266,18 @@ async function applyTopFolderToAll() {
             <label>{{ t('components.record.form.tags') }}</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField v-model="currentExtraInfo.tag" :placeholder="t('components.record.form.tagsPlaceholder')" 
-              :hint="t('components.record.form.tagsHint')" persistent-hint />
+            <VCombobox
+              :model-value="selectedTags"
+              :items="presetTags"
+              multiple
+              chips
+              closable-chips
+              :placeholder="t('components.record.form.tagsPlaceholder')"
+              :hint="t('components.record.form.tagsHint')"
+              persistent-hint
+              @keydown.enter.stop
+              @update:model-value="updateTags"
+            />
           </VCol>
         </VRow>
 
