@@ -134,11 +134,11 @@ export const useRecordStore = defineStore("record-store", {
       this.showDialog = true
     },
     async updateRecord(data: RecordPublic) {
-      await RecordService.updateRecord({
+      const { data: updated } = await RecordService.updateRecord({
         recordPublic: data,
       })
       if (this.showDialog) {
-        this.updateRecordById(data.transfer_record.id, data)
+        this.updateRecordById(data.transfer_record.id, updated ?? data)
         this.showDialog = false
       }
     },
