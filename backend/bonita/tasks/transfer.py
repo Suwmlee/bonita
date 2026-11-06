@@ -18,7 +18,7 @@ from bonita.tasks.decorators import manage_celery_task
 from bonita.tasks.media import celery_emby_scan
 from bonita.tasks.scraping import celery_scrapping
 from bonita.utils.downloader import download_file, process_cached_file
-from bonita.utils.filehelper import cleanFolderWithoutSuffix, findAllFilesWithSuffix, video_type
+from bonita.utils.filehelper import cleanFolderWithoutSuffix, findAllFilesWithSuffix, remove_previous_output, video_type
 from bonita.utils.fileinfo import BasicFileInfo, TargetFileInfo
 from bonita.utils.http import get_active_proxy
 
@@ -321,9 +321,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                                                    metamixed.extra_filename, task_info.operation)
                         done_list.append(destpath)
                         if record.destpath != destpath:
-                            # 如果新的路径和之前不同，则删除之前的文件
-                            if os.path.exists(record.destpath):
-                                os.remove(record.destpath)
+                            remove_previous_output(record.destpath, destpath)
                         # 更新
                         record.destpath = destpath
                         logger.info("      ✓ 刮削转移完成")
@@ -345,9 +343,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                                                    part_number=record.part_number or 0)
                         done_list.append(target_file.full_path)
                         if record.destpath != target_file.full_path:
-                            # 如果新的路径和之前不同，则删除之前的文件
-                            if os.path.exists(record.destpath):
-                                os.remove(record.destpath)
+                            remove_previous_output(record.destpath, target_file.full_path)
                         # 更新
                         record.isepisode = target_file.is_episode
                         record.season = target_file.season_number

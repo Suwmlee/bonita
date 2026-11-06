@@ -13,6 +13,7 @@ from bonita.modules.scraping.number_parser import (
     merge_stored_tags,
     release_suffix,
     release_tags_for,
+    render_nfo_heading,
     render_scraped_name,
 )
 from bonita.utils.filehelper import sanitize_path
@@ -51,17 +52,19 @@ def prepare_scraped_output(
     """刮削转移的出口：文件名、分集和标签。"""
     suffix = release_suffix(file_info, extrainfo.tag if extrainfo is not None else "")
     filename = render_scraped_name(metadata_mixed, scraping_conf, suffix)
+    display_name = render_nfo_heading(metadata_mixed, scraping_conf)
     return apply_saved_output(
         metadata_mixed, file_info, extrainfo,
-        filename=filename, folder=folder,
+        filename=filename, display_name=display_name, folder=folder,
         library_chinese=library_chinese, part_number=part_number,
     )
 
 
-def apply_saved_output(metadata_mixed, file_info, extrainfo, *, filename, folder, library_chinese, part_number=0):
+def apply_saved_output(metadata_mixed, file_info, extrainfo, *, filename, folder, library_chinese, part_number=0, display_name=""):
     """ 在已保存的元数据上补文件名、裁剪和标签。 """
     metadata_mixed.extra_folder = folder
     metadata_mixed.extra_filename = filename
+    metadata_mixed.extra_display_name = display_name or filename
     if metadata_mixed.crop is not None:
         metadata_mixed.extra_crop = metadata_mixed.crop
     elif extrainfo is not None:
@@ -79,7 +82,9 @@ def apply_saved_output(metadata_mixed, file_info, extrainfo, *, filename, folder
         library_chinese=library_chinese,
     )
     if part_number:
-        metadata_mixed.extra_filename += format_part_suffix(part_number)
+        part_suffix = format_part_suffix(part_number)
+        metadata_mixed.extra_filename += part_suffix
+        metadata_mixed.extra_display_name += part_suffix
         metadata_mixed.extra_part = part_number
     return metadata_mixed
 
@@ -103,6 +108,7 @@ def process_nfo_file(output_folder, prefilename, metadata_dict):
     detailurl = metadata_dict.get('detailurl', '')
 
     filename = metadata_dict.get('extra_filename', '')
+    heading = metadata_dict.get('extra_display_name') or filename
     actor_list = [word.strip() for word in metadata_dict.get('actor').split(',')]
     try:
         actor_photo = ast.literal_eval(metadata_dict.get('actor_photo', '{}'))
@@ -118,9 +124,9 @@ def process_nfo_file(output_folder, prefilename, metadata_dict):
         with open(nfo_path, "wt", encoding='UTF-8') as code:
             print('<?xml version="1.0" encoding="UTF-8" ?>', file=code)
             print("<movie>", file=code)
-            print("  <title><![CDATA[" + filename + "]]></title>", file=code)
+            print("  <title><![CDATA[" + heading + "]]></title>", file=code)
             print("  <originaltitle><![CDATA[" + title + "]]></originaltitle>", file=code)
-            print("  <sorttitle><![CDATA[" + filename + "]]></sorttitle>", file=code)
+            print("  <sorttitle><![CDATA[" + heading + "]]></sorttitle>", file=code)
             print("  <customrating>JP-18+</customrating>", file=code)
             print("  <mpaa>JP-18+</mpaa>", file=code)
             try:

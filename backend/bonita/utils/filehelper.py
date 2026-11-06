@@ -136,6 +136,65 @@ def cleanFolderWithoutSuffix(root, suffixes):
     return has_suffix
 
 
+_IMAGE_SIDECAR_MARKS = ("-fanart", "-poster", "-thumb")
+_IMAGE_SIDECAR_EXTS = {".jpg", ".jpeg", ".png"}
+
+
+def attached_to_stem(name: str, stem: str) -> bool:
+    """文件是否是这个主文件名的视频或旁边文件。"""
+    if not stem or not name.startswith(stem):
+        return False
+    rest = name[len(stem):]
+    ext = os.path.splitext(name)[1].lower()
+    if ext in video_type and rest.lower() == ext:
+        return True
+    if rest.lower() == ".nfo":
+        return True
+    if ext in _IMAGE_SIDECAR_EXTS and rest[: -len(ext)].lower() in _IMAGE_SIDECAR_MARKS:
+        return True
+    if ext in subext_type and rest.startswith((".", "-")):
+        return True
+    return False
+
+
+def remove_previous_output(old_path: str, new_path: str = ""):
+    """目标改名后，删掉旧视频以及同目录里它的 NFO、海报和字幕。"""
+    if not old_path:
+        return
+    old_path = os.path.abspath(old_path)
+    new_path = os.path.abspath(new_path) if new_path else ""
+    if new_path and os.path.normpath(old_path) == os.path.normpath(new_path):
+        return
+    folder = os.path.dirname(old_path)
+    old_stem = os.path.splitext(os.path.basename(old_path))[0]
+    new_stem = os.path.splitext(os.path.basename(new_path))[0] if new_path else ""
+    if not old_stem or not os.path.isdir(folder):
+        return
+    try:
+        entries = list(os.scandir(folder))
+    except OSError as e:
+        logger.warning(f"无法读取旧文件目录: {e}")
+        return
+    for entry in entries:
+        if not entry.is_file():
+            continue
+        path = os.path.abspath(entry.path)
+        if new_path and os.path.normpath(path) == os.path.normpath(new_path):
+            continue
+        name = entry.name
+        if new_stem and attached_to_stem(name, new_stem):
+            continue
+        if not attached_to_stem(name, old_stem):
+            continue
+        if RE_PART_MARKER.search(name) and not RE_PART_MARKER.search(old_stem):
+            continue
+        try:
+            logger.info(f"清理旧文件: {name}")
+            os.remove(path)
+        except OSError as e:
+            logger.warning(f"清理旧文件失败 {name}: {e}")
+
+
 def cleanFilebyFilter(root, filter):
     """ 根据过滤名删除文件
 
@@ -209,18 +268,6 @@ def forceHardlink(srcpath, dstpath):
             os.link(srcpath, dstpath)
         else:
             raise e
-
-
-def checkFileExists(filepath):
-    """ 检测文件是否存在
-    软/硬链接
-    """
-    if os.path.exists(filepath):
-        return True
-    elif pathlib.Path(filepath).is_symlink():
-        return True
-    else:
-        return False
 
 
 def linkFile(srcpath, dstpath, operation: OperationMethod):

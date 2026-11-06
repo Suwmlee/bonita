@@ -358,6 +358,22 @@ def render_scraped_name(metadata_mixed, scraping_conf, suffix: str) -> str:
     return extra_name
 
 
+def render_nfo_heading(metadata_mixed, scraping_conf) -> str:
+    """NFO 的 title 和 sorttitle。命名规则可以在元数据标题外再加番号，标题本身保持完整。"""
+    context = dict(metadata_mixed.__dict__)
+    title = metadata_mixed.title or ""
+    number = context.get("number") or ""
+    naming_rule = getattr(scraping_conf, "naming_rule", None) or "number+' '+title"
+    try:
+        heading = eval(naming_rule, context)
+    except Exception:
+        heading = f"{number} {title}".strip()
+    heading = "" if heading is None else str(heading)
+    if title and title not in heading:
+        heading = f"{heading} {title}".strip() if heading else title
+    return heading
+
+
 def version_labels(value) -> set:
     return {tag for tag in split_tags(value) if tag in _LABEL_TO_VERSION}
 
