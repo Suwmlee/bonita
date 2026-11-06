@@ -29,6 +29,46 @@ if (updateSetting) {
   currentSetting.value = createSetting
 }
 
+if (currentSetting.value.watermark_size == null) {
+  currentSetting.value.watermark_size = 9
+} else {
+  currentSetting.value.watermark_size = Number(currentSetting.value.watermark_size)
+}
+if (currentSetting.value.watermark_location == null) {
+  currentSetting.value.watermark_location = 2
+} else {
+  currentSetting.value.watermark_location = Number(currentSetting.value.watermark_location)
+}
+
+const watermarkLocations = computed(() => [
+  { title: t("components.scraping.form.watermarkTopRight"), value: 0 },
+  { title: t("components.scraping.form.watermarkTopLeft"), value: 1 },
+  { title: t("components.scraping.form.watermarkBottomLeft"), value: 2 },
+  { title: t("components.scraping.form.watermarkBottomRight"), value: 3 },
+])
+
+const watermarkSizePresets = [
+  { value: 12, key: "components.scraping.form.watermarkSizeSmall" },
+  { value: 9, key: "components.scraping.form.watermarkSizeMedium" },
+  { value: 6, key: "components.scraping.form.watermarkSizeLarge" },
+  { value: 4, key: "components.scraping.form.watermarkSizeXLarge" },
+]
+
+const watermarkSizes = computed(() => {
+  const items = watermarkSizePresets.map((preset) => ({
+    title: t(preset.key),
+    value: preset.value,
+  }))
+  const current = Number(currentSetting.value?.watermark_size)
+  if (Number.isFinite(current) && current > 0 && !watermarkSizePresets.some((preset) => preset.value === current)) {
+    items.push({
+      title: t("components.scraping.form.watermarkSizeCustom", { ratio: current }),
+      value: current,
+    })
+  }
+  return items
+})
+
 async function handleSubmit() {
   console.log(currentSetting)
   if (updateSetting) {
@@ -172,9 +212,11 @@ async function handleSubmit() {
             <label for="watermark_size">{{ t('components.scraping.form.watermarkSize') }}</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField 
-              v-model="currentSetting.watermark_size" 
-              type="number"
+            <VSelect
+              v-model="currentSetting.watermark_size"
+              :items="watermarkSizes"
+              :hint="t('components.scraping.form.watermarkSizeHint')"
+              persistent-hint
             />
           </VCol>
         </VRow>
@@ -186,9 +228,9 @@ async function handleSubmit() {
             <label for="watermark_location">{{ t('components.scraping.form.watermarkLocation') }}</label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField 
-              v-model="currentSetting.watermark_location" 
-              type="number"
+            <VSelect
+              v-model="currentSetting.watermark_location"
+              :items="watermarkLocations"
             />
           </VCol>
         </VRow>
