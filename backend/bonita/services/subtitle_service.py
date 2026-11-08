@@ -17,6 +17,7 @@ from bonita.db.models.record import TransRecords
 from bonita.db.models.subtitle import Subtitle
 from bonita.modules.scraping.number_parser import FileNumInfo, rules_parser
 from bonita.utils.filehelper import subext_type
+from bonita.utils.regex import matchSeries
 
 logger = logging.getLogger(__name__)
 
@@ -245,7 +246,14 @@ class SubtitleService:
             .outerjoin(series_item, series_item.id == file_item.series_id)
         )
         if media_item_id:
-            query = query.filter(Subtitle.media_item_id == media_item_id)
+            target = self._cached_item(media_item_id)
+            if target and target.media_type == "tvshow":
+                query = query.filter(and_(
+                    file_item.media_type == "episode",
+                    file_item.series_id == target.id,
+                ))
+            else:
+                query = query.filter(Subtitle.media_item_id == media_item_id)
         elif unmatched:
             query = query.filter(Subtitle.media_item_id.is_(None))
         if filter_text:
@@ -260,7 +268,7 @@ class SubtitleService:
                 series_item.original_title.like(like),
                 series_item.imdb_id.like(like),
             ))
-        return query, group_id
+        return query, group_id, file_item
 
     def list_subtitles(
         self,
@@ -270,9 +278,20 @@ class SubtitleService:
         unmatched: bool = False,
         media_item_id: Optional[int] = None,
     ) -> Tuple[List[Subtitle], int]:
-        query, _group_id = self._filtered_query(filter_text, unmatched, media_item_id)
+        query, _group_id, file_item = self._filtered_query(filter_text, unmatched, media_item_id)
         count = query.count()
-        rows = query.order_by(Subtitle.updatetime.desc(), Subtitle.id.desc()).offset(skip).limit(limit).all()
+        target = self._cached_item(media_item_id) if media_item_id else None
+        if target and target.media_type == "tvshow":
+            ordering = (
+                file_item.season_number.asc(),
+                file_item.episode_number.asc(),
+                Subtitle.part_number.asc(),
+                Subtitle.language.asc(),
+                Subtitle.id.asc(),
+            )
+        else:
+            ordering = (Subtitle.updatetime.desc(), Subtitle.id.desc())
+        rows = query.order_by(*ordering).offset(skip).limit(limit).all()
         return rows, count
 
     def list_groups(
@@ -282,7 +301,7 @@ class SubtitleService:
         filter_text: Optional[str] = None,
         unmatched: bool = False,
     ) -> Tuple[list, int]:
-        matched, group_id = self._filtered_query(filter_text, unmatched)
+        matched, group_id, _file_item = self._filtered_query(filter_text, unmatched)
         grouped = (
             matched.with_entities(
                 group_id.label("group_id"),
@@ -869,9 +888,11 @@ class SubtitleService:
         number: Optional[str],
         media_item_id: Optional[int],
     ) -> Optional[MediaItem]:
-        """上传时决定挂到哪一条媒体项。指定的媒体项优先，否则用指定番号或文件名里的番号。"""
+        """上传时决定挂到哪一条媒体项。指定的媒体项优先，剧则按文件名里的季和集找到单集，否则用指定番号或文件名里的番号。"""
         if media_item_id:
             item = self.session.get(MediaItem, int(media_item_id))
+            if item and item.media_type == "tvshow":
+                return self._resolve_series_episode(item, filename)
             if not item or item.media_type not in _BINDABLE_TYPES:
                 raise ValueError("请选择具体的电影、单集或番号")
             return item
@@ -882,6 +903,27 @@ class SubtitleService:
         if number_key:
             return self._resolve_number_item(number_key)
         return None
+
+    def _resolve_series_episode(self, series: MediaItem, filename: str) -> MediaItem:
+        """剧的字幕按文件名里的季和集挂到单集。"""
+        basename = os.path.splitext(os.path.basename(filename or ""))[0]
+        season, episode = matchSeries(basename)
+        if not isinstance(season, int) or not isinstance(episode, int):
+            raise ValueError("文件名里需要有季和集，例如 S01E02")
+        item = (
+            self.session.query(MediaItem)
+            .filter(
+                MediaItem.media_type == "episode",
+                MediaItem.series_id == series.id,
+                MediaItem.season_number == season,
+                MediaItem.episode_number == episode,
+            )
+            .order_by(MediaItem.id.asc())
+            .first()
+        )
+        if not item:
+            raise ValueError(f"没有对应的单集 S{season:02d}E{episode:02d}")
+        return item
 
     def _resolve_number_item(self, number: str) -> Optional[MediaItem]:
         """按番号找到媒体项。已有 metadata 而媒体项还不存在时才新建，并把同番号的转移记录挂上去。"""

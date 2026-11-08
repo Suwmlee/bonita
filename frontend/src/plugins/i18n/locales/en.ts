@@ -390,6 +390,7 @@ export default {
       viewGroup: "Entries",
       totalGroups: "Total {count} entries",
       groupFileCount: "{count} files",
+      viewSubtitles: "View subtitles",
       noGroups: "No grouped entries",
       edit: "Edit Record",
       search: "Search filename or path",

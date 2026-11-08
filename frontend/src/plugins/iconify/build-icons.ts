@@ -117,6 +117,7 @@ const sources: BundleScriptConfig = {
         'magnify',
         'sort-reverse-variant',
         'sort-variant',
+        'subtitles-outline',
       ],
     },
     {

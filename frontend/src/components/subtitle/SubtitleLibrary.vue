@@ -730,6 +730,10 @@ onMounted(() => {
               </VChip>
             </div>
             <div class="text-caption text-medium-emphasis">
+              <template v-if="episodeCode(item)">
+                {{ episodeCode(item) }}
+                <span class="mx-1">·</span>
+              </template>
               {{ languageLabel(item.language) }}
               <span class="mx-1">·</span>
               {{ formatPart(item.part_number) }}

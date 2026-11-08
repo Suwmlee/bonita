@@ -371,6 +371,7 @@ export default {
       viewGroup: "词条",
       totalGroups: "总计 {count} 个词条",
       groupFileCount: "{count} 个文件",
+      viewSubtitles: "查看字幕",
       noGroups: "没有可归并的词条",
       edit: "编辑记录",
       search: "搜索文件名或路径",

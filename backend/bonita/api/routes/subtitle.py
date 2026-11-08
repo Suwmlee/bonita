@@ -23,7 +23,7 @@ def list_subtitles(
     unmatched: bool = False,
     media_item_id: int = None,
 ) -> Any:
-    """字幕列表。media_item_id 为指定媒体项，filter 模糊匹配番号、标题、剧名和文件名。"""
+    """字幕列表。media_item_id 为指定媒体项；如果是剧，则列出它下面各集的字幕。filter 模糊匹配番号、标题、剧名和文件名。"""
     service = SubtitleService(session)
     rows, count = service.list_subtitles(
         skip=skip,
@@ -64,7 +64,7 @@ async def upload_subtitles(
     number: Optional[str] = Form(default=None),
     media_item_id: Optional[int] = Form(default=None),
 ) -> Any:
-    """上传字幕。指定媒体项或番号时按该目标关联，否则从文件名识别番号。电影和剧集不从文件名猜测。"""
+    """上传字幕。指定媒体项或番号时按该目标关联，否则从文件名识别番号。电影和剧集不从文件名猜测。指定的是剧时，按文件名里的季和集挂到对应单集。"""
     service = SubtitleService(session)
     saved = []
     failed = []

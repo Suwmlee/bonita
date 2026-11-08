@@ -4,6 +4,7 @@ import {
   type RecordPublic,
 } from "@/client"
 import PosterFrame from "@/components/common/PosterFrame.vue"
+import SubtitleLibrary from "@/components/subtitle/SubtitleLibrary.vue"
 import { getPosterUrl } from "@/composables/useMediaPoster"
 import imdbLogo from "@/assets/logos/imdb.png"
 import tmdbLogo from "@/assets/logos/tmdb.png"
@@ -270,6 +271,26 @@ function hasLibrarySubtitle(item: RecordPublic) {
 }
 
 const retransferringKey = ref<string | null>(null)
+const groupSubtitles = ref<RecordGroupPublic | null>(null)
+
+function groupMediaId(group: RecordGroupPublic) {
+  const matched = /:(\d+)$/.exec(group.key || "")
+  const id = matched ? Number(matched[1]) : 0
+  return id > 0 ? id : null
+}
+
+function groupSubtitleName(group: RecordGroupPublic) {
+  return [group.number, group.title].filter(Boolean).join(" ")
+}
+
+const subtitleMediaId = computed(() =>
+  groupSubtitles.value ? groupMediaId(groupSubtitles.value) : null,
+)
+
+function openGroupSubtitles(group: RecordGroupPublic) {
+  if (!groupMediaId(group)) return
+  groupSubtitles.value = group
+}
 
 async function retransferGroup(group: RecordGroupPublic) {
   const jobs = transferJobs(group.records)
@@ -888,14 +909,24 @@ onMounted(async () => {
               </a>
             </div>
             <div v-if="group.title" class="record-group-title">{{ group.title }}</div>
-            <VBtn
-              v-if="groupCanRetransfer(group)"
-              class="record-group-subtitle record-group-action"
-              :loading="retransferringKey === group.key"
-              @click="retransferGroup(group)"
-            >
-              <VIcon icon="bx-revision" size="18" />
-            </VBtn>
+            <div v-if="groupMediaId(group) || groupCanRetransfer(group)" class="record-group-subtitle">
+              <VBtn
+                v-if="groupCanRetransfer(group)"
+                class="record-group-action"
+                :loading="retransferringKey === group.key"
+                @click="retransferGroup(group)"
+              >
+                <VIcon icon="bx-revision" size="18" />
+              </VBtn>
+              <VBtn
+                v-if="groupMediaId(group)"
+                class="record-group-action"
+                :aria-label="t('pages.records.viewSubtitles')"
+                @click="openGroupSubtitles(group)"
+              >
+                <VIcon icon="mdi-subtitles-outline" size="18" />
+              </VBtn>
+            </div>
             <div class="text-caption text-medium-emphasis record-group-count">
               {{ t('pages.records.groupFileCount', { count: group.record_count }) }}
             </div>
@@ -1005,6 +1036,30 @@ onMounted(async () => {
   </VCard>
 
   <RecordDetailDialog />
+
+  <VDialog
+    :model-value="groupSubtitles !== null"
+    max-width="820"
+    scrollable
+    @update:model-value="(open) => { if (!open) groupSubtitles = null }"
+  >
+    <VCard v-if="groupSubtitles && subtitleMediaId" class="record-subtitle-dialog">
+      <VCardTitle class="record-subtitle-title">
+        <template v-if="groupSubtitleName(groupSubtitles)">
+          <span class="record-subtitle-name">{{ groupSubtitleName(groupSubtitles) }}</span>
+          <span class="record-subtitle-label">· {{ t('pages.subtitles.section') }}</span>
+        </template>
+        <span v-else>{{ t('pages.records.viewSubtitles') }}</span>
+      </VCardTitle>
+      <VCardText class="record-subtitle-body">
+        <SubtitleLibrary
+          :key="subtitleMediaId"
+          compact
+          :fixed-media-id="subtitleMediaId"
+        />
+      </VCardText>
+    </VCard>
+  </VDialog>
 
   <VDialog :model-value="posterPreview !== null" max-width="96vw"
     @update:model-value="(open) => { if (!open) posterPreview = null }">
@@ -1361,7 +1416,38 @@ onMounted(async () => {
 
 .record-group-subtitle {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   margin-inline-start: auto;
+}
+
+.record-subtitle-dialog {
+  padding: 1rem 1rem 0.5rem;
+}
+
+.record-subtitle-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35em;
+  min-width: 0;
+  font-size: 1.05rem;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.record-subtitle-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.record-subtitle-label {
+  flex: 0 0 auto;
+}
+
+.record-subtitle-body {
+  padding-top: 8px;
 }
 
 .record-group-count {
