@@ -11,3 +11,4 @@ from .mediaitem import *
 from .collection import *
 from .file_browser import *
 from .subtitle import *
+from .actor import *
