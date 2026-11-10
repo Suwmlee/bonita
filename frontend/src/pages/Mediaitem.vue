@@ -442,26 +442,23 @@ onUnmounted(() => {
       </VCol>
 
       <VCol cols="12" sm="6" md="2" lg="2" xl="1">
-        <VBtn
-          variant="outlined"
-          class="sort-btn"
-          @click="sortDropdownOpen = !sortDropdownOpen"
-          density="comfortable"
-        >
-          <div class="d-flex align-center w-100">
-            <VIcon :icon="getSortIcon(sortField)" size="small" class="me-2" />
-            <span class="text-truncate">{{ sortOptions.find(opt => opt.value === sortField)?.title }}</span>
-          </div>
-        </VBtn>
         <VMenu
           v-model="sortDropdownOpen"
-          location="bottom end"
-          :offset="[0, 5]"
-          :width="'auto'"
-          min-width="100%"
+          location="bottom start"
+          :offset="4"
         >
-          <template v-slot:activator="{ props }">
-            <div v-bind="props"></div>
+          <template #activator="{ props }">
+            <VBtn
+              v-bind="props"
+              variant="outlined"
+              class="sort-btn"
+              density="comfortable"
+            >
+              <div class="d-flex align-center w-100">
+                <VIcon :icon="getSortIcon(sortField)" size="small" class="me-2" />
+                <span class="text-truncate">{{ sortOptions.find(opt => opt.value === sortField)?.title }}</span>
+              </div>
+            </VBtn>
           </template>
           <VCard class="sort-menu-card">
             <VList>

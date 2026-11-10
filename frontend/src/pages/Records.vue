@@ -46,9 +46,13 @@ function loadViewState(): Partial<RecordsViewState> {
 }
 
 const savedViewState = loadViewState()
-const viewMode = ref(
+const viewMode = ref<"list" | "group">(
   localStorage.getItem(VIEW_MODE_KEY) === "group" ? "group" : "list",
 )
+const viewModeOptions = computed(() => [
+  { value: "list" as const, title: t("pages.records.viewList") },
+  { value: "group" as const, title: t("pages.records.viewGroup") },
+])
 const posterBroken = ref<Record<string, boolean>>({})
 const posterPreview = ref<{ src: string; alt: string } | null>(null)
 
@@ -685,13 +689,20 @@ onMounted(async () => {
             :placeholder="t('pages.records.filterTaskId')" hide-details density="comfortable"
             class="task-id-input" prepend-inner-icon="mdi-pound" clearable
             @click:clear="taskIdQuery = null" />
+
+          <v-select
+            v-model="viewMode"
+            :items="viewModeOptions"
+            item-title="title"
+            item-value="value"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            class="mode-select"
+          />
         </div>
         
         <div class="d-flex align-center gap-2">
-          <v-btn-toggle v-model="viewMode" mandatory density="comfortable" divided class="view-toggle">
-            <v-btn value="list" size="small">{{ t('pages.records.viewList') }}</v-btn>
-            <v-btn value="group" size="small">{{ t('pages.records.viewGroup') }}</v-btn>
-          </v-btn-toggle>
           <!-- 刷新状态和控件 -->
           <div class="refresh-controls d-flex align-center">
             <v-tooltip :text="autoRefresh ? t('pages.records.refreshOn') : t('pages.records.refreshOff')">
@@ -1258,8 +1269,10 @@ onMounted(async () => {
   min-width: 100px;
 }
 
-.view-toggle {
-  flex: 0 0 auto;
+.mode-select {
+  flex: 0 0 108px;
+  width: 108px;
+  max-width: 108px;
 }
 
 .record-groups {
