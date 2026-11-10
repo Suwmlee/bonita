@@ -2,6 +2,8 @@ import os
 import re
 import logging
 
+logger = logging.getLogger(__name__)
+
 G_spat = re.compile(
     r"^\w+\.(cc|com|net|me|club|jp|tv|xyz|biz|wiki|info|tw|us|de)@|^22-sht\.me|"
     r"^(fhd|hd|sd|1080p|720p|4K)(-|_)|"
@@ -168,6 +170,8 @@ class FileNumInfo():
 def get_number(file_path: str) -> str:
     """ 获取番号
     """
+    if not file_path:
+        return None
     try:
         basename = os.path.basename(file_path)
         file_subpath = os.path.dirname(file_path)
@@ -191,7 +195,10 @@ def get_number(file_path: str) -> str:
             filename = str(re.sub(r"\[\d{4}-\d{1,2}-\d{1,2}\] - ", "", filename))  # 去除文件名中时间
             filename = re.sub(r"[-_]ep\d{2,}(?![a-z0-9])", "", filename, flags=re.IGNORECASE)
             if not re.search("-|_", filename):  # 去掉分集后缀之后再无-的情况，例如n1012-EP01.wmv
-                return str(re.search(r'\w+', filename[:filename.find('.')], re.A).group())
+                matched = re.search(r'\w+', filename[:filename.find('.')], re.A)
+                if not matched:
+                    return None
+                return str(matched.group())
             file_number = os.path.splitext(filename)
             filename_match = RE_FILENAME.search(filename)
             if filename_match:
@@ -207,16 +214,18 @@ def get_number(file_path: str) -> str:
             oumei = RE_OUMEI.search(basename)
             if oumei:
                 return oumei.group()
-            try:
+            searched = RE_BASENAME_SEARCH.search(basename)
+            if searched:
                 return str(
-                    RE_BASENAME_FINDALL.findall(
-                        str(RE_BASENAME_SEARCH.search(basename).group()))).strip(
-                    "['']").replace('_', '-')
-            except:
-                return str(RE_BASENAME_FINDALL.search(basename)[0])
+                    RE_BASENAME_FINDALL.findall(str(searched.group()))
+                ).strip("['']").replace('_', '-')
+            matched = RE_BASENAME_FINDALL.search(basename)
+            if matched:
+                return str(matched[0])
+            return None
     except Exception as e:
-        logging.getLogger().error(e)
-        return
+        logger.error("解析番号失败 %s: %s", file_path, e)
+        return None
 
 
 # 预编译规则中的正则表达式
