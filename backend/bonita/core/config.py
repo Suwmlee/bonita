@@ -54,8 +54,10 @@ class Settings(BaseSettings):
     # DATABASE_LOCATION
     DATABASE_LOCATION: str = "./data/db.sqlite3"
     SQLALCHEMY_DATABASE_URI: str = f"sqlite:///{DATABASE_LOCATION}"
-    # CACHE_LOCATION
+    # CACHE_LOCATION：刮削/转移按番号落盘，维持原结构
     CACHE_LOCATION: str = "./data/cache"
+    # ASSETS_LOCATION：业务资源文件（covers/、actors/，后续也可放媒体项相关资源）
+    ASSETS_LOCATION: str = "./data/assets"
     SUBTITLE_LOCATION: str = "./data/subtitles"
     # CELERY
     CELERY_BROKER_URL: str = os.environ.get("CELERY_BROKER_URL", f"sqla+sqlite:///{DATABASE_LOCATION}")

@@ -4,6 +4,7 @@ import mimetypes
 import os
 import shutil
 import time
+from typing import Optional
 from urllib.parse import urlparse
 
 import requests
@@ -25,27 +26,72 @@ DOWNLOAD_USER_AGENT = (
 )
 
 
+_IMAGE_MAGIC = (
+    b"\xff\xd8\xff",  # jpeg
+    b"\x89PNG\r\n\x1a\n",  # png
+    b"GIF87a",
+    b"GIF89a",
+    b"RIFF",  # webp 容器，下面再看 WEBP
+)
+
+
+def is_valid_image_file(filepath: str) -> bool:
+    """粗检本地文件是否为可用图片（排除空文件/HTML 错误页）。"""
+    if not filepath or not os.path.isfile(filepath):
+        return False
+    try:
+        size = os.path.getsize(filepath)
+    except OSError:
+        return False
+    if size < 24:
+        return False
+    try:
+        with open(filepath, "rb") as f:
+            head = f.read(16)
+    except OSError:
+        return False
+    if head.startswith(b"<") or head[:4].lower() == b"<!do" or b"html" in head.lower():
+        return False
+    if any(head.startswith(m) for m in _IMAGE_MAGIC):
+        if head.startswith(b"RIFF") and head[8:12] != b"WEBP":
+            return False
+        return True
+    return False
+
+
 def cached_filepath(session: Session, url: str) -> str:
-    """ 已缓存的文件路径。没有缓存时返回空字符串，不下载。 """
+    """已缓存且文件仍有效则返回路径，否则空串（不改库）。"""
     if not url:
         return ""
     cache = session.query(Downloads).filter(Downloads.url == url).first()
-    if cache and cache.filepath and os.path.exists(cache.filepath):
+    if cache and is_valid_image_file(cache.filepath or ""):
         return cache.filepath
     return ""
 
 
-def process_cached_file(session: Session, url: str, folder) -> str:
+def process_cached_file(
+    session: Session,
+    url: str,
+    folder,
+    *,
+    base_dir: Optional[str] = None,
+) -> str:
     """ 获取缓存图片
     :param session: 数据库会话
     :param url: 下载链接
-    :param folder: 下载文件保存的缓存目录
+    :param folder: 相对 base_dir 的子目录
+    :param base_dir: 根目录，默认 CACHE_LOCATION
     :return: 缓存的文件路径
     """
     cached = cached_filepath(session, url)
     if cached:
         return cached
-    filepath = download_file(url, folder, get_active_proxy(session))
+    filepath = download_file(
+        url,
+        folder,
+        get_active_proxy(session),
+        base_dir=base_dir,
+    )
     cache = session.query(Downloads).filter(Downloads.url == url).first()
     if cache:
         cache.filepath = filepath
@@ -56,12 +102,20 @@ def process_cached_file(session: Session, url: str, folder) -> str:
     return cache.filepath
 
 
-def update_cache_from_local(session: Session, source_path: str, folder: str, url: str):
+def update_cache_from_local(
+    session: Session,
+    source_path: str,
+    folder: str,
+    url: str,
+    *,
+    base_dir: Optional[str] = None,
+):
     """ 根据本地文件更新缓存记录
     :param session: 数据库会话
     :param source_path: 源文件路径
-    :param folder: 文件保存的缓存目录
+    :param folder: 相对 base_dir 的子目录
     :param url: 文件链接或标识符
+    :param base_dir: 根目录，默认 CACHE_LOCATION
     """
     # 检查数据库中是否已有记录
     cache_downloads = session.query(Downloads).filter(Downloads.url == url).first()
@@ -69,7 +123,8 @@ def update_cache_from_local(session: Session, source_path: str, folder: str, url
     if cache_downloads and os.path.exists(cache_downloads.filepath):
         return cache_downloads.filepath
     # 确保缓存目录存在
-    cache_folder = os.path.abspath(os.path.join(settings.CACHE_LOCATION, folder))
+    root = base_dir if base_dir is not None else settings.CACHE_LOCATION
+    cache_folder = os.path.abspath(os.path.join(root, folder))
     os.makedirs(cache_folder, exist_ok=True)
     # 生成文件名
     file_extension = os.path.splitext(source_path)[1]
@@ -131,17 +186,19 @@ def generate_file_name(url, response):
     return file_name + file_extension
 
 
-def download_file(url, download_dir, proxy=None):
+def download_file(url, download_dir, proxy=None, *, base_dir: Optional[str] = None):
     """ 下载文件
     :param url: 下载链接
-    :param download_dir: 下载文件保存的目录
+    :param download_dir: 相对 base_dir 的子目录（刮削番号目录或 ASSETS 下 covers/actors 等）
     :param proxy: 代理信息，格式为 {"http": "http://proxy.com:8080", "https": "http://proxy.com:8080"}
+    :param base_dir: 根目录，默认 CACHE_LOCATION；业务资源传 ASSETS_LOCATION
     :return: 下载的文件路径
     """
     parsed = urlparse(url)
     headers = {"User-Agent": DOWNLOAD_USER_AGENT}
     if parsed.scheme and parsed.netloc:
         headers["Referer"] = f"{parsed.scheme}://{parsed.netloc}/"
+    root = base_dir if base_dir is not None else settings.CACHE_LOCATION
 
     for attempt in range(1, DOWNLOAD_RETRIES + 1):
         try:
@@ -154,7 +211,7 @@ def download_file(url, download_dir, proxy=None):
             ) as response:
                 response.raise_for_status()
                 file_name = generate_file_name(url, response)
-                download_folder = os.path.abspath(os.path.join(settings.CACHE_LOCATION, download_dir))
+                download_folder = os.path.abspath(os.path.join(root, download_dir))
                 os.makedirs(download_folder, exist_ok=True)
                 download_path = os.path.join(download_folder, file_name)
                 with open(download_path, 'wb') as file:
@@ -167,6 +224,12 @@ def download_file(url, download_dir, proxy=None):
                 raise IOError(f"Downloaded empty file: {url}")
             if download_path.lower().endswith('.gif'):
                 download_path = _convert_gif_to_jpg(download_path)
+            if not is_valid_image_file(download_path):
+                try:
+                    os.remove(download_path)
+                except OSError:
+                    pass
+                raise IOError(f"Downloaded content is not an image: {url}")
             return download_path
         except (requests.RequestException, OSError) as e:
             status = getattr(getattr(e, 'response', None), 'status_code', None)

@@ -1,21 +1,39 @@
 import hashlib
 import logging
 import os
+import threading
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Dict, Optional
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from bonita.core.config import settings
+from bonita.db.models.actor import Actor
 from bonita.db.models.downloads import Downloads
 from bonita.db.models.metadata import Metadata
 from bonita.modules.media_service.client import SOURCE_EMBY
 from bonita.modules.media_service.factory import ensure_media_client
-from bonita.utils.downloader import process_cached_file
+from bonita.utils.downloader import cached_filepath, download_file
+from bonita.utils.http import get_active_proxy
 
 logger = logging.getLogger(__name__)
+
+COVER_FOLDER = "covers"
+ACTOR_PHOTO_FOLDER = "actors"
+_DIR_FORBIDDEN = '<>:"/\\|?*'
+_resolve_locks_guard = threading.Lock()
+_resolve_locks: Dict[str, threading.Lock] = {}
+
+
+def _resolve_lock_for(url: str) -> threading.Lock:
+    with _resolve_locks_guard:
+        lock = _resolve_locks.get(url)
+        if lock is None:
+            lock = threading.Lock()
+            _resolve_locks[url] = lock
+        return lock
 
 
 @dataclass
@@ -25,33 +43,102 @@ class PosterResult:
     cache_control: str
 
 
+def _safe_dirname(name: str) -> str:
+    """番号/演员名作目录名：去掉路径非法字符，空则用 unknown。"""
+    text = (name or "").strip()
+    for ch in _DIR_FORBIDDEN:
+        text = text.replace(ch, "_")
+    text = text.strip(" .")
+    return text or "unknown"
+
+
 class ResourceService:
     """缓存图片、上传与海报解析。"""
 
     def __init__(self, session: Session):
         self.session = session
 
-    def get_cached_image_path(self, path: str) -> Optional[str]:
+    def _actor_folder_for_photo(self, url: str) -> Optional[str]:
+        """头像 URL 对应演员时返回 actors/<演员名>，否则 None。"""
+        actor = (
+            self.session.query(Actor.name)
+            .filter(Actor.photo == url)
+            .first()
+        )
+        if not actor or not actor.name:
+            return None
+        return os.path.join(ACTOR_PHOTO_FOLDER, _safe_dirname(actor.name))
+
+    def _cover_folder_for_url(self, url: str) -> str:
+        """封面 URL 对应元数据时返回 covers/<番号>，否则 covers。"""
+        row = (
+            self.session.query(Metadata.number)
+            .filter(
+                (Metadata.cover == url) | (Metadata.cover_small == url)
+            )
+            .order_by(Metadata.id.desc())
+            .first()
+        )
+        if row and (row.number or "").strip():
+            return os.path.join(COVER_FOLDER, _safe_dirname(row.number))
+        return COVER_FOLDER
+
+    @staticmethod
+    def resolve_image_path(path: str) -> Optional[str]:
+        """供 /resource/image 使用：短会话查库，下载不占用连接池；同 URL 串行避免写坏文件。"""
         if not path:
             return None
-        cache_downloads_cover = self.session.query(Downloads).filter(Downloads.url == path).first()
-        if cache_downloads_cover and os.path.exists(cache_downloads_cover.filepath):
-            return cache_downloads_cover.filepath
         if os.path.isfile(path):
             return path
-        if path.startswith(("http://", "https://")):
+        if not path.startswith(("http://", "https://")):
+            return None
+
+        with _resolve_lock_for(path):
+            from bonita.db import SessionFactory
+
+            folder = COVER_FOLDER
+            proxy = None
+            session = SessionFactory()
             try:
-                return process_cached_file(self.session, path, "images")
+                cached = cached_filepath(session, path)
+                if cached:
+                    return cached
+                svc = ResourceService(session)
+                folder = svc._actor_folder_for_photo(path) or svc._cover_folder_for_url(path)
+                proxy = get_active_proxy(session)
+            finally:
+                session.close()
+
+            try:
+                filepath = download_file(
+                    path,
+                    folder,
+                    proxy,
+                    base_dir=settings.ASSETS_LOCATION,
+                )
             except Exception as e:
                 logger.warning("Failed to fetch remote image %s: %s", path, e)
                 return None
-        return None
+
+            session = SessionFactory()
+            try:
+                row = session.query(Downloads).filter(Downloads.url == path).first()
+                if row:
+                    row.filepath = filepath
+                    session.commit()
+                else:
+                    Downloads(url=path, filepath=filepath).create(session)
+                return filepath
+            finally:
+                session.close()
 
     def save_image(self, content: bytes, filename: Optional[str], custom_url: Optional[str] = None) -> str:
         file_hash = hashlib.md5(content).hexdigest()
         file_ext = os.path.splitext(filename or "")[1]
         stored_name = f"{file_hash}{file_ext}"
-        download_folder = os.path.abspath(os.path.join(settings.CACHE_LOCATION, "images"))
+        download_folder = os.path.abspath(
+            os.path.join(settings.ASSETS_LOCATION, COVER_FOLDER)
+        )
         os.makedirs(download_folder, exist_ok=True)
         file_path = os.path.join(download_folder, stored_name)
         with open(file_path, "wb") as f:

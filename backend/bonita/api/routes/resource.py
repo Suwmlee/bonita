@@ -11,12 +11,15 @@ router = APIRouter()
 
 
 @router.get("/image")
-async def get_image_by_query(path: str, session: SessionDep):
-    """Get image from local cache or download it using query parameter"""
-    filepath = await asyncio.to_thread(ResourceService(session).get_cached_image_path, path)
+async def get_image_by_query(path: str):
+    """按 URL/路径取图。下载远程图时不长时间占用 DB 连接，避免演员墙并发打满连接池。"""
+    filepath = await asyncio.to_thread(ResourceService.resolve_image_path, path)
     if not filepath:
         raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(filepath)
+    return FileResponse(
+        filepath,
+        headers={"Cache-Control": "private, max-age=0, must-revalidate"},
+    )
 
 
 @router.post("/upload/image")
