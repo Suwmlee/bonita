@@ -21,7 +21,15 @@ function loadItemsPerPage(): number {
     : DEFAULT_ITEMS_PER_PAGE
 }
 
+function persistItemsPerPage(itemsPerPage: number) {
+  if (ITEMS_PER_PAGE_OPTIONS.includes(itemsPerPage)) {
+    localStorage.setItem(ITEMS_PER_PAGE_KEY, String(itemsPerPage))
+  }
+}
+
 let metadataListRequestId = 0
+let actorListRequestId = 0
+let actorWorksRequestId = 0
 
 export const useMetadataStore = defineStore("metadata-store", {
   state: () => ({
@@ -73,17 +81,66 @@ export const useMetadataStore = defineStore("metadata-store", {
           this.currentPage = page
         }
 
-        // Update itemsPerPage if it was provided
         if (itemsPerPage !== undefined) {
           this.itemsPerPage = itemsPerPage
-          if (ITEMS_PER_PAGE_OPTIONS.includes(itemsPerPage)) {
-            localStorage.setItem(ITEMS_PER_PAGE_KEY, String(itemsPerPage))
-          }
+          persistItemsPerPage(itemsPerPage)
         }
 
         return this.allMetadata
       } catch (error) {
         if (requestId !== metadataListRequestId) return null
+        throw error
+      }
+    },
+    async getActors(
+      filter?: string,
+      page = 1,
+      itemsPerPage?: number,
+      sort: "count_desc" | "count_asc" | "name_asc" | "name_desc" = "count_desc",
+    ) {
+      const requestId = ++actorListRequestId
+      const perPage = itemsPerPage ?? this.itemsPerPage
+      try {
+        const { data: response } = await MetadataService.listActors({
+          filter: filter || undefined,
+          skip: (page - 1) * perPage,
+          limit: perPage,
+          sort,
+        })
+        if (requestId !== actorListRequestId) return null
+        if (itemsPerPage !== undefined) {
+          this.itemsPerPage = itemsPerPage
+          persistItemsPerPage(itemsPerPage)
+        }
+        return response
+      } catch (error) {
+        if (requestId !== actorListRequestId) return null
+        throw error
+      }
+    },
+    async getActorWorks(
+      actor: string,
+      filter?: string,
+      page = 1,
+      itemsPerPage?: number,
+    ) {
+      const requestId = ++actorWorksRequestId
+      const perPage = itemsPerPage ?? this.itemsPerPage
+      try {
+        const { data: response } = await MetadataService.listActorWorks({
+          actor,
+          filter: filter || undefined,
+          skip: (page - 1) * perPage,
+          limit: perPage,
+        })
+        if (requestId !== actorWorksRequestId) return null
+        if (itemsPerPage !== undefined) {
+          this.itemsPerPage = itemsPerPage
+          persistItemsPerPage(itemsPerPage)
+        }
+        return response
+      } catch (error) {
+        if (requestId !== actorWorksRequestId) return null
         throw error
       }
     },
@@ -233,9 +290,8 @@ export const useMetadataStore = defineStore("metadata-store", {
         i18n.global.t("pages.metadata.confirmDeleteMessage") as string,
       )
 
-      if (confirmed) {
-        await this.deleteMetadata(id)
-      }
+      if (!confirmed) return false
+      return await this.deleteMetadata(id)
     },
     async deleteMetadata(idToRemove: number) {
       const { data: response } = await MetadataService.deleteMetadata({
@@ -245,7 +301,10 @@ export const useMetadataStore = defineStore("metadata-store", {
         this.allMetadata = this.allMetadata.filter(
           (metadata) => metadata.id !== idToRemove,
         )
+        this.totalCount = Math.max(0, this.totalCount - 1)
+        return true
       }
+      return false
     },
   },
 })

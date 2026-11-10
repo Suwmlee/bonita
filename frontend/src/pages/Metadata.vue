@@ -1,39 +1,202 @@
 <script setup lang="ts">
-import type { MetadataPublic } from "@/client"
-import { client } from "@/client/client.gen"
+import type { ActorSummary, MetadataPublic } from "@/client"
+import MetadataActorWall from "@/components/metadata/MetadataActorWall.vue"
 import MetadataDetailDialog from "@/components/metadata/MetadataDetailDialog.vue"
 import MetadataRefreshDialog from "@/components/metadata/MetadataRefreshDialog.vue"
 import { useMetadataStore } from "@/stores/metadata.store"
+import { actorGradient, actorInitial } from "@/utils/actorVisual"
+import { resourceImageUrl } from "@/utils/resourceImage"
 import { computed, onMounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
+
+const VIEW_MODE_KEY = "metadata-view-mode"
+const ACTOR_SORT_KEY = "metadata-actor-sort"
 
 const metadataStore = useMetadataStore()
 const searchQuery = ref("")
 const isSearching = ref(false)
-const { t } = useI18n() // 导入国际化工具函数
+const viewMode = ref<"number" | "actor">(
+  localStorage.getItem(VIEW_MODE_KEY) === "actor" ? "actor" : "number",
+)
+type ActorSort = "count_desc" | "count_asc" | "name_asc" | "name_desc"
+
+function loadActorSort(): ActorSort {
+  const saved = localStorage.getItem(ACTOR_SORT_KEY)
+  if (
+    saved === "count_asc"
+    || saved === "count_desc"
+    || saved === "name_asc"
+    || saved === "name_desc"
+  ) {
+    return saved
+  }
+  // 兼容早期本地缓存
+  if (saved === "name") return "name_asc"
+  return "count_desc"
+}
+
+const actorSort = ref<ActorSort>(loadActorSort())
+const actorSortOpen = ref(false)
+const actors = ref<ActorSummary[]>([])
+const actorTotal = ref(0)
+const actorPage = ref(1)
+const selectedActor = ref<ActorSummary | null>(null)
+const actorWorks = ref<MetadataPublic[]>([])
+const actorWorksTotal = ref(0)
+const actorWorksPage = ref(1)
+const heroPhotoBroken = ref(false)
+const heroPhotoLoaded = ref(false)
+const heroCoverBroken = ref<Record<string, boolean>>({})
+const { t } = useI18n()
+
+const viewModeOptions = computed(() => [
+  { value: "number" as const, title: t("pages.metadata.viewByNumber") },
+  { value: "actor" as const, title: t("pages.metadata.viewByActor") },
+])
+
+const actorSortField = computed(() => (actorSort.value.startsWith("count") ? "count" : "name"))
+const actorSortDirection = computed(() => (actorSort.value.endsWith("asc") ? "asc" : "desc"))
+const actorSortOptions = computed(() => [
+  { value: "count" as const, title: t("pages.metadata.sortByCount") },
+  { value: "name" as const, title: t("pages.metadata.sortByName") },
+])
+const actorSortLabel = computed(
+  () => actorSortOptions.value.find(option => option.value === actorSortField.value)?.title ?? "",
+)
+
+function actorSortIcon() {
+  if (actorSortField.value === "name") {
+    return actorSortDirection.value === "desc" ? "bx-sort-a-z" : "bx-sort-z-a"
+  }
+  return actorSortDirection.value === "desc" ? "bx-sort-down" : "bx-sort-up"
+}
+
+function handleActorSort(field: "count" | "name") {
+  const nextDirection =
+    field === actorSortField.value && actorSortDirection.value === "desc"
+      ? "asc"
+      : "desc"
+  actorSort.value = `${field}_${nextDirection}` as ActorSort
+  actorSortOpen.value = false
+}
+
+function keyword() {
+  return typeof searchQuery.value === "string" ? searchQuery.value.trim() : ""
+}
 
 async function fetchMetadata(page: number, perPage?: number) {
   isSearching.value = true
   try {
-    const keyword = typeof searchQuery.value === "string" ? searchQuery.value.trim() : ""
-    const result = await metadataStore.getMetadata(keyword, page, perPage)
+    const result = await metadataStore.getMetadata(keyword(), page, perPage)
     if (result !== null) isSearching.value = false
   } catch {
     isSearching.value = false
   }
 }
 
-// Pagination
-const currentPage = computed(() => metadataStore.currentPage)
-const totalItems = computed(() => metadataStore.totalCount)
+async function fetchActors(page: number, perPage?: number) {
+  isSearching.value = true
+  try {
+    const result = await metadataStore.getActors(keyword(), page, perPage, actorSort.value)
+    if (result === null) return
+    actors.value = result.data
+    actorTotal.value = result.count
+    actorPage.value = page
+    isSearching.value = false
+  } catch {
+    isSearching.value = false
+  }
+}
+
+async function fetchWorks(page: number, perPage?: number) {
+  if (!selectedActor.value) return
+  isSearching.value = true
+  try {
+    const result = await metadataStore.getActorWorks(
+      selectedActor.value.name,
+      keyword(),
+      page,
+      perPage,
+    )
+    if (result === null) return
+    actorWorks.value = result.data
+    actorWorksTotal.value = result.count
+    actorWorksPage.value = page
+    selectedActor.value = { ...selectedActor.value, count: result.count }
+    isSearching.value = false
+  } catch {
+    isSearching.value = false
+  }
+}
+
+async function refreshCurrent(page?: number, perPage?: number) {
+  if (viewMode.value === "number") {
+    await fetchMetadata(page ?? metadataStore.currentPage, perPage)
+    return
+  }
+  if (selectedActor.value) {
+    await fetchWorks(page ?? actorWorksPage.value, perPage)
+    if (actorWorksTotal.value === 0) {
+      selectedActor.value = null
+      await fetchActors(1, perPage)
+      return
+    }
+    if (actorWorks.value.length === 0 && actorWorksPage.value > 1) {
+      await fetchWorks(actorWorksPage.value - 1, perPage)
+    }
+    return
+  }
+  await fetchActors(page ?? actorPage.value, perPage)
+  if (actors.value.length === 0 && actorPage.value > 1 && actorTotal.value > 0) {
+    await fetchActors(actorPage.value - 1, perPage)
+  }
+}
+
 const itemsPerPage = computed({
   get: () => metadataStore.itemsPerPage,
   set: async (value) => {
-    await fetchMetadata(1, value)
+    await refreshCurrent(1, value)
   },
 })
+const pagingTotal = computed(() => {
+  if (viewMode.value === "number") return metadataStore.totalCount
+  if (selectedActor.value) return actorWorksTotal.value
+  return actorTotal.value
+})
+const pagingPage = computed(() => {
+  if (viewMode.value === "number") return metadataStore.currentPage
+  if (selectedActor.value) return actorWorksPage.value
+  return actorPage.value
+})
 const totalPages = computed(() =>
-  Math.ceil(totalItems.value / itemsPerPage.value),
+  Math.max(1, Math.ceil(pagingTotal.value / itemsPerPage.value)),
+)
+const totalLabel = computed(() => {
+  if (viewMode.value === "actor" && !selectedActor.value) {
+    return t("pages.metadata.totalActors", { count: actorTotal.value })
+  }
+  return t("pages.metadata.totalItems", { count: pagingTotal.value })
+})
+const visibleItems = computed(() =>
+  viewMode.value === "actor" ? actorWorks.value : metadataStore.allMetadata,
+)
+const showItemGrid = computed(() => viewMode.value === "number" || !!selectedActor.value)
+const showEmpty = computed(() => {
+  if (isSearching.value) return false
+  if (viewMode.value === "number") return metadataStore.allMetadata.length === 0
+  if (selectedActor.value) return actorWorks.value.length === 0
+  return actors.value.length === 0
+})
+const emptyText = computed(() =>
+  viewMode.value === "actor" && !selectedActor.value
+    ? t("pages.metadata.noActors")
+    : t("pages.metadata.noResults"),
+)
+const heroCovers = computed(() =>
+  (selectedActor.value?.covers ?? []).filter((cover) => cover.path && !heroCoverBroken.value[cover.path]),
+)
+const showHeroPhoto = computed(() =>
+  Boolean(selectedActor.value?.photo) && !heroPhotoBroken.value,
 )
 const itemsPerPageOptions = [12, 24, 48, 96]
 
@@ -46,19 +209,39 @@ function showAddDialog() {
   metadataStore.showAddMetadata()
 }
 
-const imageUrlCache = new Map<string, string>()
-
-function getImageUrl(path: string) {
-  const cached = imageUrlCache.get(path)
-  if (cached) return cached
-  const url = `${client.getConfig().baseURL}/api/v1/resource/image?path=${encodeURIComponent(path)}&t=${Date.now()}`
-  imageUrlCache.set(path, url)
-  return url
+function openActor(actor: ActorSummary) {
+  heroPhotoBroken.value = false
+  heroPhotoLoaded.value = false
+  heroCoverBroken.value = {}
+  selectedActor.value = actor
+  window.scrollTo({ top: 0, behavior: "smooth" })
+  fetchWorks(1)
 }
 
-// Change page function
+function backToActors() {
+  selectedActor.value = null
+  window.scrollTo({ top: 0, behavior: "smooth" })
+}
+
+function markHeroCoverBroken(cover: string) {
+  heroCoverBroken.value = { ...heroCoverBroken.value, [cover]: true }
+}
+
 async function changePage(page: number) {
-  await fetchMetadata(page)
+  if (viewMode.value === "number") {
+    await fetchMetadata(page)
+    return
+  }
+  if (selectedActor.value) {
+    await fetchWorks(page)
+    return
+  }
+  await fetchActors(page)
+}
+
+async function onDelete(id: number) {
+  const removed = await metadataStore.confirmDeleteMetadata(id)
+  if (removed) await refreshCurrent()
 }
 
 const formatDateTime = (dateStr: string | null | undefined) => {
@@ -110,11 +293,40 @@ function getTagColor(tag: string): string {
 }
 
 watch(searchQuery, () => {
-  fetchMetadata(1)
+  selectedActor.value = null
+  if (viewMode.value === "actor") fetchActors(1)
+  else fetchMetadata(1)
 })
 
+watch(viewMode, (mode) => {
+  localStorage.setItem(VIEW_MODE_KEY, mode)
+  selectedActor.value = null
+  if (mode === "actor") fetchActors(1)
+  else fetchMetadata(1)
+})
+
+watch(actorSort, (sort) => {
+  localStorage.setItem(ACTOR_SORT_KEY, sort)
+  if (viewMode.value === "actor" && !selectedActor.value) fetchActors(1)
+})
+
+watch(
+  () => metadataStore.showDialog,
+  (open, wasOpen) => {
+    if (wasOpen && !open && viewMode.value === "actor") refreshCurrent()
+  },
+)
+
+watch(
+  () => metadataStore.showRefreshDialog,
+  (open, wasOpen) => {
+    if (wasOpen && !open && viewMode.value === "actor") refreshCurrent()
+  },
+)
+
 onMounted(() => {
-  fetchMetadata(metadataStore.currentPage)
+  if (viewMode.value === "actor") fetchActors(1)
+  else fetchMetadata(metadataStore.currentPage)
 })
 </script>
 
@@ -124,19 +336,112 @@ onMounted(() => {
       {{ t('pages.metadata.title') }}
     </p>
 
-    <!-- Search input and Add button -->
-    <VRow class="mb-4">
-      <VCol cols="12" sm="10" md="8" lg="6" xl="4" class="d-flex align-center">
+    <VRow class="mb-4 align-center">
+      <VCol cols="12" md="5" lg="4">
         <VTextField v-model="searchQuery" :placeholder="t('pages.metadata.search')" clearable hide-details
-          prepend-inner-icon="bx-search" :loading="isSearching" variant="outlined" density="comfortable" class="mr-2" />
+          prepend-inner-icon="bx-search" :loading="isSearching" variant="outlined" density="comfortable" />
+      </VCol>
+      <VCol cols="12" md="7" lg="8" class="d-flex align-center flex-wrap ga-3">
+        <VSelect
+          v-model="viewMode"
+          :items="viewModeOptions"
+          item-title="title"
+          item-value="value"
+          variant="outlined"
+          density="comfortable"
+          hide-details
+          class="mode-select"
+        />
+        <VMenu
+          v-if="viewMode === 'actor' && !selectedActor"
+          v-model="actorSortOpen"
+          location="bottom start"
+          :offset="4"
+        >
+          <template #activator="{ props }">
+            <VBtn v-bind="props" variant="outlined" density="comfortable" class="mode-btn">
+              <VIcon :icon="actorSortIcon()" size="18" class="me-2" />
+              <span class="text-truncate">{{ actorSortLabel }}</span>
+            </VBtn>
+          </template>
+          <VCard class="sort-menu-card">
+            <VList density="compact">
+              <VListItem
+                v-for="option in actorSortOptions"
+                :key="option.value"
+                class="sort-list-item"
+                @click="handleActorSort(option.value)"
+              >
+                <VListItemTitle>
+                  {{ option.title }}
+                  <VIcon
+                    v-if="option.value === actorSortField"
+                    size="small"
+                    class="ms-2"
+                    :icon="actorSortDirection === 'desc' ? 'bx-down-arrow-alt' : 'bx-up-arrow-alt'"
+                  />
+                </VListItemTitle>
+              </VListItem>
+            </VList>
+          </VCard>
+        </VMenu>
+        <VSpacer class="d-none d-md-block" />
         <VBtn color="primary" @click="showAddDialog" prepend-icon="bx-plus">
           {{ t('pages.metadata.addNew') }}
         </VBtn>
       </VCol>
     </VRow>
 
-    <VRow align="stretch">
-      <VCol v-for="item in metadataStore.allMetadata" :key="item.id" cols="12" sm="6" md="4" lg="3" xl="2" class="d-flex">
+    <div v-if="selectedActor" class="actor-hero mb-6">
+      <div class="hero-bg" :style="{ background: actorGradient(selectedActor.name) }">
+        <div v-if="heroCovers.length" class="hero-mosaic">
+          <img
+            v-for="cover in heroCovers"
+            :key="cover.path"
+            :class="{ 'hero-full': cover.crop === false }"
+            :src="resourceImageUrl(cover.path)"
+            alt=""
+            @error="markHeroCoverBroken(cover.path)"
+          />
+        </div>
+      </div>
+      <div class="hero-shade" />
+      <div class="hero-content">
+        <VBtn
+          icon
+          variant="flat"
+          class="hero-back"
+          :title="t('pages.metadata.backToActors')"
+          @click="backToActors"
+        >
+          <VIcon icon="bx-chevron-left" size="28" />
+        </VBtn>
+        <div class="hero-avatar" :style="{ background: actorGradient(selectedActor.name) }">
+          <img
+            v-if="showHeroPhoto"
+            v-show="heroPhotoLoaded"
+            :src="resourceImageUrl(selectedActor.photo || '')"
+            :alt="selectedActor.name"
+            @load="heroPhotoLoaded = true"
+            @error="heroPhotoBroken = true"
+          />
+          <span v-if="!heroPhotoLoaded || !showHeroPhoto">{{ actorInitial(selectedActor.name) }}</span>
+        </div>
+        <div class="hero-text">
+          <p class="hero-name">{{ selectedActor.name }}</p>
+          <p class="hero-sub">{{ t('pages.metadata.workCount', { count: selectedActor.count }) }}</p>
+        </div>
+      </div>
+    </div>
+
+    <MetadataActorWall
+      v-if="viewMode === 'actor' && !selectedActor"
+      :actors="actors"
+      @select="openActor"
+    />
+
+    <VRow v-if="showItemGrid" align="stretch">
+      <VCol v-for="item in visibleItems" :key="item.id" cols="12" sm="6" md="4" lg="3" xl="2" class="d-flex">
         <VCard class="metadata-card" @click="showEditDialog(item)">
           <div class="card-header">
             <span class="card-number text-truncate" :title="item.number">{{ item.number }}</span>
@@ -147,7 +452,7 @@ onMounted(() => {
                 <VIcon icon="bx-refresh" size="18" />
               </VBtn>
               <VBtn icon variant="text" size="small" class="action-btn"
-                @click.stop="metadataStore.confirmDeleteMetadata(item.id)">
+                @click.stop="onDelete(item.id)">
                 <VIcon icon="bx-trash" size="18" color="error" />
               </VBtn>
             </div>
@@ -157,13 +462,13 @@ onMounted(() => {
             <template v-if="item.cover">
               <img
                 class="cover-fill"
-                :src="getImageUrl(item.cover)"
+                :src="resourceImageUrl(item.cover)"
                 alt=""
                 aria-hidden="true"
               />
               <img
                 class="cover-image"
-                :src="getImageUrl(item.cover)"
+                :src="resourceImageUrl(item.cover)"
                 :alt="item.title"
                 loading="lazy"
               />
@@ -196,15 +501,13 @@ onMounted(() => {
       </VCol>
     </VRow>
 
-    <!-- No results message -->
-    <VRow v-if="metadataStore.allMetadata.length === 0" class="mt-5">
+    <VRow v-if="showEmpty" class="mt-5">
       <VCol class="text-center">
-        <p class="text-medium-emphasis">{{ t('pages.metadata.noResults') }}</p>
+        <p class="text-medium-emphasis">{{ emptyText }}</p>
       </VCol>
     </VRow>
 
-    <!-- Pagination -->
-    <VRow v-if="totalItems > 0" class="mt-5">
+    <VRow v-if="pagingTotal > 0" class="mt-5">
       <VCol>
         <div class="d-flex align-center justify-end px-4 py-3 w-100">
           <div class="d-flex align-center me-4">
@@ -212,21 +515,20 @@ onMounted(() => {
             <v-select v-model="itemsPerPage" :items="itemsPerPageOptions" density="compact"
               style="width: 80px" hide-details variant="plain" />
             <div class="ms-4 text-caption text-grey">
-              {{ t('pages.metadata.totalItems', { count: totalItems }) }}
+              {{ totalLabel }}
             </div>
           </div>
 
-          <v-pagination v-model="metadataStore.currentPage"
+          <v-pagination :model-value="pagingPage"
             :length="totalPages"
-            @update:model-value="changePage" 
-            :total-visible="5" 
+            @update:model-value="changePage"
+            :total-visible="5"
             :show-first-last-page="false" />
         </div>
       </VCol>
     </VRow>
 
-    <!-- Metadata add/edit dialog -->
-    <MetadataDetailDialog @created="fetchMetadata(1)" />
+    <MetadataDetailDialog @created="refreshCurrent(1)" />
     <MetadataRefreshDialog
       v-model="metadataStore.showRefreshDialog"
       :metadata="metadataStore.refreshTarget"
@@ -235,6 +537,122 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.mode-select,
+.mode-btn {
+  flex: 0 0 108px;
+  width: 108px;
+  max-width: 108px;
+}
+
+.mode-btn {
+  height: 38px;
+  justify-content: flex-start;
+  border-radius: 6px;
+  padding-inline: 10px;
+}
+
+.sort-menu-card {
+  width: 108px;
+}
+
+.sort-list-item {
+  padding-inline: 12px;
+}
+
+.actor-hero {
+  position: relative;
+  height: 196px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #141414;
+}
+
+.hero-bg,
+.hero-mosaic,
+.hero-shade {
+  position: absolute;
+  inset: 0;
+}
+
+.hero-mosaic {
+  display: flex;
+}
+
+.hero-mosaic img {
+  flex: 1;
+  width: 0;
+  height: 100%;
+  object-fit: cover;
+  object-position: right center;
+  filter: blur(16px) saturate(1.15);
+  transform: scale(1.18);
+}
+
+.hero-mosaic img.hero-full {
+  object-position: center;
+}
+
+.hero-shade {
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.28));
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 28px;
+  color: #fff;
+}
+
+.hero-back {
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.35) !important;
+  color: #fff !important;
+}
+
+.hero-avatar {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.hero-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-name {
+  margin: 0;
+  font-size: 1.7rem;
+  font-weight: 650;
+  line-height: 1.2;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+.hero-sub {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.84);
+}
+
 .text-truncate {
   white-space: nowrap;
   overflow: hidden;
@@ -403,6 +821,25 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .actor-hero {
+    height: 168px;
+  }
+
+  .hero-content {
+    padding: 0 16px;
+    gap: 12px;
+  }
+
+  .hero-avatar {
+    width: 72px;
+    height: 72px;
+    font-size: 28px;
+  }
+
+  .hero-name {
+    font-size: 1.25rem;
+  }
+
   .d-flex.align-center.justify-end {
     flex-direction: column;
     align-items: flex-start !important;
