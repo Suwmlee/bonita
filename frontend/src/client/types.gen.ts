@@ -5,6 +5,60 @@ export type ClientOptions = {
 };
 
 /**
+ * ActorCollection
+ */
+export type ActorCollection = {
+    /**
+     * Data
+     */
+    data: Array<ActorSummary>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * ActorCover
+ *
+ * 演员墙上的一张封面。crop 为真时取横图右侧海报，为假时展示整张。
+ */
+export type ActorCover = {
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Crop
+     */
+    crop?: boolean;
+};
+
+/**
+ * ActorSummary
+ *
+ * 一位演员及其作品数量、头像和最近几张封面
+ */
+export type ActorSummary = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Photo
+     */
+    photo?: string | null;
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Covers
+     */
+    covers?: Array<ActorCover>;
+};
+
+/**
  * Body_login-login_access_token
  */
 export type BodyLoginLoginAccessToken = {
@@ -3240,6 +3294,90 @@ export type GetMetadataResponses = {
 };
 
 export type GetMetadataResponse = GetMetadataResponses[keyof GetMetadataResponses];
+
+export type ListActorsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Filter
+         */
+        filter?: string | null;
+        /**
+         * Sort
+         */
+        sort?: string;
+    };
+    url: '/api/v1/metadata/actors';
+};
+
+export type ListActorsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListActorsError = ListActorsErrors[keyof ListActorsErrors];
+
+export type ListActorsResponses = {
+    /**
+     * Successful Response
+     */
+    200: ActorCollection;
+};
+
+export type ListActorsResponse = ListActorsResponses[keyof ListActorsResponses];
+
+export type ListActorWorksData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Actor
+         */
+        actor: string;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Filter
+         */
+        filter?: string | null;
+    };
+    url: '/api/v1/metadata/actors/works';
+};
+
+export type ListActorWorksErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListActorWorksError = ListActorWorksErrors[keyof ListActorWorksErrors];
+
+export type ListActorWorksResponses = {
+    /**
+     * Successful Response
+     */
+    200: MetadataCollection;
+};
+
+export type ListActorWorksResponse = ListActorWorksResponses[keyof ListActorWorksResponses];
 
 export type RefreshMetadataData = {
     body: MetadataRefreshParam;
