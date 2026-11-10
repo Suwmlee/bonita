@@ -26,13 +26,19 @@ async def get_image_by_query(path: str):
 async def upload_image(
     file: UploadFile = File(...),
     custom_url: str = None,
+    number: str = None,
     session: SessionDep = None
 ):
     """Upload an image file"""
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
     content = await file.read()
-    url_value = ResourceService(session).save_image(content, file.filename, custom_url)
+    url_value = ResourceService(session).save_image(
+        content,
+        file.filename,
+        custom_url,
+        number=number,
+    )
     return schemas.Response(success=True, message=url_value)
 
 

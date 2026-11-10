@@ -154,10 +154,10 @@ async function handleFileUpload(event: Event) {
       file: file,
     }
 
-    // Upload image with existing path as custom URL if available
     const { data: response } = await ResourceService.uploadImage({
       bodyResourceUploadImage: formData,
       custom_url: currentMetadata.value.cover || undefined,
+      number: currentMetadata.value.number || undefined,
     })
 
     let path = ""

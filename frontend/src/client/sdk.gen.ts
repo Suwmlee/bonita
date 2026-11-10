@@ -1796,9 +1796,14 @@ export class ResourceService {
      */
     public static uploadImage<ThrowOnError extends boolean = true>(parameters: {
         custom_url?: string;
+        number?: string;
         bodyResourceUploadImage: BodyResourceUploadImage;
     }, options?: Options<never, ThrowOnError>) {
-        const params = buildClientParams([parameters], [{ args: [{ in: 'query', key: 'custom_url' }, { key: 'bodyResourceUploadImage', map: 'body' }] }]);
+        const params = buildClientParams([parameters], [{ args: [
+            { in: 'query', key: 'custom_url' },
+            { in: 'query', key: 'number' },
+            { key: 'bodyResourceUploadImage', map: 'body' },
+        ] }]);
         return (options?.client ?? client).post<UploadImageResponses, UploadImageErrors, ThrowOnError>({
             ...formDataBodySerializer,
             responseType: 'json',

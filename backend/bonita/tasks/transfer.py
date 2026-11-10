@@ -14,6 +14,7 @@ from bonita.modules.scraping.scraping import add_mark, process_cover, process_nf
 from bonita.modules.transfer.transfer import transSingleFile, transferfile
 from bonita.services.celery_service import TaskProgressTracker
 from bonita.services.subtitle_service import SubtitleService, parse_number
+from bonita.services.resource_service import cover_folder_for_number
 from bonita.tasks.decorators import manage_celery_task
 from bonita.tasks.media import celery_emby_scan
 from bonita.tasks.scraping import celery_scrapping
@@ -71,7 +72,11 @@ def write_scraped_sidecars(session, output_folder, metamixed, scraping_conf):
 
     while retry_count < max_retries:
         try:
-            cache_cover_filepath = process_cached_file(session, cover_url, metamixed.number)
+            cache_cover_filepath = process_cached_file(
+                session,
+                cover_url,
+                cover_folder_for_number(metamixed.number),
+            )
             break
         except Exception as e:
             retry_count += 1
@@ -111,7 +116,11 @@ def write_scraped_sidecars(session, output_folder, metamixed, scraping_conf):
         ef_url = extrafanart_list[0]
         logger.info(f"      → 使用 extrafanart 作为封面: {ef_url}")
         try:
-            cache_cover_filepath = download_file(ef_url, metamixed.number, proxy)
+            cache_cover_filepath = download_file(
+                ef_url,
+                cover_folder_for_number(metamixed.number),
+                proxy,
+            )
         except Exception as e:
             logger.warning(f"      ⊘ extrafanart 下载失败: {e}")
 

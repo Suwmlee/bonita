@@ -4,7 +4,6 @@ import mimetypes
 import os
 import shutil
 import time
-from typing import Optional
 from urllib.parse import urlparse
 
 import requests
@@ -69,29 +68,12 @@ def cached_filepath(session: Session, url: str) -> str:
     return ""
 
 
-def process_cached_file(
-    session: Session,
-    url: str,
-    folder,
-    *,
-    base_dir: Optional[str] = None,
-) -> str:
-    """ 获取缓存图片
-    :param session: 数据库会话
-    :param url: 下载链接
-    :param folder: 相对 base_dir 的子目录
-    :param base_dir: 根目录，默认 CACHE_LOCATION
-    :return: 缓存的文件路径
-    """
+def process_cached_file(session: Session, url: str, folder) -> str:
+    """获取缓存图片；folder 为相对 ASSETS 的子目录，如 covers/<番号>。"""
     cached = cached_filepath(session, url)
     if cached:
         return cached
-    filepath = download_file(
-        url,
-        folder,
-        get_active_proxy(session),
-        base_dir=base_dir,
-    )
+    filepath = download_file(url, folder, get_active_proxy(session))
     cache = session.query(Downloads).filter(Downloads.url == url).first()
     if cache:
         cache.filepath = filepath
@@ -102,29 +84,15 @@ def process_cached_file(
     return cache.filepath
 
 
-def update_cache_from_local(
-    session: Session,
-    source_path: str,
-    folder: str,
-    url: str,
-    *,
-    base_dir: Optional[str] = None,
-):
-    """ 根据本地文件更新缓存记录
-    :param session: 数据库会话
-    :param source_path: 源文件路径
-    :param folder: 相对 base_dir 的子目录
-    :param url: 文件链接或标识符
-    :param base_dir: 根目录，默认 CACHE_LOCATION
-    """
+def update_cache_from_local(session: Session, source_path: str, folder: str, url: str):
+    """根据本地文件更新缓存记录；folder 为相对 ASSETS 的子目录。"""
     # 检查数据库中是否已有记录
     cache_downloads = session.query(Downloads).filter(Downloads.url == url).first()
     # 如果有记录，且文件存在，则跳过
     if cache_downloads and os.path.exists(cache_downloads.filepath):
         return cache_downloads.filepath
     # 确保缓存目录存在
-    root = base_dir if base_dir is not None else settings.CACHE_LOCATION
-    cache_folder = os.path.abspath(os.path.join(root, folder))
+    cache_folder = os.path.abspath(os.path.join(settings.ASSETS_LOCATION, folder))
     os.makedirs(cache_folder, exist_ok=True)
     # 生成文件名
     file_extension = os.path.splitext(source_path)[1]
@@ -186,19 +154,12 @@ def generate_file_name(url, response):
     return file_name + file_extension
 
 
-def download_file(url, download_dir, proxy=None, *, base_dir: Optional[str] = None):
-    """ 下载文件
-    :param url: 下载链接
-    :param download_dir: 相对 base_dir 的子目录（刮削番号目录或 ASSETS 下 covers/actors 等）
-    :param proxy: 代理信息，格式为 {"http": "http://proxy.com:8080", "https": "http://proxy.com:8080"}
-    :param base_dir: 根目录，默认 CACHE_LOCATION；业务资源传 ASSETS_LOCATION
-    :return: 下载的文件路径
-    """
+def download_file(url, download_dir, proxy=None):
+    """下载文件到 ASSETS（download_dir 如 covers/<番号>）。"""
     parsed = urlparse(url)
     headers = {"User-Agent": DOWNLOAD_USER_AGENT}
     if parsed.scheme and parsed.netloc:
         headers["Referer"] = f"{parsed.scheme}://{parsed.netloc}/"
-    root = base_dir if base_dir is not None else settings.CACHE_LOCATION
 
     for attempt in range(1, DOWNLOAD_RETRIES + 1):
         try:
@@ -211,7 +172,9 @@ def download_file(url, download_dir, proxy=None, *, base_dir: Optional[str] = No
             ) as response:
                 response.raise_for_status()
                 file_name = generate_file_name(url, response)
-                download_folder = os.path.abspath(os.path.join(root, download_dir))
+                download_folder = os.path.abspath(
+                    os.path.join(settings.ASSETS_LOCATION, download_dir)
+                )
                 os.makedirs(download_folder, exist_ok=True)
                 download_path = os.path.join(download_folder, file_name)
                 with open(download_path, 'wb') as file:

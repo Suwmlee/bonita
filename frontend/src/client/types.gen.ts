@@ -4727,6 +4727,10 @@ export type UploadImageData = {
          * Custom Url
          */
         custom_url?: string;
+        /**
+         * Number
+         */
+        number?: string;
     };
     url: '/api/v1/resource/upload/image';
 };

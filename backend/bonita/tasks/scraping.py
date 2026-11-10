@@ -12,6 +12,7 @@ from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
 from bonita.modules.scraping.number_parser import FileNumInfo, merge_stored_tags, release_tags_for
 from bonita.modules.scraping.scraping import load_all_NFO_from_folder, need_crop, prepare_scraped_output, scraping
+from bonita.services.resource_service import cover_folder_for_number
 from bonita.utils.downloader import update_cache_from_local
 from bonita.utils.http import get_active_proxy
 
@@ -220,7 +221,12 @@ def celery_import_nfo(self, folder_path, option):
                 if cover_path and os.path.exists(cover_path):
                     if not metadata_base.cover or metadata_base.cover == '':
                         metadata_base.cover = str(uuid.uuid4()).replace('-', '')
-                    update_cache_from_local(session, cover_path, metadata_base.number, metadata_base.cover)
+                    update_cache_from_local(
+                        session,
+                        cover_path,
+                        cover_folder_for_number(metadata_base.number),
+                        metadata_base.cover,
+                    )
                 filter_dict = Metadata.filter_dict(Metadata, metadata_base.__dict__)
                 metadata_db = Metadata(**filter_dict)
                 if metadata_base.number:

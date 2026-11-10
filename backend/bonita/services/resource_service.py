@@ -43,13 +43,17 @@ class PosterResult:
     cache_control: str
 
 
-def _safe_dirname(name: str) -> str:
-    """番号/演员名作目录名：去掉路径非法字符，空则用 unknown。"""
+def _safe_dirname(name: Optional[str]) -> str:
+    """番号/演员名作目录名：去掉路径非法字符；空则返回空串。"""
     text = (name or "").strip()
     for ch in _DIR_FORBIDDEN:
         text = text.replace(ch, "_")
-    text = text.strip(" .")
-    return text or "unknown"
+    return text.strip(" .")
+
+
+def cover_folder_for_number(number: Optional[str]) -> str:
+    name = _safe_dirname(number)
+    return os.path.join(COVER_FOLDER, name) if name else COVER_FOLDER
 
 
 class ResourceService:
@@ -58,30 +62,18 @@ class ResourceService:
     def __init__(self, session: Session):
         self.session = session
 
-    def _actor_folder_for_photo(self, url: str) -> Optional[str]:
-        """头像 URL 对应演员时返回 actors/<演员名>，否则 None。"""
-        actor = (
-            self.session.query(Actor.name)
-            .filter(Actor.photo == url)
-            .first()
-        )
-        if not actor or not actor.name:
-            return None
-        return os.path.join(ACTOR_PHOTO_FOLDER, _safe_dirname(actor.name))
-
-    def _cover_folder_for_url(self, url: str) -> str:
-        """封面 URL 对应元数据时返回 covers/<番号>，否则 covers。"""
+    def _folder_for_url(self, url: str) -> str:
+        """按 URL 反查落盘目录：演员头像 actors/<名>/，否则 covers/<番号>/（无番号则 covers）。"""
+        actor = self.session.query(Actor.name).filter(Actor.photo == url).first()
+        if actor and actor.name:
+            return os.path.join(ACTOR_PHOTO_FOLDER, _safe_dirname(actor.name))
         row = (
             self.session.query(Metadata.number)
-            .filter(
-                (Metadata.cover == url) | (Metadata.cover_small == url)
-            )
+            .filter((Metadata.cover == url) | (Metadata.cover_small == url))
             .order_by(Metadata.id.desc())
             .first()
         )
-        if row and (row.number or "").strip():
-            return os.path.join(COVER_FOLDER, _safe_dirname(row.number))
-        return COVER_FOLDER
+        return cover_folder_for_number(row.number if row else None)
 
     @staticmethod
     def resolve_image_path(path: str) -> Optional[str]:
@@ -96,26 +88,20 @@ class ResourceService:
         with _resolve_lock_for(path):
             from bonita.db import SessionFactory
 
-            folder = COVER_FOLDER
             proxy = None
+            folder = COVER_FOLDER
             session = SessionFactory()
             try:
                 cached = cached_filepath(session, path)
                 if cached:
                     return cached
-                svc = ResourceService(session)
-                folder = svc._actor_folder_for_photo(path) or svc._cover_folder_for_url(path)
+                folder = ResourceService(session)._folder_for_url(path)
                 proxy = get_active_proxy(session)
             finally:
                 session.close()
 
             try:
-                filepath = download_file(
-                    path,
-                    folder,
-                    proxy,
-                    base_dir=settings.ASSETS_LOCATION,
-                )
+                filepath = download_file(path, folder, proxy)
             except Exception as e:
                 logger.warning("Failed to fetch remote image %s: %s", path, e)
                 return None
@@ -132,12 +118,19 @@ class ResourceService:
             finally:
                 session.close()
 
-    def save_image(self, content: bytes, filename: Optional[str], custom_url: Optional[str] = None) -> str:
+    def save_image(
+        self,
+        content: bytes,
+        filename: Optional[str],
+        custom_url: Optional[str] = None,
+        *,
+        number: Optional[str] = None,
+    ) -> str:
         file_hash = hashlib.md5(content).hexdigest()
         file_ext = os.path.splitext(filename or "")[1]
         stored_name = f"{file_hash}{file_ext}"
         download_folder = os.path.abspath(
-            os.path.join(settings.ASSETS_LOCATION, COVER_FOLDER)
+            os.path.join(settings.ASSETS_LOCATION, cover_folder_for_number(number))
         )
         os.makedirs(download_folder, exist_ok=True)
         file_path = os.path.join(download_folder, stored_name)

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from bonita.db.models.metadata import Metadata
 from bonita.modules.scraping.scraping import scraping
+from bonita.services.resource_service import cover_folder_for_number
 from bonita.utils.actor_names import UNKNOWN_ACTOR, parse_actor_photos, split_actor_names
 from bonita.utils.downloader import process_cached_file
 from bonita.utils.http import get_active_proxy
@@ -254,7 +255,11 @@ class MetadataService:
         cover = payload.get("cover")
         if cover and str(cover).startswith(("http://", "https://")):
             try:
-                process_cached_file(self.session, cover, payload.get("number"))
+                process_cached_file(
+                    self.session,
+                    cover,
+                    cover_folder_for_number(payload.get("number")),
+                )
             except Exception as e:
                 logger.warning(f"封面下载失败，元数据仍将保存: {cover} — {e}")
 
