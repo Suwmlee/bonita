@@ -2,7 +2,9 @@ import logging
 from datetime import datetime
 
 from bonita.db.models.collection import Collection, CollectionItem
+from bonita.db.models.extrainfo import ExtraInfo
 from bonita.db.models.mediaitem import MediaItem
+from bonita.db.models.record import TransRecords
 from bonita.modules.media_service.client import (
     ITEM_EPISODE,
     ITEM_MOVIE,
@@ -14,9 +16,12 @@ from bonita.modules.media_service.client import (
 )
 from bonita.modules.media_service.factory import require_media_client
 from bonita.modules.media_service.matching import (
+    current_sync,
     find_remote_id_for_media_item,
+    load_library_index,
     media_item_label,
     resolve_collection_member,
+    sync_scope,
 )
 
 logger = logging.getLogger(__name__)
@@ -109,6 +114,9 @@ def _refresh_member_counts(session, collection: Collection, remote_item_count=No
     if touch_sync:
         collection.last_sync_at = datetime.now()
     session.commit()
+    ctx = current_sync()
+    if ctx is not None:
+        ctx.note_committed()
     session.refresh(collection)
 
 
@@ -118,13 +126,68 @@ def sync_collection_members(session, collection: Collection, direction: str = "f
     return sync_collection_from_server(session, collection)
 
 
+def _chunks(values, size=400):
+    values = list(values)
+    for start in range(0, len(values), size):
+        yield values[start:start + size]
+
+
+def _load_member_media(session, members):
+    ids = [member.media_item_id for member in members if member.media_item_id]
+    media_by_id = {}
+    for chunk in _chunks(ids):
+        for row in session.query(MediaItem).filter(MediaItem.id.in_(chunk)):
+            media_by_id[row.id] = row
+    series_ids = [
+        row.series_id for row in media_by_id.values()
+        if row.series_id and row.series_id not in media_by_id
+    ]
+    for chunk in _chunks(series_ids):
+        for row in session.query(MediaItem).filter(MediaItem.id.in_(chunk)):
+            media_by_id[row.id] = row
+    dest_by_number = {}
+    numbers = []
+    for row in media_by_id.values():
+        number = (row.number or "").strip()
+        if number and number not in dest_by_number:
+            dest_by_number[number] = []
+            numbers.append(number)
+    for chunk in _chunks(numbers):
+        rows = session.query(ExtraInfo.number, TransRecords.destpath).join(
+            ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath
+        ).filter(ExtraInfo.number.in_(chunk)).all()
+        for number, path in rows:
+            if not number or not path:
+                continue
+            bucket = dest_by_number.setdefault(number, [])
+            if path not in bucket:
+                bucket.append(path)
+    return media_by_id, dest_by_number
+
+
+def _ensure_library_index(ctx, client):
+    if ctx.index_ready:
+        return ctx.library_index
+    ctx.index_ready = True
+    ctx.library_index = load_library_index(client)
+    return ctx.library_index
+
+
 def sync_collection_from_server(session, collection: Collection) -> Collection:
+    with sync_scope(session) as ctx:
+        return _sync_collection_from_server(session, collection, ctx)
+
+
+def _sync_collection_from_server(session, collection: Collection, ctx) -> Collection:
     source = collection_source(collection)
     client = require_media_client(source)
     label = source_label(source)
     logger.info(f"  → 合集 {collection.name}: 从 {label} 拉取成员")
     refresh_collection_meta(session, collection)
     boxset_items = client.get_collection_items(collection.external_id)
+    for item in boxset_items:
+        if item.item_type == ITEM_SERIES:
+            ctx.remember_series(item)
     existing = {
         row.media_item_id: row
         for row in session.query(CollectionItem).filter(
@@ -137,36 +200,40 @@ def sync_collection_from_server(session, collection: Collection) -> Collection:
     added = 0
     unmatched = 0
     for item in boxset_items:
-        if item.item_type not in _COLLECTION_MEMBER_TYPES:
-            continue
-        remote_id = item.remote_id
-        if remote_id and remote_id in existing_remote_ids:
-            continue
-        media_item = resolve_collection_member(session, item, client)
-        if not media_item:
-            unmatched += 1
-            logger.info(
-                f"    ⊘ 合集 {collection.name}: 未匹配 "
-                f"{item.title or item.remote_id} path={item.path}"
+        try:
+            if item.item_type not in _COLLECTION_MEMBER_TYPES:
+                continue
+            remote_id = item.remote_id
+            if remote_id and remote_id in existing_remote_ids:
+                continue
+            media_item = resolve_collection_member(session, item, client)
+            if not media_item:
+                unmatched += 1
+                logger.info(
+                    f"    ⊘ 合集 {collection.name}: 未匹配 "
+                    f"{item.title or item.remote_id} path={item.path}"
+                )
+                continue
+            row = existing.get(media_item.id)
+            if row:
+                if remote_id and row.external_item_id != remote_id:
+                    row.external_item_id = remote_id
+                    existing_remote_ids.add(remote_id)
+                continue
+            member = CollectionItem(
+                collection_id=collection.id,
+                media_item_id=media_item.id,
+                external_item_id=remote_id,
             )
-            continue
-        row = existing.get(media_item.id)
-        if row:
-            if remote_id and row.external_item_id != remote_id:
-                row.external_item_id = remote_id
+            session.add(member)
+            existing[media_item.id] = member
+            if remote_id:
                 existing_remote_ids.add(remote_id)
-            continue
-        member = CollectionItem(
-            collection_id=collection.id,
-            media_item_id=media_item.id,
-            external_item_id=remote_id,
-        )
-        session.add(member)
-        existing[media_item.id] = member
-        if remote_id:
-            existing_remote_ids.add(remote_id)
-        added += 1
+            added += 1
+        finally:
+            ctx.tick(session)
     session.flush()
+    ctx.mark_touched()
     _refresh_member_counts(
         session,
         collection,
@@ -182,51 +249,64 @@ def sync_collection_from_server(session, collection: Collection) -> Collection:
 
 
 def sync_collection_to_server(session, collection: Collection) -> Collection:
+    with sync_scope(session) as ctx:
+        return _sync_collection_to_server(session, collection, ctx)
+
+
+def _sync_collection_to_server(session, collection: Collection, ctx) -> Collection:
     source = collection_source(collection)
     client = require_media_client(source)
     label = source_label(source)
     logger.info(f"  → 合集 {collection.name}: 开始回写 {label}")
+    _ensure_library_index(ctx, client)
     refresh_collection_meta(session, collection)
     boxset_items = client.get_collection_items(collection.external_id)
     remote_ids = {item.remote_id for item in boxset_items if item.remote_id}
+    base_count = len(boxset_items)
     members = session.query(CollectionItem).filter(
         CollectionItem.collection_id == collection.id
     ).all()
+    media_by_id, dest_by_number = _load_member_media(session, members)
+    ctx.media_by_id = media_by_id
+    ctx.dest_paths_by_number = dest_by_number
     wanted_ids = set()
     unresolved = 0
-    for member in members:
-        media_item = session.query(MediaItem).filter(
-            MediaItem.id == member.media_item_id
-        ).first()
-        if not media_item:
-            session.delete(member)
-            continue
-        resolved_id = member.external_item_id
-        already_in_collection = resolved_id and resolved_id in remote_ids
-        is_number = bool(media_item and (media_item.number or "").strip())
-        if not already_in_collection:
-            looked_up = None
-            if media_item:
-                looked_up = find_remote_id_for_media_item(session, client, media_item)
-            if looked_up:
-                if resolved_id and resolved_id != looked_up:
-                    logger.info(
-                        f"    ↻ 合集 {collection.name}: "
-                        f"{media_item_label(media_item)} {label} Id "
-                        f"{resolved_id} → {looked_up}"
+    try:
+        for member in members:
+            try:
+                media_item = media_by_id.get(member.media_item_id)
+                if not media_item:
+                    session.delete(member)
+                    continue
+                resolved_id = member.external_item_id
+                already_in_collection = resolved_id and resolved_id in remote_ids
+                is_number = bool((media_item.number or "").strip())
+                if not already_in_collection:
+                    looked_up = find_remote_id_for_media_item(session, client, media_item)
+                    if looked_up:
+                        if resolved_id and resolved_id != looked_up:
+                            logger.info(
+                                f"    ↻ 合集 {collection.name}: "
+                                f"{media_item_label(media_item)} {label} Id "
+                                f"{resolved_id} → {looked_up}"
+                            )
+                        resolved_id = looked_up
+                        member.external_item_id = looked_up
+                    elif is_number:
+                        resolved_id = None
+                if resolved_id:
+                    wanted_ids.add(resolved_id)
+                else:
+                    unresolved += 1
+                    logger.warning(
+                        f"    ⊘ 合集 {collection.name}: 无法在 {label} 找到 "
+                        f"{media_item_label(media_item) or member.media_item_id}"
                     )
-                resolved_id = looked_up
-                member.external_item_id = looked_up
-            elif is_number:
-                resolved_id = None
-        if resolved_id:
-            wanted_ids.add(resolved_id)
-        else:
-            unresolved += 1
-            logger.warning(
-                f"    ⊘ 合集 {collection.name}: 无法在 {label} 找到 "
-                f"{media_item_label(media_item) or member.media_item_id}"
-            )
+            finally:
+                ctx.tick(session)
+    finally:
+        ctx.media_by_id = None
+        ctx.dest_paths_by_number = None
     to_add = [item_id for item_id in wanted_ids if item_id not in remote_ids]
     to_remove = [item_id for item_id in remote_ids if item_id not in wanted_ids]
     added_ok, add_failed = 0, 0
@@ -238,11 +318,15 @@ def sync_collection_to_server(session, collection: Collection) -> Collection:
             collection.external_id, to_remove
         )
     session.flush()
-    boxset_items = client.get_collection_items(collection.external_id)
+    ctx.mark_touched()
+    if add_failed or remove_failed:
+        remote_count = len(client.get_collection_items(collection.external_id))
+    else:
+        remote_count = base_count + added_ok - removed_ok
     _refresh_member_counts(
         session,
         collection,
-        remote_item_count=len(boxset_items),
+        remote_item_count=remote_count,
         touch_sync=True,
     )
     logger.info(
@@ -310,10 +394,11 @@ def sync_whitelisted_collections(session, direction: str = "from_server") -> int
         logger.info("  ⊘ 没有要同步的合集")
         return 0
     synced = 0
-    for collection in collections:
-        try:
-            sync_collection_members(session, collection, direction=direction)
-            synced += 1
-        except Exception as e:
-            logger.error(f"  ✗ 合集同步失败 {collection.name}: {e}")
+    with sync_scope(session):
+        for collection in collections:
+            try:
+                sync_collection_members(session, collection, direction=direction)
+                synced += 1
+            except Exception as e:
+                logger.error(f"  ✗ 合集同步失败 {collection.name}: {e}")
     return synced

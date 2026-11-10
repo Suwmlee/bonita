@@ -27,6 +27,8 @@ from bonita.utils.singleton import Singleton
 
 logger = logging.getLogger(__name__)
 
+_PAGE_SIZE = 200
+
 _EMBY_TYPE_MAP = {
     "Movie": ITEM_MOVIE,
     "Video": ITEM_VIDEO,
@@ -287,6 +289,41 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
 
         return libraries
 
+    def _paged_items(self, endpoint: str, params: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """按固定页拉完。服务端忽略 StartIndex 时用 Id 去重后停止。"""
+        items: List[Dict[str, Any]] = []
+        start = 0
+        seen = set()
+        while True:
+            page_params = dict(params)
+            page_params["StartIndex"] = start
+            page_params["Limit"] = _PAGE_SIZE
+            response = self._make_request("get", endpoint, params=page_params)
+            if not isinstance(response, dict):
+                break
+            page = response.get("Items") or []
+            fresh = []
+            for row in page:
+                item_id = row.get("Id") if isinstance(row, dict) else None
+                if item_id:
+                    if item_id in seen:
+                        continue
+                    seen.add(item_id)
+                fresh.append(row)
+            if not fresh:
+                break
+            items.extend(fresh)
+            total = response.get("TotalRecordCount")
+            start += len(page)
+            if len(page) < _PAGE_SIZE:
+                break
+            if isinstance(total, int) and start >= total:
+                break
+            if start >= 100000:
+                logger.warning(f"Emby 分页超过 100000 条，停止继续拉取 {endpoint}")
+                break
+        return items
+
     def get_user_library_items(self, library_id: str, library_type: str, user_id: str) -> dict[str, Any]:
         """Get items for a library
         """
@@ -299,65 +336,41 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
             "seasons": [],
             "episodes": [],
         }
+        endpoint = f"/Users/{user_id}/Items"
 
-        # Get movies
         if library_type == "movies" or not library_type:
-            # Get fully movies
-            matched_movies = self._make_request(
-                'get',
-                f'/Users/{user_id}/Items',
-                params={
-                    "ParentId": library_id,
-                    "IncludeItemTypes": "Movie",
-                    "Recursive": "True",
-                    "Fields": "ItemCounts,ProviderIds,Path,MediaSources,DateCreated,UserDataLastPlayedDate"
-                }
-            )
+            result["movies"].extend(self._paged_items(endpoint, {
+                "ParentId": library_id,
+                "IncludeItemTypes": "Movie",
+                "Recursive": "True",
+                "Fields": "ItemCounts,ProviderIds,Path,MediaSources,DateCreated,UserData,UserDataLastPlayedDate",
+            }))
 
-            if isinstance(matched_movies, dict) and matched_movies.get("Items"):
-                result["movies"].extend(matched_movies.get("Items", []))
-
-        # Get TV shows and episodes
         if library_type == "tvshows" or not library_type:
-            # Get all shows in the library
-            all_shows = self._make_request(
-                'get',
-                f'/Users/{user_id}/Items',
-                params={
-                    "ParentId": library_id,
-                    "isPlaceHolder": "false",
-                    "IncludeItemTypes": "Series",
-                    "Recursive": "True",
-                    "Fields": "ProviderIds,Path,RecursiveItemCount,UserData"
-                }
-            )
-
-            if isinstance(all_shows, dict) and all_shows.get("Items"):
-                for show in all_shows.get("Items", []):
-                    result["series"].append(show)
-                    show_id = show.get("Id")
-                    seasons = self._make_request(
-                        'get',
-                        f'/Shows/{show_id}/Seasons',
-                        params={
-                            "userId": user_id,
-                            "Fields": "UserData,ProviderIds,IndexNumber,SeriesName,SeriesId",
-                        }
-                    )
-                    if isinstance(seasons, dict) and seasons.get("Items"):
-                        result["seasons"].extend(seasons.get("Items", []))
-                    show_episodes = self._make_request(
-                        'get',
-                        f'/Shows/{show_id}/Episodes',
-                        params={
-                            "userId": user_id,
-                            "isPlaceHolder": "false",
-                            "Fields": "ProviderIds,Path,MediaSources,DateCreated,UserDataLastPlayedDate,SeriesName,SeriesId,IndexNumber,ParentIndexNumber,RunTimeTicks"
-                        }
-                    )
-
-                    if isinstance(show_episodes, dict) and show_episodes.get("Items"):
-                        result["episodes"].extend(show_episodes.get("Items", []))
+            logger.info("  → 按库分页拉取剧、季、集")
+            result["series"].extend(self._paged_items(endpoint, {
+                "ParentId": library_id,
+                "isPlaceHolder": "false",
+                "IncludeItemTypes": "Series",
+                "Recursive": "True",
+                "Fields": "ProviderIds,Path,RecursiveItemCount,UserData,OriginalTitle",
+            }))
+            result["seasons"].extend(self._paged_items(endpoint, {
+                "ParentId": library_id,
+                "IncludeItemTypes": "Season",
+                "Recursive": "True",
+                "Fields": "UserData,ProviderIds,IndexNumber,SeriesName,SeriesId,Path",
+            }))
+            result["episodes"].extend(self._paged_items(endpoint, {
+                "ParentId": library_id,
+                "isPlaceHolder": "false",
+                "IncludeItemTypes": "Episode",
+                "Recursive": "True",
+                "Fields": (
+                    "ProviderIds,Path,MediaSources,DateCreated,UserData,UserDataLastPlayedDate,"
+                    "SeriesName,SeriesId,IndexNumber,ParentIndexNumber,RunTimeTicks"
+                ),
+            }))
 
         return result
 
@@ -390,6 +403,23 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
                 result[library_id] = items
 
         return result
+
+    def list_index_items(self) -> List[RemoteItem]:
+        """整库分页拉一次，供合集回写在内存里按现有规则挑选。"""
+        if not self.emby_user_id:
+            return []
+        raw_items = self._paged_items(
+            f"/Users/{self.emby_user_id}/Items",
+            {
+                "Recursive": "True",
+                "IncludeItemTypes": "Movie,Video,Episode,Series",
+                "Fields": (
+                    "ProviderIds,Path,MediaSources,OriginalTitle,SeriesName,SeriesId,"
+                    "IndexNumber,ParentIndexNumber"
+                ),
+            },
+        )
+        return [item for item in (self.to_remote_item(raw) for raw in raw_items) if item]
 
     def get_item_details(self, item_id) -> Dict[str, Any]:
         """按当前用户取单条详情。Emby 没有 GET /emby/Items/{id}，网页端用的是用户库接口。"""
@@ -584,7 +614,7 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
             user_id (str, optional): User ID, uses configured user if None
         """
         if not user_id:
-            user_id = self.get_users().get(self.emby_user)
+            user_id = self.emby_user_id
         return self._make_request('post', f'/emby/Users/{user_id}/PlayedItems/{item_id}')
 
     def mark_as_unplayed(self, item_id, user_id=None):

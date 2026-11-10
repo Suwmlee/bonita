@@ -3,6 +3,7 @@ import logging
 from bonita.db.models.watch_history import WatchHistory
 from bonita.modules.media_service.client import (
     ITEM_SEASON,
+    ITEM_SERIES,
     SOURCE_EMBY,
     MediaServerClient,
     RemoteItem,
@@ -11,9 +12,12 @@ from bonita.modules.media_service.client import (
 )
 from bonita.modules.media_service.factory import ensure_media_client
 from bonita.modules.media_service.matching import (
+    _commit_or_flush,
+    _save_new,
     ensure_series,
     find_transfer_record,
     resolve_media_item,
+    sync_scope,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,18 +50,23 @@ def sync_watch_history(session, direction="from_server", force=False, source=SOU
         processed = 0
         synced = 0
         to_server = is_to_server(direction)
-        for item in items:
-            try:
-                processed += 1
-                if to_server:
-                    if sync_item_to_server(session, client, item, force):
+        with sync_scope(session) as ctx:
+            for item in items:
+                if item.item_type == ITEM_SERIES:
+                    ctx.remember_series(item)
+            for item in items:
+                try:
+                    processed += 1
+                    if to_server:
+                        if sync_item_to_server(session, client, item, force):
+                            synced += 1
+                    else:
+                        apply_remote_watch(session, client, item, force)
                         synced += 1
-                else:
-                    apply_remote_watch(session, client, item, force)
-                    synced += 1
-            except Exception as e:
-                logger.error(f"  ✗ 处理项目失败: {e}")
-                continue
+                except Exception as e:
+                    logger.error(f"  ✗ 处理项目失败: {e}")
+                    continue
+                ctx.tick(session)
 
         logger.info(f"  ✓ 同步完成 - 处理:{processed} 同步:{synced}")
         return
@@ -113,7 +122,7 @@ def apply_remote_watch(session, client: MediaServerClient, item: RemoteItem, for
             existing_record.favorite = final_favorite
             existing_record.play_progress = play_progress
             existing_record.duration = duration
-            session.commit()
+            _commit_or_flush(session)
             logger.info(f"    ✓ 更新观看记录: {title}")
     else:
         new_record = WatchHistory(
@@ -124,7 +133,7 @@ def apply_remote_watch(session, client: MediaServerClient, item: RemoteItem, for
             play_progress=play_progress,
             duration=duration,
         )
-        new_record.create(session)
+        _save_new(session, new_record)
         logger.info(f"    ✓ 创建观看记录: {title}")
 
     if media_item.media_type == "tvshow" and is_favorite:
@@ -204,13 +213,16 @@ def propagate_favorite_to_episodes(session, series_id, season=None):
                 history.favorite = True
                 updated += 1
         else:
-            WatchHistory(
-                media_item_id=episode.id,
-                watched=False,
-                watch_count=0,
-                favorite=True,
-            ).create(session)
+            _save_new(
+                session,
+                WatchHistory(
+                    media_item_id=episode.id,
+                    watched=False,
+                    watch_count=0,
+                    favorite=True,
+                ),
+            )
             updated += 1
     if updated:
-        session.commit()
+        _commit_or_flush(session)
         logger.info(f"    ♥ 已将收藏同步到 {updated} 集")

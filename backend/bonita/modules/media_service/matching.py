@@ -1,5 +1,7 @@
 import logging
 import os
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 from bonita.db.models.collection import Collection, CollectionItem
 from bonita.db.models.extrainfo import ExtraInfo
@@ -24,6 +26,146 @@ logger = logging.getLogger(__name__)
 
 UNLINKED_VIDEO_TYPE = "video"
 _UNLINKED_VIDEO_TYPES = {ITEM_MOVIE, ITEM_VIDEO}
+_SYNC_BATCH = 200
+_sync_ctx: ContextVar = ContextVar("bonita_media_sync", default=None)
+
+
+def current_sync():
+    return _sync_ctx.get()
+
+
+@contextmanager
+def use_sync_context(ctx):
+    token = _sync_ctx.set(ctx)
+    try:
+        yield ctx
+    finally:
+        _sync_ctx.reset(token)
+
+
+@contextmanager
+def sync_scope(session):
+    """一次同步共用父剧字典、路径缓存和攒批提交。已在同步里时沿用外层。"""
+    current = current_sync()
+    if current is not None:
+        yield current
+        return
+    ctx = SyncContext()
+    with use_sync_context(ctx):
+        try:
+            yield ctx
+        finally:
+            ctx.finish(session)
+
+
+class SyncContext:
+    def __init__(self):
+        self.series_by_id = {}
+        self.series_fetched = set()
+        self.exact_records = {}
+        self.path_records = {}
+        self.library_index = None
+        self.index_ready = False
+        self.dest_paths_by_number = None
+        self.media_by_id = None
+        self._pending = 0
+        self._touched = False
+
+    def mark_touched(self):
+        self._touched = True
+
+    def _needs_commit(self, session):
+        return self._touched or bool(session.new or session.dirty or session.deleted)
+
+    def _commit(self, session):
+        if not self._needs_commit(session):
+            return
+        session.commit()
+        self.exact_records.clear()
+        self.path_records.clear()
+        self._touched = False
+
+    def tick(self, session):
+        self._pending += 1
+        if self._pending < _SYNC_BATCH:
+            return
+        self._pending = 0
+        self._commit(session)
+
+    def finish(self, session):
+        self._commit(session)
+        self._pending = 0
+
+    def note_committed(self):
+        self._pending = 0
+        self._touched = False
+        self.exact_records.clear()
+        self.path_records.clear()
+
+    def remember_series(self, item: RemoteItem):
+        if not item or not item.remote_id:
+            return
+        prev = self.series_by_id.get(item.remote_id)
+        if prev is None or prev is item:
+            self.series_by_id[item.remote_id] = item
+            return
+        if is_blank(prev.original_title) and not is_blank(item.original_title):
+            prev.original_title = item.original_title
+        if is_blank(prev.title) and item.title:
+            prev.title = item.title
+        for key in ("imdb", "tmdb", "tvdb"):
+            if is_blank(prev.provider_ids.get(key)) and not is_blank(item.provider_ids.get(key)):
+                prev.provider_ids[key] = item.provider_ids[key]
+
+    def load_series(self, client, remote_id):
+        if not remote_id:
+            return None
+        cached = self.series_by_id.get(remote_id)
+        if remote_id in self.series_fetched or _series_remote_complete(cached):
+            return cached
+        details = client.get_item(remote_id)
+        self.series_fetched.add(remote_id)
+        if details:
+            self.remember_series(details)
+        return self.series_by_id.get(remote_id)
+
+
+def _series_remote_complete(item: RemoteItem) -> bool:
+    return bool(
+        item
+        and not is_blank(item.imdb_id)
+        and not is_blank(item.tmdb_id)
+        and not is_blank(item.tvdb_id)
+        and not is_blank(item.original_title)
+    )
+
+
+def _commit_or_flush(session):
+    ctx = current_sync()
+    if ctx is not None:
+        session.flush()
+        ctx.mark_touched()
+        return
+    session.commit()
+
+
+def _save_new(session, obj):
+    ctx = current_sync()
+    if ctx is not None:
+        session.add(obj)
+        session.flush()
+        ctx.mark_touched()
+        return
+    obj.create(session)
+
+
+def _series_item(client, remote_id):
+    if not remote_id:
+        return None
+    ctx = current_sync()
+    if ctx is None:
+        return client.get_item(remote_id)
+    return ctx.load_series(client, remote_id)
 
 
 def is_blank(value) -> bool:
@@ -73,7 +215,7 @@ def create_unlinked_video(session, item: RemoteItem) -> MediaItem:
         title=title,
         original_title=original_title,
     )
-    media_item.create(session)
+    _save_new(session, media_item)
     logger.info(f"    ✓ 创建无关联视频: {title}")
     return media_item
 
@@ -97,12 +239,16 @@ def find_media_item_by_remote_id(session, remote_id: str, source: str = None):
 def find_transfer_record(session, filepath):
     if not filepath:
         return None, None
+    ctx = current_sync()
+    if ctx is not None and filepath in ctx.exact_records:
+        return ctx.exact_records[filepath]
     result = session.query(TransRecords, ExtraInfo).outerjoin(
         ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath
     ).filter(TransRecords.destpath == filepath).first()
-    if not result:
-        return None, None
-    return result[0], result[1]
+    pair = (result[0], result[1]) if result else (None, None)
+    if ctx is not None:
+        ctx.exact_records[filepath] = pair
+    return pair
 
 
 def find_by_provider_ids(
@@ -144,7 +290,7 @@ def update_media_fields(session, media_item, **fields):
             setattr(media_item, key, value)
             changed = True
     if changed:
-        session.commit()
+        _commit_or_flush(session)
     return changed
 
 
@@ -225,9 +371,14 @@ def _incomplete_provider_ids(media_item: MediaItem) -> bool:
     )
 
 
-def _fill_series_ids_from_client(session, client: MediaServerClient, media_item: MediaItem):
-    """按已有编号再查远端剧，补全父剧空着的 IMDb/TMDB/TVDB。"""
+def _fill_series_ids_from_client(
+    session, client: MediaServerClient, media_item: MediaItem, series_remote: RemoteItem = None
+):
+    """按已有编号再查远端剧，补全父剧空着的 IMDb/TMDB/TVDB。手里已有这部剧时不再搜。"""
     if not media_item or not _incomplete_provider_ids(media_item):
+        return
+    if series_remote is not None:
+        fill_blank_provider_ids(session, media_item, series_remote)
         return
     items = query_by_providers(client, media_item, [ITEM_SERIES])
     matched = pick_remote_item(items, media_item, force_series=True)
@@ -285,7 +436,7 @@ def _resolve_movie(session, item: RemoteItem, create=True):
         tmdb_id=tmdb_id,
         tvdb_id=tvdb_id,
     )
-    media_item.create(session)
+    _save_new(session, media_item)
     logger.debug(f"    ✓ 创建媒体项: {title}")
     return media_item
 
@@ -375,7 +526,7 @@ def _resolve_episode(session, item: RemoteItem, client: MediaServerClient, creat
         season_number=season,
         episode_number=episode_no,
     )
-    media_item.create(session)
+    _save_new(session, media_item)
     logger.info(f"    ✓ 创建剧集: {series_name} S{season:02d}E{episode_no:02d} {episode_title}")
     return media_item
 
@@ -386,8 +537,11 @@ def _series_details_from_remote(item: RemoteItem, client: MediaServerClient):
         imdb_id, tmdb_id, tvdb_id = item.imdb_id, item.tmdb_id, item.tvdb_id
         original_title = item.original_title or ""
         series_name = (item.title or item.series_name or "").strip()
+        ctx = current_sync()
+        if ctx is not None and item.remote_id:
+            ctx.remember_series(item)
         if is_blank(imdb_id) or is_blank(tmdb_id) or is_blank(tvdb_id) or not original_title:
-            details = client.get_item(item.remote_id)
+            details = _series_item(client, item.remote_id)
             if details:
                 imdb_id = imdb_id or details.imdb_id
                 tmdb_id = tmdb_id or details.tmdb_id
@@ -399,7 +553,7 @@ def _series_details_from_remote(item: RemoteItem, client: MediaServerClient):
     series_name = (item.series_name or "").strip()
     imdb_id = tmdb_id = tvdb_id = original_title = ""
     if item.series_remote_id:
-        details = client.get_item(item.series_remote_id)
+        details = _series_item(client, item.series_remote_id)
         if details:
             imdb_id, tmdb_id, tvdb_id = details.imdb_id, details.tmdb_id, details.tvdb_id
             original_title = details.original_title or ""
@@ -436,7 +590,13 @@ def ensure_series(session, item: RemoteItem, record, client: MediaServerClient, 
             tvdb_id=tvdb_id or media_item.tvdb_id,
         )
         if _incomplete_provider_ids(media_item):
-            _fill_series_ids_from_client(session, client, media_item)
+            series_remote = None
+            active = current_sync()
+            if active is not None:
+                remote_id = item.remote_id if item.item_type == ITEM_SERIES else item.series_remote_id
+                if remote_id:
+                    series_remote = active.series_by_id.get(remote_id)
+            _fill_series_ids_from_client(session, client, media_item, series_remote)
         if has_external_ids(media_item.imdb_id, media_item.tmdb_id, media_item.tvdb_id):
             return media_item
         logger.debug(f"    ⊘ 已有剧集缺少 IMDB/TMDB/TVDB，跳过: {series_name}")
@@ -455,7 +615,7 @@ def ensure_series(session, item: RemoteItem, record, client: MediaServerClient, 
         tmdb_id=tmdb_id or None,
         tvdb_id=tvdb_id or None,
     )
-    media_item.create(session)
+    _save_new(session, media_item)
     logger.info(f"    ✓ 创建剧集父项: {series_name}")
     return media_item
 
@@ -470,6 +630,9 @@ def dest_paths_for_media_item(session, media_item: MediaItem) -> list:
     if not media_item or not (media_item.number or "").strip():
         return []
     number = media_item.number.strip()
+    ctx = current_sync()
+    if ctx is not None and ctx.dest_paths_by_number is not None:
+        return list(ctx.dest_paths_by_number.get(number) or [])
     rows = session.query(TransRecords.destpath).join(
         ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath
     ).filter(ExtraInfo.number == number).all()
@@ -510,11 +673,18 @@ def find_record_for_path(session, remote_path: str):
     """一条远端路径对到一条记录。先全等，再按后缀比较。"""
     if not remote_path:
         return None
+    ctx = current_sync()
+    if ctx is not None and remote_path in ctx.path_records:
+        return ctx.path_records[remote_path]
     record, _extra = find_transfer_record(session, remote_path)
     if record:
+        if ctx is not None:
+            ctx.path_records[remote_path] = record
         return record
     basename = os.path.basename(remote_path.replace("\\", "/").rstrip("/"))
     if not basename:
+        if ctx is not None:
+            ctx.path_records[remote_path] = None
         return None
     rows = (
         session.query(TransRecords)
@@ -523,6 +693,8 @@ def find_record_for_path(session, remote_path: str):
     )
     matches = [row for row in rows if paths_match(remote_path, row.destpath or "")]
     if not matches:
+        if ctx is not None:
+            ctx.path_records[remote_path] = None
         return None
     norm = remote_path.replace("\\", "/").rstrip("/").lower()
     matches.sort(
@@ -532,7 +704,10 @@ def find_record_for_path(session, remote_path: str):
         ),
         reverse=True,
     )
-    return matches[0]
+    found = matches[0]
+    if ctx is not None:
+        ctx.path_records[remote_path] = found
+    return found
 
 
 def number_item_for_remote(session, item: RemoteItem):
@@ -569,12 +744,19 @@ def link_remote_files(session, item: RemoteItem, media_item: MediaItem) -> None:
             record.media_item_id = target.id
             changed = True
     if changed or session.new or session.dirty:
-        session.commit()
+        _commit_or_flush(session)
+
+
+def _item_source(client):
+    ctx = current_sync()
+    if ctx is not None and ctx.index_ready and ctx.library_index is not None:
+        return ctx.library_index
+    return client
 
 
 def find_remote_id_for_media_item(session, client: MediaServerClient, media_item: MediaItem) -> str:
     if media_item.media_type == "episode":
-        return _find_episode_id(session, client, media_item)
+        return _find_episode_id(session, _item_source(client), media_item)
     if media_item.media_type == UNLINKED_VIDEO_TYPE:
         row = session.query(CollectionItem).filter(
             CollectionItem.media_item_id == media_item.id,
@@ -582,18 +764,19 @@ def find_remote_id_for_media_item(session, client: MediaServerClient, media_item
             CollectionItem.external_item_id != "",
         ).first()
         return row.external_item_id if row else None
+    source = _item_source(client)
     if (media_item.number or "").strip():
-        return _find_id_by_destpath(session, client, media_item)
+        return _find_id_by_destpath(session, source, media_item)
 
     include_types = [ITEM_SERIES] if media_item.media_type == "tvshow" else [ITEM_MOVIE, ITEM_VIDEO]
-    items = query_by_providers(client, media_item, include_types)
+    items = query_by_providers(source, media_item, include_types)
     matched = pick_remote_item(items, media_item)
     if matched:
         fill_blank_provider_ids(session, media_item, matched)
         return matched.remote_id
     term = (media_item.title or "").strip()
     if term:
-        items = client.query_items(include_types, search_term=term, limit=100)
+        items = source.query_items(include_types, search_term=term, limit=100)
         matched = pick_remote_item(items, media_item)
         if matched:
             fill_blank_provider_ids(session, media_item, matched)
@@ -651,19 +834,43 @@ def _item_matches_destpath(item: RemoteItem, destpath: str) -> bool:
     return any(paths_match(path, destpath) for path in remote_file_paths(item))
 
 
-def _find_id_by_destpath(session, client: MediaServerClient, media_item: MediaItem) -> str:
+def _normalize_path(path: str) -> str:
+    return (path or "").replace("\\", "/").rstrip("/").lower()
+
+
+def _best_destpath_match(items, destpath: str):
+    """同一搜索词里有多条路径能对上时，全等优先，其次取更长的路径。"""
+    target = _normalize_path(destpath)
+    best = None
+    best_rank = None
+    for item in items:
+        rank = None
+        for path in remote_file_paths(item):
+            if not paths_match(path, destpath):
+                continue
+            norm = _normalize_path(path)
+            candidate = (norm == target, len(norm))
+            if rank is None or candidate > rank:
+                rank = candidate
+        if rank is not None and (best_rank is None or rank > best_rank):
+            best = item
+            best_rank = rank
+    return best.remote_id if best else None
+
+
+def _find_id_by_destpath(session, client, media_item: MediaItem) -> str:
     include_types = [ITEM_SERIES] if media_item.media_type == "tvshow" else [ITEM_MOVIE, ITEM_VIDEO]
     number = (media_item.number or "").strip()
     for destpath in dest_paths_for_media_item(session, media_item):
         for term in _destpath_search_terms(destpath, number):
             items = client.query_items(include_types, search_term=term, limit=50)
-            for item in items:
-                if _item_matches_destpath(item, destpath):
-                    return item.remote_id
+            matched = _best_destpath_match(items, destpath)
+            if matched:
+                return matched
     return None
 
 
-def _find_episode_id(session, client: MediaServerClient, media_item: MediaItem) -> str:
+def _find_episode_id(session, client, media_item: MediaItem) -> str:
     items = query_by_providers(client, media_item, [ITEM_EPISODE])
     matched = pick_remote_item(items, media_item)
     if matched:
@@ -671,7 +878,11 @@ def _find_episode_id(session, client: MediaServerClient, media_item: MediaItem) 
         return matched.remote_id
     series = None
     if media_item.series_id:
-        series = session.query(MediaItem).filter(MediaItem.id == media_item.series_id).first()
+        active = current_sync()
+        if active is not None and active.media_by_id is not None:
+            series = active.media_by_id.get(media_item.series_id)
+        else:
+            series = session.query(MediaItem).filter(MediaItem.id == media_item.series_id).first()
     series_remote_id = None
     if series:
         series_remote_id = find_remote_id_for_media_item(session, client, series)
@@ -693,7 +904,7 @@ def _find_episode_id(session, client: MediaServerClient, media_item: MediaItem) 
     return None
 
 
-def query_by_providers(client: MediaServerClient, media_item: MediaItem, item_types: list):
+def query_by_providers(client, media_item: MediaItem, item_types: list):
     items = []
     seen = set()
     lookups = []
@@ -754,3 +965,69 @@ def pick_remote_item(items, media_item: MediaItem, force_series=False):
                 return item
     movies = [item for item in items if item.item_type in (ITEM_MOVIE, ITEM_VIDEO)]
     return (movies or items)[0]
+
+
+class LibraryIndex:
+    """库内条目缓存。查询参数与 EmbyClient.query_items 相同，挑选仍走原来的函数。"""
+
+    def __init__(self, items):
+        self.items = list(items or [])
+
+    def query_items(
+        self,
+        item_types,
+        search_term=None,
+        imdb_id=None,
+        tmdb_id=None,
+        tvdb_id=None,
+        parent_id=None,
+        limit=25,
+    ):
+        types = set(item_types or [])
+        term = (search_term or "").strip().lower()
+        matched = []
+        for item in self.items:
+            if types and item.item_type not in types:
+                continue
+            if parent_id and item.series_remote_id != parent_id:
+                continue
+            if imdb_id and item.imdb_id != imdb_id:
+                continue
+            if tmdb_id and str(item.tmdb_id or "") != str(tmdb_id):
+                continue
+            if tvdb_id and item.tvdb_id != tvdb_id:
+                continue
+            if term and _search_rank(item, term) is None:
+                continue
+            matched.append(item)
+        if term:
+            matched.sort(key=lambda item: _search_rank(item, term))
+        if limit and limit > 0:
+            return matched[:limit]
+        return matched
+
+
+def _search_rank(item: RemoteItem, term: str):
+    """越小越靠前。对不上返回 None。标题、原标题和路径都参与，文件名搜索才能对上。"""
+    title = (item.title or "").strip().lower()
+    original = (item.original_title or "").strip().lower()
+    paths = [_normalize_path(path) for path in remote_file_paths(item)]
+    names = [title, original]
+    names.extend(os.path.basename(path) for path in paths if path)
+    if term in names or term in paths:
+        return 0
+    if any(name.startswith(term) for name in names if name):
+        return 1
+    if any(term in name for name in names if name) or any(term in path for path in paths):
+        return 2
+    return None
+
+
+def load_library_index(client):
+    try:
+        items = client.list_index_items()
+    except Exception as e:
+        logger.warning(f"  ⊘ 库内索引拉取失败，改为按条查找: {e}")
+        return None
+    logger.info(f"  → 库内索引 {len(items)} 条")
+    return LibraryIndex(items)
