@@ -1,7 +1,10 @@
+import ast
+import json
 import logging
-from typing import List, Optional, Tuple
+import re
+from typing import Iterable, List, Optional, Tuple
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from bonita.db.models.metadata import Metadata
@@ -10,6 +13,140 @@ from bonita.utils.downloader import process_cached_file
 from bonita.utils.http import get_active_proxy
 
 logger = logging.getLogger(__name__)
+
+UNKNOWN_ACTOR = "佚名"
+_ACTOR_SPLIT = re.compile(r"[,，、|/]+")
+_ACTOR_COVERS = 4
+
+
+def split_actor_names(actor: Optional[str]) -> List[str]:
+    """演员字段按逗号等分隔。空值归到佚名，同一条里的重复名字只留一次。"""
+    text = (actor or "").strip()
+    if not text:
+        return [UNKNOWN_ACTOR]
+    names: List[str] = []
+    seen = set()
+    for part in _ACTOR_SPLIT.split(text):
+        name = part.strip()
+        if not name:
+            continue
+        key = name.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        names.append(name)
+    return names or [UNKNOWN_ACTOR]
+
+
+def parse_actor_photos(raw: Optional[str]) -> dict:
+    """actor_photo 可能是 JSON，也可能是 Python 字典字符串。"""
+    text = (raw or "").strip()
+    if not text:
+        return {}
+    value = None
+    try:
+        value = json.loads(text)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        try:
+            value = ast.literal_eval(text)
+        except (SyntaxError, ValueError):
+            return {}
+    if not isinstance(value, dict):
+        return {}
+    photos = {}
+    for key, photo in value.items():
+        name = str(key).strip()
+        url = str(photo).strip() if photo is not None else ""
+        if name and url:
+            photos[name] = url
+    return photos
+
+
+def _photo_for(photos: dict, name: str, only_actor: bool) -> Optional[str]:
+    target = name.casefold()
+    for key, url in photos.items():
+        if key.casefold() == target:
+            return url
+    if only_actor and len(photos) == 1:
+        return next(iter(photos.values()))
+    return None
+
+
+class _Reverse:
+    """让字符串按降序参与升序排序，同时保持佚名排在最后。"""
+
+    def __init__(self, value: str):
+        self.value = value
+
+    def __lt__(self, other: "_Reverse") -> bool:
+        return self.value > other.value
+
+
+def _like_contains(value: str) -> str:
+    escaped = (
+        value.replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+    )
+    return f"%{escaped}%"
+
+
+def group_actor_summaries(rows: Iterable, sort: str = "count") -> List[dict]:
+    """按演员聚合。调用方应把较新的作品放在前面，封面和头像取最近的。"""
+    buckets: dict = {}
+    for row in rows:
+        names = split_actor_names(getattr(row, "actor", None))
+        photos = parse_actor_photos(getattr(row, "actor_photo", None))
+        cover = (getattr(row, "cover", None) or "").strip()
+        raw_crop = getattr(row, "crop", True)
+        crop = True if raw_crop is None else bool(raw_crop)
+        row_id = getattr(row, "id", None)
+        only_actor = len(names) == 1
+        for name in names:
+            key = name.casefold()
+            bucket = buckets.get(key)
+            if bucket is None:
+                bucket = {
+                    "name": name,
+                    "photo": None,
+                    "count": 0,
+                    "covers": [],
+                    "cover_paths": set(),
+                    "seen": set(),
+                }
+                buckets[key] = bucket
+            if row_id is not None:
+                if row_id in bucket["seen"]:
+                    continue
+                bucket["seen"].add(row_id)
+            bucket["count"] += 1
+            if not bucket["photo"]:
+                bucket["photo"] = _photo_for(photos, name, only_actor)
+            if cover and cover not in bucket["cover_paths"] and len(bucket["covers"]) < _ACTOR_COVERS:
+                bucket["cover_paths"].add(cover)
+                bucket["covers"].append({"path": cover, "crop": crop})
+
+    def sort_key(item: dict):
+        unknown = item["name"] == UNKNOWN_ACTOR
+        name = item["name"].casefold()
+        if sort in ("name", "name_asc"):
+            return (unknown, name)
+        if sort == "name_desc":
+            return (unknown, _Reverse(name))
+        if sort == "count_asc":
+            return (unknown, item["count"], name)
+        return (unknown, -item["count"], name)
+
+    ordered = sorted(buckets.values(), key=sort_key)
+    return [
+        {
+            "name": item["name"],
+            "photo": item["photo"],
+            "count": item["count"],
+            "covers": item["covers"],
+        }
+        for item in ordered
+    ]
 
 
 class MetadataService:
@@ -60,6 +197,14 @@ class MetadataService:
             .first()
         )
 
+    def _filter_query(self, query, filter_text: Optional[str]):
+        if not filter_text:
+            return query
+        like = f"%{filter_text}%"
+        return query.filter(
+            Metadata.number.ilike(like) | Metadata.actor.ilike(like)
+        )
+
     def list_metadata(
         self,
         skip: int = 0,
@@ -68,17 +213,67 @@ class MetadataService:
         sort_by: str = "updatetime",
         sort_desc: bool = True,
     ) -> Tuple[List[Metadata], int]:
-        query = self.session.query(Metadata)
-        if filter_text:
-            query = query.filter(
-                Metadata.number.ilike(f"%{filter_text}%") |
-                Metadata.actor.ilike(f"%{filter_text}%")
-            )
+        query = self._filter_query(self.session.query(Metadata), filter_text)
         sort_column = getattr(Metadata, sort_by, Metadata.updatetime)
         query = query.order_by(sort_column.desc() if sort_desc else sort_column.asc())
         count = query.count()
         data = query.offset(skip).limit(limit).all()
         return data, count
+
+    def list_actors(
+        self,
+        skip: int = 0,
+        limit: int = 24,
+        filter_text: Optional[str] = None,
+        sort: str = "count",
+    ) -> Tuple[List[dict], int]:
+        """按演员聚合。一人多部、一部多人都会拆开；佚名始终排在最后。"""
+        if sort == "count":
+            sort = "count_desc"
+        elif sort == "name":
+            sort = "name_asc"
+        elif sort not in ("count_desc", "count_asc", "name_asc", "name_desc"):
+            sort = "count_desc"
+        query = self.session.query(
+            Metadata.id,
+            Metadata.actor,
+            Metadata.actor_photo,
+            Metadata.cover,
+            Metadata.crop,
+            Metadata.updatetime,
+        )
+        query = self._filter_query(query, filter_text)
+        query = query.order_by(Metadata.updatetime.desc(), Metadata.id.desc())
+        grouped = group_actor_summaries(query.all(), sort=sort)
+        return grouped[skip:skip + limit], len(grouped)
+
+    def list_actor_works(
+        self,
+        actor_name: str,
+        skip: int = 0,
+        limit: int = 24,
+        filter_text: Optional[str] = None,
+    ) -> Tuple[List[Metadata], int]:
+        """某一位演员的作品。用名字预筛选后再按分隔后的演员精确匹配，避免短名字套中长名字。"""
+        name = (actor_name or "").strip()
+        if not name:
+            return [], 0
+        query = self._filter_query(self.session.query(Metadata), filter_text)
+        if name == UNKNOWN_ACTOR:
+            query = query.filter(or_(
+                Metadata.actor.ilike(_like_contains(name), escape="\\"),
+                Metadata.actor.is_(None),
+                func.trim(Metadata.actor) == "",
+            ))
+        else:
+            query = query.filter(Metadata.actor.ilike(_like_contains(name), escape="\\"))
+        query = query.order_by(Metadata.updatetime.desc(), Metadata.id.desc())
+        key = name.casefold()
+        matched = [
+            row for row in query.all()
+            if any(actor.casefold() == key for actor in split_actor_names(row.actor))
+        ]
+        return matched[skip:skip + limit], len(matched)
 
     def _cache_cover_if_needed(self, payload: dict) -> None:
         cover = payload.get("cover")

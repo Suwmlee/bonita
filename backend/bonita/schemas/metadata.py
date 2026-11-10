@@ -87,6 +87,25 @@ class MetadataCollection(BaseModel):
     count: int
 
 
+class ActorCover(BaseModel):
+    """演员墙上的一张封面。crop 为真时取横图右侧海报，为假时展示整张。"""
+    path: str
+    crop: bool = True
+
+
+class ActorSummary(BaseModel):
+    """一位演员及其作品数量、头像和最近几张封面"""
+    name: str
+    photo: Optional[str] = None
+    count: int
+    covers: List[ActorCover] = []
+
+
+class ActorCollection(BaseModel):
+    data: List[ActorSummary]
+    count: int
+
+
 class MetadataRefreshParam(BaseModel):
     """按站点/详情链接重新刮削"""
     site: Optional[str] = None

@@ -1,6 +1,6 @@
 import asyncio
 from fastapi import APIRouter, HTTPException
-from typing import Any, List
+from typing import Any, List, Optional
 
 from scrapinglib import getSupportedSources
 
@@ -49,6 +49,43 @@ async def get_metadata(
         filter_text=filter,
         sort_by=sort_by,
         sort_desc=sort_desc,
+    )
+    data_list = [schemas.MetadataPublic.model_validate(meta.to_dict()) for meta in data]
+    return schemas.MetadataCollection(data=data_list, count=count)
+
+
+@router.get("/actors", response_model=schemas.ActorCollection)
+async def list_actors(
+    session: SessionDep,
+    skip: int = 0,
+    limit: int = 24,
+    filter: Optional[str] = None,
+    sort: str = "count",
+) -> Any:
+    """按演员聚合元数据。sort 为 count_desc、count_asc、name_asc、name_desc，佚名固定在最后。"""
+    data, count = MetadataService(session).list_actors(
+        skip=skip,
+        limit=limit,
+        filter_text=filter,
+        sort=sort,
+    )
+    return schemas.ActorCollection(data=data, count=count)
+
+
+@router.get("/actors/works", response_model=schemas.MetadataCollection)
+async def list_actor_works(
+    session: SessionDep,
+    actor: str,
+    skip: int = 0,
+    limit: int = 24,
+    filter: Optional[str] = None,
+) -> Any:
+    """获取某一位演员的作品，按更新时间倒序。"""
+    data, count = MetadataService(session).list_actor_works(
+        actor_name=actor,
+        skip=skip,
+        limit=limit,
+        filter_text=filter,
     )
     data_list = [schemas.MetadataPublic.model_validate(meta.to_dict()) for meta in data]
     return schemas.MetadataCollection(data=data_list, count=count)
