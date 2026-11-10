@@ -95,6 +95,7 @@ class ActorCover(BaseModel):
 
 class ActorSummary(BaseModel):
     """一位演员及其作品数量、头像和最近几张封面"""
+    id: Optional[int] = None
     name: str
     photo: Optional[str] = None
     count: int

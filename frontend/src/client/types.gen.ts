@@ -41,6 +41,10 @@ export type ActorCover = {
  */
 export type ActorSummary = {
     /**
+     * Id
+     */
+    id?: number | null;
+    /**
      * Name
      */
     name: string;

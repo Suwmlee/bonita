@@ -45,7 +45,6 @@ const actorWorks = ref<MetadataPublic[]>([])
 const actorWorksTotal = ref(0)
 const actorWorksPage = ref(1)
 const heroPhotoBroken = ref(false)
-const heroPhotoLoaded = ref(false)
 const heroCoverBroken = ref<Record<string, boolean>>({})
 const { t } = useI18n()
 
@@ -211,7 +210,6 @@ function showAddDialog() {
 
 function openActor(actor: ActorSummary) {
   heroPhotoBroken.value = false
-  heroPhotoLoaded.value = false
   heroCoverBroken.value = {}
   selectedActor.value = actor
   window.scrollTo({ top: 0, behavior: "smooth" })
@@ -417,15 +415,13 @@ onMounted(() => {
           <VIcon icon="bx-chevron-left" size="28" />
         </VBtn>
         <div class="hero-avatar" :style="{ background: actorGradient(selectedActor.name) }">
+          <span>{{ actorInitial(selectedActor.name) }}</span>
           <img
             v-if="showHeroPhoto"
-            v-show="heroPhotoLoaded"
             :src="resourceImageUrl(selectedActor.photo || '')"
             :alt="selectedActor.name"
-            @load="heroPhotoLoaded = true"
             @error="heroPhotoBroken = true"
           />
-          <span v-if="!heroPhotoLoaded || !showHeroPhoto">{{ actorInitial(selectedActor.name) }}</span>
         </div>
         <div class="hero-text">
           <p class="hero-name">{{ selectedActor.name }}</p>

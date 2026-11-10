@@ -15,14 +15,9 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const broken = ref<Record<string, boolean>>({})
-const loaded = ref<Record<string, boolean>>({})
 
 function markBroken(key: string) {
   broken.value = { ...broken.value, [key]: true }
-}
-
-function markLoaded(key: string) {
-  loaded.value = { ...loaded.value, [key]: true }
 }
 
 function coversOf(actor: ActorSummary) {
@@ -40,7 +35,7 @@ function showPhoto(actor: ActorSummary) {
   <VRow>
     <VCol
       v-for="actor in actors"
-      :key="actor.name"
+      :key="actor.id ?? actor.name"
       cols="6"
       sm="4"
       md="4"
@@ -85,15 +80,13 @@ function showPhoto(actor: ActorSummary) {
           <div class="stage-shade" />
           <div class="actor-copy">
             <div class="avatar" :style="{ background: actorGradient(actor.name) }">
+              <span>{{ actorInitial(actor.name) }}</span>
               <img
                 v-if="showPhoto(actor)"
-                v-show="loaded[`photo:${actor.name}`]"
                 :src="resourceImageUrl(actor.photo || '')"
                 :alt="actor.name"
-                @load="markLoaded(`photo:${actor.name}`)"
                 @error="markBroken(`photo:${actor.name}`)"
               />
-              <span v-if="!loaded[`photo:${actor.name}`] || !showPhoto(actor)">{{ actorInitial(actor.name) }}</span>
             </div>
             <p class="actor-name">{{ actor.name }}</p>
             <p class="actor-count">{{ t('pages.metadata.workCount', { count: actor.count }) }}</p>

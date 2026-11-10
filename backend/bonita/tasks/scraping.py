@@ -91,6 +91,12 @@ def celery_scrapping(self, file_path, scraping_dict):
             )
             if scraping_conf.save_metadata:
                 metadata_record.create(session)
+                from bonita.services.actor_service import ActorService
+                ActorService(session).ensure_from_metadata_fields(
+                    metadata_record.actor,
+                    metadata_record.actor_photo,
+                )
+                session.commit()
             metadata_mixed = schemas.MetadataMixed(**metadata_record.to_dict())
 
         # 目录用纯番号。文件名由 prepare_scraped_output 统一生成，版本后缀只进番号
@@ -220,6 +226,12 @@ def celery_import_nfo(self, folder_path, option):
                 if metadata_base.number:
                     metadata_db.crop = need_crop(metadata_base.number)
                 metadata_db.create(session)
+                from bonita.services.actor_service import ActorService
+                ActorService(session).ensure_from_metadata_fields(
+                    metadata_db.actor,
+                    metadata_db.actor_photo,
+                )
+                session.commit()
                 from bonita.modules.media_service.record_link import attach_number_records
                 attach_number_records(session, metadata_db.number, metadata_db.title or "")
             except Exception as e:

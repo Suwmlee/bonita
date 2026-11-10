@@ -62,7 +62,7 @@ async def list_actors(
     filter: Optional[str] = None,
     sort: str = "count",
 ) -> Any:
-    """按演员聚合元数据。sort 为 count_desc、count_asc、name_asc、name_desc，佚名固定在最后。"""
+    """按 Actor 表聚合作品。sort 为 count_desc、count_asc、name_asc、name_desc，佚名固定在最后。"""
     data, count = MetadataService(session).list_actors(
         skip=skip,
         limit=limit,
@@ -70,6 +70,15 @@ async def list_actors(
         sort=sort,
     )
     return schemas.ActorCollection(data=data, count=count)
+
+
+@router.post("/actors/sync", response_model=schemas.Response)
+async def sync_actors_from_metadata(session: SessionDep) -> Any:
+    """从现有 Metadata.actor 回填 Actor / ActorAlias。"""
+    from bonita.services.actor_service import ActorService
+
+    result = ActorService(session).sync_from_metadata()
+    return schemas.Response(success=True, message="演员回填完成", data=result)
 
 
 @router.get("/actors/works", response_model=schemas.MetadataCollection)
@@ -89,7 +98,6 @@ async def list_actor_works(
     )
     data_list = [schemas.MetadataPublic.model_validate(meta.to_dict()) for meta in data]
     return schemas.MetadataCollection(data=data_list, count=count)
-
 
 @router.post("/{id}/refresh", response_model=schemas.MetadataBase)
 async def refresh_metadata(
