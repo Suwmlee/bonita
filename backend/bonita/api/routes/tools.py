@@ -90,6 +90,15 @@ async def cleanup_data(
     return tool_service.cleanup_data(delete_files)
 
 
+@router.post("/actors/tidy", response_model=schemas.Response)
+async def tidy_actors(session: SessionDep):
+    """整理演员与元数据关联：回填出演，并清理无出演的废弃演员。"""
+    from bonita.services.actor_service import ActorService
+
+    result = ActorService(session).tidy_from_metadata()
+    return schemas.Response(success=True, message="演员整理完成", data=result)
+
+
 @router.get("/scrapinglib", response_model=schemas.ScrapinglibVersion)
 async def get_scrapinglib_version(session: SessionDep):
     """检测 scrapinglib 当前版本与 PyPI 最新版本"""
