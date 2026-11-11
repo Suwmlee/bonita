@@ -60,6 +60,46 @@ export type ActorSummary = {
      * Covers
      */
     covers?: Array<ActorCover>;
+    /**
+     * Aliases
+     *
+     * 不含主名的别名列表
+     */
+    aliases?: Array<string>;
+};
+
+/**
+ * ActorAliasPublic
+ */
+export type ActorAliasPublic = {
+    id: number;
+    name: string;
+    createtime: string;
+};
+
+/**
+ * ActorPublic
+ */
+export type ActorPublic = {
+    id: number;
+    name: string;
+    photo?: string | null;
+    birth_date?: string | null;
+    outline?: string | null;
+    aliases?: Array<ActorAliasPublic>;
+    createtime: string;
+    updatetime: string;
+};
+
+/**
+ * ActorUpdate
+ */
+export type ActorUpdate = {
+    name?: string | null;
+    photo?: string | null;
+    birth_date?: string | null;
+    outline?: string | null;
+    aliases?: Array<string> | null;
 };
 
 /**
@@ -3348,7 +3388,11 @@ export type ListActorWorksData = {
         /**
          * Actor
          */
-        actor: string;
+        actor?: string;
+        /**
+         * Actor Id
+         */
+        actor_id?: number | null;
         /**
          * Skip
          */
@@ -3382,6 +3426,48 @@ export type ListActorWorksResponses = {
 };
 
 export type ListActorWorksResponse = ListActorWorksResponses[keyof ListActorWorksResponses];
+
+export type GetActorData = {
+    body?: never;
+    path: {
+        actor_id: number;
+    };
+    query?: never;
+    url: '/api/v1/metadata/actors/{actor_id}';
+};
+
+export type GetActorErrors = {
+    422: HttpValidationError;
+};
+
+export type GetActorError = GetActorErrors[keyof GetActorErrors];
+
+export type GetActorResponses = {
+    200: ActorPublic;
+};
+
+export type GetActorResponse = GetActorResponses[keyof GetActorResponses];
+
+export type UpdateActorData = {
+    body: ActorUpdate;
+    path: {
+        actor_id: number;
+    };
+    query?: never;
+    url: '/api/v1/metadata/actors/{actor_id}';
+};
+
+export type UpdateActorErrors = {
+    422: HttpValidationError;
+};
+
+export type UpdateActorError = UpdateActorErrors[keyof UpdateActorErrors];
+
+export type UpdateActorResponses = {
+    200: ActorPublic;
+};
+
+export type UpdateActorResponse = UpdateActorResponses[keyof UpdateActorResponses];
 
 export type RefreshMetadataData = {
     body: MetadataRefreshParam;
@@ -4419,6 +4505,31 @@ export type CleanupDataResponses = {
 };
 
 export type CleanupDataResponse = CleanupDataResponses[keyof CleanupDataResponses];
+
+export type TidyActorsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tools/actors/tidy';
+};
+
+export type TidyActorsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TidyActorsError = TidyActorsErrors[keyof TidyActorsErrors];
+
+export type TidyActorsResponses = {
+    /**
+     * Successful Response
+     */
+    200: Response;
+};
+
+export type TidyActorsResponse = TidyActorsResponses[keyof TidyActorsResponses];
 
 export type GetScrapinglibVersionData = {
     body?: never;

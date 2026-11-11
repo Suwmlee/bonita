@@ -89,6 +89,13 @@ function showPhoto(actor: ActorSummary) {
               />
             </div>
             <p class="actor-name">{{ actor.name }}</p>
+            <p
+              v-if="(actor.aliases ?? []).length"
+              class="actor-aliases"
+              :title="(actor.aliases ?? []).join(' / ')"
+            >
+              {{ (actor.aliases ?? []).join(' / ') }}
+            </p>
             <p class="actor-count">{{ t('pages.metadata.workCount', { count: actor.count }) }}</p>
           </div>
         </div>
@@ -241,6 +248,21 @@ function showPhoto(actor: ActorSummary) {
   line-height: 1.3;
   text-align: center;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.actor-aliases {
+  width: 100%;
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.42);
+  text-shadow: none;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;

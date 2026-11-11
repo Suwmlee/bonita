@@ -174,6 +174,7 @@ export default {
       totalActors: "共 {count} 位演员",
       noActors: "没有找到演员。请调整搜索或添加新元数据。",
       backToActors: "返回演员",
+      editActor: "编辑演员",
     },
     subtitles: {
       title: "字幕",
@@ -629,6 +630,20 @@ export default {
         emptyInput: "请输入 JSON 数据或选择文件",
         resultSuccess: "成功导入 {count} 条记录",
         resultFailed: "，{count} 条失败",
+      },
+      actorEdit: {
+        title: "编辑演员",
+        primaryName: "主名",
+        aliases: "别名",
+        addAlias: "添加别名",
+        editAlias: "修改别名",
+        removeAlias: "删除别名",
+        applyEdit: "确认修改",
+        add: "添加",
+        nameRequired: "主名不能为空",
+        loadFailed: "加载演员失败",
+        saveSuccess: "演员已保存",
+        saveFailed: "保存失败",
       },
       form: {
         number: "番号",

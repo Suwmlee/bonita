@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { ActorSummary, MetadataPublic } from "@/client"
+import type { ActorPublic, ActorSummary, MetadataPublic } from "@/client"
+import MetadataActorEditDialog from "@/components/metadata/MetadataActorEditDialog.vue"
 import MetadataActorWall from "@/components/metadata/MetadataActorWall.vue"
 import MetadataDetailDialog from "@/components/metadata/MetadataDetailDialog.vue"
 import MetadataRefreshDialog from "@/components/metadata/MetadataRefreshDialog.vue"
@@ -46,6 +47,7 @@ const actorWorksTotal = ref(0)
 const actorWorksPage = ref(1)
 const heroPhotoBroken = ref(false)
 const heroCoverBroken = ref<Record<string, boolean>>({})
+const showActorEditDialog = ref(false)
 const { t } = useI18n()
 
 const viewModeOptions = computed(() => [
@@ -116,6 +118,7 @@ async function fetchWorks(page: number, perPage?: number) {
       keyword(),
       page,
       perPage,
+      selectedActor.value.id,
     )
     if (result === null) return
     actorWorks.value = result.data
@@ -223,6 +226,27 @@ function backToActors() {
 
 function markHeroCoverBroken(cover: string) {
   heroCoverBroken.value = { ...heroCoverBroken.value, [cover]: true }
+}
+
+function openActorEdit() {
+  if (!selectedActor.value?.id) return
+  showActorEditDialog.value = true
+}
+
+async function onActorSaved(actor: ActorPublic) {
+  if (!selectedActor.value) return
+  const primary = actor.name.toLowerCase()
+  selectedActor.value = {
+    ...selectedActor.value,
+    id: actor.id,
+    name: actor.name,
+    photo: actor.photo ?? selectedActor.value.photo,
+    aliases: (actor.aliases ?? [])
+      .map((item) => item.name)
+      .filter((name) => name.trim().toLowerCase() !== primary),
+  }
+  heroPhotoBroken.value = false
+  await fetchWorks(1)
 }
 
 async function changePage(page: number) {
@@ -424,12 +448,37 @@ onMounted(() => {
           />
         </div>
         <div class="hero-text">
-          <p class="hero-name">{{ selectedActor.name }}</p>
+          <div class="hero-name-row">
+            <p class="hero-name">{{ selectedActor.name }}</p>
+            <VBtn
+              v-if="selectedActor.id"
+              icon
+              variant="text"
+              size="small"
+              class="hero-edit"
+              :title="t('pages.metadata.editActor')"
+              @click="openActorEdit"
+            >
+              <VIcon icon="bx-edit-alt" size="20" />
+            </VBtn>
+          </div>
+          <p
+            v-if="(selectedActor.aliases ?? []).length"
+            class="hero-aliases"
+            :title="(selectedActor.aliases ?? []).join(' / ')"
+          >
+            {{ (selectedActor.aliases ?? []).join(' / ') }}
+          </p>
           <p class="hero-sub">{{ t('pages.metadata.workCount', { count: selectedActor.count }) }}</p>
         </div>
       </div>
     </div>
 
+    <MetadataActorEditDialog
+      v-model="showActorEditDialog"
+      :actor="selectedActor"
+      @saved="onActorSaved"
+    />
     <MetadataActorWall
       v-if="viewMode === 'actor' && !selectedActor"
       :actors="actors"
@@ -634,12 +683,39 @@ onMounted(() => {
   object-fit: cover;
 }
 
+.hero-name-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .hero-name {
   margin: 0;
   font-size: 1.7rem;
   font-weight: 650;
   line-height: 1.2;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+.hero-edit {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.hero-edit:hover {
+  color: #fff;
+}
+
+.hero-aliases {
+  margin: 6px 0 0;
+  max-width: 100%;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.42);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .hero-sub {

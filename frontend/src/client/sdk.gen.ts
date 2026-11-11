@@ -2,7 +2,7 @@
 
 import { buildClientParams, type Client, formDataBodySerializer, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { AddCollectionErrors, AddCollectionResponses, AddItemsToCollectionErrors, AddItemsToCollectionResponses, BodyLoginLoginAccessToken, BodyResourceUploadImage, BodySubtitleUploadSubtitles, CleanMediaItemResponses, CleanupDataErrors, CleanupDataResponses, CleanupRunningTasksResponses, CollectionAddItems, CollectionCreate, CreateConfigErrors, CreateConfigResponses, CreateMediaItemErrors, CreateMediaItemResponses, CreateMetadataErrors, CreateMetadataResponses, CreateTaskConfigErrors, CreateTaskConfigResponses, CreateUserErrors, CreateUserResponses, DeleteConfigErrors, DeleteConfigResponses, DeleteMediaItemErrors, DeleteMediaItemResponses, DeleteMediaItemsErrors, DeleteMediaItemsResponses, DeleteMetadataErrors, DeleteMetadataResponses, DeleteRecordsErrors, DeleteRecordsResponses, DeleteSubtitleErrors, DeleteSubtitleResponses, DeleteTaskConfigErrors, DeleteTaskConfigResponses, DeleteUserErrors, DeleteUserMeResponses, DeleteUserResponses, DeliverOneSubtitleErrors, DeliverOneSubtitleResponses, DeliverSubtitlesErrors, DeliverSubtitlesResponses, EmbySettings, EmbySyncParam, EmbyWebhookResponses, GetAllConfigsErrors, GetAllConfigsResponses, GetAllTaskConfigsErrors, GetAllTaskConfigsResponses, GetAllTasksStatusErrors, GetAllTasksStatusResponses, GetCollectionErrors, GetCollectionResponses, GetEmbySettingsResponses, GetImageByQueryErrors, GetImageByQueryResponses, GetMediaItemErrors, GetMediaItemResponses, GetMediaItemsErrors, GetMediaItemsResponses, GetMetadataErrors, GetMetadataResponses, GetPosterErrors, GetPosterResponses, GetProxySettingsResponses, GetQbittorrentSettingsResponses, GetRecordGroupsErrors, GetRecordGroupsResponses, GetRecordsErrors, GetRecordsResponses, GetScrapinglibVersionResponses, GetTransmissionSettingsResponses, GetTransRecordsErrors, GetTransRecordsResponses, HealthCheckResponses, ListActorsErrors, ListActorsResponses, ListActorWorksErrors, ListActorWorksResponses, ListCollectionsResponses, ListDirectoryErrors, ListDirectoryResponses, ListMetadataSitesResponses, ListSubtitleGroupsErrors, ListSubtitleGroupsResponses, ListSubtitlesErrors, ListSubtitlesResponses, LoginAccessTokenErrors, LoginAccessTokenResponses, MediaItemBatchDelete, MediaItemCreate, MediaItemUpdate, MetadataBase, MetadataCreate, MetadataRefreshParam, PreferSubtitleErrors, PreferSubtitleResponses, ProxySettings, QBittorrentSettings, ReadUserByIdErrors, ReadUserByIdResponses, ReadUserMeResponses, ReadUsersErrors, ReadUsersResponses, RecordPublic, RefreshMetadataErrors, RefreshMetadataResponses, RegisterUserErrors, RegisterUserResponses, RemoveCollectionErrors, RemoveCollectionResponses, RemoveItemFromCollectionErrors, RemoveItemFromCollectionResponses, RetransferSubtitleErrors, RetransferSubtitleResponses, RunEmbyScanErrors, RunEmbyScanResponses, RunImportNfoErrors, RunImportNfoResponses, RunTransferTaskErrors, RunTransferTaskResponses, ScrapingConfigCreate, ScrapingConfigPublic, SearchCollectionCandidatesErrors, SearchCollectionCandidatesResponses, SearchEmbyCollectionsErrors, SearchEmbyCollectionsResponses, SubtitleDeliverRequest, SubtitleUpdate, SyncAllCollectionsErrors, SyncAllCollectionsResponses, SyncEmbyWatchHistoryErrors, SyncEmbyWatchHistoryResponses, SyncOneCollectionErrors, SyncOneCollectionResponses, SyncRecordPathErrors, SyncRecordPathResponses, TaskPathParam, TestEmbyConnectionErrors, TestEmbyConnectionResponses, TestQbittorrentConnectionErrors, TestQbittorrentConnectionResponses, TestTransmissionConnectionErrors, TestTransmissionConnectionResponses, ToolArgsParam, TransferConfigCreate, TransferConfigPublic, TransmissionSettings, TransRecordsPathSyncParam, UpdateConfigErrors, UpdateConfigResponses, UpdateEmbySettingsErrors, UpdateEmbySettingsResponses, UpdateMediaItemErrors, UpdateMediaItemResponses, UpdateMetadataErrors, UpdateMetadataResponses, UpdatePassword, UpdatePasswordMeErrors, UpdatePasswordMeResponses, UpdateProxySettingsErrors, UpdateProxySettingsResponses, UpdateQbittorrentSettingsErrors, UpdateQbittorrentSettingsResponses, UpdateRecordErrors, UpdateRecordResponses, UpdateScrapinglibResponses, UpdateSeasonErrors, UpdateSeasonResponses, UpdateSubtitleErrors, UpdateSubtitleResponses, UpdateTaskConfigErrors, UpdateTaskConfigResponses, UpdateTopFolderErrors, UpdateTopFolderResponses, UpdateTransmissionSettingsErrors, UpdateTransmissionSettingsResponses, UpdateUserErrors, UpdateUserMeErrors, UpdateUserMeResponses, UpdateUserResponses, UploadImageErrors, UploadImageResponses, UploadSubtitlesErrors, UploadSubtitlesResponses, UserCreate, UserRegister, UserUpdate, UserUpdateMe } from './types.gen';
+import type { ActorUpdate, AddCollectionErrors, AddCollectionResponses, AddItemsToCollectionErrors, AddItemsToCollectionResponses, BodyLoginLoginAccessToken, BodyResourceUploadImage, BodySubtitleUploadSubtitles, CleanMediaItemResponses, CleanupDataErrors, CleanupDataResponses, CleanupRunningTasksResponses, TidyActorsErrors, TidyActorsResponses, CollectionAddItems, CollectionCreate, CreateConfigErrors, CreateConfigResponses, CreateMediaItemErrors, CreateMediaItemResponses, CreateMetadataErrors, CreateMetadataResponses, CreateTaskConfigErrors, CreateTaskConfigResponses, CreateUserErrors, CreateUserResponses, DeleteConfigErrors, DeleteConfigResponses, DeleteMediaItemErrors, DeleteMediaItemResponses, DeleteMediaItemsErrors, DeleteMediaItemsResponses, DeleteMetadataErrors, DeleteMetadataResponses, DeleteRecordsErrors, DeleteRecordsResponses, DeleteSubtitleErrors, DeleteSubtitleResponses, DeleteTaskConfigErrors, DeleteTaskConfigResponses, DeleteUserErrors, DeleteUserMeResponses, DeleteUserResponses, DeliverOneSubtitleErrors, DeliverOneSubtitleResponses, DeliverSubtitlesErrors, DeliverSubtitlesResponses, EmbySettings, EmbySyncParam, EmbyWebhookResponses, GetActorErrors, GetActorResponses, GetAllConfigsErrors, GetAllConfigsResponses, GetAllTaskConfigsErrors, GetAllTaskConfigsResponses, GetAllTasksStatusErrors, GetAllTasksStatusResponses, GetCollectionErrors, GetCollectionResponses, GetEmbySettingsResponses, GetImageByQueryErrors, GetImageByQueryResponses, GetMediaItemErrors, GetMediaItemResponses, GetMediaItemsErrors, GetMediaItemsResponses, GetMetadataErrors, GetMetadataResponses, GetPosterErrors, GetPosterResponses, GetProxySettingsResponses, GetQbittorrentSettingsResponses, GetRecordGroupsErrors, GetRecordGroupsResponses, GetRecordsErrors, GetRecordsResponses, GetScrapinglibVersionResponses, GetTransmissionSettingsResponses, GetTransRecordsErrors, GetTransRecordsResponses, HealthCheckResponses, ListActorsErrors, ListActorsResponses, ListActorWorksErrors, ListActorWorksResponses, ListCollectionsResponses, ListDirectoryErrors, ListDirectoryResponses, ListMetadataSitesResponses, ListSubtitleGroupsErrors, ListSubtitleGroupsResponses, ListSubtitlesErrors, ListSubtitlesResponses, LoginAccessTokenErrors, LoginAccessTokenResponses, MediaItemBatchDelete, MediaItemCreate, MediaItemUpdate, MetadataBase, MetadataCreate, MetadataRefreshParam, PreferSubtitleErrors, PreferSubtitleResponses, ProxySettings, QBittorrentSettings, ReadUserByIdErrors, ReadUserByIdResponses, ReadUserMeResponses, ReadUsersErrors, ReadUsersResponses, RecordPublic, RefreshMetadataErrors, RefreshMetadataResponses, RegisterUserErrors, RegisterUserResponses, RemoveCollectionErrors, RemoveCollectionResponses, RemoveItemFromCollectionErrors, RemoveItemFromCollectionResponses, RetransferSubtitleErrors, RetransferSubtitleResponses, RunEmbyScanErrors, RunEmbyScanResponses, RunImportNfoErrors, RunImportNfoResponses, RunTransferTaskErrors, RunTransferTaskResponses, ScrapingConfigCreate, ScrapingConfigPublic, SearchCollectionCandidatesErrors, SearchCollectionCandidatesResponses, SearchEmbyCollectionsErrors, SearchEmbyCollectionsResponses, SubtitleDeliverRequest, SubtitleUpdate, SyncAllCollectionsErrors, SyncAllCollectionsResponses, SyncEmbyWatchHistoryErrors, SyncEmbyWatchHistoryResponses, SyncOneCollectionErrors, SyncOneCollectionResponses, SyncRecordPathErrors, SyncRecordPathResponses, TaskPathParam, TestEmbyConnectionErrors, TestEmbyConnectionResponses, TestQbittorrentConnectionErrors, TestQbittorrentConnectionResponses, TestTransmissionConnectionErrors, TestTransmissionConnectionResponses, ToolArgsParam, TransferConfigCreate, TransferConfigPublic, TransmissionSettings, TransRecordsPathSyncParam, UpdateActorErrors, UpdateActorResponses, UpdateConfigErrors, UpdateConfigResponses, UpdateEmbySettingsErrors, UpdateEmbySettingsResponses, UpdateMediaItemErrors, UpdateMediaItemResponses, UpdateMetadataErrors, UpdateMetadataResponses, UpdatePassword, UpdatePasswordMeErrors, UpdatePasswordMeResponses, UpdateProxySettingsErrors, UpdateProxySettingsResponses, UpdateQbittorrentSettingsErrors, UpdateQbittorrentSettingsResponses, UpdateRecordErrors, UpdateRecordResponses, UpdateScrapinglibResponses, UpdateSeasonErrors, UpdateSeasonResponses, UpdateSubtitleErrors, UpdateSubtitleResponses, UpdateTaskConfigErrors, UpdateTaskConfigResponses, UpdateTopFolderErrors, UpdateTopFolderResponses, UpdateTransmissionSettingsErrors, UpdateTransmissionSettingsResponses, UpdateUserErrors, UpdateUserMeErrors, UpdateUserMeResponses, UpdateUserResponses, UploadImageErrors, UploadImageResponses, UploadSubtitlesErrors, UploadSubtitlesResponses, UserCreate, UserRegister, UserUpdate, UserUpdateMe } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -756,13 +756,15 @@ export class MetadataService {
      * 获取某一位演员的作品，按更新时间倒序。
      */
     public static listActorWorks<ThrowOnError extends boolean = true>(parameters: {
-        actor: string;
+        actor?: string;
+        actor_id?: number | null;
         skip?: number;
         limit?: number;
         filter?: string | null;
     }, options?: Options<never, ThrowOnError>) {
         const params = buildClientParams([parameters], [{ args: [
                     { in: 'query', key: 'actor' },
+                    { in: 'query', key: 'actor_id' },
                     { in: 'query', key: 'skip' },
                     { in: 'query', key: 'limit' },
                     { in: 'query', key: 'filter' }
@@ -773,6 +775,48 @@ export class MetadataService {
             url: '/api/v1/metadata/actors/works',
             ...options,
             ...params
+        });
+    }
+
+    /**
+     * Get Actor
+     *
+     * 获取演员详情（含别名）。
+     */
+    public static getActor<ThrowOnError extends boolean = true>(parameters: {
+        actor_id: number;
+    }, options?: Options<never, ThrowOnError>) {
+        const params = buildClientParams([parameters], [{ args: [{ in: 'path', key: 'actor_id' }] }]);
+        return (options?.client ?? client).get<GetActorResponses, GetActorErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/metadata/actors/{actor_id}',
+            ...options,
+            ...params
+        });
+    }
+
+    /**
+     * Update Actor
+     *
+     * 更新演员主名和/或别名。改主名后按出演回写相关 Metadata.actor。
+     */
+    public static updateActor<ThrowOnError extends boolean = true>(parameters: {
+        actor_id: number;
+        actorUpdate: ActorUpdate;
+    }, options?: Options<never, ThrowOnError>) {
+        const params = buildClientParams([parameters], [{ args: [{ in: 'path', key: 'actor_id' }, { key: 'actorUpdate', map: 'body' }] }]);
+        return (options?.client ?? client).put<UpdateActorResponses, UpdateActorErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/metadata/actors/{actor_id}',
+            ...options,
+            ...params,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options?.headers,
+                ...params.headers
+            }
         });
     }
     
@@ -1520,6 +1564,20 @@ export class ToolsService {
                 ...options?.headers,
                 ...params.headers
             }
+        });
+    }
+
+    /**
+     * Tidy Actors
+     *
+     * 整理演员与元数据关联：回填出演，并清理无出演的废弃演员。
+     */
+    public static tidyActors<ThrowOnError extends boolean = true>(options?: Options<never, ThrowOnError>) {
+        return (options?.client ?? client).post<TidyActorsResponses, TidyActorsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/tools/actors/tidy',
+            ...options
         });
     }
     

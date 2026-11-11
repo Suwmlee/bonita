@@ -178,6 +178,7 @@ export default {
       totalActors: "{count} actors",
       noActors: "No actors found. Try another search or add metadata.",
       backToActors: "All actors",
+      editActor: "Edit actor",
     },
     subtitles: {
       title: "Subtitles",
@@ -655,6 +656,20 @@ export default {
         emptyInput: "Please enter JSON data or select a file",
         resultSuccess: "Successfully imported {count} item(s)",
         resultFailed: ", {count} item(s) failed",
+      },
+      actorEdit: {
+        title: "Edit actor",
+        primaryName: "Primary name",
+        aliases: "Aliases",
+        addAlias: "Add alias",
+        editAlias: "Edit alias",
+        removeAlias: "Remove alias",
+        applyEdit: "Apply",
+        add: "Add",
+        nameRequired: "Primary name is required",
+        loadFailed: "Failed to load actor",
+        saveSuccess: "Actor saved",
+        saveFailed: "Failed to save",
       },
       form: {
         number: "Number",

@@ -123,12 +123,14 @@ export const useMetadataStore = defineStore("metadata-store", {
       filter?: string,
       page = 1,
       itemsPerPage?: number,
+      actorId?: number | null,
     ) {
       const requestId = ++actorWorksRequestId
       const perPage = itemsPerPage ?? this.itemsPerPage
       try {
         const { data: response } = await MetadataService.listActorWorks({
-          actor,
+          actor: actor || undefined,
+          actor_id: actorId ?? undefined,
           filter: filter || undefined,
           skip: (page - 1) * perPage,
           limit: perPage,
