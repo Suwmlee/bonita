@@ -7,10 +7,15 @@ from bonita import schemas
 from bonita.tasks import (
     celery_import_nfo,
     celery_reload_scrapinglib,
+    celery_sync_actor_emby_photos,
     celery_sync_watch_history,
 )
 from bonita.services.record_service import RecordService
-from bonita.services.celery_service import CeleryTaskService, TASK_WATCH_HISTORY_SYNC
+from bonita.services.celery_service import (
+    CeleryTaskService,
+    TASK_ACTOR_EMBY_PHOTO_SYNC,
+    TASK_WATCH_HISTORY_SYNC,
+)
 from bonita.core.enums import TaskStatusEnum
 from bonita.utils.http import get_active_proxy
 from bonita.utils.scrapinglib_pkg import (
@@ -126,6 +131,17 @@ class ToolService:
             detail=f"{direction}|{int(bool(force))}",
             name="同步观看历史",
             direction=direction,
+            force=force,
+        )
+
+    def sync_actor_emby_photos(self, force: bool = False) -> schemas.TaskStatus:
+        """将演员头像同步到 Emby，立即返回后台任务。"""
+        logger.info(f"Enqueue actor Emby photo sync, force={force}")
+        return CeleryTaskService(self.session).enqueue_unique(
+            celery_sync_actor_emby_photos,
+            TASK_ACTOR_EMBY_PHOTO_SYNC,
+            detail=f"force={int(bool(force))}",
+            name="同步演员头像到Emby",
             force=force,
         )
 

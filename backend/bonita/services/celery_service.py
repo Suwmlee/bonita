@@ -11,6 +11,7 @@ from bonita.db import SessionFactory
 
 TASK_WATCH_HISTORY_SYNC = "WatchHistorySync"
 TASK_COLLECTION_SYNC = "CollectionSync"
+TASK_ACTOR_EMBY_PHOTO_SYNC = "ActorEmbyPhotoSync"
 
 
 logger = logging.getLogger(__name__)

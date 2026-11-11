@@ -149,6 +149,9 @@ export const useTaskStore = defineStore("task-store", {
         if (task.task_type === "CollectionSync") {
           return { ...task, name: task.name || (i18n.global.t("pages.dashboard.collectionSync") as string) }
         }
+        if (task.task_type === "ActorEmbyPhotoSync") {
+          return { ...task, name: task.name || (i18n.global.t("pages.dashboard.actorEmbyPhotoSync") as string) }
+        }
         return task
       })
     },

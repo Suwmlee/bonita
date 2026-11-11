@@ -14,6 +14,7 @@ export const useToolStore = defineStore("tool-store", {
   state: () => ({
     importNfoInProgress: false,
     syncEmbyInProgress: false,
+    syncActorEmbyPhotosInProgress: false,
     cleaningInProgress: false,
     scrapinglibChecking: false,
     scrapinglibUpdating: false,
@@ -174,6 +175,35 @@ export const useToolStore = defineStore("tool-store", {
       }
     },
 
+    async syncActorEmbyPhotos(force = false) {
+      this.syncActorEmbyPhotosInProgress = true
+      try {
+        const toastStore = useToastStore()
+        const taskStore = useTaskStore()
+        const { data: task } = await ToolsService.syncActorEmbyPhotos({
+          embyActorPhotoSyncParam: { force },
+        })
+        if (!task?.task_id) {
+          toastStore.error(i18n.global.t("pages.tools.syncActorEmbyPhotos.failed") as string)
+          return task
+        }
+        // 下载头像可能很慢，不在工具页空轮询；进度看仪表盘 / 日志
+        taskStore.addOrUpdateRunningTask(task)
+        toastStore.success(i18n.global.t("pages.tools.syncActorEmbyPhotos.started") as string)
+        return task
+      } catch (error) {
+        console.error("Error syncing actor photos to Emby:", error)
+        const toastStore = useToastStore()
+        toastStore.error(
+          error instanceof Error
+            ? error.message
+            : (i18n.global.t("pages.tools.syncActorEmbyPhotos.failed") as string),
+        )
+      } finally {
+        this.syncActorEmbyPhotosInProgress = false
+      }
+    },
+
     async checkScrapinglibVersion() {
       this.scrapinglibChecking = true
       try {
@@ -225,6 +255,7 @@ export const useToolStore = defineStore("tool-store", {
   getters: {
     isImportNfoInProgress: (state) => state.importNfoInProgress,
     isSyncEmbyInProgress: (state) => state.syncEmbyInProgress,
+    isSyncActorEmbyPhotosInProgress: (state) => state.syncActorEmbyPhotosInProgress,
     isCleaningInProgress: (state) => state.cleaningInProgress,
   },
 })

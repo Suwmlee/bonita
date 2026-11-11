@@ -13,6 +13,8 @@ const isLoading = ref(false)
 const isSyncingEmby = ref(false)
 const isCleaningData = ref(false)
 const isTidyingActors = ref(false)
+const isSyncingActorEmbyPhotos = ref(false)
+const forceActorEmbyPhotos = ref(false)
 const updateOption = ref("ignore")
 const forceCleanupOption = ref(false)
 const syncDirection = ref<"from_server" | "to_server">("from_server")
@@ -86,6 +88,15 @@ const tidyActors = async () => {
     await toolStore.tidyActors()
   } finally {
     isTidyingActors.value = false
+  }
+}
+
+const syncActorEmbyPhotos = async () => {
+  isSyncingActorEmbyPhotos.value = true
+  try {
+    await toolStore.syncActorEmbyPhotos(forceActorEmbyPhotos.value)
+  } finally {
+    isSyncingActorEmbyPhotos.value = false
   }
 }
 
@@ -180,6 +191,32 @@ onMounted(() => {
           <VBtn color="primary" block :loading="isTidyingActors" @click="tidyActors">
             {{ t('pages.tools.tidyActors.start') }}
           </VBtn>
+        </VCardText>
+      </VCard>
+
+      <VCard class="mb-6">
+        <VCardTitle>{{ t('pages.tools.syncActorEmbyPhotos.title') }}</VCardTitle>
+        <VCardSubtitle class="text-wrap">
+          {{ t('pages.tools.syncActorEmbyPhotos.subtitle') }}
+        </VCardSubtitle>
+        <VCardText>
+          <VRow>
+            <VCol cols="12">
+              <VRow no-gutters>
+                <VCol cols="12" md="3" class="row-label">
+                  <label for="forceActorEmbyPhotos">{{ t('pages.tools.syncActorEmbyPhotos.forceUpdate') }}</label>
+                </VCol>
+                <VCol cols="12" md="9">
+                  <VCheckbox id="forceActorEmbyPhotos" v-model="forceActorEmbyPhotos" hide-details />
+                </VCol>
+              </VRow>
+            </VCol>
+            <VCol cols="12">
+              <VBtn color="primary" block :loading="isSyncingActorEmbyPhotos" @click="syncActorEmbyPhotos">
+                {{ t('pages.tools.syncActorEmbyPhotos.start') }}
+              </VBtn>
+            </VCol>
+          </VRow>
         </VCardText>
       </VCard>
 

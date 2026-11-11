@@ -99,6 +99,16 @@ async def tidy_actors(session: SessionDep):
     return schemas.Response(success=True, message="演员整理完成", data=result)
 
 
+@router.post("/actors/sync-emby-photos", response_model=schemas.TaskStatus)
+async def sync_actor_emby_photos(
+    session: SessionDep,
+    params: schemas.EmbyActorPhotoSyncParam,
+):
+    """把 Bonita 演员头像同步到 Emby Person，立即返回后台任务。"""
+    tool_service = ToolService(session)
+    return tool_service.sync_actor_emby_photos(force=params.force)
+
+
 @router.get("/scrapinglib", response_model=schemas.ScrapinglibVersion)
 async def get_scrapinglib_version(session: SessionDep):
     """检测 scrapinglib 当前版本与 PyPI 最新版本"""

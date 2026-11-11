@@ -453,6 +453,20 @@ export type EmbySyncParam = {
 };
 
 /**
+ * EmbyActorPhotoSyncParam
+ *
+ * 把 Bonita 演员头像同步到 Emby Person。
+ */
+export type EmbyActorPhotoSyncParam = {
+    /**
+     * Force
+     *
+     * 强制覆盖 Emby 上已有的人物头像
+     */
+    force?: boolean;
+};
+
+/**
  * ExtraInfoPublic
  */
 export type ExtraInfoPublic = {
@@ -4612,6 +4626,31 @@ export type TidyActorsResponses = {
 };
 
 export type TidyActorsResponse = TidyActorsResponses[keyof TidyActorsResponses];
+
+export type SyncActorEmbyPhotosData = {
+    body: EmbyActorPhotoSyncParam;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tools/actors/sync-emby-photos';
+};
+
+export type SyncActorEmbyPhotosErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SyncActorEmbyPhotosError = SyncActorEmbyPhotosErrors[keyof SyncActorEmbyPhotosErrors];
+
+export type SyncActorEmbyPhotosResponses = {
+    /**
+     * Successful Response
+     */
+    200: TaskStatus;
+};
+
+export type SyncActorEmbyPhotosResponse = SyncActorEmbyPhotosResponses[keyof SyncActorEmbyPhotosResponses];
 
 export type GetScrapinglibVersionData = {
     body?: never;

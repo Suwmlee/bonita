@@ -94,3 +94,12 @@ class EmbySyncParam(BaseModel):
         default=False,
         description="强制覆盖对端已有的已看/收藏状态",
     )
+
+
+class EmbyActorPhotoSyncParam(BaseModel):
+    """把 Bonita 演员头像同步到 Emby Person。"""
+
+    force: bool = Field(
+        default=False,
+        description="强制覆盖 Emby 上已有的人物头像",
+    )

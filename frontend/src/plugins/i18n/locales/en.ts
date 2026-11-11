@@ -133,6 +133,7 @@ export default {
       unknownTask: "Unknown Task",
       watchHistorySync: "Watch history sync",
       collectionSync: "Collection sync",
+      actorEmbyPhotoSync: "Sync actor photos to Emby",
       running: "Running",
       completedTime: "Completed Time",
     },
@@ -267,6 +268,16 @@ export default {
         success:
           "Done: {actors} actors, {credits} credits, removed {removed}",
         failed: "Failed to tidy actors",
+      },
+      syncActorEmbyPhotos: {
+        title: "Sync Actor Photos to Emby",
+        subtitle:
+          "Match Emby people by actor primary/alias names and upload only locally cached photos; skip missing local files or existing Emby images. Progress is on the dashboard and in logs",
+        forceUpdate: "Overwrite existing photos",
+        start: "Start Sync",
+        started: "Actor photo sync started; check the dashboard for progress",
+        success: "Actor photos synced",
+        failed: "Failed to sync actor photos",
       },
       syncRecordPath: {
         title: "Sync Transfer Record Paths",

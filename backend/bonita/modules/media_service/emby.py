@@ -607,6 +607,51 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
             poster_url += f"&tag={image_tag}"
         return poster_url
 
+    def list_persons(self) -> List[Dict[str, Any]]:
+        """拉取全部 Person（含 ImageTags），按名匹配演员头像时用。"""
+        return self._paged_items(
+            "/Persons",
+            {
+                "Fields": "ImageTags",
+                "SortBy": "SortName",
+                "SortOrder": "Ascending",
+            },
+        )
+
+    def upload_item_image(
+        self,
+        item_id: str,
+        image_bytes: bytes,
+        image_type: str = "Primary",
+        content_type: str = "image/jpeg",
+    ) -> bool:
+        """上传条目图片。Emby 要求 body 为 base64 文本。"""
+        import base64
+
+        if not item_id or not image_bytes:
+            return False
+        if not self.emby_host or not self.emby_apikey:
+            raise Exception("Emby host or API key not configured")
+        endpoint = f"/Items/{item_id}/Images/{image_type}"
+        url = f"{self.emby_host}{endpoint}"
+        headers = {
+            "X-Emby-Token": self.emby_apikey,
+            "Content-Type": content_type,
+        }
+        payload = base64.b64encode(image_bytes)
+        response = requests.post(url, data=payload, headers=headers, timeout=60)
+        if response.status_code in (200, 204):
+            return True
+        logger.error(
+            "Failed Emby image upload %s. Status=%s Response=%s",
+            endpoint,
+            response.status_code,
+            response.text[:300],
+        )
+        raise Exception(
+            f"Failed Emby image upload to {endpoint}. Status code: {response.status_code}"
+        )
+
     def mark_as_played(self, item_id, user_id=None):
         """Mark an item as played
         Args:

@@ -2,6 +2,7 @@
 
 from bonita.tasks.media import (
     celery_emby_scan,
+    celery_sync_actor_emby_photos,
     celery_sync_collection,
     celery_sync_watch_history,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "celery_import_nfo",
     "celery_reload_scrapinglib",
     "celery_scrapping",
+    "celery_sync_actor_emby_photos",
     "celery_sync_collection",
     "celery_sync_watch_history",
     "celery_transfer_entry",

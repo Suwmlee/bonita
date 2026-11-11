@@ -4,7 +4,12 @@ from celery import shared_task
 
 from bonita.db import SessionFactory
 from bonita.modules.media_service.factory import ensure_media_client
-from bonita.services.celery_service import TASK_COLLECTION_SYNC, TASK_WATCH_HISTORY_SYNC
+from bonita.services.celery_service import (
+    TASK_ACTOR_EMBY_PHOTO_SYNC,
+    TASK_COLLECTION_SYNC,
+    TASK_WATCH_HISTORY_SYNC,
+    TaskProgressTracker,
+)
 from bonita.services.setting_service import SettingService
 from bonita.services.watch_sync_service import WatchSyncService
 from bonita.tasks.decorators import manage_celery_task
@@ -80,6 +85,37 @@ def celery_sync_watch_history(self, sources=None, days=30, limit=100, direction=
             "direction": direction,
             "force": force,
         }
+    finally:
+        session.close()
+
+
+@shared_task(
+    bind=True,
+    autoretry_for=(Exception,),
+    dont_autoretry_for=(RuntimeError,),
+    retry_backoff=True,
+    retry_kwargs={"max_retries": 3},
+    name="actor_emby_photo:sync",
+)
+@manage_celery_task(TASK_ACTOR_EMBY_PHOTO_SYNC)
+def celery_sync_actor_emby_photos(self, force: bool = False):
+    logger.info(f"## [演员头像同步Emby] START force={force}")
+    session = SessionFactory()
+    try:
+        from bonita.services.actor_emby_sync_service import ActorEmbySyncService
+
+        tracker = TaskProgressTracker(self.request.id, total_steps=100)
+        tracker.set_progress(1.0, "准备同步演员头像")
+
+        def on_progress(pct: float, step: str):
+            tracker.set_progress(pct, step)
+
+        result = ActorEmbySyncService(session).sync_photos(
+            force=bool(force),
+            progress=on_progress,
+        )
+        logger.info(f"## [演员头像同步Emby] END {result}")
+        return result
     finally:
         session.close()
 

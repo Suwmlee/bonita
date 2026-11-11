@@ -133,6 +133,7 @@ export default {
       unknownTask: "未知任务",
       watchHistorySync: "同步观看历史",
       collectionSync: "合集同步",
+      actorEmbyPhotoSync: "同步演员头像到 Emby",
       running: "运行中",
       completedTime: "完成时间",
     },
@@ -263,6 +264,16 @@ export default {
         success:
           "整理完成：演员 {actors}，出演 {credits}，清理 {removed}",
         failed: "演员整理失败",
+      },
+      syncActorEmbyPhotos: {
+        title: "同步演员头像到 Emby",
+        subtitle:
+          "按演员主名/别名匹配 Emby 人物，仅上传本地已缓存的头像；无本地文件或 Emby 已有头像则跳过。进度见仪表盘与日志",
+        forceUpdate: "强制覆盖已有头像",
+        start: "开始同步",
+        started: "演员头像同步已启动，可在仪表盘查看进度",
+        success: "演员头像同步完成",
+        failed: "演员头像同步失败",
       },
       syncRecordPath: {
         title: "同步转移记录路径",
