@@ -143,6 +143,39 @@ export const useToolStore = defineStore("tool-store", {
       }
     },
 
+    async tidyActors() {
+      try {
+        const toastStore = useToastStore()
+        const { data: response } = await ToolsService.tidyActors()
+        const detail = response?.data as
+          | {
+              actors?: number
+              aliases?: number
+              credits?: number
+              removed?: number
+              created?: number
+            }
+          | undefined
+        toastStore.success(
+          i18n.global.t("pages.tools.tidyActors.success", {
+            actors: detail?.actors ?? 0,
+            aliases: detail?.aliases ?? 0,
+            credits: detail?.credits ?? 0,
+            removed: detail?.removed ?? 0,
+          }) as string,
+        )
+        return response
+      } catch (error) {
+        console.error("Error tidying actors:", error)
+        const toastStore = useToastStore()
+        toastStore.error(
+          error instanceof Error
+            ? error.message
+            : (i18n.global.t("pages.tools.tidyActors.failed") as string),
+        )
+      }
+    },
+
     async checkScrapinglibVersion() {
       this.scrapinglibChecking = true
       try {

@@ -12,6 +12,7 @@ const nfoFolder = ref("")
 const isLoading = ref(false)
 const isSyncingEmby = ref(false)
 const isCleaningData = ref(false)
+const isTidyingActors = ref(false)
 const updateOption = ref("ignore")
 const forceCleanupOption = ref(false)
 const syncDirection = ref<"from_server" | "to_server">("from_server")
@@ -76,6 +77,15 @@ const cleanupData = async () => {
     await toolStore.cleanupData(forceCleanupOption.value)
   } finally {
     isCleaningData.value = false
+  }
+}
+
+const tidyActors = async () => {
+  isTidyingActors.value = true
+  try {
+    await toolStore.tidyActors()
+  } finally {
+    isTidyingActors.value = false
   }
 }
 
@@ -158,6 +168,18 @@ onMounted(() => {
               </VBtn>
             </VCol>
           </VRow>
+        </VCardText>
+      </VCard>
+
+      <VCard class="mb-6">
+        <VCardTitle>{{ t('pages.tools.tidyActors.title') }}</VCardTitle>
+        <VCardSubtitle class="text-wrap">
+          {{ t('pages.tools.tidyActors.subtitle') }}
+        </VCardSubtitle>
+        <VCardText>
+          <VBtn color="primary" block :loading="isTidyingActors" @click="tidyActors">
+            {{ t('pages.tools.tidyActors.start') }}
+          </VBtn>
         </VCardText>
       </VCard>
 

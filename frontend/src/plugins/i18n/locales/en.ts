@@ -257,6 +257,15 @@ export default {
         forceOption: "Force Delete",
         startCleanup: "Start Cleanup",
       },
+      tidyActors: {
+        title: "Tidy Actors & Metadata",
+        subtitle:
+          "Rebuild actor credits from metadata, rewrite primary names, and remove actors with no credits",
+        start: "Start Tidy",
+        success:
+          "Done: {actors} actors, {aliases} aliases, {credits} credits, removed {removed}",
+        failed: "Failed to tidy actors",
+      },
       syncRecordPath: {
         title: "Sync Transfer Record Paths",
         subtitle:
