@@ -469,6 +469,12 @@ onMounted(() => {
           >
             {{ (selectedActor.aliases ?? []).join(' / ') }}
           </p>
+          <p
+            v-if="(selectedActor.homonym_count ?? 1) > 1"
+            class="hero-homonym"
+          >
+            {{ t('pages.metadata.homonymHint') }}
+          </p>
           <p class="hero-sub">{{ t('pages.metadata.workCount', { count: selectedActor.count }) }}</p>
         </div>
       </div>
@@ -716,6 +722,12 @@ onMounted(() => {
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.hero-homonym {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: rgba(255, 220, 160, 0.9);
 }
 
 .hero-sub {

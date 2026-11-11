@@ -2,7 +2,7 @@
 
 import { buildClientParams, type Client, formDataBodySerializer, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { ActorUpdate, AddCollectionErrors, AddCollectionResponses, AddItemsToCollectionErrors, AddItemsToCollectionResponses, BodyLoginLoginAccessToken, BodyResourceUploadImage, BodySubtitleUploadSubtitles, CleanMediaItemResponses, CleanupDataErrors, CleanupDataResponses, CleanupRunningTasksResponses, TidyActorsErrors, TidyActorsResponses, CollectionAddItems, CollectionCreate, CreateConfigErrors, CreateConfigResponses, CreateMediaItemErrors, CreateMediaItemResponses, CreateMetadataErrors, CreateMetadataResponses, CreateTaskConfigErrors, CreateTaskConfigResponses, CreateUserErrors, CreateUserResponses, DeleteConfigErrors, DeleteConfigResponses, DeleteMediaItemErrors, DeleteMediaItemResponses, DeleteMediaItemsErrors, DeleteMediaItemsResponses, DeleteMetadataErrors, DeleteMetadataResponses, DeleteRecordsErrors, DeleteRecordsResponses, DeleteSubtitleErrors, DeleteSubtitleResponses, DeleteTaskConfigErrors, DeleteTaskConfigResponses, DeleteUserErrors, DeleteUserMeResponses, DeleteUserResponses, DeliverOneSubtitleErrors, DeliverOneSubtitleResponses, DeliverSubtitlesErrors, DeliverSubtitlesResponses, EmbySettings, EmbySyncParam, EmbyWebhookResponses, GetActorErrors, GetActorResponses, GetAllConfigsErrors, GetAllConfigsResponses, GetAllTaskConfigsErrors, GetAllTaskConfigsResponses, GetAllTasksStatusErrors, GetAllTasksStatusResponses, GetCollectionErrors, GetCollectionResponses, GetEmbySettingsResponses, GetImageByQueryErrors, GetImageByQueryResponses, GetMediaItemErrors, GetMediaItemResponses, GetMediaItemsErrors, GetMediaItemsResponses, GetMetadataErrors, GetMetadataResponses, GetPosterErrors, GetPosterResponses, GetProxySettingsResponses, GetQbittorrentSettingsResponses, GetRecordGroupsErrors, GetRecordGroupsResponses, GetRecordsErrors, GetRecordsResponses, GetScrapinglibVersionResponses, GetTransmissionSettingsResponses, GetTransRecordsErrors, GetTransRecordsResponses, HealthCheckResponses, ListActorsErrors, ListActorsResponses, ListActorWorksErrors, ListActorWorksResponses, ListCollectionsResponses, ListDirectoryErrors, ListDirectoryResponses, ListMetadataSitesResponses, ListSubtitleGroupsErrors, ListSubtitleGroupsResponses, ListSubtitlesErrors, ListSubtitlesResponses, LoginAccessTokenErrors, LoginAccessTokenResponses, MediaItemBatchDelete, MediaItemCreate, MediaItemUpdate, MetadataBase, MetadataCreate, MetadataRefreshParam, PreferSubtitleErrors, PreferSubtitleResponses, ProxySettings, QBittorrentSettings, ReadUserByIdErrors, ReadUserByIdResponses, ReadUserMeResponses, ReadUsersErrors, ReadUsersResponses, RecordPublic, RefreshMetadataErrors, RefreshMetadataResponses, RegisterUserErrors, RegisterUserResponses, RemoveCollectionErrors, RemoveCollectionResponses, RemoveItemFromCollectionErrors, RemoveItemFromCollectionResponses, RetransferSubtitleErrors, RetransferSubtitleResponses, RunEmbyScanErrors, RunEmbyScanResponses, RunImportNfoErrors, RunImportNfoResponses, RunTransferTaskErrors, RunTransferTaskResponses, ScrapingConfigCreate, ScrapingConfigPublic, SearchCollectionCandidatesErrors, SearchCollectionCandidatesResponses, SearchEmbyCollectionsErrors, SearchEmbyCollectionsResponses, SubtitleDeliverRequest, SubtitleUpdate, SyncAllCollectionsErrors, SyncAllCollectionsResponses, SyncEmbyWatchHistoryErrors, SyncEmbyWatchHistoryResponses, SyncOneCollectionErrors, SyncOneCollectionResponses, SyncRecordPathErrors, SyncRecordPathResponses, TaskPathParam, TestEmbyConnectionErrors, TestEmbyConnectionResponses, TestQbittorrentConnectionErrors, TestQbittorrentConnectionResponses, TestTransmissionConnectionErrors, TestTransmissionConnectionResponses, ToolArgsParam, TransferConfigCreate, TransferConfigPublic, TransmissionSettings, TransRecordsPathSyncParam, UpdateActorErrors, UpdateActorResponses, UpdateConfigErrors, UpdateConfigResponses, UpdateEmbySettingsErrors, UpdateEmbySettingsResponses, UpdateMediaItemErrors, UpdateMediaItemResponses, UpdateMetadataErrors, UpdateMetadataResponses, UpdatePassword, UpdatePasswordMeErrors, UpdatePasswordMeResponses, UpdateProxySettingsErrors, UpdateProxySettingsResponses, UpdateQbittorrentSettingsErrors, UpdateQbittorrentSettingsResponses, UpdateRecordErrors, UpdateRecordResponses, UpdateScrapinglibResponses, UpdateSeasonErrors, UpdateSeasonResponses, UpdateSubtitleErrors, UpdateSubtitleResponses, UpdateTaskConfigErrors, UpdateTaskConfigResponses, UpdateTopFolderErrors, UpdateTopFolderResponses, UpdateTransmissionSettingsErrors, UpdateTransmissionSettingsResponses, UpdateUserErrors, UpdateUserMeErrors, UpdateUserMeResponses, UpdateUserResponses, UploadImageErrors, UploadImageResponses, UploadSubtitlesErrors, UploadSubtitlesResponses, UserCreate, UserRegister, UserUpdate, UserUpdateMe } from './types.gen';
+import type { ActorUpdate, AddCollectionErrors, AddCollectionResponses, AddItemsToCollectionErrors, AddItemsToCollectionResponses, BodyLoginLoginAccessToken, BodyResourceUploadImage, BodySubtitleUploadSubtitles, CleanMediaItemResponses, CleanupDataErrors, CleanupDataResponses, CleanupRunningTasksResponses, CreditRematchRequest, CreditSplitRequest, TidyActorsErrors, TidyActorsResponses, CollectionAddItems, CollectionCreate, CreateConfigErrors, CreateConfigResponses, CreateMediaItemErrors, CreateMediaItemResponses, CreateMetadataErrors, CreateMetadataResponses, CreateTaskConfigErrors, CreateTaskConfigResponses, CreateUserErrors, CreateUserResponses, DeleteConfigErrors, DeleteConfigResponses, DeleteMediaItemErrors, DeleteMediaItemResponses, DeleteMediaItemsErrors, DeleteMediaItemsResponses, DeleteMetadataErrors, DeleteMetadataResponses, DeleteRecordsErrors, DeleteRecordsResponses, DeleteSubtitleErrors, DeleteSubtitleResponses, DeleteTaskConfigErrors, DeleteTaskConfigResponses, DeleteUserErrors, DeleteUserMeResponses, DeleteUserResponses, DeliverOneSubtitleErrors, DeliverOneSubtitleResponses, DeliverSubtitlesErrors, DeliverSubtitlesResponses, EmbySettings, EmbySyncParam, EmbyWebhookResponses, GetActorErrors, GetActorResponses, GetAllConfigsErrors, GetAllConfigsResponses, GetAllTaskConfigsErrors, GetAllTaskConfigsResponses, GetAllTasksStatusErrors, GetAllTasksStatusResponses, GetCollectionErrors, GetCollectionResponses, GetEmbySettingsResponses, GetImageByQueryErrors, GetImageByQueryResponses, GetMediaItemErrors, GetMediaItemResponses, GetMediaItemsErrors, GetMediaItemsResponses, GetMetadataErrors, GetMetadataResponses, GetPosterErrors, GetPosterResponses, GetProxySettingsResponses, GetQbittorrentSettingsResponses, GetRecordGroupsErrors, GetRecordGroupsResponses, GetRecordsErrors, GetRecordsResponses, GetScrapinglibVersionResponses, GetTransmissionSettingsResponses, GetTransRecordsErrors, GetTransRecordsResponses, HealthCheckResponses, ListActorHomonymsErrors, ListActorHomonymsResponses, ListActorsErrors, ListActorsResponses, ListActorWorksErrors, ListActorWorksResponses, ListCollectionsResponses, ListDirectoryErrors, ListDirectoryResponses, ListMetadataCreditsErrors, ListMetadataCreditsResponses, ListMetadataSitesResponses, ListSubtitleGroupsErrors, ListSubtitleGroupsResponses, ListSubtitlesErrors, ListSubtitlesResponses, LoginAccessTokenErrors, LoginAccessTokenResponses, MediaItemBatchDelete, MediaItemCreate, MediaItemUpdate, MetadataBase, MetadataCreate, MetadataRefreshParam, PreferSubtitleErrors, PreferSubtitleResponses, ProxySettings, QBittorrentSettings, ReadUserByIdErrors, ReadUserByIdResponses, ReadUserMeResponses, ReadUsersErrors, ReadUsersResponses, RecordPublic, RefreshMetadataErrors, RefreshMetadataResponses, RegisterUserErrors, RegisterUserResponses, RematchMetadataCreditErrors, RematchMetadataCreditResponses, RemoveCollectionErrors, RemoveCollectionResponses, RemoveItemFromCollectionErrors, RemoveItemFromCollectionResponses, RetransferSubtitleErrors, RetransferSubtitleResponses, RunEmbyScanErrors, RunEmbyScanResponses, RunImportNfoErrors, RunImportNfoResponses, RunTransferTaskErrors, RunTransferTaskResponses, ScrapingConfigCreate, ScrapingConfigPublic, SearchCollectionCandidatesErrors, SearchCollectionCandidatesResponses, SearchEmbyCollectionsErrors, SearchEmbyCollectionsResponses, SplitMetadataCreditErrors, SplitMetadataCreditResponses, SubtitleDeliverRequest, SubtitleUpdate, SyncAllCollectionsErrors, SyncAllCollectionsResponses, SyncEmbyWatchHistoryErrors, SyncEmbyWatchHistoryResponses, SyncOneCollectionErrors, SyncOneCollectionResponses, SyncRecordPathErrors, SyncRecordPathResponses, TaskPathParam, TestEmbyConnectionErrors, TestEmbyConnectionResponses, TestQbittorrentConnectionErrors, TestQbittorrentConnectionResponses, TestTransmissionConnectionErrors, TestTransmissionConnectionResponses, ToolArgsParam, TransferConfigCreate, TransferConfigPublic, TransmissionSettings, TransRecordsPathSyncParam, UpdateActorErrors, UpdateActorResponses, UpdateConfigErrors, UpdateConfigResponses, UpdateEmbySettingsErrors, UpdateEmbySettingsResponses, UpdateMediaItemErrors, UpdateMediaItemResponses, UpdateMetadataErrors, UpdateMetadataResponses, UpdatePassword, UpdatePasswordMeErrors, UpdatePasswordMeResponses, UpdateProxySettingsErrors, UpdateProxySettingsResponses, UpdateQbittorrentSettingsErrors, UpdateQbittorrentSettingsResponses, UpdateRecordErrors, UpdateRecordResponses, UpdateScrapinglibResponses, UpdateSeasonErrors, UpdateSeasonResponses, UpdateSubtitleErrors, UpdateSubtitleResponses, UpdateTaskConfigErrors, UpdateTaskConfigResponses, UpdateTopFolderErrors, UpdateTopFolderResponses, UpdateTransmissionSettingsErrors, UpdateTransmissionSettingsResponses, UpdateUserErrors, UpdateUserMeErrors, UpdateUserMeResponses, UpdateUserResponses, UploadImageErrors, UploadImageResponses, UploadSubtitlesErrors, UploadSubtitlesResponses, UserCreate, UserRegister, UserUpdate, UserUpdateMe } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -779,6 +779,24 @@ export class MetadataService {
     }
 
     /**
+     * List Actor Homonyms
+     *
+     * 按名字列出全部同名演员。
+     */
+    public static listActorHomonyms<ThrowOnError extends boolean = true>(parameters: {
+        name?: string;
+    }, options?: Options<never, ThrowOnError>) {
+        const params = buildClientParams([parameters], [{ args: [{ in: 'query', key: 'name' }] }]);
+        return (options?.client ?? client).get<ListActorHomonymsResponses, ListActorHomonymsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/metadata/actors/homonyms',
+            ...options,
+            ...params
+        });
+    }
+
+    /**
      * Get Actor
      *
      * 获取演员详情（含别名）。
@@ -810,6 +828,86 @@ export class MetadataService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/metadata/actors/{actor_id}',
+            ...options,
+            ...params,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options?.headers,
+                ...params.headers
+            }
+        });
+    }
+
+    /**
+     * List Metadata Credits
+     *
+     * 某片出演行（按行，含同名人数）。
+     */
+    public static listMetadataCredits<ThrowOnError extends boolean = true>(parameters: {
+        id: number;
+    }, options?: Options<never, ThrowOnError>) {
+        const params = buildClientParams([parameters], [{ args: [{ in: 'path', key: 'id' }] }]);
+        return (options?.client ?? client).get<ListMetadataCreditsResponses, ListMetadataCreditsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/metadata/{id}/credits',
+            ...options,
+            ...params
+        });
+    }
+
+    /**
+     * Rematch Metadata Credit
+     *
+     * 只改挂这一行出演到已有演员。
+     */
+    public static rematchMetadataCredit<ThrowOnError extends boolean = true>(parameters: {
+        id: number;
+        actor_id: number;
+        creditRematchRequest: CreditRematchRequest;
+    }, options?: Options<never, ThrowOnError>) {
+        const params = buildClientParams([parameters], [{
+            args: [
+                { in: 'path', key: 'id' },
+                { in: 'path', key: 'actor_id' },
+                { key: 'creditRematchRequest', map: 'body' },
+            ],
+        }]);
+        return (options?.client ?? client).put<RematchMetadataCreditResponses, RematchMetadataCreditErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/metadata/{id}/credits/{actor_id}',
+            ...options,
+            ...params,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options?.headers,
+                ...params.headers
+            }
+        });
+    }
+
+    /**
+     * Split Metadata Credit
+     *
+     * 剥离：新建演员（可同名），只改挂这一行。
+     */
+    public static splitMetadataCredit<ThrowOnError extends boolean = true>(parameters: {
+        id: number;
+        actor_id: number;
+        creditSplitRequest?: CreditSplitRequest;
+    }, options?: Options<never, ThrowOnError>) {
+        const params = buildClientParams([parameters], [{
+            args: [
+                { in: 'path', key: 'id' },
+                { in: 'path', key: 'actor_id' },
+                { key: 'creditSplitRequest', map: 'body' },
+            ],
+        }]);
+        return (options?.client ?? client).post<SplitMetadataCreditResponses, SplitMetadataCreditErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/metadata/{id}/credits/{actor_id}/split',
             ...options,
             ...params,
             headers: {

@@ -66,6 +66,12 @@ export type ActorSummary = {
      * 不含主名的别名列表
      */
     aliases?: Array<string>;
+    /**
+     * Homonym Count
+     *
+     * 同名实体数量；>1 时表示有重名
+     */
+    homonym_count?: number;
 };
 
 /**
@@ -100,6 +106,82 @@ export type ActorUpdate = {
     birth_date?: string | null;
     outline?: string | null;
     aliases?: Array<string> | null;
+};
+
+/**
+ * ActorHomonymPublic
+ */
+export type ActorHomonymPublic = {
+    id: number;
+    name: string;
+    photo?: string | null;
+    count?: number;
+};
+
+/**
+ * MetadataCreditPublic
+ */
+export type MetadataCreditPublic = {
+    actor_id: number;
+    actor_name: string;
+    credit_name: string;
+    sort?: number;
+    photo?: string | null;
+    homonym_count?: number;
+};
+
+/**
+ * CreditRematchRequest
+ */
+export type CreditRematchRequest = {
+    to_actor_id: number;
+};
+
+/**
+ * CreditSplitRequest
+ */
+export type CreditSplitRequest = {
+    name?: string | null;
+};
+
+/**
+ * CreditSplitResult
+ */
+export type CreditSplitResult = {
+    actor: ActorPublic;
+    credits: Array<MetadataCreditPublic>;
+};
+
+export type ListActorHomonymsResponses = {
+    200: Array<ActorHomonymPublic>;
+};
+
+export type ListActorHomonymsErrors = {
+    422: HttpValidationError;
+};
+
+export type ListMetadataCreditsResponses = {
+    200: Array<MetadataCreditPublic>;
+};
+
+export type ListMetadataCreditsErrors = {
+    422: HttpValidationError;
+};
+
+export type RematchMetadataCreditResponses = {
+    200: Array<MetadataCreditPublic>;
+};
+
+export type RematchMetadataCreditErrors = {
+    422: HttpValidationError;
+};
+
+export type SplitMetadataCreditResponses = {
+    200: CreditSplitResult;
+};
+
+export type SplitMetadataCreditErrors = {
+    422: HttpValidationError;
 };
 
 /**

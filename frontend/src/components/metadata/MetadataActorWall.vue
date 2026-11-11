@@ -88,7 +88,13 @@ function showPhoto(actor: ActorSummary) {
                 @error="markBroken(`photo:${actor.name}`)"
               />
             </div>
-            <p class="actor-name">{{ actor.name }}</p>
+            <p class="actor-name">
+              {{ actor.name }}
+              <span
+                v-if="(actor.homonym_count ?? 1) > 1"
+                class="actor-homonym"
+              >{{ t('pages.metadata.homonymBadge') }}</span>
+            </p>
             <p
               v-if="(actor.aliases ?? []).length"
               class="actor-aliases"
@@ -253,6 +259,20 @@ function showPhoto(actor: ActorSummary) {
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.actor-homonym {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+  color: rgba(255, 220, 160, 0.95);
+  background: rgba(0, 0, 0, 0.35);
+  text-shadow: none;
 }
 
 .actor-aliases {

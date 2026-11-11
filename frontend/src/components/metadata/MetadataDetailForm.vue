@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { ResourceService } from "@/client"
 import { client } from "@/client/client.gen"
-import type { MetadataPublic } from "@/client/types.gen"
+import type { MetadataCreditPublic, MetadataPublic } from "@/client/types.gen"
+import MetadataCreditPanel from "@/components/metadata/MetadataCreditPanel.vue"
 import { useMetadataStore } from "@/stores/metadata.store"
 import { computed, ref } from "vue"
 import { useI18n } from "vue-i18n"
@@ -105,6 +106,11 @@ function validateForm() {
   }
 
   return formValid.value
+}
+
+function onCreditsChanged(credits: MetadataCreditPublic[]) {
+  if (!credits.length) return
+  currentMetadata.value.actor = credits.map((item) => item.actor_name).join(",")
 }
 
 async function handleSubmit() {
@@ -219,6 +225,12 @@ async function handleFileUpload(event: Event) {
           </VCol>
           <VCol cols="12" md="9">
             <VTextField v-model="currentMetadata.actor" :error-messages="formErrors.actor" required />
+            <MetadataCreditPanel
+              v-if="currentMetadata.id"
+              class="mt-2"
+              :metadata-id="currentMetadata.id"
+              @changed="onCreditsChanged"
+            />
           </VCol>
         </VRow>
       </VCol>
