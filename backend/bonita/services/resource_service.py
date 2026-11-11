@@ -19,6 +19,7 @@ from bonita.utils.downloader import (
     cached_filepath,
     download_file,
     ensure_cached_in_folder,
+    is_valid_image_file,
     process_cached_file,
 )
 from bonita.utils.http import get_active_proxy
@@ -96,6 +97,47 @@ class ResourceService:
         return cover_folder_for_number(row.number if row else None)
 
     @staticmethod
+    def _find_local_upload_file(hash_key: str, preferred_folder: Optional[str] = None) -> str:
+        """本地上传 md5 键：在指定目录或 covers/actors 树里找 {hash}.*。"""
+        key = (hash_key or "").strip()
+        if not key or key.startswith(("http://", "https://")) or os.sep in key or "/" in key:
+            return ""
+
+        roots: list[str] = []
+        if preferred_folder:
+            roots.append(
+                os.path.abspath(os.path.join(settings.ASSETS_LOCATION, preferred_folder))
+            )
+        roots.append(os.path.abspath(os.path.join(settings.ASSETS_LOCATION, COVER_FOLDER)))
+        roots.append(
+            os.path.abspath(os.path.join(settings.ASSETS_LOCATION, ACTOR_PHOTO_FOLDER))
+        )
+
+        seen: set[str] = set()
+        for root in roots:
+            if not root or root in seen or not os.path.isdir(root):
+                continue
+            seen.add(root)
+            for dirpath, _dirnames, filenames in os.walk(root):
+                for name in filenames:
+                    stem, _ext = os.path.splitext(name)
+                    if stem == key or name.startswith(key + "."):
+                        fp = os.path.join(dirpath, name)
+                        if is_valid_image_file(fp):
+                            return fp
+        return ""
+
+    @staticmethod
+    def _bind_download_path(session: Session, url: str, filepath: str) -> str:
+        row = session.query(Downloads).filter(Downloads.url == url).first()
+        if row:
+            row.filepath = filepath
+            session.commit()
+        else:
+            Downloads(url=url, filepath=filepath).create(session)
+        return filepath
+
+    @staticmethod
     def resolve_image_path(
         path: str,
         number: Optional[str] = None,
@@ -103,19 +145,21 @@ class ResourceService:
     ) -> Optional[str]:
         """供 /resource/image 使用：短会话查库，下载不占用连接池；同 URL 串行避免写坏文件。
 
-        预览尚未入库的封面/头像时，必须传 number 或 actor，否则会落到裸 covers/。
+        path 可以是：
+        - 本地绝对路径
+        - 本地上传返回的 md5 键（Downloads.url，无 http）
+        - 远程 http(s) URL（可按 number/actor 落到 covers/<番号>/ 或 actors/<名>/）
         """
         if not path:
             return None
         if os.path.isfile(path):
             return path
-        if not path.startswith(("http://", "https://")):
-            return None
+
+        is_remote = path.startswith(("http://", "https://"))
 
         with _resolve_lock_for(path):
             from bonita.db import SessionFactory
 
-            proxy = None
             folder = COVER_FOLDER
             session = SessionFactory()
             try:
@@ -132,6 +176,21 @@ class ResourceService:
                         )
                         return relocated or cached
                     return cached
+                if not is_remote:
+                    # Downloads 缺失或路径失效时，按 md5 文件名在 assets 里找回
+                    found = ResourceService._find_local_upload_file(
+                        path, folder if specific else None
+                    )
+                    if not found:
+                        return None
+                    if specific:
+                        found = (
+                            ensure_cached_in_folder(session, path, folder, found)
+                            or found
+                        )
+                    # 已在正确目录时 ensure 不会写库，这里补绑 md5 → filepath
+                    ResourceService._bind_download_path(session, path, found)
+                    return found
                 proxy = get_active_proxy(session)
             finally:
                 session.close()
@@ -144,13 +203,7 @@ class ResourceService:
 
             session = SessionFactory()
             try:
-                row = session.query(Downloads).filter(Downloads.url == path).first()
-                if row:
-                    row.filepath = filepath
-                    session.commit()
-                else:
-                    Downloads(url=path, filepath=filepath).create(session)
-                return filepath
+                return ResourceService._bind_download_path(session, path, filepath)
             finally:
                 session.close()
 
