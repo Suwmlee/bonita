@@ -74,30 +74,85 @@ async def list_actors(
 
 @router.post("/actors/sync", response_model=schemas.Response)
 async def sync_actors_from_metadata(session: SessionDep) -> Any:
-    """从现有 Metadata.actor 回填 Actor / ActorAlias。"""
+    """从现有 Metadata.actor 回填 Actor / ActorAlias / metadata_actor。"""
     from bonita.services.actor_service import ActorService
 
-    result = ActorService(session).sync_from_metadata()
+    result = ActorService(session).sync_from_metadata(cleanup_orphans=False)
     return schemas.Response(success=True, message="演员回填完成", data=result)
 
 
 @router.get("/actors/works", response_model=schemas.MetadataCollection)
 async def list_actor_works(
     session: SessionDep,
-    actor: str,
+    actor: str = "",
+    actor_id: Optional[int] = None,
     skip: int = 0,
     limit: int = 24,
     filter: Optional[str] = None,
 ) -> Any:
-    """获取某一位演员的作品，按更新时间倒序。"""
+    """获取某一位演员的作品，按更新时间倒序。优先 actor_id。"""
     data, count = MetadataService(session).list_actor_works(
         actor_name=actor,
         skip=skip,
         limit=limit,
         filter_text=filter,
+        actor_id=actor_id,
     )
     data_list = [schemas.MetadataPublic.model_validate(meta.to_dict()) for meta in data]
     return schemas.MetadataCollection(data=data_list, count=count)
+
+
+@router.get("/actors/{actor_id}", response_model=schemas.ActorPublic)
+async def get_actor(session: SessionDep, actor_id: int) -> Any:
+    """获取演员详情（含别名）。"""
+    from bonita.services.actor_service import ActorService
+
+    actor = ActorService(session).get_by_id(actor_id)
+    if not actor:
+        raise HTTPException(status_code=404, detail=f"Actor with id {actor_id} not found")
+    return schemas.ActorPublic.model_validate(actor)
+
+
+@router.put("/actors/{actor_id}", response_model=schemas.ActorPublic)
+async def update_actor(
+    session: SessionDep,
+    actor_id: int,
+    actor_in: schemas.ActorUpdate,
+) -> Any:
+    """更新演员主名和/或别名。改主名后按出演回写相关 Metadata.actor。"""
+    from bonita.services.actor_service import ActorService
+
+    service = ActorService(session)
+    actor = service.get_by_id(actor_id)
+    if not actor:
+        raise HTTPException(status_code=404, detail=f"Actor with id {actor_id} not found")
+
+    try:
+        old_name = actor.name
+        if actor_in.name is not None and actor_in.name.strip() != actor.name:
+            actor = service.rename_actor(actor_id, actor_in.name)
+        if actor_in.aliases is not None:
+            aliases = list(actor_in.aliases)
+            # 同请求改主名时，前端别名列表不含旧主名；保留为别名，避免被覆盖删除
+            if (actor.name or "").casefold() != (old_name or "").casefold():
+                old_key = (old_name or "").casefold()
+                if not any((item or "").casefold() == old_key for item in aliases):
+                    aliases.insert(0, old_name)
+            actor = service.set_aliases(actor_id, aliases)
+        if actor_in.photo is not None:
+            actor.photo = actor_in.photo
+        if actor_in.birth_date is not None:
+            actor.birth_date = actor_in.birth_date
+        if actor_in.outline is not None:
+            actor.outline = actor_in.outline
+        session.commit()
+        actor = service.get_by_id(actor_id)
+    except ValueError as exc:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return schemas.ActorPublic.model_validate(actor)
+
 
 @router.post("/{id}/refresh", response_model=schemas.MetadataBase)
 async def refresh_metadata(

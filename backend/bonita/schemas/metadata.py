@@ -100,6 +100,7 @@ class ActorSummary(BaseModel):
     photo: Optional[str] = None
     count: int
     covers: List[ActorCover] = []
+    aliases: List[str] = []
 
 
 class ActorCollection(BaseModel):

@@ -1,29 +1,20 @@
 import logging
 from typing import List, Optional, Tuple
 
-from sqlalchemy import func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy import func
+from sqlalchemy.orm import Session, joinedload
 
+from bonita.db.models.actor import Actor, MetadataActor
 from bonita.db.models.metadata import Metadata
 from bonita.modules.scraping.scraping import scraping
 from bonita.services.resource_service import cover_folder_for_number
-from bonita.utils.actor_names import UNKNOWN_ACTOR, parse_actor_photos, split_actor_names
+from bonita.utils.actor_names import UNKNOWN_ACTOR
 from bonita.utils.downloader import process_cached_file
 from bonita.utils.http import get_active_proxy
 
 logger = logging.getLogger(__name__)
 
 _ACTOR_COVERS = 4
-
-
-def _photo_for(photos: dict, name: str, only_actor: bool) -> Optional[str]:
-    target = name.casefold()
-    for key, url in photos.items():
-        if key.casefold() == target:
-            return url
-    if only_actor and len(photos) == 1:
-        return next(iter(photos.values()))
-    return None
 
 
 class _Reverse:
@@ -34,15 +25,6 @@ class _Reverse:
 
     def __lt__(self, other: "_Reverse") -> bool:
         return self.value > other.value
-
-
-def _like_contains(value: str) -> str:
-    escaped = (
-        value.replace("\\", "\\\\")
-        .replace("%", "\\%")
-        .replace("_", "\\_")
-    )
-    return f"%{escaped}%"
 
 
 class MetadataService:
@@ -116,6 +98,17 @@ class MetadataService:
         data = query.offset(skip).limit(limit).all()
         return data, count
 
+    def _ensure_credits_backfilled(self) -> None:
+        """旧库升级后若还没有出演行，自动从 Metadata.actor 回填一次。"""
+        if self.session.query(MetadataActor.id).limit(1).first():
+            return
+        if not self.session.query(Metadata.id).limit(1).first():
+            return
+        from bonita.services.actor_service import ActorService
+
+        logger.info("检测到无出演关联，开始从 Metadata.actor 回填 metadata_actor")
+        ActorService(self.session).sync_from_metadata()
+
     def list_actors(
         self,
         skip: int = 0,
@@ -123,9 +116,7 @@ class MetadataService:
         filter_text: Optional[str] = None,
         sort: str = "count",
     ) -> Tuple[List[dict], int]:
-        """按 Actor 表聚合作品数；同人别名合并。佚名始终排在最后。"""
-        from bonita.services.actor_service import ActorService
-
+        """按 metadata_actor.actor_id 聚合作品数。佚名始终排在最后。"""
         if sort == "count":
             sort = "count_desc"
         elif sort == "name":
@@ -133,55 +124,70 @@ class MetadataService:
         elif sort not in ("count_desc", "count_asc", "name_asc", "name_desc"):
             sort = "count_desc"
 
-        actor_service = ActorService(self.session)
-        name_index = actor_service.load_name_index()
+        self._ensure_credits_backfilled()
 
-        query = self.session.query(
-            Metadata.id,
-            Metadata.actor,
-            Metadata.actor_photo,
-            Metadata.cover,
-            Metadata.crop,
-            Metadata.updatetime,
+        meta_query = self._filter_query(self.session.query(Metadata.id), filter_text)
+        meta_ids = [row[0] for row in meta_query.all()]
+        if not meta_ids:
+            return [], 0
+
+        credits = (
+            self.session.query(MetadataActor)
+            .join(Metadata, Metadata.id == MetadataActor.metadata_id)
+            .options(
+                joinedload(MetadataActor.actor).joinedload(Actor.aliases),
+                joinedload(MetadataActor.metadata_row),
+            )
+            .filter(MetadataActor.metadata_id.in_(meta_ids))
+            .order_by(Metadata.updatetime.desc(), Metadata.id.desc())
+            .all()
         )
-        query = self._filter_query(query, filter_text)
-        query = query.order_by(Metadata.updatetime.desc(), Metadata.id.desc())
-        rows = query.all()
 
         buckets: dict = {}
-        for row in rows:
-            names = split_actor_names(row.actor)
-            photos = parse_actor_photos(row.actor_photo)
-            cover = (row.cover or "").strip()
-            crop = True if row.crop is None else bool(row.crop)
-            only_actor = len(names) == 1
-            for name in names:
-                actor = name_index.get(name.casefold())
-                if actor is None:
-                    continue
-                key = ("id", actor.id)
-                bucket = buckets.get(key)
-                if bucket is None:
-                    bucket = {
-                        "id": actor.id,
-                        "name": actor.name,
-                        "photo": (actor.photo or "").strip() or None,
-                        "count": 0,
-                        "covers": [],
-                        "cover_paths": set(),
-                        "seen": set(),
-                        "unknown": actor.name == UNKNOWN_ACTOR,
-                    }
-                    buckets[key] = bucket
-                if row.id in bucket["seen"]:
-                    continue
-                bucket["seen"].add(row.id)
-                bucket["count"] += 1
-                if not bucket["photo"]:
-                    bucket["photo"] = _photo_for(photos, name, only_actor)
-                if cover and cover not in bucket["cover_paths"] and len(bucket["covers"]) < _ACTOR_COVERS:
-                    bucket["cover_paths"].add(cover)
-                    bucket["covers"].append({"path": cover, "crop": crop})
+        for credit in credits:
+            actor = credit.actor
+            meta = credit.metadata_row
+            if not actor or not meta:
+                continue
+            bucket = buckets.get(actor.id)
+            if bucket is None:
+                primary_key = (actor.name or "").casefold()
+                alias_names = []
+                seen_alias = set()
+                for alias in actor.aliases or []:
+                    text = (alias.name or "").strip()
+                    if not text:
+                        continue
+                    key = text.casefold()
+                    if key == primary_key or key in seen_alias:
+                        continue
+                    seen_alias.add(key)
+                    alias_names.append(text)
+                bucket = {
+                    "id": actor.id,
+                    "name": actor.name,
+                    "photo": (actor.photo or "").strip() or None,
+                    "count": 0,
+                    "covers": [],
+                    "cover_paths": set(),
+                    "seen": set(),
+                    "unknown": actor.name == UNKNOWN_ACTOR,
+                    "latest": None,
+                    "aliases": alias_names,
+                }
+                buckets[actor.id] = bucket
+            if meta.id in bucket["seen"]:
+                continue
+            bucket["seen"].add(meta.id)
+            bucket["count"] += 1
+            stamp = (meta.updatetime, meta.id)
+            if bucket["latest"] is None or stamp > bucket["latest"]:
+                bucket["latest"] = stamp
+            cover = (meta.cover or "").strip()
+            crop = True if meta.crop is None else bool(meta.crop)
+            if cover and cover not in bucket["cover_paths"] and len(bucket["covers"]) < _ACTOR_COVERS:
+                bucket["cover_paths"].add(cover)
+                bucket["covers"].append({"path": cover, "crop": crop})
 
         def sort_key(item: dict):
             unknown = item["unknown"]
@@ -202,6 +208,7 @@ class MetadataService:
                 "photo": item["photo"],
                 "count": item["count"],
                 "covers": item["covers"],
+                "aliases": item["aliases"],
             }
             for item in ordered[skip:skip + limit]
         ]
@@ -213,42 +220,31 @@ class MetadataService:
         skip: int = 0,
         limit: int = 24,
         filter_text: Optional[str] = None,
+        actor_id: Optional[int] = None,
     ) -> Tuple[List[Metadata], int]:
-        """某一位演员的作品。优先按 Actor 别名集合匹配。"""
+        """某一位演员的作品：优先 actor_id，否则按名字解析。"""
         from bonita.services.actor_service import ActorService
 
-        name = (actor_name or "").strip()
-        if not name:
+        actor_service = ActorService(self.session)
+        actor: Optional[Actor] = None
+        if actor_id is not None:
+            actor = actor_service.get_by_id(actor_id)
+        if actor is None:
+            name = (actor_name or "").strip()
+            if not name:
+                return [], 0
+            actor = actor_service.find_by_name(name)
+        if actor is None:
             return [], 0
 
-        actor_service = ActorService(self.session)
-        actor = actor_service.find_by_name(name)
-        if actor:
-            name_keys = actor_service.alias_names_of(actor)
-            alias_texts = {actor.name}
-            alias_texts.update(a.name for a in (actor.aliases or []))
-        else:
-            name_keys = {name.casefold()}
-            alias_texts = {name}
-
-        query = self._filter_query(self.session.query(Metadata), filter_text)
-        if UNKNOWN_ACTOR.casefold() in name_keys and len(name_keys) == 1:
-            query = query.filter(or_(
-                Metadata.actor.ilike(_like_contains(UNKNOWN_ACTOR), escape="\\"),
-                Metadata.actor.is_(None),
-                func.trim(Metadata.actor) == "",
-            ))
-        else:
-            likes = [
-                Metadata.actor.ilike(_like_contains(text), escape="\\")
-                for text in alias_texts
-            ]
-            query = query.filter(or_(*likes))
+        query = (
+            self.session.query(Metadata)
+            .join(MetadataActor, MetadataActor.metadata_id == Metadata.id)
+            .filter(MetadataActor.actor_id == actor.id)
+        )
+        query = self._filter_query(query, filter_text)
         query = query.order_by(Metadata.updatetime.desc(), Metadata.id.desc())
-        matched = [
-            row for row in query.all()
-            if any(part.casefold() in name_keys for part in split_actor_names(row.actor))
-        ]
+        matched = query.all()
         return matched[skip:skip + limit], len(matched)
 
     def _cache_cover_if_needed(self, payload: dict) -> None:
@@ -263,14 +259,17 @@ class MetadataService:
             except Exception as e:
                 logger.warning(f"封面下载失败，元数据仍将保存: {cover} — {e}")
 
-    def _sync_actors_from_payload(self, payload: dict) -> None:
+    def _sync_credits_for_metadata(self, metadata: Metadata) -> None:
         from bonita.services.actor_service import ActorService
 
-        ActorService(self.session).ensure_from_metadata_fields(
-            payload.get("actor"),
-            payload.get("actor_photo"),
+        ActorService(self.session).replace_credits_for_metadata(
+            metadata.id,
+            metadata.actor,
+            metadata.actor_photo,
+            rewrite=True,
         )
         self.session.commit()
+        self.session.refresh(metadata)
 
     def create_metadata(self, metadata_dict: dict) -> Metadata:
         actor_value = metadata_dict.get("actor")
@@ -279,7 +278,7 @@ class MetadataService:
         self._cache_cover_if_needed(metadata_dict)
         db_metadata = Metadata(**metadata_dict)
         db_metadata.create(self.session)
-        self._sync_actors_from_payload(metadata_dict)
+        self._sync_credits_for_metadata(db_metadata)
         from bonita.modules.media_service.record_link import attach_number_records
         attach_number_records(self.session, db_metadata.number or "", db_metadata.title or "")
         return db_metadata
@@ -293,10 +292,7 @@ class MetadataService:
         db_metadata.update(self.session, update_dict)
         self.session.commit()
         self.session.refresh(db_metadata)
-        self._sync_actors_from_payload({
-            "actor": update_dict.get("actor", db_metadata.actor),
-            "actor_photo": update_dict.get("actor_photo", db_metadata.actor_photo),
-        })
+        self._sync_credits_for_metadata(db_metadata)
         from bonita.modules.media_service.record_link import attach_number_records
         attach_number_records(self.session, db_metadata.number or "", db_metadata.title or "")
         return db_metadata
@@ -305,6 +301,9 @@ class MetadataService:
         db_metadata = self.get_by_id(metadata_id)
         if not db_metadata:
             return False
+        self.session.query(MetadataActor).filter(
+            MetadataActor.metadata_id == metadata_id
+        ).delete(synchronize_session=False)
         self.session.delete(db_metadata)
         self.session.commit()
         return True
