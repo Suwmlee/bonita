@@ -91,6 +91,7 @@ class ActorCover(BaseModel):
     """演员墙上的一张封面。crop 为真时取横图右侧海报，为假时展示整张。"""
     path: str
     crop: bool = True
+    number: Optional[str] = None
 
 
 class ActorSummary(BaseModel):

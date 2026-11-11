@@ -46,7 +46,8 @@ const primaryName = computed(() => name.value.trim())
 const photoPreviewUrl = computed(() => {
   const path = photo.value.trim()
   if (!path || photoBroken.value) return ""
-  const base = resourceImageUrl(path)
+  const actorName = primaryName.value || props.actor?.name || ""
+  const base = resourceImageUrl(path, { actor: actorName || undefined })
   if (!photoStamp.value) return base
   return `${base}${base.includes("?") ? "&" : "?"}v=${photoStamp.value}`
 })

@@ -15,7 +15,12 @@ from bonita.db.models.downloads import Downloads
 from bonita.db.models.metadata import Metadata
 from bonita.modules.media_service.client import SOURCE_EMBY
 from bonita.modules.media_service.factory import ensure_media_client
-from bonita.utils.downloader import cached_filepath, download_file
+from bonita.utils.downloader import (
+    cached_filepath,
+    download_file,
+    ensure_cached_in_folder,
+    process_cached_file,
+)
 from bonita.utils.http import get_active_proxy
 
 logger = logging.getLogger(__name__)
@@ -67,11 +72,21 @@ class ResourceService:
     def __init__(self, session: Session):
         self.session = session
 
-    def _folder_for_url(self, url: str) -> str:
-        """按 URL 反查落盘目录：演员头像 actors/<名>/，否则 covers/<番号>/（无番号则 covers）。"""
-        actor = self.session.query(Actor.name).filter(Actor.photo == url).first()
-        if actor and actor.name:
-            return os.path.join(ACTOR_PHOTO_FOLDER, _safe_dirname(actor.name))
+    def _folder_for_url(
+        self,
+        url: str,
+        *,
+        number: Optional[str] = None,
+        actor: Optional[str] = None,
+    ) -> str:
+        """落盘目录：优先用调用方传入的 actor/number；否则按 URL 反查。"""
+        if (actor or "").strip():
+            return actor_folder_for_name(actor)
+        if (number or "").strip():
+            return cover_folder_for_number(number)
+        row_actor = self.session.query(Actor.name).filter(Actor.photo == url).first()
+        if row_actor and row_actor.name:
+            return actor_folder_for_name(row_actor.name)
         row = (
             self.session.query(Metadata.number)
             .filter((Metadata.cover == url) | (Metadata.cover_small == url))
@@ -81,8 +96,15 @@ class ResourceService:
         return cover_folder_for_number(row.number if row else None)
 
     @staticmethod
-    def resolve_image_path(path: str) -> Optional[str]:
-        """供 /resource/image 使用：短会话查库，下载不占用连接池；同 URL 串行避免写坏文件。"""
+    def resolve_image_path(
+        path: str,
+        number: Optional[str] = None,
+        actor: Optional[str] = None,
+    ) -> Optional[str]:
+        """供 /resource/image 使用：短会话查库，下载不占用连接池；同 URL 串行避免写坏文件。
+
+        预览尚未入库的封面/头像时，必须传 number 或 actor，否则会落到裸 covers/。
+        """
         if not path:
             return None
         if os.path.isfile(path):
@@ -97,10 +119,19 @@ class ResourceService:
             folder = COVER_FOLDER
             session = SessionFactory()
             try:
+                folder = ResourceService(session)._folder_for_url(
+                    path, number=number, actor=actor
+                )
+                # 仅在有明确子目录时搬迁；裸 covers/ 不当作目标，避免冲掉已正确归档的文件
+                specific = folder not in (COVER_FOLDER, ACTOR_PHOTO_FOLDER)
                 cached = cached_filepath(session, path)
                 if cached:
+                    if specific:
+                        relocated = ensure_cached_in_folder(
+                            session, path, folder, cached
+                        )
+                        return relocated or cached
                     return cached
-                folder = ResourceService(session)._folder_for_url(path)
                 proxy = get_active_proxy(session)
             finally:
                 session.close()
@@ -122,6 +153,73 @@ class ResourceService:
                 return filepath
             finally:
                 session.close()
+
+    def cache_remote_image(
+        self,
+        url: str,
+        *,
+        number: Optional[str] = None,
+        actor: Optional[str] = None,
+    ) -> str:
+        """主动按 actor/number 缓存远程图到正确子目录（保存头像/封面时用）。"""
+        text = (url or "").strip()
+        if not text.startswith(("http://", "https://")):
+            return ""
+        folder = self._folder_for_url(text, number=number, actor=actor)
+        try:
+            return process_cached_file(self.session, text, folder)
+        except Exception as e:
+            logger.warning("Failed to cache remote image %s → %s: %s", text, folder, e)
+            return ""
+
+    def relocate_actor_photo_dir(self, old_name: str, new_name: str) -> int:
+        """改主名后：actors/<旧>/ → actors/<新>/，并回写 Downloads.filepath。"""
+        old_folder = actor_folder_for_name(old_name)
+        new_folder = actor_folder_for_name(new_name)
+        if old_folder == new_folder:
+            return 0
+        old_abs = os.path.abspath(os.path.join(settings.ASSETS_LOCATION, old_folder))
+        new_abs = os.path.abspath(os.path.join(settings.ASSETS_LOCATION, new_folder))
+        if not os.path.isdir(old_abs):
+            return 0
+        os.makedirs(new_abs, exist_ok=True)
+        moved = 0
+        mapping: Dict[str, str] = {}
+        for name in os.listdir(old_abs):
+            src = os.path.join(old_abs, name)
+            if not os.path.isfile(src):
+                continue
+            dest = os.path.join(new_abs, name)
+            if os.path.exists(dest):
+                try:
+                    os.remove(src)
+                except OSError:
+                    pass
+            else:
+                os.rename(src, dest)
+            mapping[os.path.abspath(src)] = dest
+            mapping[name] = dest
+        if mapping:
+            prefix = old_abs.rstrip(os.sep) + os.sep
+            rows = (
+                self.session.query(Downloads)
+                .filter(Downloads.filepath.like(prefix + "%"))
+                .all()
+            )
+            for row in rows:
+                key = os.path.abspath(row.filepath or "")
+                dest = mapping.get(key) or mapping.get(os.path.basename(row.filepath or ""))
+                if dest:
+                    row.filepath = dest
+                    moved += 1
+        try:
+            if os.path.isdir(old_abs) and not os.listdir(old_abs):
+                os.rmdir(old_abs)
+        except OSError:
+            pass
+        if moved:
+            self.session.flush()
+        return moved
 
     def save_image(
         self,

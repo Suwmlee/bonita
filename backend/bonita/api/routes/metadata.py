@@ -139,6 +139,9 @@ async def update_actor(
         old_name = actor.name
         if actor_in.name is not None and actor_in.name.strip() != actor.name:
             actor = service.rename_actor(actor_id, actor_in.name)
+            from bonita.services.resource_service import ResourceService
+
+            ResourceService(session).relocate_actor_photo_dir(old_name, actor.name)
         if actor_in.aliases is not None:
             aliases = list(actor_in.aliases)
             # 同请求改主名时，前端别名列表不含旧主名；保留为别名，避免被覆盖删除
@@ -149,6 +152,11 @@ async def update_actor(
             actor = service.set_aliases(actor_id, aliases)
         if actor_in.photo is not None:
             actor.photo = actor_in.photo
+            photo = (actor.photo or "").strip()
+            if photo.startswith(("http://", "https://")):
+                from bonita.services.resource_service import ResourceService
+
+                ResourceService(session).cache_remote_image(photo, actor=actor.name)
         if actor_in.birth_date is not None:
             actor.birth_date = actor_in.birth_date
         if actor_in.outline is not None:

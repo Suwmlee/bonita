@@ -11,9 +11,18 @@ router = APIRouter()
 
 
 @router.get("/image")
-async def get_image_by_query(path: str):
-    """按 URL/路径取图。下载远程图时不长时间占用 DB 连接，避免演员墙并发打满连接池。"""
-    filepath = await asyncio.to_thread(ResourceService.resolve_image_path, path)
+async def get_image_by_query(
+    path: str,
+    number: str = None,
+    actor: str = None,
+):
+    """按 URL/路径取图。下载远程图时不长时间占用 DB 连接，避免演员墙并发打满连接池。
+
+    预览尚未写入 Metadata/Actor 的远程图时传 number 或 actor，落到 covers/<番号>/ 或 actors/<名>/。
+    """
+    filepath = await asyncio.to_thread(
+        ResourceService.resolve_image_path, path, number, actor
+    )
     if not filepath:
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(

@@ -93,12 +93,25 @@ def celery_scrapping(self, file_path, scraping_dict):
             if scraping_conf.save_metadata:
                 metadata_record.create(session)
                 from bonita.services.actor_service import ActorService
+                from bonita.utils.downloader import process_cached_file
                 ActorService(session).replace_credits_for_metadata(
                     metadata_record.id,
                     metadata_record.actor,
                     metadata_record.actor_photo,
                     rewrite=True,
                 )
+                cover = (metadata_record.cover or "").strip()
+                if cover.startswith(("http://", "https://")):
+                    try:
+                        process_cached_file(
+                            session,
+                            cover,
+                            cover_folder_for_number(metadata_record.number),
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            "刮削入库封面缓存失败: %s — %s", cover, e
+                        )
                 session.commit()
                 session.refresh(metadata_record)
             metadata_mixed = schemas.MetadataMixed(**metadata_record.to_dict())

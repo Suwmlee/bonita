@@ -35,7 +35,12 @@ const coverImageUrl = computed(() => {
 
   // Add a timestamp query parameter to prevent browser caching
   const timestamp = new Date().getTime()
-  return `${client.getConfig().baseURL}/api/v1/resource/image?path=${encodeURIComponent(currentMetadata.value.cover)}&t=${timestamp}`
+  const params = new URLSearchParams()
+  params.set("path", currentMetadata.value.cover)
+  params.set("t", String(timestamp))
+  const number = (currentMetadata.value.number || "").trim()
+  if (number) params.set("number", number)
+  return `${client.getConfig().baseURL}/api/v1/resource/image?${params.toString()}`
 })
 
 if (updateMetadata) {

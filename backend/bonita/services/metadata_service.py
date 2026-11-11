@@ -187,7 +187,11 @@ class MetadataService:
             crop = True if meta.crop is None else bool(meta.crop)
             if cover and cover not in bucket["cover_paths"] and len(bucket["covers"]) < _ACTOR_COVERS:
                 bucket["cover_paths"].add(cover)
-                bucket["covers"].append({"path": cover, "crop": crop})
+                bucket["covers"].append({
+                    "path": cover,
+                    "crop": crop,
+                    "number": (meta.number or "").strip() or None,
+                })
 
         def sort_key(item: dict):
             unknown = item["unknown"]
@@ -253,16 +257,15 @@ class MetadataService:
         return matched[skip:skip + limit], len(matched)
 
     def _cache_cover_if_needed(self, payload: dict) -> None:
-        cover = payload.get("cover")
-        if cover and str(cover).startswith(("http://", "https://")):
+        folder = cover_folder_for_number(payload.get("number"))
+        for key in ("cover", "cover_small"):
+            url = payload.get(key)
+            if not url or not str(url).startswith(("http://", "https://")):
+                continue
             try:
-                process_cached_file(
-                    self.session,
-                    cover,
-                    cover_folder_for_number(payload.get("number")),
-                )
+                process_cached_file(self.session, str(url), folder)
             except Exception as e:
-                logger.warning(f"封面下载失败，元数据仍将保存: {cover} — {e}")
+                logger.warning(f"封面下载失败（{key}），元数据仍将保存: {url} — {e}")
 
     def _sync_credits_for_metadata(self, metadata: Metadata) -> None:
         from bonita.services.actor_service import ActorService

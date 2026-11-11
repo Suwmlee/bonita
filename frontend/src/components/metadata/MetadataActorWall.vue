@@ -66,12 +66,12 @@ function showPhoto(actor: ActorSummary) {
               <img
                 v-if="cover.crop === false"
                 class="mosaic-fill"
-                :src="resourceImageUrl(cover.path)"
+                :src="resourceImageUrl(cover.path, { number: cover.number })"
                 alt=""
               />
               <img
                 class="mosaic-image"
-                :src="resourceImageUrl(cover.path)"
+                :src="resourceImageUrl(cover.path, { number: cover.number })"
                 alt=""
                 @error="markBroken(`cover:${actor.name}:${cover.path}`)"
               />
@@ -83,7 +83,7 @@ function showPhoto(actor: ActorSummary) {
               <span>{{ actorInitial(actor.name) }}</span>
               <img
                 v-if="showPhoto(actor)"
-                :src="resourceImageUrl(actor.photo || '')"
+                :src="resourceImageUrl(actor.photo || '', { actor: actor.name })"
                 :alt="actor.name"
                 @error="markBroken(`photo:${actor.name}`)"
               />

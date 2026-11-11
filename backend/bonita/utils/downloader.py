@@ -68,10 +68,73 @@ def cached_filepath(session: Session, url: str) -> str:
     return ""
 
 
+def _assets_folder_abs(folder: str) -> str:
+    return os.path.abspath(os.path.join(settings.ASSETS_LOCATION, folder or ""))
+
+
+def _path_under_folder(filepath: str, folder: str) -> bool:
+    """判断绝对路径是否落在 ASSETS/<folder>/ 下（含子文件）。"""
+    if not filepath or not folder:
+        return False
+    target = _assets_folder_abs(folder)
+    try:
+        return os.path.commonpath([os.path.abspath(filepath), target]) == target
+    except ValueError:
+        return False
+
+
+def ensure_cached_in_folder(session: Session, url: str, folder: str, filepath: str) -> str:
+    """已有本地文件时，若未在目标子目录则搬迁并回写 Downloads。"""
+    if not filepath or not is_valid_image_file(filepath):
+        return ""
+    if _path_under_folder(filepath, folder):
+        return filepath
+
+    target_dir = _assets_folder_abs(folder)
+    os.makedirs(target_dir, exist_ok=True)
+    filename = os.path.basename(filepath)
+    if not filename:
+        ext = os.path.splitext(filepath)[1] or ".jpg"
+        filename = hashlib.md5((url or filepath).encode()).hexdigest() + ext
+    dest = os.path.join(target_dir, filename)
+    if os.path.abspath(filepath) != os.path.abspath(dest):
+        if os.path.exists(dest):
+            # 目标已有同名，保留目标，删掉错位源文件
+            try:
+                if os.path.isfile(filepath):
+                    os.remove(filepath)
+            except OSError:
+                pass
+        else:
+            shutil.move(filepath, dest)
+        filepath = dest
+
+    cache = session.query(Downloads).filter(Downloads.url == url).first() if url else None
+    if cache:
+        cache.filepath = filepath
+        session.commit()
+    elif url:
+        Downloads(url=url, filepath=filepath).create(session)
+    return filepath
+
+
+def _is_specific_assets_folder(folder: str) -> bool:
+    """covers/<番号>、actors/<名> 为明确子目录；裸 covers/actors 不算。"""
+    parts = [p for p in (folder or "").replace("\\", "/").split("/") if p]
+    return len(parts) >= 2
+
+
 def process_cached_file(session: Session, url: str, folder) -> str:
-    """获取缓存图片；folder 为相对 ASSETS 的子目录，如 covers/<番号>。"""
+    """获取缓存图片；folder 为相对 ASSETS 的子目录，如 covers/<番号>、actors/<名>。
+
+    若已缓存但目录不对（例如预览时落到裸 covers/），会搬到 folder 下。
+    目标若是裸 covers/actors，只下载不搬迁，避免冲掉已归档文件。
+    """
+    folder = folder or ""
     cached = cached_filepath(session, url)
     if cached:
+        if _is_specific_assets_folder(folder):
+            return ensure_cached_in_folder(session, url, folder, cached) or cached
         return cached
     filepath = download_file(url, folder, get_active_proxy(session))
     cache = session.query(Downloads).filter(Downloads.url == url).first()
@@ -86,32 +149,30 @@ def process_cached_file(session: Session, url: str, folder) -> str:
 
 def update_cache_from_local(session: Session, source_path: str, folder: str, url: str):
     """根据本地文件更新缓存记录；folder 为相对 ASSETS 的子目录。"""
-    # 检查数据库中是否已有记录
     cache_downloads = session.query(Downloads).filter(Downloads.url == url).first()
-    # 如果有记录，且文件存在，则跳过
-    if cache_downloads and os.path.exists(cache_downloads.filepath):
+    if cache_downloads and is_valid_image_file(cache_downloads.filepath or ""):
+        if _is_specific_assets_folder(folder):
+            return ensure_cached_in_folder(
+                session, url, folder, cache_downloads.filepath
+            ) or cache_downloads.filepath
         return cache_downloads.filepath
-    # 确保缓存目录存在
-    cache_folder = os.path.abspath(os.path.join(settings.ASSETS_LOCATION, folder))
+
+    cache_folder = _assets_folder_abs(folder)
     os.makedirs(cache_folder, exist_ok=True)
-    # 生成文件名
-    file_extension = os.path.splitext(source_path)[1]
-    if not file_extension:
-        file_extension = '.jpg'  # 默认扩展名
+    file_extension = os.path.splitext(source_path)[1] or ".jpg"
     file_name = hashlib.md5(url.encode()).hexdigest() + file_extension
     cache_path = os.path.join(cache_folder, file_name)
-    # 复制文件到缓存目录
     if os.path.exists(source_path):
         shutil.copy2(source_path, cache_path)
 
-    # 更新或创建数据库记录
     if cache_downloads:
         cache_downloads.filepath = cache_path
+        session.commit()
     else:
         cache_downloads = Downloads(url=url, filepath=cache_path)
         session.add(cache_downloads)
+        session.commit()
 
-    session.commit()
     return cache_path
 
 

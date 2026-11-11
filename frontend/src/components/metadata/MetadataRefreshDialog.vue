@@ -162,7 +162,11 @@ const hasImageRows = computed(() =>
 
 function previewSrc(path: unknown): string {
   if (!path || typeof path !== "string") return ""
-  return `${client.getConfig().baseURL}/api/v1/resource/image?path=${encodeURIComponent(path)}`
+  const params = new URLSearchParams()
+  params.set("path", path)
+  const number = (props.metadata?.number || "").trim()
+  if (number) params.set("number", number)
+  return `${client.getConfig().baseURL}/api/v1/resource/image?${params.toString()}`
 }
 
 function imageKey(field: CompareField, side: "current" | "next") {

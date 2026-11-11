@@ -32,6 +32,10 @@ export type ActorCover = {
      * Crop
      */
     crop?: boolean;
+    /**
+     * Number
+     */
+    number?: string | null;
 };
 
 /**

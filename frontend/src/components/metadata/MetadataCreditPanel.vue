@@ -150,7 +150,7 @@ defineExpose({ reload: loadCredits })
           <span>{{ actorInitial(credit.actor_name || credit.credit_name || '') }}</span>
           <img
             v-if="showPhoto(credit)"
-            :src="resourceImageUrl(credit.photo || '')"
+            :src="resourceImageUrl(credit.photo || '', { actor: credit.actor_name })"
             :alt="credit.actor_name"
             @error="markPhotoBroken(credit.actor_id)"
           />
@@ -220,7 +220,7 @@ defineExpose({ reload: loadCredits })
                 <span>{{ actorInitial(item.name) }}</span>
                 <img
                   v-if="item.photo && !brokenPhotos[item.id]"
-                  :src="resourceImageUrl(item.photo)"
+                  :src="resourceImageUrl(item.photo, { actor: item.name })"
                   alt=""
                   @error="markPhotoBroken(item.id)"
                 />

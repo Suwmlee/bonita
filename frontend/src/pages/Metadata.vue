@@ -421,7 +421,7 @@ onMounted(() => {
             v-for="cover in heroCovers"
             :key="cover.path"
             :class="{ 'hero-full': cover.crop === false }"
-            :src="resourceImageUrl(cover.path)"
+            :src="resourceImageUrl(cover.path, { number: cover.number })"
             alt=""
             @error="markHeroCoverBroken(cover.path)"
           />
@@ -442,7 +442,7 @@ onMounted(() => {
           <span>{{ actorInitial(selectedActor.name) }}</span>
           <img
             v-if="showHeroPhoto"
-            :src="resourceImageUrl(selectedActor.photo || '')"
+            :src="resourceImageUrl(selectedActor.photo || '', { actor: selectedActor.name })"
             :alt="selectedActor.name"
             @error="heroPhotoBroken = true"
           />
@@ -513,13 +513,13 @@ onMounted(() => {
             <template v-if="item.cover">
               <img
                 class="cover-fill"
-                :src="resourceImageUrl(item.cover)"
+                :src="resourceImageUrl(item.cover, { number: item.number })"
                 alt=""
                 aria-hidden="true"
               />
               <img
                 class="cover-image"
-                :src="resourceImageUrl(item.cover)"
+                :src="resourceImageUrl(item.cover, { number: item.number })"
                 :alt="item.title"
                 loading="lazy"
               />
