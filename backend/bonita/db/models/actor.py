@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from bonita.db import Base
@@ -30,11 +30,7 @@ class Actor(Base):
 
 
 class ActorAlias(Base):
-    """演员别名索引：刮削名精确匹配后落到 Actor.name"""
-
-    __table_args__ = (
-        UniqueConstraint("name", name="uq_actoralias_name"),
-    )
+    """演员别名索引：刮削名匹配到 Actor；同名可对应多人（取作品数最多，人工再改挂）"""
 
     id = Column(Integer, primary_key=True, index=True)
     actor_id = Column(
