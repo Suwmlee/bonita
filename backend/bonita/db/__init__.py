@@ -25,6 +25,7 @@ def set_sqlite_pragma(dbapi_conn, connection_record):
     - temp_store：使用内存存储临时表
     """
     cursor = dbapi_conn.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
     cursor.execute("PRAGMA journal_mode=WAL")
     cursor.execute("PRAGMA synchronous=NORMAL")
     cursor.execute("PRAGMA cache_size=-10000")

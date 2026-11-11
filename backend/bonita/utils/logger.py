@@ -1,9 +1,14 @@
-import fcntl
 import logging
 import os
 import re
+import sys
 from contextvars import ContextVar
 from logging.handlers import RotatingFileHandler
+
+try:
+    import fcntl
+except ImportError:  # Windows
+    fcntl = None  # type: ignore[assignment]
 
 from bonita.core.config import settings
 
@@ -100,8 +105,23 @@ class SharedRotatingFileHandler(RotatingFileHandler):
         self._remember_inode()
 
     def _acquire(self) -> None:
+        if fcntl is not None:
+            self._lock_fp = open(self._lock_path, "a")
+            fcntl.flock(self._lock_fp.fileno(), fcntl.LOCK_EX)
+            return
+        if sys.platform == "win32":
+            import msvcrt
+
+            # Windows 用可读写模式锁首字节；本地单进程开发足够
+            self._lock_fp = open(self._lock_path, "a+b")
+            self._lock_fp.seek(0)
+            if self._lock_fp.read(1) == b"":
+                self._lock_fp.write(b"0")
+                self._lock_fp.flush()
+            self._lock_fp.seek(0)
+            msvcrt.locking(self._lock_fp.fileno(), msvcrt.LK_LOCK, 1)
+            return
         self._lock_fp = open(self._lock_path, "a")
-        fcntl.flock(self._lock_fp.fileno(), fcntl.LOCK_EX)
 
     def _release(self) -> None:
         lock_fp = self._lock_fp
@@ -109,7 +129,13 @@ class SharedRotatingFileHandler(RotatingFileHandler):
         if lock_fp is None:
             return
         try:
-            fcntl.flock(lock_fp.fileno(), fcntl.LOCK_UN)
+            if fcntl is not None:
+                fcntl.flock(lock_fp.fileno(), fcntl.LOCK_UN)
+            elif sys.platform == "win32":
+                import msvcrt
+
+                lock_fp.seek(0)
+                msvcrt.locking(lock_fp.fileno(), msvcrt.LK_UNLCK, 1)
         finally:
             lock_fp.close()
 
