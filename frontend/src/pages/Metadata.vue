@@ -666,17 +666,17 @@ onMounted(() => {
 
 .hero-avatar {
   position: relative;
-  width: 92px;
-  height: 92px;
+  width: 112px;
+  aspect-ratio: 2 / 3;
   flex-shrink: 0;
-  border-radius: 50%;
+  border-radius: 14px;
   overflow: hidden;
-  border: 3px solid rgba(255, 255, 255, 0.92);
+  border: 2px solid rgba(255, 255, 255, 0.92);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 34px;
+  font-size: 36px;
   font-weight: 600;
   color: #fff;
 }
@@ -687,6 +687,7 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center top;
 }
 
 .hero-name-row {
@@ -906,7 +907,7 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .actor-hero {
-    height: 168px;
+    height: 180px;
   }
 
   .hero-content {
@@ -915,8 +916,7 @@ onMounted(() => {
   }
 
   .hero-avatar {
-    width: 72px;
-    height: 72px;
+    width: 84px;
     font-size: 28px;
   }
 

@@ -224,13 +224,21 @@ async function handleFileUpload(event: Event) {
             <label for="actor">{{ t('components.metadata.form.actor') }} <span class="text-error">*</span></label>
           </VCol>
           <VCol cols="12" md="9">
-            <VTextField v-model="currentMetadata.actor" :error-messages="formErrors.actor" required />
             <MetadataCreditPanel
               v-if="currentMetadata.id"
-              class="mt-2"
+              class="mb-3"
               :metadata-id="currentMetadata.id"
               @changed="onCreditsChanged"
             />
+            <VTextField
+              v-model="currentMetadata.actor"
+              :error-messages="formErrors.actor"
+              :hide-details="currentMetadata.id && !formErrors.actor ? true : undefined"
+              required
+            />
+            <p v-if="currentMetadata.id" class="actor-raw-hint">
+              {{ t('components.metadata.form.actorRawHint') }}
+            </p>
           </VCol>
         </VRow>
       </VCol>
@@ -278,7 +286,7 @@ async function handleFileUpload(event: Event) {
 
             <div v-if="currentMetadata.cover" class="text-caption text-grey mt-1">
               <VIcon icon="bx-info-circle" size="small" class="mr-1" />
-              Note: Uploading a new image will update the image content while keeping the same URL.
+              {{ t('components.metadata.form.coverUploadHint') }}
             </div>
           </VCol>
         </VRow>
@@ -550,6 +558,13 @@ async function handleFileUpload(event: Event) {
 </style>
 
 <style scoped>
+.actor-raw-hint {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
 .cover-preview-btn {
   display: block;
   max-width: 100%;

@@ -95,13 +95,6 @@ function showPhoto(actor: ActorSummary) {
                 class="actor-homonym"
               >{{ t('pages.metadata.homonymBadge') }}</span>
             </p>
-            <p
-              v-if="(actor.aliases ?? []).length"
-              class="actor-aliases"
-              :title="(actor.aliases ?? []).join(' / ')"
-            >
-              {{ (actor.aliases ?? []).join(' / ') }}
-            </p>
             <p class="actor-count">{{ t('pages.metadata.workCount', { count: actor.count }) }}</p>
           </div>
         </div>
@@ -222,17 +215,17 @@ function showPhoto(actor: ActorSummary) {
 
 .avatar {
   position: relative;
-  width: 84px;
-  height: 84px;
+  width: 118px;
+  aspect-ratio: 2 / 3;
   margin-bottom: 10px;
-  border-radius: 50%;
+  border-radius: 14px;
   overflow: hidden;
-  border: 3px solid rgba(255, 255, 255, 0.92);
+  border: 2px solid rgba(255, 255, 255, 0.92);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 600;
   line-height: 1;
   color: #fff;
@@ -244,6 +237,7 @@ function showPhoto(actor: ActorSummary) {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center top;
 }
 
 .actor-name {
@@ -273,21 +267,6 @@ function showPhoto(actor: ActorSummary) {
   color: rgba(255, 220, 160, 0.95);
   background: rgba(0, 0, 0, 0.35);
   text-shadow: none;
-}
-
-.actor-aliases {
-  width: 100%;
-  margin: 4px 0 0;
-  font-size: 11px;
-  line-height: 1.35;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.42);
-  text-shadow: none;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 .actor-count {

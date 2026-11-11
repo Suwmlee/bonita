@@ -723,6 +723,7 @@ export default {
         outline: "Outline",
         director: "Director",
         actor: "Actor",
+        actorRawHint: "Raw actor text, comma-separated; written on save",
         actorPhoto: "Actor Photo",
         cover: "Cover",
         coverSmall: "Small Cover",
@@ -747,6 +748,7 @@ export default {
         clickToView: "Click to view full size",
         uploadCover: "Upload Cover",
         selectImage: "Select Image",
+        coverUploadHint: "Uploading a new image updates the content while keeping the same URL.",
         imageTypeError: "Please select an image file (JPEG, PNG, etc.).",
         uploadError: "Failed to upload image. Please try again.",
         uploadSuccess:
