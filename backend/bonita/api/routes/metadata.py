@@ -102,6 +102,14 @@ async def list_actor_works(
     return schemas.MetadataCollection(data=data_list, count=count)
 
 
+@router.get("/actors/homonyms", response_model=List[schemas.ActorHomonymPublic])
+async def list_actor_homonyms(session: SessionDep, name: str = "") -> Any:
+    """按名字列出全部同名演员（含别名命中）。"""
+    from bonita.services.actor_service import ActorService
+
+    return ActorService(session).list_homonyms(name)
+
+
 @router.get("/actors/{actor_id}", response_model=schemas.ActorPublic)
 async def get_actor(session: SessionDep, actor_id: int) -> Any:
     """获取演员详情（含别名）。"""
@@ -152,6 +160,66 @@ async def update_actor(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return schemas.ActorPublic.model_validate(actor)
+
+
+@router.get("/{id}/credits", response_model=List[schemas.MetadataCreditPublic])
+async def list_metadata_credits(session: SessionDep, id: int) -> Any:
+    """某片出演行（按行，含同名人数）。"""
+    from bonita.services.actor_service import ActorService
+
+    if not MetadataService(session).get_by_id(id):
+        raise HTTPException(status_code=404, detail=f"Metadata with id {id} not found")
+    return ActorService(session).list_credits_for_metadata(id)
+
+
+@router.put("/{id}/credits/{actor_id}", response_model=List[schemas.MetadataCreditPublic])
+async def rematch_metadata_credit(
+    session: SessionDep,
+    id: int,
+    actor_id: int,
+    body: schemas.CreditRematchRequest,
+) -> Any:
+    """只改挂这一行出演到已有演员。"""
+    from bonita.services.actor_service import ActorService
+
+    if not MetadataService(session).get_by_id(id):
+        raise HTTPException(status_code=404, detail=f"Metadata with id {id} not found")
+    try:
+        credits = ActorService(session).rematch_credit(id, actor_id, body.to_actor_id)
+        session.commit()
+        return credits
+    except ValueError as exc:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/{id}/credits/{actor_id}/split", response_model=schemas.CreditSplitResult)
+async def split_metadata_credit(
+    session: SessionDep,
+    id: int,
+    actor_id: int,
+    body: Optional[schemas.CreditSplitRequest] = None,
+) -> Any:
+    """新建同名演员，只改挂这一行。"""
+    from bonita.services.actor_service import ActorService
+
+    if not MetadataService(session).get_by_id(id):
+        raise HTTPException(status_code=404, detail=f"Metadata with id {id} not found")
+    payload = body or schemas.CreditSplitRequest()
+    try:
+        result = ActorService(session).split_credit_to_new_actor(
+            id, actor_id, new_name=payload.name
+        )
+        new_id = result["actor"].id
+        session.commit()
+        actor = ActorService(session).get_by_id(new_id)
+        return schemas.CreditSplitResult(
+            actor=schemas.ActorPublic.model_validate(actor),
+            credits=result["credits"],
+        )
+    except ValueError as exc:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/{id}/refresh", response_model=schemas.MetadataBase)

@@ -201,6 +201,10 @@ class MetadataService:
             return (unknown, -item["count"], name)
 
         ordered = sorted(buckets.values(), key=sort_key)
+        name_groups: dict = {}
+        for item in ordered:
+            key = (item["name"] or "").casefold()
+            name_groups[key] = name_groups.get(key, 0) + 1
         page = [
             {
                 "id": item["id"],
@@ -209,6 +213,7 @@ class MetadataService:
                 "count": item["count"],
                 "covers": item["covers"],
                 "aliases": item["aliases"],
+                "homonym_count": name_groups.get((item["name"] or "").casefold(), 1),
             }
             for item in ordered[skip:skip + limit]
         ]

@@ -101,6 +101,7 @@ class ActorSummary(BaseModel):
     count: int
     covers: List[ActorCover] = []
     aliases: List[str] = []
+    homonym_count: int = 1
 
 
 class ActorCollection(BaseModel):

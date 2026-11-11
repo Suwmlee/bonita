@@ -55,3 +55,36 @@ class ActorResolveResult(BaseModel):
     resolved: str
     actor_id: Optional[int] = None
     matched: bool = False
+
+
+class ActorHomonymPublic(BaseModel):
+    """同名候选演员"""
+
+    id: int
+    name: str
+    photo: Optional[str] = None
+    count: int = 0
+
+
+class MetadataCreditPublic(BaseModel):
+    """某片的一行出演"""
+
+    actor_id: int
+    actor_name: str
+    credit_name: str
+    sort: int = 0
+    photo: Optional[str] = None
+    homonym_count: int = 1
+
+
+class CreditRematchRequest(BaseModel):
+    to_actor_id: int
+
+
+class CreditSplitRequest(BaseModel):
+    name: Optional[str] = None
+
+
+class CreditSplitResult(BaseModel):
+    actor: ActorPublic
+    credits: List[MetadataCreditPublic]
