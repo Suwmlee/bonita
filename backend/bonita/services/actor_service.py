@@ -509,12 +509,11 @@ class ActorService:
         alias_total = self.session.query(ActorAlias).count()
         created = max(0, total - before_count)
         logger.info(
-            "演员回填完成: scanned=%s created=%s removed=%s actors=%s aliases=%s credits=%s",
+            "演员回填完成: scanned=%s created=%s removed=%s actors=%s credits=%s",
             len(seen_keys),
             created,
             removed,
             total,
-            alias_total,
             credit_rows,
         )
         return {

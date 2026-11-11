@@ -261,7 +261,7 @@ export default {
           "按元数据回填出演关联，统一写出主名，并删除没有任何出演的废弃演员",
         start: "开始整理",
         success:
-          "整理完成：演员 {actors}，别名 {aliases}，出演 {credits}，清理 {removed}",
+          "整理完成：演员 {actors}，出演 {credits}，清理 {removed}",
         failed: "演员整理失败",
       },
       syncRecordPath: {

@@ -150,7 +150,6 @@ export const useToolStore = defineStore("tool-store", {
         const detail = response?.data as
           | {
               actors?: number
-              aliases?: number
               credits?: number
               removed?: number
               created?: number
@@ -159,7 +158,6 @@ export const useToolStore = defineStore("tool-store", {
         toastStore.success(
           i18n.global.t("pages.tools.tidyActors.success", {
             actors: detail?.actors ?? 0,
-            aliases: detail?.aliases ?? 0,
             credits: detail?.credits ?? 0,
             removed: detail?.removed ?? 0,
           }) as string,

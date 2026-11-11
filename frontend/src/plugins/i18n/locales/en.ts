@@ -265,7 +265,7 @@ export default {
           "Rebuild actor credits from metadata, rewrite primary names, and remove actors with no credits",
         start: "Start Tidy",
         success:
-          "Done: {actors} actors, {aliases} aliases, {credits} credits, removed {removed}",
+          "Done: {actors} actors, {credits} credits, removed {removed}",
         failed: "Failed to tidy actors",
       },
       syncRecordPath: {
