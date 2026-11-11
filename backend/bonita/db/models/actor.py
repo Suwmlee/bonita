@@ -23,6 +23,10 @@ class Actor(Base):
         back_populates="actor",
         cascade="all, delete-orphan",
     )
+    credits = relationship(
+        "MetadataActor",
+        back_populates="actor",
+    )
 
 
 class ActorAlias(Base):
@@ -43,3 +47,32 @@ class ActorAlias(Base):
     createtime = Column(DateTime, default=datetime.now, comment="创建时间")
 
     actor = relationship("Actor", back_populates="aliases")
+
+
+class MetadataActor(Base):
+    """元数据出演：用 actor_id 关联；credit_name 保留刮削原文"""
+
+    __tablename__ = "metadata_actor"
+    __table_args__ = (
+        UniqueConstraint("metadata_id", "actor_id", name="uq_metadata_actor"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    metadata_id = Column(
+        Integer,
+        ForeignKey("metadata.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    actor_id = Column(
+        Integer,
+        ForeignKey("actor.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    credit_name = Column(String, nullable=False, default="", comment="这部片子的刮削出演名")
+    sort = Column(Integer, nullable=False, default=0, comment="写出顺序")
+    createtime = Column(DateTime, default=datetime.now, comment="创建时间")
+
+    actor = relationship("Actor", back_populates="credits")
+    metadata_row = relationship("Metadata", foreign_keys=[metadata_id])
