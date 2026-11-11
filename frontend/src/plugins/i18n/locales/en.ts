@@ -682,6 +682,10 @@ export default {
       actorEdit: {
         title: "Edit actor",
         primaryName: "Primary name",
+        photo: "Photo",
+        photoPlaceholder: "Photo URL",
+        uploadPhoto: "Upload",
+        photoHint: "Paste a remote URL or upload a local image; saved with the actor.",
         aliases: "Aliases",
         addAlias: "Add alias",
         editAlias: "Edit alias",

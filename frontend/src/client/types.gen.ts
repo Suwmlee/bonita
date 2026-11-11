@@ -4963,6 +4963,12 @@ export type UploadImageData = {
          * Number
          */
         number?: string;
+        /**
+         * Actor
+         *
+         * 演员名；有值时图片落到 actors/<名>/
+         */
+        actor?: string;
     };
     url: '/api/v1/resource/upload/image';
 };

@@ -27,9 +27,10 @@ async def upload_image(
     file: UploadFile = File(...),
     custom_url: str = None,
     number: str = None,
+    actor: str = None,
     session: SessionDep = None
 ):
-    """Upload an image file"""
+    """Upload an image file。传 actor 时落到 actors/<名>/。"""
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
     content = await file.read()
@@ -38,6 +39,7 @@ async def upload_image(
         file.filename,
         custom_url,
         number=number,
+        actor=actor,
     )
     return schemas.Response(success=True, message=url_value)
 

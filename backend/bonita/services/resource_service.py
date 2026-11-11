@@ -56,6 +56,11 @@ def cover_folder_for_number(number: Optional[str]) -> str:
     return os.path.join(COVER_FOLDER, name) if name else COVER_FOLDER
 
 
+def actor_folder_for_name(name: Optional[str]) -> str:
+    safe = _safe_dirname(name)
+    return os.path.join(ACTOR_PHOTO_FOLDER, safe) if safe else ACTOR_PHOTO_FOLDER
+
+
 class ResourceService:
     """缓存图片、上传与海报解析。"""
 
@@ -125,12 +130,18 @@ class ResourceService:
         custom_url: Optional[str] = None,
         *,
         number: Optional[str] = None,
+        actor: Optional[str] = None,
     ) -> str:
         file_hash = hashlib.md5(content).hexdigest()
         file_ext = os.path.splitext(filename or "")[1]
         stored_name = f"{file_hash}{file_ext}"
+        relative_folder = (
+            actor_folder_for_name(actor)
+            if (actor or "").strip()
+            else cover_folder_for_number(number)
+        )
         download_folder = os.path.abspath(
-            os.path.join(settings.ASSETS_LOCATION, cover_folder_for_number(number))
+            os.path.join(settings.ASSETS_LOCATION, relative_folder)
         )
         os.makedirs(download_folder, exist_ok=True)
         file_path = os.path.join(download_folder, stored_name)

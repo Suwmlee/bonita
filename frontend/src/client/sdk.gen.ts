@@ -756,6 +756,7 @@ export class MetadataService {
      * 获取某一位演员的作品，按更新时间倒序。
      */
     public static listActorWorks<ThrowOnError extends boolean = true>(parameters: {
+        actor?: string;
         actor_id?: number | null;
         skip?: number;
         limit?: number;
@@ -1975,11 +1976,13 @@ export class ResourceService {
     public static uploadImage<ThrowOnError extends boolean = true>(parameters: {
         custom_url?: string;
         number?: string;
+        actor?: string;
         bodyResourceUploadImage: BodyResourceUploadImage;
     }, options?: Options<never, ThrowOnError>) {
         const params = buildClientParams([parameters], [{ args: [
             { in: 'query', key: 'custom_url' },
             { in: 'query', key: 'number' },
+            { in: 'query', key: 'actor' },
             { key: 'bodyResourceUploadImage', map: 'body' },
         ] }]);
         return (options?.client ?? client).post<UploadImageResponses, UploadImageErrors, ThrowOnError>({

@@ -656,6 +656,10 @@ export default {
       actorEdit: {
         title: "编辑演员",
         primaryName: "主名",
+        photo: "头像",
+        photoPlaceholder: "头像 URL",
+        uploadPhoto: "上传",
+        photoHint: "可填远程 URL，或上传本地图片；保存后写入演员头像。",
         aliases: "别名",
         addAlias: "添加别名",
         editAlias: "修改别名",
