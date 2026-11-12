@@ -4,7 +4,7 @@ from .scraping import ScrapingConfig
 from .metadata import Metadata
 from .extrainfo import ExtraInfo
 from .record import TransRecords
-from .downloads import Downloads
+from .downloads import Downloads, ImageCache
 from .setting import SystemSetting
 from .watch_history import WatchHistory
 from .mediaitem import MediaItem
