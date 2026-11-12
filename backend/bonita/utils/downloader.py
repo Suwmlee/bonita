@@ -10,8 +10,18 @@ import requests
 from PIL import Image
 from sqlalchemy.orm import Session
 
-from bonita.core.config import settings
-from bonita.db.models.downloads import Downloads
+from bonita.db.models.downloads import ImageCache
+from bonita.utils.assets import (
+    assets_folder_abs,
+    content_hash_from_key,
+    is_specific_assets_folder,
+    local_image_key,
+    path_under_folder,
+    require_specific_assets_folder,
+    resolve_write_folder,
+    to_abs_path,
+    to_stored_path,
+)
 from bonita.utils.http import get_active_proxy
 
 logger = logging.getLogger(__name__)
@@ -34,18 +44,33 @@ _IMAGE_MAGIC = (
 )
 
 
+def cache_lookup_keys(url: str) -> list[str]:
+    """同一逻辑图可能对应 local:<md5> 与历史裸 md5。"""
+    text = (url or "").strip()
+    if not text:
+        return []
+    keys = [text]
+    digest = content_hash_from_key(text)
+    if digest:
+        for alt in (local_image_key(digest), digest):
+            if alt not in keys:
+                keys.append(alt)
+    return keys
+
+
 def is_valid_image_file(filepath: str) -> bool:
     """粗检本地文件是否为可用图片（排除空文件/HTML 错误页）。"""
-    if not filepath or not os.path.isfile(filepath):
+    abs_path = to_abs_path(filepath) if filepath and not os.path.isabs(filepath) else filepath
+    if not abs_path or not os.path.isfile(abs_path):
         return False
     try:
-        size = os.path.getsize(filepath)
+        size = os.path.getsize(abs_path)
     except OSError:
         return False
     if size < 24:
         return False
     try:
-        with open(filepath, "rb") as f:
+        with open(abs_path, "rb") as f:
             head = f.read(16)
     except OSError:
         return False
@@ -58,106 +83,96 @@ def is_valid_image_file(filepath: str) -> bool:
     return False
 
 
+def _bind_filepath(session: Session, url: str, abs_filepath: str) -> str:
+    """把绝对路径以相对形式写入 ImageCache，返回绝对路径。"""
+    stored = to_stored_path(abs_filepath)
+    keys = cache_lookup_keys(url)
+    cache = (
+        session.query(ImageCache).filter(ImageCache.url.in_(keys)).first()
+        if keys
+        else None
+    )
+    if cache:
+        if cache.url != url and url:
+            cache.url = url
+        cache.filepath = stored
+        session.commit()
+    elif url:
+        ImageCache(url=url, filepath=stored).create(session)
+    return to_abs_path(stored)
+
+
 def cached_filepath(session: Session, url: str) -> str:
-    """已缓存且文件仍有效则返回路径，否则空串（不改库）。"""
-    if not url:
+    """已缓存且文件仍有效则返回绝对路径，否则空串（不改库）。"""
+    keys = cache_lookup_keys(url)
+    if not keys:
         return ""
-    cache = session.query(Downloads).filter(Downloads.url == url).first()
-    if cache and is_valid_image_file(cache.filepath or ""):
-        return cache.filepath
+    cache = session.query(ImageCache).filter(ImageCache.url.in_(keys)).first()
+    if not cache:
+        return ""
+    abs_path = to_abs_path(cache.filepath or "")
+    if is_valid_image_file(abs_path):
+        return abs_path
     return ""
 
 
-def _assets_folder_abs(folder: str) -> str:
-    return os.path.abspath(os.path.join(settings.ASSETS_LOCATION, folder or ""))
-
-
-def _path_under_folder(filepath: str, folder: str) -> bool:
-    """判断绝对路径是否落在 ASSETS/<folder>/ 下（含子文件）。"""
-    if not filepath or not folder:
-        return False
-    target = _assets_folder_abs(folder)
-    try:
-        return os.path.commonpath([os.path.abspath(filepath), target]) == target
-    except ValueError:
-        return False
-
-
 def ensure_cached_in_folder(session: Session, url: str, folder: str, filepath: str) -> str:
-    """已有本地文件时，若未在目标子目录则搬迁并回写 Downloads。"""
-    if not filepath or not is_valid_image_file(filepath):
+    """已有本地文件时，若未在目标子目录则搬迁并回写 ImageCache（仅明确归档目录）。"""
+    require_specific_assets_folder(folder)
+    abs_path = to_abs_path(filepath) if filepath else ""
+    if not abs_path or not is_valid_image_file(abs_path):
         return ""
-    if _path_under_folder(filepath, folder):
-        return filepath
+    if path_under_folder(abs_path, folder):
+        return _bind_filepath(session, url, abs_path) if url else abs_path
 
-    target_dir = _assets_folder_abs(folder)
+    target_dir = assets_folder_abs(folder)
     os.makedirs(target_dir, exist_ok=True)
-    filename = os.path.basename(filepath)
+    filename = os.path.basename(abs_path)
     if not filename:
-        ext = os.path.splitext(filepath)[1] or ".jpg"
-        filename = hashlib.md5((url or filepath).encode()).hexdigest() + ext
+        ext = os.path.splitext(abs_path)[1] or ".jpg"
+        filename = hashlib.md5((url or abs_path).encode()).hexdigest() + ext
     dest = os.path.join(target_dir, filename)
-    if os.path.abspath(filepath) != os.path.abspath(dest):
+    if os.path.abspath(abs_path) != os.path.abspath(dest):
         if os.path.exists(dest):
-            # 目标已有同名，保留目标，删掉错位源文件
             try:
-                if os.path.isfile(filepath):
-                    os.remove(filepath)
+                if os.path.isfile(abs_path):
+                    os.remove(abs_path)
             except OSError:
                 pass
         else:
-            shutil.move(filepath, dest)
-        filepath = dest
+            shutil.move(abs_path, dest)
+        abs_path = dest
 
-    cache = session.query(Downloads).filter(Downloads.url == url).first() if url else None
-    if cache:
-        cache.filepath = filepath
-        session.commit()
-    elif url:
-        Downloads(url=url, filepath=filepath).create(session)
-    return filepath
-
-
-def _is_specific_assets_folder(folder: str) -> bool:
-    """covers/<番号>、actors/<名> 为明确子目录；裸 covers/actors 不算。"""
-    parts = [p for p in (folder or "").replace("\\", "/").split("/") if p]
-    return len(parts) >= 2
+    return _bind_filepath(session, url, abs_path) if url else abs_path
 
 
 def process_cached_file(session: Session, url: str, folder) -> str:
-    """获取缓存图片；folder 为相对 ASSETS 的子目录，如 covers/<番号>、actors/<名>。
+    """获取缓存图片。
 
-    若已缓存但目录不对（例如预览时落到裸 covers/），会搬到 folder 下。
-    目标若是裸 covers/actors，只下载不搬迁，避免冲掉已归档文件。
+    folder 为明确子目录时：命中可从 cache/ 搬迁归档；未命中则下载到该目录。
+    folder 不明确时：下载/命中落在 cache/，不搬迁到裸 covers/actors。
     """
-    folder = folder or ""
+    target = resolve_write_folder(folder)
     cached = cached_filepath(session, url)
     if cached:
-        if _is_specific_assets_folder(folder):
-            return ensure_cached_in_folder(session, url, folder, cached) or cached
+        if is_specific_assets_folder(target):
+            return ensure_cached_in_folder(session, url, target, cached) or cached
         return cached
-    filepath = download_file(url, folder, get_active_proxy(session))
-    cache = session.query(Downloads).filter(Downloads.url == url).first()
-    if cache:
-        cache.filepath = filepath
-        session.commit()
-    else:
-        cache = Downloads(url=url, filepath=filepath)
-        cache.create(session)
-    return cache.filepath
+
+    filepath = download_file(url, target, get_active_proxy(session))
+    return _bind_filepath(session, url, filepath)
 
 
 def update_cache_from_local(session: Session, source_path: str, folder: str, url: str):
-    """根据本地文件更新缓存记录；folder 为相对 ASSETS 的子目录。"""
-    cache_downloads = session.query(Downloads).filter(Downloads.url == url).first()
-    if cache_downloads and is_valid_image_file(cache_downloads.filepath or ""):
-        if _is_specific_assets_folder(folder):
-            return ensure_cached_in_folder(
-                session, url, folder, cache_downloads.filepath
-            ) or cache_downloads.filepath
-        return cache_downloads.filepath
+    """根据本地文件更新缓存记录；无明确目录时写入 cache/。"""
+    target = resolve_write_folder(folder)
+    existing = cached_filepath(session, url)
+    if existing:
+        if is_specific_assets_folder(target):
+            return ensure_cached_in_folder(session, url, target, existing) or existing
+        return existing
 
-    cache_folder = _assets_folder_abs(folder)
+    cache_folder = assets_folder_abs(target)
     os.makedirs(cache_folder, exist_ok=True)
     file_extension = os.path.splitext(source_path)[1] or ".jpg"
     file_name = hashlib.md5(url.encode()).hexdigest() + file_extension
@@ -165,15 +180,7 @@ def update_cache_from_local(session: Session, source_path: str, folder: str, url
     if os.path.exists(source_path):
         shutil.copy2(source_path, cache_path)
 
-    if cache_downloads:
-        cache_downloads.filepath = cache_path
-        session.commit()
-    else:
-        cache_downloads = Downloads(url=url, filepath=cache_path)
-        session.add(cache_downloads)
-        session.commit()
-
-    return cache_path
+    return _bind_filepath(session, url, cache_path)
 
 
 def _convert_gif_to_jpg(gif_path: str) -> str:
@@ -216,7 +223,11 @@ def generate_file_name(url, response):
 
 
 def download_file(url, download_dir, proxy=None):
-    """下载文件到 ASSETS（download_dir 如 covers/<番号>）。"""
+    """下载文件到 ASSETS。
+
+    download_dir 须为 covers/<番号>、actors/<名> 或 cache/（否则落到 cache/）。
+    """
+    download_dir = resolve_write_folder(download_dir)
     parsed = urlparse(url)
     headers = {"User-Agent": DOWNLOAD_USER_AGENT}
     if parsed.scheme and parsed.netloc:
@@ -233,9 +244,7 @@ def download_file(url, download_dir, proxy=None):
             ) as response:
                 response.raise_for_status()
                 file_name = generate_file_name(url, response)
-                download_folder = os.path.abspath(
-                    os.path.join(settings.ASSETS_LOCATION, download_dir)
-                )
+                download_folder = assets_folder_abs(download_dir)
                 os.makedirs(download_folder, exist_ok=True)
                 download_path = os.path.join(download_folder, file_name)
                 with open(download_path, 'wb') as file:

@@ -6,16 +6,31 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, Optional
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from bonita.core.config import settings
 from bonita.db.models.actor import Actor
-from bonita.db.models.downloads import Downloads
+from bonita.db.models.downloads import ImageCache
 from bonita.db.models.metadata import Metadata
 from bonita.modules.media_service.client import SOURCE_EMBY
 from bonita.modules.media_service.factory import ensure_media_client
+from bonita.utils.assets import (
+    ACTOR_PHOTO_FOLDER,
+    CACHE_FOLDER,
+    COVER_FOLDER,
+    AssetsFolderError,
+    assets_folder_abs,
+    content_hash_from_key,
+    is_remote_image_key,
+    is_specific_assets_folder,
+    local_image_key,
+    normalize_rel,
+    resolve_write_folder,
+    to_abs_path,
+    to_stored_path,
+)
 from bonita.utils.downloader import (
+    cache_lookup_keys,
     cached_filepath,
     download_file,
     ensure_cached_in_folder,
@@ -26,8 +41,6 @@ from bonita.utils.http import get_active_proxy
 
 logger = logging.getLogger(__name__)
 
-COVER_FOLDER = "covers"
-ACTOR_PHOTO_FOLDER = "actors"
 _DIR_FORBIDDEN = '<>:"/\\|?*'
 _resolve_locks_guard = threading.Lock()
 _resolve_locks: Dict[str, threading.Lock] = {}
@@ -98,20 +111,17 @@ class ResourceService:
 
     @staticmethod
     def _find_local_upload_file(hash_key: str, preferred_folder: Optional[str] = None) -> str:
-        """本地上传 md5 键：在指定目录或 covers/actors 树里找 {hash}.*。"""
-        key = (hash_key or "").strip()
-        if not key or key.startswith(("http://", "https://")) or os.sep in key or "/" in key:
+        """本地上传键：按内容 md5 在 covers/actors 树里找 {hash}.*。"""
+        digest = content_hash_from_key(hash_key)
+        if not digest:
             return ""
 
         roots: list[str] = []
         if preferred_folder:
-            roots.append(
-                os.path.abspath(os.path.join(settings.ASSETS_LOCATION, preferred_folder))
-            )
-        roots.append(os.path.abspath(os.path.join(settings.ASSETS_LOCATION, COVER_FOLDER)))
-        roots.append(
-            os.path.abspath(os.path.join(settings.ASSETS_LOCATION, ACTOR_PHOTO_FOLDER))
-        )
+            roots.append(assets_folder_abs(preferred_folder))
+        roots.append(assets_folder_abs(COVER_FOLDER))
+        roots.append(assets_folder_abs(ACTOR_PHOTO_FOLDER))
+        roots.append(assets_folder_abs(CACHE_FOLDER))
 
         seen: set[str] = set()
         for root in roots:
@@ -121,7 +131,7 @@ class ResourceService:
             for dirpath, _dirnames, filenames in os.walk(root):
                 for name in filenames:
                     stem, _ext = os.path.splitext(name)
-                    if stem == key or name.startswith(key + "."):
+                    if stem == digest or name.startswith(digest + "."):
                         fp = os.path.join(dirpath, name)
                         if is_valid_image_file(fp):
                             return fp
@@ -129,13 +139,20 @@ class ResourceService:
 
     @staticmethod
     def _bind_download_path(session: Session, url: str, filepath: str) -> str:
-        row = session.query(Downloads).filter(Downloads.url == url).first()
+        stored = to_stored_path(filepath)
+        keys = cache_lookup_keys(url)
+        row = (
+            session.query(ImageCache).filter(ImageCache.url.in_(keys)).first()
+            if keys
+            else None
+        )
         if row:
-            row.filepath = filepath
+            row.url = url
+            row.filepath = stored
             session.commit()
         else:
-            Downloads(url=url, filepath=filepath).create(session)
-        return filepath
+            ImageCache(url=url, filepath=stored).create(session)
+        return to_abs_path(stored)
 
     @staticmethod
     def resolve_image_path(
@@ -143,60 +160,74 @@ class ResourceService:
         number: Optional[str] = None,
         actor: Optional[str] = None,
     ) -> Optional[str]:
-        """供 /resource/image 使用：短会话查库，下载不占用连接池；同 URL 串行避免写坏文件。
+        """供 GET /resource/image：懒加载取图。
 
-        path 可以是：
-        - 本地绝对路径
-        - 本地上传返回的 md5 键（Downloads.url，无 http）
-        - 远程 http(s) URL（可按 number/actor 落到 covers/<番号>/ 或 actors/<名>/）
+        - 已缓存：有明确 number/actor 时可从 cache/ 搬迁到 covers|actors
+        - 远程未缓存：有明确目录则下到 covers/<番号>/ 或 actors/<名>/；
+          否则下到 cache/（临时预览，提交后再归档）
+        - 本地 local:<md5>：扫盘找回并补绑索引
         """
         if not path:
             return None
         if os.path.isfile(path):
             return path
 
-        is_remote = path.startswith(("http://", "https://"))
+        is_remote = is_remote_image_key(path)
 
         with _resolve_lock_for(path):
             from bonita.db import SessionFactory
 
-            folder = COVER_FOLDER
+            write_folder = CACHE_FOLDER
+            proxy = None
             session = SessionFactory()
             try:
                 folder = ResourceService(session)._folder_for_url(
                     path, number=number, actor=actor
                 )
-                # 仅在有明确子目录时搬迁；裸 covers/ 不当作目标，避免冲掉已正确归档的文件
-                specific = folder not in (COVER_FOLDER, ACTOR_PHOTO_FOLDER)
+                write_folder = resolve_write_folder(folder)
+                specific = is_specific_assets_folder(write_folder)
                 cached = cached_filepath(session, path)
                 if cached:
                     if specific:
-                        relocated = ensure_cached_in_folder(
-                            session, path, folder, cached
-                        )
-                        return relocated or cached
+                        try:
+                            return (
+                                ensure_cached_in_folder(
+                                    session, path, write_folder, cached
+                                )
+                                or cached
+                            )
+                        except AssetsFolderError:
+                            return cached
                     return cached
+
                 if not is_remote:
-                    # Downloads 缺失或路径失效时，按 md5 文件名在 assets 里找回
                     found = ResourceService._find_local_upload_file(
-                        path, folder if specific else None
+                        path, write_folder if specific else None
                     )
                     if not found:
                         return None
                     if specific:
-                        found = (
-                            ensure_cached_in_folder(session, path, folder, found)
-                            or found
-                        )
-                    # 已在正确目录时 ensure 不会写库，这里补绑 md5 → filepath
-                    ResourceService._bind_download_path(session, path, found)
-                    return found
+                        try:
+                            found = (
+                                ensure_cached_in_folder(
+                                    session, path, write_folder, found
+                                )
+                                or found
+                            )
+                        except AssetsFolderError:
+                            pass
+                    bind_key = path
+                    digest = content_hash_from_key(path)
+                    if digest and not path.startswith("local:"):
+                        bind_key = local_image_key(digest)
+                    return ResourceService._bind_download_path(session, bind_key, found)
+
                 proxy = get_active_proxy(session)
             finally:
                 session.close()
 
             try:
-                filepath = download_file(path, folder, proxy)
+                filepath = download_file(path, write_folder, proxy)
             except Exception as e:
                 logger.warning("Failed to fetch remote image %s: %s", path, e)
                 return None
@@ -214,25 +245,32 @@ class ResourceService:
         number: Optional[str] = None,
         actor: Optional[str] = None,
     ) -> str:
-        """主动按 actor/number 缓存远程图到正确子目录（保存头像/封面时用）。"""
+        """缓存远程图：有 actor/number 归档；否则落到 cache/。"""
         text = (url or "").strip()
         if not text.startswith(("http://", "https://")):
             return ""
         folder = self._folder_for_url(text, number=number, actor=actor)
         try:
             return process_cached_file(self.session, text, folder)
+        except AssetsFolderError as e:
+            logger.warning("跳过缓存 %s → %s: %s", text, folder, e)
+            return ""
         except Exception as e:
             logger.warning("Failed to cache remote image %s → %s: %s", text, folder, e)
             return ""
 
     def relocate_actor_photo_dir(self, old_name: str, new_name: str) -> int:
-        """改主名后：actors/<旧>/ → actors/<新>/，并回写 Downloads.filepath。"""
+        """改主名后：actors/<旧>/ → actors/<新>/，并回写 ImageCache.filepath（相对路径）。"""
         old_folder = actor_folder_for_name(old_name)
         new_folder = actor_folder_for_name(new_name)
         if old_folder == new_folder:
             return 0
-        old_abs = os.path.abspath(os.path.join(settings.ASSETS_LOCATION, old_folder))
-        new_abs = os.path.abspath(os.path.join(settings.ASSETS_LOCATION, new_folder))
+        if not is_specific_assets_folder(old_folder) or not is_specific_assets_folder(
+            new_folder
+        ):
+            return 0
+        old_abs = assets_folder_abs(old_folder)
+        new_abs = assets_folder_abs(new_folder)
         if not os.path.isdir(old_abs):
             return 0
         os.makedirs(new_abs, exist_ok=True)
@@ -252,18 +290,30 @@ class ResourceService:
                 os.rename(src, dest)
             mapping[os.path.abspath(src)] = dest
             mapping[name] = dest
+            mapping[normalize_rel(os.path.join(old_folder, name))] = dest
         if mapping:
-            prefix = old_abs.rstrip(os.sep) + os.sep
+            rel_prefix = normalize_rel(old_folder) + "/"
+            abs_prefix = old_abs.rstrip(os.sep) + os.sep
             rows = (
-                self.session.query(Downloads)
-                .filter(Downloads.filepath.like(prefix + "%"))
+                self.session.query(ImageCache)
+                .filter(
+                    or_(
+                        ImageCache.filepath.like(rel_prefix + "%"),
+                        ImageCache.filepath.like(abs_prefix + "%"),
+                    )
+                )
                 .all()
             )
             for row in rows:
-                key = os.path.abspath(row.filepath or "")
-                dest = mapping.get(key) or mapping.get(os.path.basename(row.filepath or ""))
+                stored = row.filepath or ""
+                abs_key = os.path.abspath(to_abs_path(stored))
+                dest = (
+                    mapping.get(abs_key)
+                    or mapping.get(normalize_rel(stored))
+                    or mapping.get(os.path.basename(stored))
+                )
                 if dest:
-                    row.filepath = dest
+                    row.filepath = to_stored_path(dest)
                     moved += 1
         try:
             if os.path.isdir(old_abs) and not os.listdir(old_abs):
@@ -283,34 +333,42 @@ class ResourceService:
         number: Optional[str] = None,
         actor: Optional[str] = None,
     ) -> str:
+        """上传图片。逻辑键固定为 local:<content_md5>（忽略 custom_url，保留参数兼容旧前端）。
+
+        有 actor/number → actors/<名>/ 或 covers/<番号>/；否则 → cache/。
+        """
+        if custom_url:
+            logger.debug("save_image 忽略 custom_url=%s，改用 local:<md5>", custom_url)
         file_hash = hashlib.md5(content).hexdigest()
         file_ext = os.path.splitext(filename or "")[1]
         stored_name = f"{file_hash}{file_ext}"
-        relative_folder = (
+        relative_folder = resolve_write_folder(
             actor_folder_for_name(actor)
             if (actor or "").strip()
             else cover_folder_for_number(number)
         )
-        download_folder = os.path.abspath(
-            os.path.join(settings.ASSETS_LOCATION, relative_folder)
-        )
+        download_folder = assets_folder_abs(relative_folder)
         os.makedirs(download_folder, exist_ok=True)
         file_path = os.path.join(download_folder, stored_name)
         with open(file_path, "wb") as f:
             f.write(content)
 
-        url_value = custom_url if custom_url is not None else file_hash
-        existing_download = self.session.query(Downloads).filter(Downloads.url == url_value).first()
-        if existing_download:
-            existing_download.filepath = file_path
+        url_value = local_image_key(file_hash)
+        stored = to_stored_path(file_path)
+        keys = cache_lookup_keys(url_value)
+        existing = (
+            self.session.query(ImageCache).filter(ImageCache.url.in_(keys)).first()
+        )
+        if existing:
+            existing.url = url_value
+            existing.filepath = stored
             self.session.commit()
         else:
-            download = Downloads(
+            ImageCache(
                 url=url_value,
-                filepath=file_path,
-                updatetime=datetime.now()
-            )
-            download.create(self.session)
+                filepath=stored,
+                updatetime=datetime.now(),
+            ).create(self.session)
         return url_value
 
     def get_poster(
@@ -341,15 +399,11 @@ class ResourceService:
                     .first()
                 )
                 if metadata and metadata.cover:
-                    cache_downloads_cover = (
-                        self.session.query(Downloads)
-                        .filter(Downloads.url == metadata.cover)
-                        .first()
-                    )
-                    if cache_downloads_cover and os.path.exists(cache_downloads_cover.filepath):
+                    abs_path = cached_filepath(self.session, metadata.cover)
+                    if abs_path:
                         return PosterResult(
                             kind="file",
-                            path=cache_downloads_cover.filepath,
+                            path=abs_path,
                             cache_control="public, max-age=0, must-revalidate",
                         )
             except Exception as e:
