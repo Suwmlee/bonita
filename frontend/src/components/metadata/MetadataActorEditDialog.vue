@@ -48,6 +48,7 @@ const photoPreviewUrl = computed(() => {
   if (!path || photoBroken.value) return ""
   const actorName = primaryName.value || props.actor?.name || ""
   const base = resourceImageUrl(path, { actor: actorName || undefined })
+  if (!base) return ""
   if (!photoStamp.value) return base
   return `${base}${base.includes("?") ? "&" : "?"}v=${photoStamp.value}`
 })
@@ -235,7 +236,6 @@ async function handlePhotoUpload(event: Event) {
     const actorName = primaryName.value || props.actor?.name || ""
     const { data: response } = await ResourceService.uploadImage({
       bodyResourceUploadImage: { file },
-      custom_url: photo.value.trim() || undefined,
       actor: actorName || undefined,
     })
     let path = ""

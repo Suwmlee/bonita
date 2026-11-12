@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import { ResourceService } from "@/client"
-import { client } from "@/client/client.gen"
 import type { MetadataCreditPublic, MetadataPublic } from "@/client/types.gen"
 import MetadataCreditPanel from "@/components/metadata/MetadataCreditPanel.vue"
 import { useMetadataStore } from "@/stores/metadata.store"
+import { resourceImageUrl } from "@/utils/resourceImage"
 import { computed, ref } from "vue"
 import { useI18n } from "vue-i18n"
 
@@ -28,20 +28,6 @@ const { updateMetadata } = props as {
   updateMetadata: MetadataPublic
 }
 const currentMetadata = ref<any>()
-
-// Computed property for cover image URL with proper base path
-const coverImageUrl = computed(() => {
-  if (!currentMetadata.value?.cover) return null
-
-  // Add a timestamp query parameter to prevent browser caching
-  const timestamp = new Date().getTime()
-  const params = new URLSearchParams()
-  params.set("path", currentMetadata.value.cover)
-  params.set("t", String(timestamp))
-  const number = (currentMetadata.value.number || "").trim()
-  if (number) params.set("number", number)
-  return `${client.getConfig().baseURL}/api/v1/resource/image?${params.toString()}`
-})
 
 if (updateMetadata) {
   currentMetadata.value = { crop: true, ...updateMetadata }
@@ -76,6 +62,14 @@ if (updateMetadata) {
   }
   currentMetadata.value = createMetadata
 }
+
+const coverImageUrl = computed(() => {
+  const cover = currentMetadata.value?.cover
+  if (!cover) return null
+  return resourceImageUrl(cover, {
+    number: (currentMetadata.value?.number || "").trim() || undefined,
+  })
+})
 
 function validateForm() {
   formErrors.value = {}
@@ -167,7 +161,6 @@ async function handleFileUpload(event: Event) {
 
     const { data: response } = await ResourceService.uploadImage({
       bodyResourceUploadImage: formData,
-      custom_url: currentMetadata.value.cover || undefined,
       number: currentMetadata.value.number || undefined,
     })
 
@@ -180,7 +173,6 @@ async function handleFileUpload(event: Event) {
 
     if (path) {
       currentMetadata.value.cover = path
-      // Force the coverImageUrl computed property to update by creating a new reactive dependency
       currentMetadata.value = { ...currentMetadata.value }
     } else {
       console.error("Could not determine path from upload response:", response)

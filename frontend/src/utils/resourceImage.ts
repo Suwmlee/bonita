@@ -13,7 +13,7 @@ function cacheKey(path: string, hints?: ResourceImageHints) {
   return `${path}\0${number}\0${actor}`
 }
 
-/** 拼 /resource/image；预览未入库封面/头像时务必传 number 或 actor。 */
+/** 拼 /resource/image（后端懒下载：有 hint 归档，无 hint → assets/cache/）。 */
 export function resourceImageUrl(path: string, hints?: ResourceImageHints) {
   if (!path) return ""
   const key = cacheKey(path, hints)

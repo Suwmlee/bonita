@@ -1971,7 +1971,7 @@ export class ResourceService {
     /**
      * Upload Image
      *
-     * Upload an image file
+     * Upload an image file. Returns local:<md5> key (custom_url ignored).
      */
     public static uploadImage<ThrowOnError extends boolean = true>(parameters: {
         custom_url?: string;
@@ -1988,6 +1988,7 @@ export class ResourceService {
         return (options?.client ?? client).post<UploadImageResponses, UploadImageErrors, ThrowOnError>({
             ...formDataBodySerializer,
             responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/resource/upload/image',
             ...options,
             ...params,

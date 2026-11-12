@@ -4,9 +4,9 @@ import {
   type MetadataBase,
   type MetadataPublic,
 } from "@/client"
-import { client } from "@/client/client.gen"
 import { useMetadataStore } from "@/stores/metadata.store"
 import { useToastStore } from "@/stores/toast.store"
+import { resourceImageUrl } from "@/utils/resourceImage"
 import { computed, ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
 
@@ -160,13 +160,13 @@ const hasImageRows = computed(() =>
   rows.value.some((row) => IMAGE_FIELDS.has(row.field)),
 )
 
+let fetchRequestId = 0
+
 function previewSrc(path: unknown): string {
   if (!path || typeof path !== "string") return ""
-  const params = new URLSearchParams()
-  params.set("path", path)
-  const number = (props.metadata?.number || "").trim()
-  if (number) params.set("number", number)
-  return `${client.getConfig().baseURL}/api/v1/resource/image?${params.toString()}`
+  return resourceImageUrl(path, {
+    number: (props.metadata?.number || "").trim() || undefined,
+  })
 }
 
 function imageKey(field: CompareField, side: "current" | "next") {
@@ -228,6 +228,7 @@ function onDetailUrlChange() {
 }
 
 function reset() {
+  fetchRequestId += 1
   selectedSite.value = ""
   selectedDetailUrl.value = ""
   isFetching.value = false
@@ -260,6 +261,7 @@ function getErrorDetail(error: unknown, fallback: string): string {
 
 async function fetchMetadata() {
   if (!props.metadata) return
+  const requestId = ++fetchRequestId
   isFetching.value = true
   fetched.value = null
   selectedFields.value = []
@@ -273,14 +275,16 @@ async function fetchMetadata() {
         detailurl: selectedDetailUrl.value || null,
       },
     })
+    if (requestId !== fetchRequestId) return
     fetched.value = data
     selectedFields.value = COMPARE_FIELDS.filter((field) => isChanged(field))
   } catch (error) {
+    if (requestId !== fetchRequestId) return
     toastStore.error(
       getErrorDetail(error, t("components.metadata.refreshDialog.fetchFailed")),
     )
   } finally {
-    isFetching.value = false
+    if (requestId === fetchRequestId) isFetching.value = false
   }
 }
 
