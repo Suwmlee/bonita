@@ -329,7 +329,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                         destpath = transSingleFile(original_file, output_folder,
                                                    metamixed.extra_filename, task_info.operation)
                         done_list.append(destpath)
-                        if record.destpath != destpath:
+                        if record.destpath and record.destpath != destpath:
                             remove_previous_output(record.destpath, destpath)
                         # 更新
                         record.destpath = destpath
@@ -351,7 +351,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
                                                    file_list=waiting_list, linktype=task_info.operation,
                                                    part_number=record.part_number or 0)
                         done_list.append(target_file.full_path)
-                        if record.destpath != target_file.full_path:
+                        if record.destpath and record.destpath != target_file.full_path:
                             remove_previous_output(record.destpath, target_file.full_path)
                         # 更新
                         record.isepisode = target_file.is_episode

@@ -158,16 +158,27 @@ def attached_to_stem(name: str, stem: str) -> bool:
 
 
 def remove_previous_output(old_path: str, new_path: str = ""):
-    """目标改名后，删掉旧视频以及同目录里它的 NFO、海报和字幕。"""
+    """目标路径变化后：按完整路径删除旧视频，再按旧文件名清理同目录 NFO、海报、字幕。
+
+    视频用整路径移除（与原先逻辑一致）。旁边文件命名有规律（同名 .nfo /
+    -poster/-thumb/-fanart、同名字幕），按旧文件名匹配即可；新旧名字不同就不会误伤。
+    """
     if not old_path:
         return
     old_path = os.path.abspath(old_path)
     new_path = os.path.abspath(new_path) if new_path else ""
     if new_path and os.path.normpath(old_path) == os.path.normpath(new_path):
         return
+
+    if os.path.lexists(old_path):
+        try:
+            logger.info(f"清理旧文件: {os.path.basename(old_path)}")
+            os.remove(old_path)
+        except OSError as e:
+            logger.warning(f"清理旧文件失败 {os.path.basename(old_path)}: {e}")
+
     folder = os.path.dirname(old_path)
     old_stem = os.path.splitext(os.path.basename(old_path))[0]
-    new_stem = os.path.splitext(os.path.basename(new_path))[0] if new_path else ""
     if not old_stem or not os.path.isdir(folder):
         return
     try:
@@ -179,11 +190,9 @@ def remove_previous_output(old_path: str, new_path: str = ""):
         if not entry.is_file():
             continue
         path = os.path.abspath(entry.path)
-        if new_path and os.path.normpath(path) == os.path.normpath(new_path):
+        if os.path.normpath(path) == os.path.normpath(old_path):
             continue
         name = entry.name
-        if new_stem and attached_to_stem(name, new_stem):
-            continue
         if not attached_to_stem(name, old_stem):
             continue
         if RE_PART_MARKER.search(name) and not RE_PART_MARKER.search(old_stem):
@@ -193,6 +202,12 @@ def remove_previous_output(old_path: str, new_path: str = ""):
             os.remove(path)
         except OSError as e:
             logger.warning(f"清理旧文件失败 {name}: {e}")
+    try:
+        if os.path.isdir(folder) and not any(os.scandir(folder)):
+            os.rmdir(folder)
+            logger.info(f"清理空目录: {folder}")
+    except OSError as e:
+        logger.warning(f"清理空目录失败 {folder}: {e}")
 
 
 def cleanFilebyFilter(root, filter):
