@@ -11,6 +11,17 @@ from bonita.modules.scraping.number_parser import format_part_suffix
 
 logger = logging.getLogger(__name__)
 
+# 包裹集数的括号对；替换成 SxxExx 时整段拿掉，避免 [ S01E02 ] / (S01E02) 导致 Plex 无法识别
+_EPISODE_BRACKET_PAIRS = (
+    ("[", "]"),
+    ("(", ")"),
+    ("【", "】"),
+    ("（", "）"),
+    ("「", "」"),
+    ("『", "』"),
+    ("{", "}"),
+)
+
 
 def _handle_group_naming(original_file: BasicFileInfo, target_file: TargetFileInfo, file_list: list):
     """处理特殊组的视频文件命名
@@ -65,11 +76,15 @@ def _fix_series_naming(original_file: BasicFileInfo, target_file: TargetFileInfo
     tmp_filename = original_file.basename
     tmp_original_marker = original_file.original_episode_marker
     tmp_episode_special = original_file.episode_special
-    # 如果已有有效的季数和集数记录，直接使用
+    # 如果已有有效的季数和集数记录
     if tmp_season > -1 and tmp_episode > -1:
         marker = f"S{tmp_season:02d}E{tmp_episode:02d}"
         if marker not in tmp_filename:
-            if tmp_episode_special:
+            # 文件名里已有可替换的集数标记时，原地改成 SxxExx，保留番组括号风格
+            if tmp_original_marker and tmp_original_marker != "Pass":
+                tmp_filename, tmp_episode = fix_episode_name(
+                    tmp_filename, tmp_season, tmp_episode, tmp_original_marker, tmp_episode_special)
+            elif tmp_episode_special:
                 tmp_filename = marker + "(" + tmp_episode_special + ")"
             else:
                 tmp_filename = marker
@@ -127,18 +142,25 @@ def fix_episode_name(name: str, season: int, episode: int, original_marker: str,
         else:
             return marker, episode
     else:
-        # 原始匹配的 marker 是 [S01E01] 这种格式
         if episode_special:
             marker = marker + "(" + episode_special + ")"
-        # 修正替换
-        if original_marker[0] == ".":
-            renum = "." + marker + "."
-        elif original_marker[0] == "[":
-            renum = " " + marker + " "
-        else:
-            renum = " " + marker + " "
+        # 括号内集数（如 [02] / (02) / 【02】）：整段换成裸 SxxExx
+        search, renum = None, None
+        for left, right in _EPISODE_BRACKET_PAIRS:
+            if original_marker.startswith(left) and original_marker.endswith(right) and original_marker in name:
+                search, renum = original_marker, marker
+                break
+            wrapped = f"{left}{original_marker}{right}"
+            if wrapped in name:
+                search, renum = wrapped, marker
+                break
+        if search is None:
+            if original_marker[0] == ".":
+                search, renum = original_marker, "." + marker + "."
+            else:
+                search, renum = original_marker, " " + marker + " "
         logger.debug("替换内容:" + renum)
-        newname = name.replace(original_marker, renum)
+        newname = name.replace(search, renum)
         logger.info("替换后:   {}".format(newname))
         return newname, episode
 
