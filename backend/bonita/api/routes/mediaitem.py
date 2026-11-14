@@ -101,7 +101,7 @@ async def delete_media_item(
 ) -> Any:
     """
     删除媒体项
-    同时删除关联的观看历史记录
+    同时删除关联的观看历史；字幕、合集、转移记录仅解除关联（同步后仍可重新挂上）
     """
     result = MediaItemService(session).delete_media_item(media_id)
     if not result:
@@ -116,7 +116,7 @@ async def delete_media_items(
 ) -> Any:
     """
     批量删除媒体项
-    同时删除关联的观看历史，并从合集中解除关联
+    同时删除关联的观看历史；字幕、合集、转移记录仅解除关联（同步后仍可重新挂上）
     """
     if not payload.ids:
         raise HTTPException(status_code=400, detail="未选择媒体项")

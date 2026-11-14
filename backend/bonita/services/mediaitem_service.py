@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from bonita import schemas
 from bonita.db.models.collection import CollectionItem
 from bonita.db.models.mediaitem import MediaItem
+from bonita.db.models.record import TransRecords
 from bonita.db.models.watch_history import WatchHistory
 from bonita.modules.media_service.collection_sync import detach_media_from_collections
 from bonita.modules.media_service.matching import has_external_ids, requires_external_ids
@@ -372,6 +373,10 @@ class MediaItemService:
         detach_media_from_collections(self.session, ids)
         from bonita.services.subtitle_service import SubtitleService
         SubtitleService(self.session).detach_for_deleted_items(ids)
+        # 转移记录保留，只解除关联；之后同步仍可按路径重新挂上
+        self.session.query(TransRecords).filter(
+            TransRecords.media_item_id.in_(ids)
+        ).update({TransRecords.media_item_id: None}, synchronize_session=False)
         watch_history_deleted = self.session.query(WatchHistory).filter(
             WatchHistory.media_item_id.in_(ids)
         ).delete(synchronize_session=False)
