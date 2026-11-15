@@ -70,7 +70,25 @@ async def sync_emby_watch_history(
         params: schemas.EmbySyncParam):
     """同步媒体服务器观看记录，立即返回后台任务。"""
     tool_service = ToolService(session)
-    return tool_service.sync_watch_history(direction=params.direction.value, force=params.force)
+    sources = params.sources or ["emby"]
+    return tool_service.sync_watch_history(
+        direction=params.direction.value,
+        force=params.force,
+        sources=sources,
+    )
+
+
+@router.post("/sync/plex", response_model=schemas.TaskStatus)
+async def sync_plex_watch_history(
+        session: SessionDep,
+        params: schemas.EmbySyncParam):
+    """同步 Plex 电影/剧观看记录，立即返回后台任务。"""
+    tool_service = ToolService(session)
+    return tool_service.sync_watch_history(
+        direction=params.direction.value,
+        force=params.force,
+        sources=["plex"],
+    )
 
 
 @router.post("/cleanup", response_model=schemas.Response)

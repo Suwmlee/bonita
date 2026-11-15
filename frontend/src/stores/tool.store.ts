@@ -2,9 +2,11 @@ import { ToolsService } from "@/client"
 import type {
   ScrapinglibVersion,
   SyncDirection,
+  TaskStatus,
   ToolArgsParam,
   TransRecordsPathSyncParam,
 } from "@/client/types.gen"
+import { client } from "@/client/client.gen"
 import { i18n } from "@/plugins/i18n"
 import { defineStore } from "pinia"
 import { useTaskStore } from "./task.store"
@@ -62,6 +64,7 @@ export const useToolStore = defineStore("tool-store", {
           embySyncParam: {
             direction,
             force,
+            sources: ["emby"],
           },
         })
         if (!task?.task_id) {
@@ -85,6 +88,44 @@ export const useToolStore = defineStore("tool-store", {
           error instanceof Error
             ? error.message
             : (i18n.global.t("pages.tools.embyFailed") as string),
+        )
+      } finally {
+        this.syncEmbyInProgress = false
+      }
+    },
+
+    async syncPlexWatchHistory(direction: SyncDirection = "from_server", force = false) {
+      this.syncEmbyInProgress = true
+      try {
+        const toastStore = useToastStore()
+        const taskStore = useTaskStore()
+        const { data: task } = await client.post<TaskStatus>({
+          responseType: "json",
+          security: [{ scheme: "bearer", type: "http" }],
+          url: "/api/v1/tools/sync/plex",
+          body: { direction, force },
+          headers: { "Content-Type": "application/json" },
+        })
+        if (!task?.task_id) {
+          toastStore.error(i18n.global.t("pages.tools.plexFailed") as string)
+          return task
+        }
+        const finished = await taskStore.waitForTask(task.task_id)
+        if (finished?.status === "FAILURE" || finished?.status === "REVOKED") {
+          toastStore.error(
+            finished.error_message
+              || (i18n.global.t("pages.tools.plexFailed") as string),
+          )
+          return finished
+        }
+        toastStore.success(i18n.global.t("pages.tools.plexSuccess") as string)
+        return finished || task
+      } catch (error) {
+        console.error("Error syncing Plex watch history:", error)
+        useToastStore().error(
+          error instanceof Error
+            ? error.message
+            : (i18n.global.t("pages.tools.plexFailed") as string),
         )
       } finally {
         this.syncEmbyInProgress = false

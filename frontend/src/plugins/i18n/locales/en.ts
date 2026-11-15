@@ -299,6 +299,8 @@ export default {
       nfoImportFailedUnknown: "NFO import failed: Unknown error",
       embySuccess: "Emby watch history synchronized successfully",
       embyFailed: "Failed to sync Emby watch history: Unknown error",
+      plexSuccess: "Plex watch history synchronized successfully",
+      plexFailed: "Failed to sync Plex watch history: Unknown error",
       cleanupSuccess: "Data cleanup completed successfully",
       cleanupFailed: "Failed to cleanup data: Unknown error",
       syncRecordPathSuccess: "Transfer record paths synchronized successfully",

@@ -249,6 +249,15 @@ export default {
         forceUpdate: "强制更新",
         startSync: "开始同步",
       },
+      syncPlex: {
+        title: "同步 Plex 观看历史",
+        subtitle: "在 Plex 与 Bonita 之间同步电影/剧的已看、评分与喜爱（喜爱 = 至少 9 分 / 4.5 星）",
+        direction: "同步方向",
+        fromServer: "从服务器拉取",
+        toServer: "回写到服务器",
+        forceUpdate: "强制更新",
+        startSync: "开始同步",
+      },
       cleanup: {
         title: "清理文件与记录",
         subtitle:
@@ -294,6 +303,8 @@ export default {
       nfoImportFailedUnknown: "NFO导入失败: 未知错误",
       embySuccess: "Emby观看历史同步成功",
       embyFailed: "Emby观看历史同步失败: 未知错误",
+      plexSuccess: "Plex 观看历史同步成功",
+      plexFailed: "Plex 观看历史同步失败: 未知错误",
       cleanupSuccess: "清理数据成功",
       cleanupFailed: "清理数据失败: 未知错误",
       syncRecordPathSuccess: "转移记录路径同步成功",

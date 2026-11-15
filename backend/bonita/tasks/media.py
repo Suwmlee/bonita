@@ -56,6 +56,7 @@ def celery_sync_watch_history(self, sources=None, days=30, limit=100, direction=
         requested_sources = list(requested_sources)
 
     synced_sources = []
+    supported = {"emby", "plex"}
     try:
         setting_service = SettingService(session)
 
@@ -64,7 +65,9 @@ def celery_sync_watch_history(self, sources=None, days=30, limit=100, direction=
             if emby_settings.get("enabled"):
                 client = ensure_media_client("emby")
                 if client:
-                    WatchSyncService(session).sync_history(direction=direction, force=force)
+                    WatchSyncService(session).sync_history(
+                        direction=direction, force=force, source="emby"
+                    )
                     synced_sources.append("emby")
                     logger.info("  ✓ Emby 同步完成")
                 else:
@@ -72,7 +75,22 @@ def celery_sync_watch_history(self, sources=None, days=30, limit=100, direction=
             else:
                 logger.info("  ⊘ Emby 同步已禁用")
 
-        unsupported_sources = set(requested_sources) - {"emby"}
+        if "plex" in requested_sources:
+            plex_settings = setting_service.get_plex_settings()
+            if plex_settings.get("enabled"):
+                client = ensure_media_client("plex")
+                if client:
+                    WatchSyncService(session).sync_history(
+                        direction=direction, force=force, source="plex"
+                    )
+                    synced_sources.append("plex")
+                    logger.info("  ✓ Plex 同步完成")
+                else:
+                    logger.warning("  ⊘ Plex 服务未初始化")
+            else:
+                logger.info("  ⊘ Plex 同步已禁用")
+
+        unsupported_sources = set(requested_sources) - supported
         for source in unsupported_sources:
             logger.info(f"  ⊘ {source} 暂未支持")
 

@@ -122,14 +122,26 @@ class ToolService:
             }
         )
 
-    def sync_watch_history(self, direction: str = "from_server", force: bool = False) -> schemas.TaskStatus:
+    def sync_watch_history(
+        self,
+        direction: str = "from_server",
+        force: bool = False,
+        sources=None,
+    ) -> schemas.TaskStatus:
         """将观看历史同步丢给 Celery，立即返回任务状态。"""
-        logger.info(f"Enqueue watch history sync, direction={direction}, force={force}")
+        source_list = sources or ["emby"]
+        if isinstance(source_list, str):
+            source_list = [source_list]
+        source_key = ",".join(source_list)
+        logger.info(
+            f"Enqueue watch history sync, sources={source_key} direction={direction}, force={force}"
+        )
         return CeleryTaskService(self.session).enqueue_unique(
             celery_sync_watch_history,
             TASK_WATCH_HISTORY_SYNC,
-            detail=f"{direction}|{int(bool(force))}",
+            detail=f"{source_key}|{direction}|{int(bool(force))}",
             name="同步观看历史",
+            sources=source_list,
             direction=direction,
             force=force,
         )

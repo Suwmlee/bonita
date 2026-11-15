@@ -19,6 +19,9 @@ const updateOption = ref("ignore")
 const forceCleanupOption = ref(false)
 const syncDirection = ref<"from_server" | "to_server">("from_server")
 const forceUpdateEmby = ref(false)
+const isSyncingPlex = ref(false)
+const plexSyncDirection = ref<"from_server" | "to_server">("from_server")
+const forceUpdatePlex = ref(false)
 const oldPrefix = ref("")
 const newPrefix = ref("")
 const recordPathTaskId = ref("")
@@ -46,6 +49,15 @@ const syncEmbyWatchHistory = async () => {
     await toolStore.syncEmbyWatchHistory(syncDirection.value, forceUpdateEmby.value)
   } finally {
     isSyncingEmby.value = false
+  }
+}
+
+const syncPlexWatchHistory = async () => {
+  isSyncingPlex.value = true
+  try {
+    await toolStore.syncPlexWatchHistory(plexSyncDirection.value, forceUpdatePlex.value)
+  } finally {
+    isSyncingPlex.value = false
   }
 }
 
@@ -150,6 +162,45 @@ onMounted(() => {
             <VCol cols="12">
               <VBtn color="secondary" block :loading="mediaItemStore.isLoading" @click="cleanMediaItems">
                 {{ t('pages.mediaitem.clean') }}
+              </VBtn>
+            </VCol>
+          </VRow>
+        </VCardText>
+      </VCard>
+
+      <VCard class="mb-6">
+        <VCardTitle>{{ t('pages.tools.syncPlex.title') }}</VCardTitle>
+        <VCardSubtitle class="text-wrap">
+          {{ t('pages.tools.syncPlex.subtitle') }}
+        </VCardSubtitle>
+        <VCardText>
+          <VRow>
+            <VCol cols="12">
+              <VRow no-gutters>
+                <VCol cols="12" md="3" class="row-label">
+                  <label>{{ t('pages.tools.syncPlex.direction') }}</label>
+                </VCol>
+                <VCol cols="12" md="9">
+                  <VRadioGroup v-model="plexSyncDirection" inline hide-details>
+                    <VRadio value="from_server" :label="t('pages.tools.syncPlex.fromServer')" />
+                    <VRadio value="to_server" :label="t('pages.tools.syncPlex.toServer')" />
+                  </VRadioGroup>
+                </VCol>
+              </VRow>
+            </VCol>
+            <VCol cols="12">
+              <VRow no-gutters>
+                <VCol cols="12" md="3" class="row-label">
+                  <label>{{ t('pages.tools.syncPlex.forceUpdate') }}</label>
+                </VCol>
+                <VCol cols="12" md="9">
+                  <VCheckbox v-model="forceUpdatePlex" hide-details />
+                </VCol>
+              </VRow>
+            </VCol>
+            <VCol cols="12">
+              <VBtn color="primary" block :loading="isSyncingPlex" @click="syncPlexWatchHistory">
+                {{ t('pages.tools.syncPlex.startSync') }}
               </VBtn>
             </VCol>
           </VRow>

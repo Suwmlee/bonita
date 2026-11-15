@@ -84,7 +84,7 @@ class SyncDirection(str, Enum):
 
 class EmbySyncParam(BaseModel):
     """
-    媒体服务器观看同步参数。路径仍为 /tools/sync/emby。
+    媒体服务器观看同步参数。路径仍为 /tools/sync/emby；也可传 sources=["plex"]。
     """
     direction: SyncDirection = Field(
         default=SyncDirection.FROM_SERVER,
@@ -93,6 +93,10 @@ class EmbySyncParam(BaseModel):
     force: bool = Field(
         default=False,
         description="强制覆盖对端已有的已看/收藏状态",
+    )
+    sources: Optional[List[str]] = Field(
+        default=None,
+        description="媒体源列表，如 emby / plex；默认 emby",
     )
 
 
