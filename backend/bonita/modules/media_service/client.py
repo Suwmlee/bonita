@@ -4,13 +4,31 @@ from typing import Dict, List, Optional
 
 
 SOURCE_EMBY = "emby"
+SOURCE_PLEX = "plex"
 
 DIR_FROM_SERVER = "from_server"
 DIR_TO_SERVER = "to_server"
 
+# 统一评分 0–10。喜爱 = 至少 9 分（4.5 星）。无精确分时「标记喜爱」写 10。
+RATING_FAVORITE_MIN = 9.0
+RATING_FAVORITE_WRITE = 10.0
+
 _SOURCE_LABELS = {
     SOURCE_EMBY: "Emby",
+    SOURCE_PLEX: "Plex",
 }
+
+
+def is_favorite_rating(rating) -> bool:
+    try:
+        return rating is not None and float(rating) >= RATING_FAVORITE_MIN
+    except (TypeError, ValueError):
+        return False
+
+
+def normalize_favorite(favorite: bool = False, rating=None) -> bool:
+    """喜爱：显式收藏，或评分达到阈值。"""
+    return bool(favorite) or is_favorite_rating(rating)
 
 
 def source_label(source: str) -> str:
@@ -44,6 +62,8 @@ class WatchState:
     position_seconds: int = 0
     duration_seconds: int = 0
     play_progress: float = 0.0
+    # 用户评分 0–10；None/0 表示未评分（Plex/Trakt 等以评分为主）
+    rating: Optional[float] = None
 
 
 @dataclass

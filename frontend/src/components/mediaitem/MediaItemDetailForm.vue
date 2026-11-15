@@ -51,6 +51,15 @@ const formData = ref<Partial<MediaItemWithWatches>>(
       },
 )
 
+/** 库内 0–10；UI 五星（×2）。≥9（4.5★）为收藏；仅标收藏写 10。 */
+const RATING_FAVORITE_MIN = 9
+const RATING_FAVORITE_WRITE = 10
+
+function ensureUserdata() {
+  if (!formData.value.userdata) formData.value.userdata = {}
+  return formData.value.userdata
+}
+
 const formKind = ref<FormKind>(kindFromItem(props.updateMediaItem ?? mediaItemStore.addDraft))
 
 const isEditMode = computed(() => !!props.updateMediaItem)
@@ -235,20 +244,48 @@ const mediaTypes = [
 const watched = computed({
   get: () => formData.value.userdata?.watched || false,
   set: (value) => {
-    if (!formData.value.userdata) {
-      formData.value.userdata = {}
+    ensureUserdata().watched = value
+  },
+})
+
+const starRating = computed({
+  get: () => {
+    const score = Number(formData.value.userdata?.user_rating)
+    return score > 0 ? Math.round(score) / 2 : 0
+  },
+  set: (stars: number) => {
+    const ud = ensureUserdata()
+    const score = Math.round(Number(stars) * 2)
+    if (!score) {
+      ud.user_rating = null
+      ud.has_rating = false
+      ud.favorite = false
+      return
     }
-    formData.value.userdata.watched = value
+    ud.user_rating = Math.min(10, Math.max(1, score))
+    ud.has_rating = true
+    ud.favorite = ud.user_rating >= RATING_FAVORITE_MIN
   },
 })
 
 const favorite = computed({
-  get: () => formData.value.userdata?.favorite || false,
-  set: (value) => {
-    if (!formData.value.userdata) {
-      formData.value.userdata = {}
+  get: () => !!formData.value.userdata?.favorite,
+  set: (on: boolean) => {
+    const ud = ensureUserdata()
+    const score = Number(ud.user_rating) || 0
+    if (on) {
+      ud.favorite = true
+      if (score < RATING_FAVORITE_MIN) {
+        ud.user_rating = RATING_FAVORITE_WRITE
+        ud.has_rating = true
+      }
+      return
     }
-    formData.value.userdata.favorite = value
+    ud.favorite = false
+    if (score >= RATING_FAVORITE_MIN) {
+      ud.user_rating = null
+      ud.has_rating = false
+    }
   },
 })
 
@@ -447,6 +484,25 @@ function onPosterError(event: Event) {
               v-model="favorite"
               color="error"
               hide-details
+            />
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <VCol cols="12">
+        <VRow no-gutters>
+          <VCol cols="12" md="auto" class="row-label">
+            <label for="user_rating">{{ t('pages.mediaitem.userRating') }}</label>
+          </VCol>
+          <VCol cols="12" md class="d-flex align-center">
+            <VRating
+              v-model="starRating"
+              :length="5"
+              half-increments
+              hover
+              clearable
+              density="comfortable"
+              size="32"
             />
           </VCol>
         </VRow>

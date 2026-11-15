@@ -479,6 +479,7 @@ export default {
       favorite: "收藏",
       notFavorite: "未收藏",
       favoriteStatus: "收藏状态",
+      userRating: "评分",
       allFavorites: "所有状态",
       allTypes: "所有类型",
       movie: "电影",

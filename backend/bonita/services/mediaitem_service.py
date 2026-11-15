@@ -8,6 +8,7 @@ from bonita.db.models.collection import CollectionItem
 from bonita.db.models.mediaitem import MediaItem
 from bonita.db.models.record import TransRecords
 from bonita.db.models.watch_history import WatchHistory
+from bonita.modules.media_service.client import RATING_FAVORITE_MIN, normalize_favorite
 from bonita.modules.media_service.collection_sync import detach_media_from_collections
 from bonita.modules.media_service.matching import has_external_ids, requires_external_ids
 from bonita.services.metadata_service import MetadataService
@@ -35,10 +36,21 @@ class MediaItemService:
         if not series_ids:
             return {}
         series_rows = self.session.query(MediaItem).filter(MediaItem.id.in_(series_ids)).all()
-        favorite_rows = self.session.query(WatchHistory.media_item_id, WatchHistory.favorite).filter(
+        favorite_rows = self.session.query(
+            WatchHistory.media_item_id,
+            WatchHistory.favorite,
+            WatchHistory.has_rating,
+            WatchHistory.rating,
+        ).filter(
             WatchHistory.media_item_id.in_(series_ids)
         ).all()
-        favorite_map = {media_item_id: bool(favorite) for media_item_id, favorite in favorite_rows}
+        favorite_map = {
+            media_item_id: normalize_favorite(
+                bool(favorite),
+                rating if has_rating else None,
+            )
+            for media_item_id, favorite, has_rating, rating in favorite_rows
+        }
         return {
             row.id: {
                 "imdb_id": row.imdb_id,
@@ -76,7 +88,16 @@ class MediaItemService:
         rows = (
             self.session.query(WatchHistory.media_item_id)
             .join(MediaItem, MediaItem.id == WatchHistory.media_item_id)
-            .filter(MediaItem.media_type == "tvshow", WatchHistory.favorite.is_(True))
+            .filter(
+                MediaItem.media_type == "tvshow",
+                or_(
+                    WatchHistory.favorite.is_(True),
+                    and_(
+                        WatchHistory.has_rating.is_(True),
+                        WatchHistory.rating >= RATING_FAVORITE_MIN,
+                    ),
+                ),
+            )
             .all()
         )
         return [row[0] for row in rows]
@@ -102,15 +123,21 @@ class MediaItemService:
             series_favorite = bool(
                 media_item.series_id and series_map.get(media_item.series_id, {}).get("favorite")
             )
-            favorite = bool(history.favorite) if history else False
+            rating = (
+                history.rating
+                if history and history.has_rating and history.rating and history.rating > 0
+                else None
+            )
             userdata = schemas.UserWatchData(
-                favorite=favorite or series_favorite,
+                favorite=normalize_favorite(
+                    bool(history.favorite) if history else False, rating
+                ) or series_favorite,
                 watched=(history.watched if history else False) or False,
                 total_plays=(history.watch_count if history else 0) or 0,
                 play_progress=history.play_progress if history else None,
                 duration=history.duration if history else None,
-                has_rating=(history.has_rating if history else False) or False,
-                user_rating=history.rating if history else None,
+                has_rating=bool(rating),
+                user_rating=rating,
                 last_played=history.updatetime if history else None,
                 watch_updatetime=history.updatetime if history else None,
             )
@@ -145,9 +172,15 @@ class MediaItemService:
                 WatchHistory.media_item_id,
                 func.max(WatchHistory.watched).label("watched"),
                 func.max(WatchHistory.favorite).label("favorite"),
+                func.max(WatchHistory.has_rating).label("has_rating"),
+                func.max(WatchHistory.rating).label("rating"),
             )
             .group_by(WatchHistory.media_item_id)
             .subquery()
+        )
+        is_favorited = or_(
+            watch_info.c.favorite > 0,
+            and_(watch_info.c.has_rating > 0, watch_info.c.rating >= RATING_FAVORITE_MIN),
         )
 
         query = (
@@ -204,24 +237,22 @@ class MediaItemService:
             if favorite:
                 if favorited_series_ids:
                     query = query.filter(
-                        (watch_info.c.favorite > 0)
-                        | MediaItem.series_id.in_(favorited_series_ids)
+                        is_favorited | MediaItem.series_id.in_(favorited_series_ids)
                     )
                 else:
-                    query = query.filter(watch_info.c.favorite > 0)
+                    query = query.filter(is_favorited)
             else:
+                not_favorited = ~is_favorited
                 if favorited_series_ids:
                     query = query.filter(
-                        ((watch_info.c.favorite == 0) | watch_info.c.favorite.is_(None))
+                        not_favorited
                         & (
                             MediaItem.series_id.is_(None)
                             | ~MediaItem.series_id.in_(favorited_series_ids)
                         )
                     )
                 else:
-                    query = query.filter(
-                        (watch_info.c.favorite == 0) | watch_info.c.favorite.is_(None)
-                    )
+                    query = query.filter(not_favorited)
 
         count = query.count()
         sort_column = getattr(MediaItem, sort_by, MediaItem.updatetime)
@@ -329,15 +360,25 @@ class MediaItemService:
             if "watched" in watch_data:
                 watch_history.watched = watch_data["watched"]
             if "favorite" in watch_data:
-                watch_history.favorite = watch_data["favorite"]
+                watch_history.favorite = bool(watch_data["favorite"])
             if "play_progress" in watch_data:
                 watch_history.play_progress = watch_data["play_progress"]
             if "duration" in watch_data:
                 watch_history.duration = watch_data["duration"]
-            if "has_rating" in watch_data:
-                watch_history.has_rating = watch_data["has_rating"]
             if "user_rating" in watch_data:
-                watch_history.rating = watch_data["user_rating"]
+                try:
+                    score = float(watch_data["user_rating"] or 0)
+                except (TypeError, ValueError):
+                    score = 0.0
+                watch_history.has_rating = score > 0
+                watch_history.rating = score if score > 0 else 0.0
+            elif "has_rating" in watch_data and not watch_data["has_rating"]:
+                watch_history.has_rating = False
+                watch_history.rating = 0.0
+            watch_history.favorite = normalize_favorite(
+                bool(watch_history.favorite),
+                watch_history.rating if watch_history.has_rating else None,
+            )
 
         self.session.commit()
         self.session.refresh(media_item)

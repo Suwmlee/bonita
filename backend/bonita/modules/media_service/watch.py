@@ -8,6 +8,7 @@ from bonita.modules.media_service.client import (
     MediaServerClient,
     RemoteItem,
     is_to_server,
+    normalize_favorite,
     source_label,
 )
 from bonita.modules.media_service.factory import ensure_media_client
@@ -16,6 +17,7 @@ from bonita.modules.media_service.matching import (
     _save_new,
     ensure_series,
     find_transfer_record,
+    media_item_label,
     resolve_media_item,
     sync_scope,
 )
@@ -89,11 +91,12 @@ def apply_remote_watch(session, client: MediaServerClient, item: RemoteItem, for
     if not media_item:
         return None
 
-    title = media_item.title
+    label = media_item_label(media_item, remote=item)
     watch = item.watch
     duration = watch.duration_seconds if watch else 0
     watched = bool(watch.played) if watch else False
-    is_favorite = bool(watch.favorite) if watch else False
+    rating = watch.rating if watch and watch.rating and watch.rating > 0 else None
+    is_favorite = normalize_favorite(bool(watch.favorite) if watch else False, rating)
     if media_item.media_type == "episode" and media_item.series_id:
         parent_history = session.query(WatchHistory).filter(
             WatchHistory.media_item_id == media_item.series_id
@@ -102,6 +105,7 @@ def apply_remote_watch(session, client: MediaServerClient, item: RemoteItem, for
             is_favorite = True
     watch_count = watch.play_count if watch else 1
     play_progress = watch.play_progress if watch else (100.0 if watched else 0.0)
+    has_rating = rating is not None
 
     existing_record = session.query(WatchHistory).filter(
         WatchHistory.media_item_id == media_item.id
@@ -109,12 +113,31 @@ def apply_remote_watch(session, client: MediaServerClient, item: RemoteItem, for
     if existing_record:
         final_watched = watched if force else (existing_record.watched or watched)
         final_favorite = is_favorite if force else (existing_record.favorite or is_favorite)
+        if force:
+            final_rating = rating
+            final_has_rating = has_rating
+        elif rating is not None:
+            # 评分取较高分，避免低分覆盖高分
+            prev = existing_record.rating if existing_record.has_rating else None
+            if prev is None or rating >= prev:
+                final_rating = rating
+                final_has_rating = True
+            else:
+                final_rating = prev
+                final_has_rating = True
+            final_favorite = normalize_favorite(final_favorite, final_rating)
+        else:
+            final_rating = existing_record.rating
+            final_has_rating = existing_record.has_rating
+            final_favorite = normalize_favorite(final_favorite, final_rating if final_has_rating else None)
         has_record_changes = (
             existing_record.watched != final_watched
             or existing_record.watch_count != watch_count
             or existing_record.favorite != final_favorite
             or existing_record.play_progress != play_progress
             or existing_record.duration != duration
+            or existing_record.has_rating != final_has_rating
+            or (existing_record.rating or 0) != (final_rating or 0)
         )
         if has_record_changes:
             existing_record.watched = final_watched
@@ -122,8 +145,10 @@ def apply_remote_watch(session, client: MediaServerClient, item: RemoteItem, for
             existing_record.favorite = final_favorite
             existing_record.play_progress = play_progress
             existing_record.duration = duration
+            existing_record.has_rating = final_has_rating
+            existing_record.rating = final_rating or 0.0
             _commit_or_flush(session)
-            logger.info(f"    ✓ 更新观看记录: {title}")
+            logger.info(f"    ✓ 更新观看记录: {label}")
     else:
         new_record = WatchHistory(
             media_item_id=media_item.id,
@@ -132,9 +157,11 @@ def apply_remote_watch(session, client: MediaServerClient, item: RemoteItem, for
             favorite=is_favorite,
             play_progress=play_progress,
             duration=duration,
+            has_rating=has_rating,
+            rating=rating or 0.0,
         )
         _save_new(session, new_record)
-        logger.info(f"    ✓ 创建观看记录: {title}")
+        logger.info(f"    ✓ 创建观看记录: {label}")
 
     if media_item.media_type == "tvshow" and is_favorite:
         propagate_favorite_to_episodes(session, media_item.id)
@@ -153,8 +180,15 @@ def sync_item_to_server(session, client: MediaServerClient, item: RemoteItem, fo
 
     remote_watch = item.watch
     remote_watched = bool(remote_watch.played) if remote_watch else False
-    remote_favorite = bool(remote_watch.favorite) if remote_watch else False
-    label = media_item.number or media_item.title
+    remote_rating = remote_watch.rating if remote_watch and remote_watch.rating else None
+    remote_favorite = normalize_favorite(
+        bool(remote_watch.favorite) if remote_watch else False,
+        remote_rating,
+    )
+    local_rating = watch_history.rating if watch_history.has_rating else None
+    local_favorite = normalize_favorite(watch_history.favorite, local_rating)
+    label = media_item_label(media_item, remote=item)
+    supports_rating = hasattr(client, "set_user_rating")
 
     updated = False
     if watch_history.watched and not remote_watched:
@@ -166,14 +200,33 @@ def sync_item_to_server(session, client: MediaServerClient, item: RemoteItem, fo
         logger.info(f"    ✓ 标记为未观看: {label}")
         updated = True
 
-    if watch_history.favorite and not remote_favorite:
-        client.mark_as_favorite(item.remote_id)
-        logger.info(f"    ♥ 标记为喜爱: {label}")
-        updated = True
-    elif not watch_history.favorite and remote_favorite and force:
-        client.unmark_as_favorite(item.remote_id)
-        logger.info(f"    ✓ 取消喜爱: {label}")
-        updated = True
+    if supports_rating:
+        # Plex：以评分为准；仅有喜爱无分数时写满分
+        if local_rating:
+            if remote_rating != local_rating and (
+                force or remote_rating is None or local_rating > remote_rating
+            ):
+                client.set_user_rating(item.remote_id, local_rating)
+                logger.info(f"    ★ 回写评分 {local_rating:g}: {label}")
+                updated = True
+        elif local_favorite and not remote_favorite:
+            client.mark_as_favorite(item.remote_id)
+            logger.info(f"    ♥ 标记为喜爱: {label}")
+            updated = True
+        elif not local_favorite and remote_favorite and force:
+            client.unmark_as_favorite(item.remote_id)
+            logger.info(f"    ✓ 取消喜爱: {label}")
+            updated = True
+    else:
+        # Emby：喜爱（含评分>=9）↔ 收藏
+        if local_favorite and not remote_favorite:
+            client.mark_as_favorite(item.remote_id)
+            logger.info(f"    ♥ 标记为喜爱: {label}")
+            updated = True
+        elif not local_favorite and remote_favorite and force:
+            client.unmark_as_favorite(item.remote_id)
+            logger.info(f"    ✓ 取消喜爱: {label}")
+            updated = True
 
     return updated
 

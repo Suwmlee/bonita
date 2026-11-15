@@ -10,6 +10,7 @@ from bonita.modules.media_service.client import (
     ITEM_SEASON,
     ITEM_SERIES,
     ITEM_VIDEO,
+    RATING_FAVORITE_MIN,
     SOURCE_EMBY,
     WEBHOOK_FAVORITE,
     WEBHOOK_IGNORED,
@@ -22,6 +23,7 @@ from bonita.modules.media_service.client import (
     RemoteItem,
     WatchState,
     WebhookEvent,
+    normalize_favorite,
 )
 from bonita.utils.singleton import Singleton
 
@@ -782,6 +784,21 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
         play_progress = 100.0 if played else 0.0
         if position_seconds > 0 and duration > 0:
             play_progress = min(100.0, (position_seconds / duration) * 100)
+        # Emby UserData.Rating 为 0–10；喜爱=收藏或评分>=9
+        raw_rating = user_data.get("Rating")
+        rating = None
+        try:
+            if raw_rating is not None and float(raw_rating) > 0:
+                rating = float(raw_rating)
+        except (TypeError, ValueError):
+            rating = None
+        is_favorite = normalize_favorite(
+            bool(user_data.get("IsFavorite", False)),
+            rating,
+        )
+        # 仅有收藏、没有评分时，按约定记 9 分，便于和 Plex/Trakt 对齐
+        if is_favorite and rating is None and bool(user_data.get("IsFavorite", False)):
+            rating = RATING_FAVORITE_MIN
         child_count = raw.get("ChildCount")
         if child_count is None:
             child_count = raw.get("RecursiveItemCount") or 0
@@ -800,11 +817,12 @@ class EmbyClient(MediaServerClient, metaclass=Singleton):
             series_name=(raw.get("SeriesName") or "").strip(),
             watch=WatchState(
                 played=played,
-                favorite=bool(user_data.get("IsFavorite", False)),
+                favorite=is_favorite,
                 play_count=user_data.get("PlayCount") or 1,
                 position_seconds=position_seconds,
                 duration_seconds=duration,
                 play_progress=play_progress,
+                rating=rating,
             ),
             image_tag=(raw.get("ImageTags") or {}).get("Primary"),
             child_count=int(child_count or 0),

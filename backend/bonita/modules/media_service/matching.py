@@ -620,10 +620,44 @@ def ensure_series(session, item: RemoteItem, record, client: MediaServerClient, 
     return media_item
 
 
-def media_item_label(media_item: MediaItem) -> str:
+def media_item_label(media_item: MediaItem, remote: RemoteItem = None) -> str:
+    """日志用短标题。单集优先拼剧名 + SxxExx，不额外查库。"""
     if not media_item:
         return ""
-    return (media_item.number or media_item.title or "").strip() or str(media_item.id)
+    number = (media_item.number or "").strip()
+    if number:
+        return number
+    if media_item.media_type == "episode":
+        season = media_item.season_number
+        episode_no = media_item.episode_number
+        if remote is not None:
+            if (season is None or season < 0) and remote.season >= 0:
+                season = remote.season
+            if (episode_no is None or episode_no < 0) and remote.episode >= 0:
+                episode_no = remote.episode
+        se = ""
+        if season is not None and season >= 0 and episode_no is not None and episode_no >= 0:
+            se = f"S{season:02d}E{episode_no:02d}"
+
+        # 入库时 original_title 常是剧名；回写时用远端 series_name 兜底，都不查库
+        series_name = (media_item.original_title or "").strip()
+        if not series_name and remote is not None:
+            series_name = (remote.series_name or "").strip()
+        episode_title = (media_item.title or "").strip()
+        if not episode_title and remote is not None:
+            episode_title = (remote.title or "").strip()
+
+        parts = [part for part in (series_name, se, episode_title) if part]
+        if parts:
+            if series_name and episode_title and episode_title == series_name:
+                parts = [series_name, se] if se else [series_name]
+            elif se and episode_title and episode_title.upper() == se:
+                parts = [part for part in (series_name, se) if part]
+            return " · ".join(parts)
+    title = (media_item.title or "").strip()
+    if not title and remote is not None:
+        title = (remote.title or "").strip()
+    return title or str(media_item.id)
 
 
 def dest_paths_for_media_item(session, media_item: MediaItem) -> list:

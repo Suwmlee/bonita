@@ -500,6 +500,7 @@ export default {
       favorite: "Favorite",
       notFavorite: "Not Favorite",
       favoriteStatus: "Favorite Status",
+      userRating: "Rating",
       allFavorites: "All Status",
       allTypes: "All Types",
       movie: "Movie",
