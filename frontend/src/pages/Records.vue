@@ -247,6 +247,121 @@ const formatSeasonEpisode = (
   return `${seasonPart}${episodePart}`
 }
 
+type SeasonSection = {
+  key: string
+  label: string
+  records: RecordPublic[]
+}
+
+const SEASON_PREVIEW_LIMIT = 12
+const expandedSeasons = ref<Record<string, boolean>>({})
+const expandedSeasonMore = ref<Record<string, boolean>>({})
+
+function seasonStateKey(groupKey: string, sectionKey: string) {
+  return `${groupKey}:${sectionKey}`
+}
+
+function seasonSortValue(value?: number | null) {
+  return value != null && value >= 0 ? value : 1e9
+}
+
+function groupRecordsBySeason(group: RecordGroupPublic): SeasonSection[] {
+  if (group.kind !== "series") {
+    return [{ key: "all", label: "", records: group.records }]
+  }
+
+  const buckets = new Map<number | "none", RecordPublic[]>()
+  const sorted = [...group.records].sort((a, b) => {
+    const sa = seasonSortValue(a.transfer_record.season)
+    const sb = seasonSortValue(b.transfer_record.season)
+    if (sa !== sb) return sa - sb
+    const ea = seasonSortValue(a.transfer_record.episode)
+    const eb = seasonSortValue(b.transfer_record.episode)
+    if (ea !== eb) return ea - eb
+    return a.transfer_record.id - b.transfer_record.id
+  })
+  for (const item of sorted) {
+    const season = item.transfer_record.season
+    const key = season != null && season >= 0 ? season : ("none" as const)
+    const list = buckets.get(key)
+    if (list) list.push(item)
+    else buckets.set(key, [item])
+  }
+
+  const numbered = [...buckets.keys()]
+    .filter((key): key is number => key !== "none" && key > 0)
+    .sort((a, b) => a - b)
+  const ordered: Array<number | "none"> = [...numbered]
+  if (buckets.has(0)) ordered.push(0)
+  if (buckets.has("none")) ordered.push("none")
+
+  const showLabels = ordered.length > 1
+  return ordered.map((key) => {
+    const season = key === "none" ? null : key
+    const label = !showLabels
+      ? ""
+      : season === null
+        ? t("pages.records.seasonOther")
+        : season === 0
+          ? t("pages.records.seasonSpecial")
+          : t("pages.records.seasonSection", { season })
+    return {
+      key: key === "none" ? "none" : `s${key}`,
+      label,
+      records: buckets.get(key) || [],
+    }
+  })
+}
+
+function isSeasonExpanded(
+  group: RecordGroupPublic,
+  section: SeasonSection,
+  sectionIndex: number,
+) {
+  if (!section.label) return true
+  const key = seasonStateKey(group.key, section.key)
+  return key in expandedSeasons.value
+    ? expandedSeasons.value[key]
+    : sectionIndex === 0
+}
+
+function toggleSeason(
+  group: RecordGroupPublic,
+  section: SeasonSection,
+  sectionIndex: number,
+) {
+  if (!section.label) return
+  const key = seasonStateKey(group.key, section.key)
+  expandedSeasons.value = {
+    ...expandedSeasons.value,
+    [key]: !isSeasonExpanded(group, section, sectionIndex),
+  }
+}
+
+function isSeasonFullyShown(group: RecordGroupPublic, section: SeasonSection) {
+  return !!expandedSeasonMore.value[seasonStateKey(group.key, section.key)]
+}
+
+function toggleSeasonMore(group: RecordGroupPublic, section: SeasonSection) {
+  const key = seasonStateKey(group.key, section.key)
+  expandedSeasonMore.value = {
+    ...expandedSeasonMore.value,
+    [key]: !expandedSeasonMore.value[key],
+  }
+}
+
+function visibleSeasonRecords(
+  group: RecordGroupPublic,
+  section: SeasonSection,
+  sectionIndex: number,
+) {
+  if (!isSeasonExpanded(group, section, sectionIndex)) return []
+  if (isSeasonFullyShown(group, section) || section.records.length <= SEASON_PREVIEW_LIMIT) {
+    return section.records
+  }
+  return section.records.slice(0, SEASON_PREVIEW_LIMIT)
+}
+
 const formatPartNumber = (partNumber?: number | null) => {
   if (partNumber == null || partNumber <= 0) return ""
   return `P${String(partNumber).padStart(2, "0")}`
@@ -954,80 +1069,123 @@ onMounted(async () => {
               <span>{{ t('pages.records.updateTime') }}</span>
               <span>{{ t('pages.records.actions') }}</span>
             </div>
-            <div v-for="item in group.records" :key="item.transfer_record.id" class="record-group-row"
-              :class="{ 'deleted-row': isDeletedRecord(item) }">
-              <v-checkbox :model-value="selected.includes(item.transfer_record.id)" hide-details density="compact"
-                class="group-check" @update:model-value="setRecordSelected(item.transfer_record.id, $event)" />
-              <div class="record-group-status">
-                <v-tooltip v-if="item.transfer_record.success !== null"
-                  :text="item.transfer_record.success ? t('pages.records.success') : t('pages.records.failed')">
-                  <template #activator="{ props }">
-                    <v-icon v-bind="props" size="18"
-                      :icon="item.transfer_record.success ? 'bx-check' : 'bx-x'"
-                      :color="item.transfer_record.success ? 'success' : 'error'" />
-                  </template>
-                </v-tooltip>
-                <v-tooltip v-if="item.transfer_record.ignored" :text="t('pages.records.ignored')">
-                  <template #activator="{ props }">
-                    <v-icon v-bind="props" icon="bx-minus-circle" size="18" color="warning" />
-                  </template>
-                </v-tooltip>
-              </div>
-              <div class="record-group-cell">
-                <v-tooltip :text="item.transfer_record.srcpath">
-                  <template #activator="{ props }">
-                    <button v-bind="props" type="button" class="record-group-filename"
-                      :class="{ 'text-decoration-line-through': isDeletedRecord(item) }"
-                      @click="showSelectedRecord(item)">
-                      {{ item.transfer_record.srcname }}
-                    </button>
-                  </template>
-                </v-tooltip>
-              </div>
-              <div class="record-group-cell">
-                <v-tooltip :text="item.transfer_record.destpath || ''">
-                  <template #activator="{ props }">
-                    <span v-bind="props" class="record-group-text"
-                      :class="{ 'text-decoration-line-through': item.transfer_record.deleted }">
-                      {{ item.transfer_record.destpath || '' }}
-                    </span>
-                  </template>
-                </v-tooltip>
-              </div>
-              <span class="record-group-cell record-group-fixed">
-                {{ formatSeasonEpisode(item.transfer_record.season, item.transfer_record.episode) }}
-              </span>
-              <span class="record-group-cell record-group-fixed">
-                {{ formatPartNumber(item.transfer_record.part_number) }}
-              </span>
-              <div class="tag-cell">
-                <VIcon
-                  v-if="hasLibrarySubtitle(item)"
-                  icon="bx-captions"
+            <template v-for="(section, sectionIndex) in groupRecordsBySeason(group)" :key="section.key">
+              <button
+                v-if="section.label"
+                type="button"
+                class="record-group-season"
+                :aria-expanded="isSeasonExpanded(group, section, sectionIndex)"
+                @click="toggleSeason(group, section, sectionIndex)"
+              >
+                <v-icon
+                  class="record-group-season-chevron"
                   size="18"
-                  class="record-subtitle-mark"
+                  :icon="isSeasonExpanded(group, section, sectionIndex) ? 'bx-chevron-down' : 'bx-chevron-right'"
                 />
-                <template v-if="item.extra_info?.tag">
-                  <v-chip v-for="tag in item.extra_info.tag.split(',')" :key="tag" :color="getTagColor(tag)"
-                    variant="flat" class="tag-chip" size="small">
-                    {{ tag.trim() }}
-                  </v-chip>
-                </template>
-              </div>
-              <div class="record-group-cell">
-                <span class="record-group-time">
-                  {{ formatDateTime(item.transfer_record.updatetime) }}
+                <span class="record-group-season-label">{{ section.label }}</span>
+                <span class="record-group-season-count">
+                  {{ t('pages.records.groupFileCount', { count: section.records.length }) }}
                 </span>
-              </div>
-              <div class="actions-cell">
-                <VBtn class="record-group-action" @click="showSelectedRecord(item)">
-                  <VIcon icon="bx-edit-alt" size="18" />
-                </VBtn>
-                <VBtn class="record-group-action" @click="rerunThisRecord(item)">
-                  <VIcon icon="bx-refresh" size="18" />
-                </VBtn>
-              </div>
-            </div>
+              </button>
+              <template v-if="isSeasonExpanded(group, section, sectionIndex)">
+                <div
+                  v-for="item in visibleSeasonRecords(group, section, sectionIndex)"
+                  :key="item.transfer_record.id"
+                  class="record-group-row"
+                  :class="{ 'deleted-row': isDeletedRecord(item) }"
+                >
+                  <v-checkbox :model-value="selected.includes(item.transfer_record.id)" hide-details density="compact"
+                    class="group-check" @update:model-value="setRecordSelected(item.transfer_record.id, $event)" />
+                  <div class="record-group-status">
+                    <v-tooltip v-if="item.transfer_record.success !== null"
+                      :text="item.transfer_record.success ? t('pages.records.success') : t('pages.records.failed')">
+                      <template #activator="{ props }">
+                        <v-icon v-bind="props" size="18"
+                          :icon="item.transfer_record.success ? 'bx-check' : 'bx-x'"
+                          :color="item.transfer_record.success ? 'success' : 'error'" />
+                      </template>
+                    </v-tooltip>
+                    <v-tooltip v-if="item.transfer_record.ignored" :text="t('pages.records.ignored')">
+                      <template #activator="{ props }">
+                        <v-icon v-bind="props" icon="bx-minus-circle" size="18" color="warning" />
+                      </template>
+                    </v-tooltip>
+                  </div>
+                  <div class="record-group-cell">
+                    <v-tooltip :text="item.transfer_record.srcpath">
+                      <template #activator="{ props }">
+                        <button v-bind="props" type="button" class="record-group-filename"
+                          :class="{ 'text-decoration-line-through': isDeletedRecord(item) }"
+                          @click="showSelectedRecord(item)">
+                          {{ item.transfer_record.srcname }}
+                        </button>
+                      </template>
+                    </v-tooltip>
+                  </div>
+                  <div class="record-group-cell">
+                    <v-tooltip :text="item.transfer_record.destpath || ''">
+                      <template #activator="{ props }">
+                        <span v-bind="props" class="record-group-text"
+                          :class="{ 'text-decoration-line-through': item.transfer_record.deleted }">
+                          {{ item.transfer_record.destpath || '' }}
+                        </span>
+                      </template>
+                    </v-tooltip>
+                  </div>
+                  <span class="record-group-cell record-group-fixed">
+                    {{ formatSeasonEpisode(item.transfer_record.season, item.transfer_record.episode) }}
+                  </span>
+                  <span class="record-group-cell record-group-fixed">
+                    {{ formatPartNumber(item.transfer_record.part_number) }}
+                  </span>
+                  <div class="tag-cell">
+                    <VIcon
+                      v-if="hasLibrarySubtitle(item)"
+                      icon="bx-captions"
+                      size="18"
+                      class="record-subtitle-mark"
+                    />
+                    <template v-if="item.extra_info?.tag">
+                      <v-chip v-for="tag in item.extra_info.tag.split(',')" :key="tag" :color="getTagColor(tag)"
+                        variant="flat" class="tag-chip" size="small">
+                        {{ tag.trim() }}
+                      </v-chip>
+                    </template>
+                  </div>
+                  <div class="record-group-cell">
+                    <span class="record-group-time">
+                      {{ formatDateTime(item.transfer_record.updatetime) }}
+                    </span>
+                  </div>
+                  <div class="actions-cell">
+                    <VBtn class="record-group-action" @click="showSelectedRecord(item)">
+                      <VIcon icon="bx-edit-alt" size="18" />
+                    </VBtn>
+                    <VBtn class="record-group-action" @click="rerunThisRecord(item)">
+                      <VIcon icon="bx-refresh" size="18" />
+                    </VBtn>
+                  </div>
+                </div>
+                <div
+                  v-if="section.records.length > SEASON_PREVIEW_LIMIT"
+                  class="record-group-more"
+                >
+                  <button
+                    type="button"
+                    class="record-group-more-btn"
+                    @click="toggleSeasonMore(group, section)"
+                  >
+                    {{
+                      isSeasonFullyShown(group, section)
+                        ? t('pages.records.seasonViewLess')
+                        : t('pages.records.seasonViewMore', {
+                            count: section.records.length - SEASON_PREVIEW_LIMIT,
+                          })
+                    }}
+                  </button>
+                </div>
+              </template>
+            </template>
           </div>
         </div>
       </article>
@@ -1342,7 +1500,7 @@ onMounted(async () => {
   column-gap: 10px;
   min-width: 0;
   padding: 0 8px 0 12px;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 .record-group-row {
@@ -1356,6 +1514,53 @@ onMounted(async () => {
 
 .record-group-row + .record-group-row {
   border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.record-group-season {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 4px;
+  border: 0;
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.record-group-columns + .record-group-season {
+  margin-top: 0;
+  border-top: 0;
+}
+
+.record-group-season-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.record-group-season-count {
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.record-group-more {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 10px;
+}
+
+.record-group-more-btn {
+  border: 0;
+  background: transparent;
+  color: rgb(var(--v-theme-primary));
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
 }
 
 .record-group-columns {

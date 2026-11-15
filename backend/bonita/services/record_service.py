@@ -151,6 +151,54 @@ class RecordService:
         )
         return {normalize_number(row.number): row for row in rows}
 
+    def _attach_orphan_records(
+        self,
+        bucket: dict,
+        group_ids: List[int],
+        task_id: Optional[int] = None,
+    ) -> None:
+        """同 top_folder、未挂媒体项的记录并进当前页词条（归到占用该文件夹最多的词条）。"""
+        folder_to_group: dict = {}
+        folder_counts: dict = {}
+        existing_ids = set()
+        for group_id in group_ids:
+            for trans_record, _extra in bucket[group_id]["rows"]:
+                if trans_record.id is not None:
+                    existing_ids.add(trans_record.id)
+                folder = (trans_record.top_folder or "").strip()
+                if not folder:
+                    continue
+                n = folder_counts.get((folder, group_id), 0) + 1
+                folder_counts[(folder, group_id)] = n
+                best = folder_to_group.get(folder)
+                if best is None or n > best[1]:
+                    folder_to_group[folder] = (group_id, n)
+        if not folder_to_group:
+            return
+
+        orphan_query = (
+            self.session.query(TransRecords, ExtraInfo)
+            .outerjoin(ExtraInfo, TransRecords.srcpath == ExtraInfo.filepath)
+            .filter(
+                TransRecords.media_item_id.is_(None),
+                TransRecords.top_folder.in_(list(folder_to_group.keys())),
+            )
+        )
+        if task_id is not None:
+            orphan_query = orphan_query.filter(TransRecords.task_id == task_id)
+        for trans_record, extra_info in orphan_query.all():
+            if trans_record.id in existing_ids:
+                continue
+            mapped = folder_to_group.get((trans_record.top_folder or "").strip())
+            item = bucket.get(mapped[0]) if mapped else None
+            if item is None:
+                continue
+            item["rows"].append((trans_record, extra_info))
+            existing_ids.add(trans_record.id)
+            updated = trans_record.updatetime
+            if item["latest"] is None or (updated is not None and updated > item["latest"]):
+                item["latest"] = updated
+
     def get_record_groups(
         self,
         skip: int = 0,
@@ -162,8 +210,8 @@ class RecordService:
     ) -> Tuple[list, int]:
         """按媒体项分页返回词条。
 
-        没有 media_item_id 的记录不进入结果。单集收到父剧。
-        父剧没有外部编号的单集不进入结果。
+        没有 media_item_id 的记录不单独成词条；同 top_folder 的未挂载记录会并进当前页词条。
+        单集收到父剧。父剧没有外部编号的单集不进入结果。
         搜索命中番号、标题、外部编号、源文件名或源路径时，返回整张词条。
         排序按词条内最新记录的 updatetime。
         """
@@ -227,6 +275,8 @@ class RecordService:
             updated = trans_record.updatetime
             if item["latest"] is None or (updated is not None and updated > item["latest"]):
                 item["latest"] = updated
+
+        self._attach_orphan_records(bucket, group_ids, task_id=task_id)
 
         groups = []
         for group_id in group_ids:

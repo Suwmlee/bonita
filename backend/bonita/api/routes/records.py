@@ -72,6 +72,7 @@ def get_record_groups(
     """按媒体项返回词条。
 
     只包含已经挂上 media_item_id 的记录。单集收到父剧。
+    同 top_folder 的未挂载记录会并进当前页词条。
     搜索命中番号、标题、外部编号、源文件名或源路径时返回整张词条。
     分页单位是词条。sort_by 目前按词条内最新记录的 updatetime 排序。
     """
