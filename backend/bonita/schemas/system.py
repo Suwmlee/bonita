@@ -57,6 +57,13 @@ class EmbySettings(BaseModel):
     enabled: Optional[bool] = False
 
 
+class PlexSettings(BaseModel):
+    """Plex settings schema"""
+    plex_host: str
+    plex_token: str
+    enabled: Optional[bool] = False
+
+
 class TransmissionSettings(BaseModel):
     """
     Transmission downloader settings schema

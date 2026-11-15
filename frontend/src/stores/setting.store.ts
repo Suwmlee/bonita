@@ -5,14 +5,28 @@ import type {
   QBittorrentSettings,
   TransmissionSettings,
 } from "@/client"
+import { client } from "@/client/client.gen"
 import { defineStore } from "pinia"
 import { useToastStore } from "./toast.store"
+
+export type PlexSettings = {
+  plex_host: string
+  plex_token: string
+  enabled?: boolean | null
+}
+
+type ApiResponse = {
+  success: boolean
+  message?: string | null
+}
 
 interface SettingState {
   /** 代理设置 */
   proxySettings: ProxySettings
   /** Emby API设置 */
   embyApiSettings: EmbySettings
+  /** Plex API设置 */
+  plexApiSettings: PlexSettings
   /** Transmission设置 */
   transmissionSettings: TransmissionSettings
   /** qBittorrent设置 */
@@ -23,6 +37,8 @@ interface SettingState {
   saving: boolean
   /** Emby测试状态 */
   testingEmby: boolean
+  /** Plex测试状态 */
+  testingPlex: boolean
   /** Transmission测试状态 */
   testingTransmission: boolean
   /** qBittorrent测试状态 */
@@ -41,6 +57,11 @@ export const useSettingStore = defineStore("setting-store", {
         emby_host: "",
         emby_apikey: "",
         emby_user: "",
+        enabled: false,
+      },
+      plexApiSettings: {
+        plex_host: "",
+        plex_token: "",
         enabled: false,
       },
       transmissionSettings: {
@@ -62,6 +83,7 @@ export const useSettingStore = defineStore("setting-store", {
       loading: false,
       saving: false,
       testingEmby: false,
+      testingPlex: false,
       testingTransmission: false,
       testingQBittorrent: false,
     }
@@ -169,6 +191,68 @@ export const useSettingStore = defineStore("setting-store", {
         throw error
       } finally {
         this.testingEmby = false
+      }
+    },
+
+    async fetchPlexSettings() {
+      const toast = useToastStore()
+      this.loading = true
+      try {
+        const { data: response } = await client.get<PlexSettings>({
+          responseType: "json",
+          security: [{ scheme: "bearer", type: "http" }],
+          url: "/api/v1/settings/plex",
+        })
+        this.plexApiSettings = response
+        return response
+      } catch (error) {
+        console.error("Error fetching Plex settings:", error)
+        toast.error("获取Plex设置失败")
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async savePlexApiSettings() {
+      this.saving = true
+      try {
+        const { data: response } = await client.post<ApiResponse>({
+          responseType: "json",
+          security: [{ scheme: "bearer", type: "http" }],
+          url: "/api/v1/settings/plex",
+          body: this.plexApiSettings,
+          headers: { "Content-Type": "application/json" },
+        })
+        return response
+      } catch (error) {
+        console.error("Error updating Plex settings:", error)
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async testPlexConnection(token: string) {
+      this.testingPlex = true
+      try {
+        const { data: response } = await client.post<ApiResponse>({
+          responseType: "json",
+          security: [{ scheme: "bearer", type: "http" }],
+          url: "/api/v1/settings/plex/test",
+          body: {
+            plex_host: this.plexApiSettings.plex_host,
+            plex_token: token,
+            enabled: this.plexApiSettings.enabled,
+          },
+          headers: { "Content-Type": "application/json" },
+        })
+        return response
+      } catch (error) {
+        console.error("Error testing Plex connection:", error)
+        throw error
+      } finally {
+        this.testingPlex = false
       }
     },
 

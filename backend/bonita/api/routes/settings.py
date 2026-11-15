@@ -100,6 +100,49 @@ def test_emby_connection(
     return schemas.Response(success=success, message=message)
 
 
+@router.get("/plex", response_model=schemas.PlexSettings)
+def get_plex_settings(session: SessionDep) -> Any:
+    """获取 Plex 设置。"""
+    try:
+        return SettingService(session).get_plex_settings()
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/plex", response_model=schemas.Response)
+def update_plex_settings(
+    *,
+    session: SessionDep,
+    settings_in: schemas.PlexSettings,
+) -> Any:
+    """更新 Plex 设置。"""
+    try:
+        success, message = SettingService(session).save_plex_settings(
+            host=settings_in.plex_host,
+            token=settings_in.plex_token,
+            enabled=settings_in.enabled,
+        )
+        return schemas.Response(success=success, message=message)
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/plex/test", response_model=schemas.Response)
+def test_plex_connection(
+    *,
+    session: SessionDep,
+    test_data: schemas.PlexSettings,
+) -> Any:
+    """测试 Plex 连接和 Token。"""
+    success, message = SettingService(session).test_plex_connection(
+        host=test_data.plex_host,
+        token=test_data.plex_token,
+    )
+    return schemas.Response(success=success, message=message)
+
+
 @router.get("/transmission", response_model=schemas.TransmissionSettings)
 def get_transmission_settings(session: SessionDep) -> Any:
     """

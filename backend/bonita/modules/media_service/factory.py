@@ -3,15 +3,18 @@ from typing import Optional
 
 from bonita.modules.media_service.client import (
     SOURCE_EMBY,
+    SOURCE_PLEX,
     MediaServerClient,
     source_label,
 )
 from bonita.modules.media_service.emby import EmbyClient
+from bonita.modules.media_service.plex import PlexClient
 
 logger = logging.getLogger(__name__)
 
 _CLIENTS = {
     SOURCE_EMBY: EmbyClient,
+    SOURCE_PLEX: PlexClient,
 }
 
 
@@ -29,6 +32,8 @@ def require_media_client(source: str = SOURCE_EMBY) -> MediaServerClient:
     if not client:
         if source == SOURCE_EMBY:
             raise RuntimeError("Emby服务未初始化")
+        if source == SOURCE_PLEX:
+            raise RuntimeError("Plex服务未初始化")
         raise RuntimeError(f"{source_label(source)}服务未初始化")
     return client
 
@@ -50,12 +55,24 @@ def init_media_servers() -> None:
         settings = SettingService(session).get_emby_settings()
         if not settings.get("enabled"):
             logger.info("Emby is not enabled")
+        else:
+            host = settings.get("emby_host")
+            apikey = settings.get("emby_apikey")
+            user = settings.get("emby_user")
+            if not host or not apikey or not user:
+                logger.info("Emby host or API key or user not configured")
+            else:
+                logger.info("initial EmbyClient")
+                EmbyClient().initialize(host, apikey, user)
+
+        plex_settings = SettingService(session).get_plex_settings()
+        if not plex_settings.get("enabled"):
+            logger.info("Plex is not enabled")
             return
-        host = settings.get("emby_host")
-        apikey = settings.get("emby_apikey")
-        user = settings.get("emby_user")
-        if not host or not apikey or not user:
-            logger.info("Emby host or API key or user not configured")
+        plex_host = plex_settings.get("plex_host")
+        plex_token = plex_settings.get("plex_token")
+        if not plex_host or not plex_token:
+            logger.info("Plex host or token not configured")
             return
-        logger.info("initial EmbyClient")
-        EmbyClient().initialize(host, apikey, user)
+        logger.info("initial PlexClient")
+        PlexClient().initialize(plex_host, plex_token)

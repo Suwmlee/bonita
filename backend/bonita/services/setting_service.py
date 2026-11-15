@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from bonita.db.models.setting import SystemSetting
 from bonita.modules.media_service.emby import EmbyClient
+from bonita.modules.media_service.plex import PlexClient
 from bonita.modules.downloader.qbittorrent import QBittorrentClient
 from bonita.modules.downloader.transmission import TransmissionClient
 
@@ -86,6 +87,14 @@ class SettingService:
             "emby_apikey": self.get_setting("emby_apikey", ""),
             "emby_user": self.get_setting("emby_user", ""),
             "enabled": self.get_setting("emby_enabled", "false").lower() == "true"
+        }
+
+    def get_plex_settings(self) -> Dict:
+        """获取 Plex 媒体服务器设置。"""
+        return {
+            "plex_host": self.get_setting("plex_host", ""),
+            "plex_token": self.get_setting("plex_token", ""),
+            "enabled": self.get_setting("plex_enabled", "false").lower() == "true",
         }
 
     def get_transmission_settings(self) -> Dict:
@@ -181,6 +190,13 @@ class SettingService:
         )
 
         return True, "Emby设置已更新"
+
+    def update_plex_settings(self, host: str, token: str, enabled: bool) -> Tuple[bool, str]:
+        """更新 Plex 媒体服务器设置。"""
+        self.set_setting("plex_host", host, "Plex服务器地址")
+        self.set_setting("plex_token", token, "Plex Token")
+        self.set_setting("plex_enabled", str(enabled).lower(), "是否启用Plex")
+        return True, "Plex设置已更新"
 
     def update_transmission_settings(self, host: str, username: str, password: str,
                                      source_path: str, dest_path: str,
@@ -298,6 +314,39 @@ class SettingService:
         except Exception as e:
             logger.exception("测试Emby连接时出错")
             return False, f"测试Emby连接时出错: {str(e)}"
+
+    def try_initialize_plex(
+        self,
+        host: Optional[str] = None,
+        token: Optional[str] = None,
+    ) -> bool:
+        """用给定参数或当前设置初始化 Plex 客户端。"""
+        if host is None or token is None:
+            current = self.get_plex_settings()
+            if not current.get("enabled"):
+                return False
+            host = current.get("plex_host") or ""
+            token = current.get("plex_token") or ""
+        if not host or not token:
+            return False
+        return bool(PlexClient().initialize(host, token))
+
+    def save_plex_settings(self, host: str, token: str, enabled: bool) -> Tuple[bool, str]:
+        """保存 Plex 设置；启用时先验证连接。"""
+        if enabled:
+            if not self.try_initialize_plex(host, token):
+                return False, "Plex设置已保存但初始化失败，请检查设置是否正确"
+        self.update_plex_settings(host=host, token=token, enabled=enabled)
+        return True, "Plex设置已更新"
+
+    def test_plex_connection(self, host: str, token: str) -> Tuple[bool, str]:
+        try:
+            if PlexClient().initialize(host, token):
+                return True, "Plex连接成功，Token有效"
+            return False, "Plex连接失败，请检查服务器地址和 Token"
+        except Exception as e:
+            logger.exception("测试Plex连接时出错")
+            return False, f"测试Plex连接时出错: {str(e)}"
 
     def test_transmission_connection(
         self,

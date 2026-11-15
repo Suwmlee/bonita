@@ -355,6 +355,21 @@ export default {
         webhookHint:
           "Paste this into Emby Add Notification → Webhooks. Enable Playback, Mark Played, Rate (favorites), and New Media Added. If Emby cannot reach localhost, replace it with Bonita’s LAN IP.",
       },
+      plex: {
+        title: "Plex API Settings",
+        subtitle: "Configure Plex for movie/TV watch sync",
+        server: "Plex Server",
+        serverPlaceholder: "Example: http://192.168.1.50:32400",
+        token: "Token",
+        tokenPlaceholder: "X-Plex-Token",
+        save: "Save Settings",
+        test: "Test Connection",
+        saveSuccess: "Plex settings saved successfully",
+        saveError: "Failed to save Plex settings, please try again later",
+        testError:
+          "Connection test failed, please check your settings and network",
+        enable: "Enable Plex Integration",
+      },
       transmission: {
         title: "Transmission Client Settings",
         subtitle: "Configure Transmission torrent client connection parameters",

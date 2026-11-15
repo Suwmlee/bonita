@@ -12,16 +12,20 @@ const { t } = useI18n() // 导入国际化工具函数
 const {
   proxySettings,
   embyApiSettings,
+  plexApiSettings,
   transmissionSettings,
   qbittorrentSettings,
   loading,
   saving,
   testingEmby,
+  testingPlex,
   testingTransmission,
   testingQBittorrent,
 } = storeToRefs(settingStore)
 const testResult = ref<{ success?: boolean; message?: string } | null>(null)
 const saveResult = ref<{ success: boolean; message: string } | null>(null)
+const plexTestResult = ref<{ success?: boolean; message?: string } | null>(null)
+const plexSaveResult = ref<{ success: boolean; message: string } | null>(null)
 const transmissionTestResult = ref<{
   success?: boolean
   message?: string
@@ -50,6 +54,10 @@ const fetchProxySettings = async () => {
 
 const fetchEmbySettings = async () => {
   await settingStore.fetchEmbySettings()
+}
+
+const fetchPlexSettings = async () => {
+  await settingStore.fetchPlexSettings()
 }
 
 const fetchTransmissionSettings = async () => {
@@ -177,6 +185,47 @@ const testEmbyConnection = async () => {
   }
 }
 
+const savePlexApiSettings = async () => {
+  plexSaveResult.value = null
+  plexApiSettings.value.plex_host = plexApiSettings.value.plex_host || ""
+  plexApiSettings.value.plex_token = plexApiSettings.value.plex_token || ""
+  try {
+    await settingStore.savePlexApiSettings()
+    plexSaveResult.value = {
+      success: true,
+      message: t("pages.serviceSettings.plex.saveSuccess"),
+    }
+  } catch (error) {
+    console.error("Error saving Plex settings:", error)
+    plexSaveResult.value = {
+      success: false,
+      message: t("pages.serviceSettings.plex.saveError"),
+    }
+  }
+  setTimeout(() => {
+    plexSaveResult.value = null
+  }, 3000)
+}
+
+const testPlexConnection = async () => {
+  plexTestResult.value = null
+  try {
+    const response = await settingStore.testPlexConnection(
+      plexApiSettings.value.plex_token || "",
+    )
+    plexTestResult.value = {
+      success: response.success,
+      message: response.message ?? "",
+    }
+  } catch (error) {
+    console.error("Error testing Plex connection:", error)
+    plexTestResult.value = {
+      success: false,
+      message: t("pages.serviceSettings.plex.testError"),
+    }
+  }
+}
+
 const testTransmissionConnection = async () => {
   transmissionTestResult.value = null
 
@@ -216,6 +265,7 @@ const testQBittorrentConnection = async () => {
 onMounted(() => {
   fetchProxySettings()
   fetchEmbySettings()
+  fetchPlexSettings()
   fetchTransmissionSettings()
   fetchQBittorrentSettings()
 })
@@ -351,6 +401,98 @@ onMounted(() => {
               <VCol cols="12" v-if="testResult">
                 <VAlert :type="testResult.success ? 'success' : 'error'" variant="tonal" density="compact">
                   {{ testResult.message || (testResult.success ? t('pages.serviceSettings.emby.connectionSuccess') : t('pages.serviceSettings.emby.connectionError')) }}
+                </VAlert>
+              </VCol>
+            </VRow>
+          </VForm>
+        </VCardText>
+      </VCard>
+
+      <VCard class="mb-6">
+        <VCardTitle>{{ t('pages.serviceSettings.plex.title') }}</VCardTitle>
+        <VCardSubtitle>
+          {{ t('pages.serviceSettings.plex.subtitle') }}
+        </VCardSubtitle>
+        <VCardText>
+          <VForm :loading="loading">
+            <VRow>
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="plexUrl">{{ t('pages.serviceSettings.plex.server') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField
+                      v-model="plexApiSettings.plex_host"
+                      :placeholder="t('pages.serviceSettings.plex.serverPlaceholder')"
+                    />
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="row-label">
+                    <label for="plexToken">{{ t('pages.serviceSettings.plex.token') }}</label>
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <VTextField
+                      v-model="plexApiSettings.plex_token"
+                      :placeholder="t('pages.serviceSettings.plex.tokenPlaceholder')"
+                    />
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol cols="12">
+                <VSwitch
+                  v-model="plexApiSettings.enabled"
+                  :label="t('pages.serviceSettings.plex.enable')"
+                  color="primary"
+                  inset
+                />
+              </VCol>
+
+              <VCol cols="12">
+                <VRow>
+                  <VCol>
+                    <VBtn
+                      color="primary"
+                      :loading="saving"
+                      class="mr-2"
+                      @click="savePlexApiSettings"
+                    >
+                      {{ t('pages.serviceSettings.plex.save') }}
+                    </VBtn>
+                    <VBtn
+                      color="secondary"
+                      :loading="testingPlex"
+                      @click="testPlexConnection"
+                    >
+                      {{ t('pages.serviceSettings.plex.test') }}
+                    </VBtn>
+                  </VCol>
+                </VRow>
+              </VCol>
+
+              <VCol v-if="plexSaveResult" cols="12">
+                <VAlert
+                  :type="plexSaveResult.success ? 'success' : 'error'"
+                  variant="tonal"
+                  density="compact"
+                  class="mb-3"
+                >
+                  {{ plexSaveResult.message }}
+                </VAlert>
+              </VCol>
+
+              <VCol v-if="plexTestResult" cols="12">
+                <VAlert
+                  :type="plexTestResult.success ? 'success' : 'error'"
+                  variant="tonal"
+                  density="compact"
+                >
+                  {{ plexTestResult.message }}
                 </VAlert>
               </VCol>
             </VRow>
