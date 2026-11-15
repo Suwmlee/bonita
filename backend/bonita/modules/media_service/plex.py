@@ -10,11 +10,14 @@ from bonita.modules.media_service.client import (
     ITEM_MOVIE,
     ITEM_SEASON,
     ITEM_SERIES,
+    ITEM_TRACK,
     RATING_FAVORITE_WRITE,
     SOURCE_PLEX,
     WEBHOOK_IGNORED,
     CollectionRef,
     MediaServerClient,
+    PlaylistRef,
+    PlaylistTrack,
     RemoteItem,
     WatchState,
     WebhookEvent,
@@ -29,11 +32,13 @@ _PLEX_TYPE_MOVIE = "1"
 _PLEX_TYPE_SHOW = "2"
 _PLEX_TYPE_SEASON = "3"
 _PLEX_TYPE_EPISODE = "4"
+_PLEX_TYPE_TRACK = "10"
 _TYPE_TO_PLEX = {
     ITEM_MOVIE: _PLEX_TYPE_MOVIE,
     ITEM_SERIES: _PLEX_TYPE_SHOW,
     ITEM_SEASON: _PLEX_TYPE_SEASON,
     ITEM_EPISODE: _PLEX_TYPE_EPISODE,
+    ITEM_TRACK: _PLEX_TYPE_TRACK,
 }
 def _as_str(value) -> str:
     if value is None:
@@ -48,6 +53,14 @@ def _as_int(value, default=-1) -> int:
         return default
 
 
+def _as_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes"}
+
+
 def _as_float(value, default=0.0) -> float:
     try:
         return float(value)
@@ -60,6 +73,27 @@ def _ms_to_seconds(value) -> int:
     if ms <= 0:
         return 0
     return int(ms / 1000)
+
+
+def _first_part_file(media_list) -> Optional[str]:
+    if not media_list:
+        return None
+    if isinstance(media_list, dict):
+        media_list = [media_list]
+    for media in media_list:
+        if not isinstance(media, dict):
+            continue
+        parts = media.get("Part")
+        if isinstance(parts, dict):
+            parts = [parts]
+        if not parts:
+            continue
+        for part in parts:
+            if isinstance(part, dict):
+                path = _as_str(part.get("file"))
+                if path:
+                    return path
+    return None
 
 
 def _media_paths(raw: dict) -> list:
@@ -127,7 +161,7 @@ def _provider_ids_from_raw(raw: dict) -> Dict[str, str]:
 
 
 class PlexClient(MediaServerClient, metaclass=Singleton):
-    """Plex 适配：电影/剧观看同步 + 普通 audio 播放列表拉取。"""
+    """Plex 适配：电影/剧观看同步 + 普通 audio 播放列表拉取/回写。"""
 
     source = SOURCE_PLEX
 
@@ -137,6 +171,7 @@ class PlexClient(MediaServerClient, metaclass=Singleton):
         self.machine_identifier = None
         self.headers = {}
         self._initialized = False
+        self._music_track_path_index: Optional[List[tuple]] = None
 
     @property
     def is_initialized(self) -> bool:
@@ -153,6 +188,7 @@ class PlexClient(MediaServerClient, metaclass=Singleton):
 
         self.plex_host = plex_host or None
         self.plex_token = plex_token
+        self._music_track_path_index = None
         self.headers = {
             "Accept": "application/json",
             "X-Plex-Token": self.plex_token,
@@ -596,3 +632,220 @@ class PlexClient(MediaServerClient, metaclass=Singleton):
 
     def parse_webhook(self, payload: dict) -> WebhookEvent:
         return WebhookEvent(kind=WEBHOOK_IGNORED, raw_event="")
+
+    # --- playlists ---
+
+    @staticmethod
+    def _playlist_ref_from_raw(item: dict, fallback_key: str = "") -> Optional[PlaylistRef]:
+        key = _as_str(item.get("ratingKey")) or _as_str(fallback_key)
+        if not key:
+            return None
+        guid = _as_str(item.get("guid"))
+        return PlaylistRef(
+            remote_id=guid or key,
+            rating_key=key,
+            name=_as_str(item.get("title")) or key,
+            guid=guid,
+            leaf_count=max(0, _as_int(item.get("leafCount"), default=0)),
+            playlist_type=_as_str(item.get("playlistType")) or "audio",
+            smart=_as_bool(item.get("smart")),
+        )
+
+    def list_audio_playlists(
+        self,
+        search: str = "",
+        limit: int = 50,
+        include_smart: bool = True,
+    ) -> List[PlaylistRef]:
+        raw = self._make_request(
+            "get",
+            "/playlists",
+            params={"playlistType": "audio"},
+        )
+        results: List[PlaylistRef] = []
+        needle = (search or "").strip().lower()
+        for item in self._metadata_list(raw):
+            ref = self._playlist_ref_from_raw(item)
+            if not ref:
+                continue
+            if ref.smart and not include_smart:
+                continue
+            if ref.playlist_type.lower() not in {"", "audio"}:
+                continue
+            if needle and needle not in ref.name.lower():
+                continue
+            results.append(ref)
+            if len(results) >= limit:
+                break
+        return results
+
+    def get_playlist(self, rating_key: str) -> Optional[PlaylistRef]:
+        rating_key = _as_str(rating_key)
+        if not rating_key:
+            return None
+        try:
+            raw = self._make_request("get", f"/playlists/{rating_key}")
+            for item in self._metadata_list(raw):
+                return self._playlist_ref_from_raw(item, fallback_key=rating_key)
+        except Exception as e:
+            logger.warning(f"获取 Plex 播放列表失败 {rating_key}: {e}")
+        return None
+
+    def create_audio_playlist(self, title: str, track_rating_keys: List[str]) -> PlaylistRef:
+        """创建普通（非 smart）audio 播放列表，至少一首曲目。"""
+        title = _as_str(title)
+        keys = [key for key in (_as_str(k) for k in track_rating_keys) if key]
+        if not title:
+            raise RuntimeError("创建播放列表缺少标题")
+        if not keys:
+            raise RuntimeError("创建普通播放列表至少需要一首曲目")
+        first_batch = keys[:50]
+        raw = self._make_request(
+            "post",
+            "/playlists",
+            params={
+                "type": "audio",
+                "title": title,
+                "smart": 0,
+                "uri": self._playlist_item_uri(first_batch),
+            },
+        )
+        for item in self._metadata_list(raw):
+            created = self._playlist_ref_from_raw(item)
+            if not created:
+                continue
+            remaining = keys[50:]
+            if remaining:
+                self.add_items_to_playlist(created.rating_key, remaining)
+            return created
+        raise RuntimeError(f"创建 Plex 播放列表失败: {title}")
+
+    def get_playlist_items(self, rating_key: str) -> List[PlaylistTrack]:
+        rating_key = _as_str(rating_key)
+        if not rating_key:
+            return []
+        tracks: List[PlaylistTrack] = []
+        start = 0
+        while True:
+            raw = self._make_request(
+                "get",
+                f"/playlists/{rating_key}/items",
+                params={"X-Plex-Container-Start": start, "X-Plex-Container-Size": _PAGE_SIZE},
+            )
+            page = self._metadata_list(raw)
+            for offset, item in enumerate(page):
+                track_key = _as_str(item.get("ratingKey"))
+                if not track_key:
+                    continue
+                tracks.append(
+                    PlaylistTrack(
+                        rating_key=track_key,
+                        title=_as_str(item.get("title")),
+                        artist=_as_str(item.get("grandparentTitle")),
+                        album=_as_str(item.get("parentTitle")),
+                        guid=_as_str(item.get("guid")),
+                        path=_first_part_file(item.get("Media")),
+                        playlist_item_id=_as_str(item.get("playlistItemID")) or None,
+                        sort_index=start + offset,
+                    )
+                )
+            if len(page) < _PAGE_SIZE:
+                break
+            start += _PAGE_SIZE
+            if start >= 20000:
+                break
+        return tracks
+
+    def _playlist_item_uri(self, track_rating_keys: List[str]) -> str:
+        keys = [key for key in (_as_str(k) for k in track_rating_keys) if key]
+        if not keys:
+            raise RuntimeError("缺少要加入播放列表的 track ratingKey")
+        machine = _as_str(self.machine_identifier)
+        if not machine:
+            # 连接后应已有；兜底再拉一次 identity
+            identity = self._make_request("get", "/identity")
+            container = self._container(identity) or {}
+            machine = _as_str(
+                container.get("machineIdentifier") or container.get("MachineIdentifier")
+            )
+            self.machine_identifier = machine or None
+        if not machine:
+            raise RuntimeError("无法获取 Plex machineIdentifier，不能拼播放列表 URI")
+        joined = ",".join(keys)
+        return f"server://{machine}/com.plexapp.plugins.library/library/metadata/{joined}"
+
+    def add_items_to_playlist(self, playlist_rating_key: str, track_rating_keys: List[str]) -> tuple:
+        """向普通播放列表追加曲目。返回 (成功数, 失败数)。"""
+        playlist_rating_key = _as_str(playlist_rating_key)
+        keys = [key for key in (_as_str(k) for k in track_rating_keys) if key]
+        if not playlist_rating_key or not keys:
+            return 0, len(keys)
+        # 分批，避免 URI 过长
+        batch_size = 50
+        ok, failed = 0, 0
+        for start in range(0, len(keys), batch_size):
+            batch = keys[start : start + batch_size]
+            try:
+                self._make_request(
+                    "put",
+                    f"/playlists/{playlist_rating_key}/items",
+                    params={"uri": self._playlist_item_uri(batch)},
+                )
+                ok += len(batch)
+            except Exception as e:
+                logger.warning(
+                    f"Plex 播放列表 {playlist_rating_key} 追加 {len(batch)} 首失败: {e}"
+                )
+                failed += len(batch)
+        return ok, failed
+
+    def remove_items_from_playlist(
+        self, playlist_rating_key: str, playlist_item_ids: List[str]
+    ) -> tuple:
+        """按 playlistItemID 从播放列表删除。返回 (成功数, 失败数)。"""
+        playlist_rating_key = _as_str(playlist_rating_key)
+        item_ids = [pid for pid in (_as_str(x) for x in playlist_item_ids) if pid]
+        if not playlist_rating_key or not item_ids:
+            return 0, len(item_ids)
+        ok, failed = 0, 0
+        for playlist_item_id in item_ids:
+            try:
+                self._make_request(
+                    "delete",
+                    f"/playlists/{playlist_rating_key}/items/{playlist_item_id}",
+                )
+                ok += 1
+            except Exception as e:
+                logger.warning(
+                    f"Plex 播放列表 {playlist_rating_key} 删除成员 {playlist_item_id} 失败: {e}"
+                )
+                failed += 1
+        return ok, failed
+
+    def build_music_track_path_index(self, force: bool = False) -> List[tuple]:
+        """扫描音乐库曲目，返回 [(path, rating_key), ...]。"""
+        if self._music_track_path_index is not None and not force:
+            return self._music_track_path_index
+        index: List[tuple] = []
+        for section in self._library_sections():
+            if _as_str(section.get("type")).lower() != "artist":
+                continue
+            section_key = _as_str(section.get("key"))
+            if not section_key:
+                continue
+            try:
+                for raw in self._paged_metadata(
+                    f"/library/sections/{section_key}/all",
+                    {"type": _PLEX_TYPE_TRACK},
+                ):
+                    rating_key = _as_str(raw.get("ratingKey"))
+                    path = _first_part_file(raw.get("Media")) if rating_key else ""
+                    if rating_key and path:
+                        index.append((path, rating_key))
+            except Exception as e:
+                logger.warning(
+                    f"扫描 Plex 音乐库 {_as_str(section.get('title'))} 失败: {e}"
+                )
+        self._music_track_path_index = index
+        logger.info(f"Plex 音乐曲目路径索引: {len(index)} 条")
+        return index

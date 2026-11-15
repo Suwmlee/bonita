@@ -46,6 +46,22 @@ def ensure_media_client(source: str = SOURCE_EMBY) -> Optional[MediaServerClient
     return get_media_client(source)
 
 
+def get_plex_client() -> Optional[PlexClient]:
+    client = ensure_media_client(SOURCE_PLEX)
+    return client if isinstance(client, PlexClient) else None
+
+
+def require_plex_client() -> PlexClient:
+    client = get_plex_client()
+    if not client:
+        raise RuntimeError("Plex服务未初始化")
+    return client
+
+
+def ensure_plex_client() -> Optional[PlexClient]:
+    return get_plex_client()
+
+
 def init_media_servers() -> None:
     """按设置初始化已启用的媒体服务器客户端。"""
     from bonita.db import SessionFactory

@@ -45,6 +45,7 @@ ITEM_EPISODE = "episode"
 ITEM_SERIES = "series"
 ITEM_SEASON = "season"
 ITEM_COLLECTION = "collection"
+ITEM_TRACK = "track"
 
 WEBHOOK_TEST = "test"
 WEBHOOK_IGNORED = "ignored"
@@ -104,6 +105,31 @@ class CollectionRef:
     name: str
     child_count: int = 0
     image_tag: Optional[str] = None
+
+
+@dataclass
+class PlaylistRef:
+    """远端播放列表引用；smart=True 时可拉不可直接改成员。"""
+    remote_id: str
+    rating_key: str
+    name: str
+    guid: str = ""
+    leaf_count: int = 0
+    playlist_type: str = "audio"
+    smart: bool = False
+
+
+@dataclass
+class PlaylistTrack:
+    """播放列表成员快照。允许尚未对上本地媒体项。"""
+    rating_key: str
+    title: str = ""
+    artist: str = ""
+    album: str = ""
+    guid: str = ""
+    path: Optional[str] = None
+    playlist_item_id: Optional[str] = None
+    sort_index: int = 0
 
 
 @dataclass

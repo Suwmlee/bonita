@@ -9,5 +9,6 @@ from .setting import SystemSetting
 from .watch_history import WatchHistory
 from .mediaitem import MediaItem
 from .collection import Collection, CollectionItem
+from .playlist import Playlist, PlaylistItem
 from .subtitle import Subtitle
 from .actor import Actor, ActorAlias, MetadataActor
