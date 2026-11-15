@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from bonita.api.routes import login, mediaitem, records, resource, scraping_config, task_config, tasks, users, metadata, tools, settings, file_browser, status, webhooks, collection, subtitle
+from bonita.api.routes import login, mediaitem, records, resource, scraping_config, task_config, tasks, users, metadata, tools, settings, file_browser, status, webhooks, collection, playlist, subtitle
 from bonita.api.deps import verify_token
 from bonita.api.websockets import logs as ws_logs
 
@@ -22,6 +22,8 @@ api_router.include_router(mediaitem.router, prefix="/mediaitems",
                           tags=["mediaitem"], dependencies=[Depends(verify_token)])
 api_router.include_router(collection.router, prefix="/collections",
                           tags=["collection"], dependencies=[Depends(verify_token)])
+api_router.include_router(playlist.router, prefix="/playlists",
+                          tags=["playlist"], dependencies=[Depends(verify_token)])
 api_router.include_router(tools.router, prefix="/tools",
                           tags=["tools"], dependencies=[Depends(verify_token)])
 api_router.include_router(settings.router, prefix="/settings",

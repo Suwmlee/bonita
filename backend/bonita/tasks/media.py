@@ -7,6 +7,7 @@ from bonita.modules.media_service.factory import ensure_media_client
 from bonita.services.celery_service import (
     TASK_ACTOR_EMBY_PHOTO_SYNC,
     TASK_COLLECTION_SYNC,
+    TASK_PLAYLIST_SYNC,
     TASK_WATCH_HISTORY_SYNC,
     TaskProgressTracker,
 )
@@ -159,6 +160,34 @@ def celery_sync_collection(self, collection_id=None, direction="from_server"):
         logger.info(f"## [合集同步] END - synced={synced}")
         return {
             "collection_id": collection_id,
+            "direction": direction,
+            "synced": synced,
+        }
+    finally:
+        session.close()
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
+             name='playlist:sync')
+@manage_celery_task(TASK_PLAYLIST_SYNC)
+def celery_sync_playlist(self, playlist_id=None, direction="from_server"):
+    logger.info(f"## [播放列表同步] START - playlist_id={playlist_id} direction={direction}")
+    session = SessionFactory()
+    try:
+        from bonita.services.playlist_service import PlaylistService
+
+        service = PlaylistService(session)
+        if playlist_id is not None:
+            playlist = service.get_by_id(playlist_id)
+            if not playlist:
+                raise RuntimeError(f"播放列表不存在: {playlist_id}")
+            service.sync_one(playlist, direction=direction)
+            synced = 1
+        else:
+            synced = service.sync_all(direction=direction)
+        logger.info(f"## [播放列表同步] END - synced={synced}")
+        return {
+            "playlist_id": playlist_id,
             "direction": direction,
             "synced": synced,
         }

@@ -4,6 +4,7 @@ from bonita.tasks.media import (
     celery_emby_scan,
     celery_sync_actor_emby_photos,
     celery_sync_collection,
+    celery_sync_playlist,
     celery_sync_watch_history,
 )
 from bonita.tasks.scraping import (
@@ -25,6 +26,7 @@ __all__ = [
     "celery_scrapping",
     "celery_sync_actor_emby_photos",
     "celery_sync_collection",
+    "celery_sync_playlist",
     "celery_sync_watch_history",
     "celery_transfer_entry",
     "celery_transfer_group",

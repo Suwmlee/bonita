@@ -9,6 +9,7 @@ from .metadata import *
 from .system import *
 from .mediaitem import *
 from .collection import *
+from .playlist import *
 from .file_browser import *
 from .subtitle import *
 from .actor import *
