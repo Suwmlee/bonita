@@ -22,6 +22,11 @@ const { t } = useI18n()
     to: '/collections',
   }" />
   <VerticalNavLink :item="{
+    title: t('navitems.playlists'),
+    icon: 'bx-music',
+    to: '/playlists',
+  }" />
+  <VerticalNavLink :item="{
     title: t('navitems.records'),
     icon: 'bx-objects-horizontal-left',
     to: '/records',
