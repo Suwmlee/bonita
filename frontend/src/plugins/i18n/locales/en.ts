@@ -253,6 +253,16 @@ export default {
         forceUpdate: "Force Update",
         startSync: "Start Sync",
       },
+      syncPlex: {
+        title: "Sync Plex Watch History",
+        subtitle:
+          "Sync movie/TV watched, ratings and favorites between Plex and Bonita (favorite = 9+/10, 4.5 stars)",
+        direction: "Sync Direction",
+        fromServer: "Pull from Server",
+        toServer: "Push to Server",
+        forceUpdate: "Force Update",
+        startSync: "Start Sync",
+      },
       cleanup: {
         title: "Clean Orphaned Records",
         subtitle:
