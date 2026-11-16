@@ -10,6 +10,7 @@ from bonita.modules.media_service.client import SOURCE_EMBY
 from bonita.modules.media_service.collection_sync import (
     add_and_sync_collection,
     add_collection_members,
+    rebind_collection as rebind_collection_members,
     refresh_collection_meta,
     remove_collection_member,
     sync_collection_members,
@@ -67,6 +68,21 @@ class CollectionService:
         self, external_id: str, name: Optional[str] = None, source: str = SOURCE_EMBY
     ) -> Collection:
         return add_and_sync_collection(self.session, external_id, name, source=source)
+
+    def rebind_collection(
+        self,
+        collection: Collection,
+        external_id: str,
+        name: Optional[str] = None,
+        source: Optional[str] = None,
+    ) -> Collection:
+        return rebind_collection_members(
+            self.session,
+            collection,
+            external_id,
+            name=name,
+            source=source,
+        )
 
     def sync_all(self, direction: str = "from_server") -> int:
         return sync_whitelisted_collections(self.session, direction=direction)

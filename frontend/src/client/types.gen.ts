@@ -4316,6 +4316,41 @@ export type SyncOneCollectionResponses = {
 
 export type SyncOneCollectionResponse = SyncOneCollectionResponses[keyof SyncOneCollectionResponses];
 
+export type RebindCollectionData = {
+    body: CollectionCreate;
+    path: {
+        /**
+         * Collection Id
+         */
+        collection_id: number;
+    };
+    query?: {
+        /**
+         * Push
+         */
+        push?: boolean;
+    };
+    url: '/api/v1/collections/{collection_id}/rebind';
+};
+
+export type RebindCollectionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RebindCollectionError = RebindCollectionErrors[keyof RebindCollectionErrors];
+
+export type RebindCollectionResponses = {
+    /**
+     * Successful Response
+     */
+    200: CollectionPublic;
+};
+
+export type RebindCollectionResponse = RebindCollectionResponses[keyof RebindCollectionResponses];
+
 export type SearchCollectionCandidatesData = {
     body?: never;
     path: {

@@ -81,6 +81,63 @@ def refresh_collection_meta(session, collection: Collection, fallback_name: str 
         session.commit()
 
 
+def rebind_collection(
+    session,
+    collection: Collection,
+    external_id: str,
+    name: str = None,
+    source: str = None,
+) -> Collection:
+    """将已有合集改绑到新的远端 BoxSet，保留本地成员。"""
+    new_external_id = (external_id or "").strip()
+    if not new_external_id:
+        raise RuntimeError("缺少 external_id")
+
+    target_source = (source or "").strip() or collection_source(collection)
+    client = require_media_client(target_source)
+    details = client.get_user_item(new_external_id) or client.get_item(new_external_id)
+    if not details:
+        raise RuntimeError(f"远端合集不存在: {new_external_id}")
+    if details.item_type and details.item_type != ITEM_COLLECTION:
+        raise RuntimeError(f"目标不是合集: {new_external_id}")
+
+    conflict = (
+        session.query(Collection)
+        .filter(
+            Collection.source == target_source,
+            Collection.external_id == new_external_id,
+            Collection.id != collection.id,
+        )
+        .first()
+    )
+    if conflict:
+        raise RuntimeError(f"该远端合集已绑定到「{conflict.name}」")
+
+    same_binding = (
+        collection_source(collection) == target_source
+        and collection.external_id == new_external_id
+    )
+    if not same_binding:
+        collection.source = target_source
+        collection.external_id = new_external_id
+        session.query(CollectionItem).filter(
+            CollectionItem.collection_id == collection.id
+        ).update({CollectionItem.external_item_id: None}, synchronize_session=False)
+        session.flush()
+        logger.info(
+            f"  ↻ 合集 {collection.name}: 重绑到 {source_label(target_source)} "
+            f"{new_external_id}"
+        )
+
+    refresh_collection_meta(session, collection, fallback_name=name)
+    try:
+        remote_count = len(client.get_collection_items(collection.external_id))
+    except Exception:
+        remote_count = None
+    _refresh_member_counts(session, collection, remote_item_count=remote_count)
+    return collection
+
+
 def detach_media_from_collections(session, media_item_ids) -> None:
     ids = list(dict.fromkeys(media_id for media_id in media_item_ids if media_id is not None))
     if not ids:

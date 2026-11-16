@@ -10,15 +10,18 @@ import MediaItemDetailDialog from "@/components/mediaitem/MediaItemDetailDialog.
 import { useMediaPoster } from "@/composables/useMediaPoster"
 import { useCollectionStore } from "@/stores/collection.store"
 import { useMediaItemStore } from "@/stores/mediaitem.store"
+import { useToastStore } from "@/stores/toast.store"
 import { computed, onMounted, ref } from "vue"
 import { useI18n } from "vue-i18n"
 
 const { t } = useI18n()
 const collectionStore = useCollectionStore()
 const mediaItemStore = useMediaItemStore()
+const toastStore = useToastStore()
 const { posterBroken, getDisplayPosterUrl, handlePosterError } = useMediaPoster()
 
 const showAddDialog = ref(false)
+const showRebindDialog = ref(false)
 const showAddMemberDialog = ref(false)
 const embySearch = ref("")
 const memberSearch = ref("")
@@ -31,6 +34,13 @@ onMounted(async () => {
 
 async function openAddDialog() {
   showAddDialog.value = true
+  embySearch.value = ""
+  await collectionStore.searchEmby("")
+}
+
+async function openRebindDialog() {
+  if (!selected.value) return
+  showRebindDialog.value = true
   embySearch.value = ""
   await collectionStore.searchEmby("")
 }
@@ -68,6 +78,34 @@ async function addCandidate(candidate: EmbyCollectionCandidate) {
     showAddDialog.value = false
     await collectionStore.loadDetail(created.id)
   }
+}
+
+function rebindCandidateLabel(candidate: EmbyCollectionCandidate) {
+  if (!selected.value) return ""
+  if (candidate.external_id === selected.value.external_id) {
+    return t("pages.collection.currentBinding")
+  }
+  if (candidate.added) return t("pages.collection.alreadyAdded")
+  return ""
+}
+
+async function rebindCandidate(candidate: EmbyCollectionCandidate) {
+  if (!selected.value) return
+  if (candidate.external_id === selected.value.external_id) {
+    showRebindDialog.value = false
+    return
+  }
+  if (candidate.added) {
+    toastStore.error(t("pages.collection.rebindConflict") as string)
+    return
+  }
+  const updated = await collectionStore.rebindCollection(
+    selected.value.id,
+    candidate.external_id,
+    candidate.name,
+    true,
+  )
+  if (updated) showRebindDialog.value = false
 }
 
 async function openCollection(item: CollectionPublic) {
@@ -118,6 +156,13 @@ function getCardTitle(item: MediaItemWithWatches) {
         <p class="text-xl mb-0 flex-grow-1 text-truncate" :title="selected.name">{{ selected.name }}</p>
         <VBtn variant="outlined" @click="openAddMemberDialog">
           {{ t('pages.collection.addMember') }}
+        </VBtn>
+        <VBtn
+          variant="outlined"
+          :loading="collectionStore.isLoading || collectionStore.isSyncing"
+          @click="openRebindDialog"
+        >
+          {{ t('pages.collection.rebind') }}
         </VBtn>
         <VBtn
           variant="outlined"
@@ -301,6 +346,55 @@ function getCardTitle(item: MediaItemWithWatches) {
         <VCardActions>
           <VSpacer />
           <VBtn variant="text" @click="showAddDialog = false">{{ t('common.cancel') }}</VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <VDialog v-model="showRebindDialog" max-width="760" scrollable>
+      <VCard>
+        <VCardTitle>{{ t('pages.collection.rebind') }}</VCardTitle>
+        <VCardText>
+          <p class="text-medium-emphasis mb-3">{{ t('pages.collection.rebindHint') }}</p>
+          <VTextField
+            v-model="embySearch"
+            :placeholder="t('pages.collection.searchEmby')"
+            prepend-inner-icon="bx-search"
+            :loading="collectionStore.isSearching"
+            hide-details
+            clearable
+            @keyup.enter="searchEmby"
+            @click:clear="searchEmby"
+          />
+          <VBtn class="mt-3" variant="tonal" :loading="collectionStore.isSearching" @click="searchEmby">
+            {{ t('common.search') }}
+          </VBtn>
+          <VList class="mt-2 picker-list">
+            <VListItem
+              v-for="candidate in collectionStore.embyCandidates"
+              :key="candidate.external_id"
+              class="picker-item"
+              :disabled="!!candidate.added && candidate.external_id !== selected?.external_id"
+              @click="rebindCandidate(candidate)"
+            >
+              <template #prepend>
+                <div class="picker-poster">
+                  <img :src="getCollectionPosterUrl(candidate)" :alt="candidate.name" loading="lazy" />
+                </div>
+              </template>
+              <VListItemTitle>{{ candidate.name }}</VListItemTitle>
+              <VListItemSubtitle>
+                {{ t('pages.collection.embyChildCount', { count: candidate.child_count || 0 }) }}
+                <span v-if="rebindCandidateLabel(candidate)"> · {{ rebindCandidateLabel(candidate) }}</span>
+              </VListItemSubtitle>
+            </VListItem>
+          </VList>
+          <p v-if="!collectionStore.isSearching && collectionStore.embyCandidates.length === 0" class="text-medium-emphasis mt-4">
+            {{ t('pages.collection.noEmbyResults') }}
+          </p>
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn variant="text" @click="showRebindDialog = false">{{ t('common.cancel') }}</VBtn>
         </VCardActions>
       </VCard>
     </VDialog>

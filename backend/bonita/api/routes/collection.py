@@ -82,6 +82,36 @@ async def sync_one_collection(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/{collection_id}/rebind", response_model=schemas.CollectionPublic)
+async def rebind_collection(
+    collection_id: int,
+    session: SessionDep,
+    payload: schemas.CollectionCreate,
+    push: bool = Query(default=True),
+) -> Any:
+    """将已有合集改绑到新的远端 BoxSet，保留本地成员；默认入队回写。"""
+    if not (payload.external_id or "").strip():
+        raise HTTPException(status_code=400, detail="缺少 external_id")
+    service = CollectionService(session)
+    collection = _require_collection(service, collection_id)
+    try:
+        collection = service.rebind_collection(
+            collection,
+            payload.external_id.strip(),
+            name=payload.name,
+            source=payload.source,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if push:
+        try:
+            service.enqueue_sync(collection.id, direction="to_server")
+        except Exception as e:
+            logger.exception(f"合集重绑后回写入队失败 {collection_id}")
+            raise HTTPException(status_code=500, detail=str(e))
+    return _to_public(collection)
+
+
 @router.get("/{collection_id}/candidates", response_model=List[schemas.MediaItemWithWatches])
 async def search_collection_candidates(
     collection_id: int,

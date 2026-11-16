@@ -69,6 +69,56 @@ export const useCollectionStore = defineStore("collection-store", {
       }
     },
 
+    async rebindCollection(collectionId: number, externalId: string, name?: string, push = true) {
+      this.isLoading = true
+      try {
+        // 先只改绑；回写走现有 sync 等待，避免入队后拿不到 task_id
+        const { data: updated } = await CollectionService.rebindCollection({
+          collection_id: collectionId,
+          collectionCreate: { external_id: externalId, name },
+          push: false,
+        })
+        this._applySynced(updated)
+        await this.loadDetail(collectionId)
+        if (!push) {
+          useToastStore().success(i18n.global.t("pages.collection.rebindSuccess") as string)
+          return updated
+        }
+      } catch (error) {
+        console.error("Error rebinding collection:", error)
+        useToastStore().error(i18n.global.t("pages.collection.rebindFailed") as string)
+        return undefined
+      } finally {
+        this.isLoading = false
+      }
+      this.isSyncing = true
+      try {
+        const { data: task } = await CollectionService.syncOneCollection({
+          collection_id: collectionId,
+          direction: "to_server",
+        })
+        if (!task?.task_id) {
+          useToastStore().error(i18n.global.t("pages.collection.syncFailed") as string)
+          return this.detail
+        }
+        const finished = await useTaskStore().waitForTask(task.task_id)
+        if (finished?.status === "FAILURE" || finished?.status === "REVOKED") {
+          useToastStore().error(i18n.global.t("pages.collection.syncFailed") as string)
+          return this.detail
+        }
+        await this.listCollections()
+        await this.loadDetail(collectionId)
+        useToastStore().success(i18n.global.t("pages.collection.rebindAndPushSuccess") as string)
+        return this.detail
+      } catch (error) {
+        console.error("Error pushing rebound collection:", error)
+        useToastStore().error(i18n.global.t("pages.collection.syncFailed") as string)
+        return this.detail
+      } finally {
+        this.isSyncing = false
+      }
+    },
+
     async loadDetail(collectionId: number) {
       this.isLoading = true
       try {
