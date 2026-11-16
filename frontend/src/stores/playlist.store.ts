@@ -1,58 +1,17 @@
-import { client } from "@/client/client.gen"
-import type { SyncDirection, TaskStatus } from "@/client"
+import {
+  PlaylistService,
+  type PlaylistDetail,
+  type PlaylistPublic,
+  type PlexPlaylistCandidate,
+  type SyncDirection,
+} from "@/client"
 import { i18n } from "@/plugins/i18n"
 import { defineStore } from "pinia"
 import { useConfirmationStore } from "./confirmation.store"
 import { useTaskStore } from "./task.store"
 import { useToastStore } from "./toast.store"
 
-export type PlexPlaylistCandidate = {
-  source: string
-  external_id: string
-  rating_key: string
-  name: string
-  leaf_count: number
-  smart: boolean
-  added: boolean
-}
-
-export type PlaylistPublic = {
-  id: number
-  source: string
-  external_id: string
-  rating_key?: string | null
-  write_rating_key?: string | null
-  name: string
-  is_smart: boolean
-  item_count: number
-  matched_count: number
-  last_sync_at?: string | null
-  createtime: string
-  updatetime: string
-}
-
-export type PlaylistItemPublic = {
-  id: number
-  playlist_id: number
-  media_item_id?: number | null
-  external_item_id?: string | null
-  external_guid?: string | null
-  playlist_item_id?: string | null
-  path?: string | null
-  title?: string | null
-  artist?: string | null
-  album?: string | null
-  sort_index: number
-}
-
-export type PlaylistDetail = PlaylistPublic & {
-  items: PlaylistItemPublic[]
-}
-
-type PlaylistCollection = {
-  data: PlaylistPublic[]
-  count: number
-}
+export type { PlaylistDetail, PlaylistPublic, PlexPlaylistCandidate }
 
 export const usePlaylistStore = defineStore("playlist-store", {
   state: () => ({
@@ -67,11 +26,7 @@ export const usePlaylistStore = defineStore("playlist-store", {
     async listPlaylists() {
       this.isLoading = true
       try {
-        const { data: response } = await client.get<PlaylistCollection>({
-          responseType: "json",
-          security: [{ scheme: "bearer", type: "http" }],
-          url: "/api/v1/playlists/",
-        })
+        const { data: response } = await PlaylistService.listPlaylists()
         this.playlists = response?.data ?? []
       } catch (error) {
         console.error("Error listing playlists:", error)
@@ -84,12 +39,7 @@ export const usePlaylistStore = defineStore("playlist-store", {
     async searchPlex(search: string) {
       this.isSearching = true
       try {
-        const { data } = await client.get<PlexPlaylistCandidate[]>({
-          responseType: "json",
-          security: [{ scheme: "bearer", type: "http" }],
-          url: "/api/v1/playlists/plex",
-          query: { search },
-        })
+        const { data } = await PlaylistService.searchPlexPlaylists({ search })
         this.plexCandidates = data ?? []
       } catch (error) {
         console.error("Error searching Plex playlists:", error)
@@ -103,17 +53,13 @@ export const usePlaylistStore = defineStore("playlist-store", {
     async addPlaylist(externalId: string, ratingKey: string, name?: string) {
       this.isLoading = true
       try {
-        const { data: created } = await client.post<PlaylistPublic>({
-          responseType: "json",
-          security: [{ scheme: "bearer", type: "http" }],
-          url: "/api/v1/playlists/",
-          body: {
+        const { data: created } = await PlaylistService.addPlaylist({
+          playlistCreate: {
             source: "plex",
             external_id: externalId,
             rating_key: ratingKey,
             name,
           },
-          headers: { "Content-Type": "application/json" },
         })
         await this.listPlaylists()
         useToastStore().success(i18n.global.t("pages.playlist.addSuccess") as string)
@@ -136,18 +82,15 @@ export const usePlaylistStore = defineStore("playlist-store", {
     ) {
       this.isLoading = true
       try {
-        const { data: updated } = await client.post<PlaylistPublic>({
-          responseType: "json",
-          security: [{ scheme: "bearer", type: "http" }],
-          url: `/api/v1/playlists/${playlistId}/rebind`,
-          query: { push: false },
-          body: {
+        const { data: updated } = await PlaylistService.rebindPlaylist({
+          playlist_id: playlistId,
+          push: false,
+          playlistCreate: {
             source: "plex",
             external_id: externalId,
             rating_key: ratingKey,
             name,
           },
-          headers: { "Content-Type": "application/json" },
         })
         await this.loadDetail(playlistId)
         if (!push) {
@@ -163,11 +106,9 @@ export const usePlaylistStore = defineStore("playlist-store", {
       }
       this.isSyncing = true
       try {
-        const { data: task } = await client.post<TaskStatus>({
-          responseType: "json",
-          security: [{ scheme: "bearer", type: "http" }],
-          url: `/api/v1/playlists/${playlistId}/sync`,
-          query: { direction: "to_server" },
+        const { data: task } = await PlaylistService.syncOnePlaylist({
+          playlist_id: playlistId,
+          direction: "to_server",
         })
         if (!task?.task_id) {
           useToastStore().error(i18n.global.t("pages.playlist.syncFailed") as string)
@@ -194,10 +135,8 @@ export const usePlaylistStore = defineStore("playlist-store", {
     async loadDetail(playlistId: number) {
       this.isLoading = true
       try {
-        const { data } = await client.get<PlaylistDetail>({
-          responseType: "json",
-          security: [{ scheme: "bearer", type: "http" }],
-          url: `/api/v1/playlists/${playlistId}`,
+        const { data } = await PlaylistService.getPlaylist({
+          playlist_id: playlistId,
         })
         this.detail = data
       } catch (error) {
@@ -225,17 +164,10 @@ export const usePlaylistStore = defineStore("playlist-store", {
       this.isSyncing = true
       try {
         const { data: task } = playlistId == null
-          ? await client.post<TaskStatus>({
-              responseType: "json",
-              security: [{ scheme: "bearer", type: "http" }],
-              url: "/api/v1/playlists/sync",
-              query: { direction },
-            })
-          : await client.post<TaskStatus>({
-              responseType: "json",
-              security: [{ scheme: "bearer", type: "http" }],
-              url: `/api/v1/playlists/${playlistId}/sync`,
-              query: { direction },
+          ? await PlaylistService.syncAllPlaylists({ direction })
+          : await PlaylistService.syncOnePlaylist({
+              playlist_id: playlistId,
+              direction,
             })
         if (!task?.task_id) {
           useToastStore().error(i18n.global.t("pages.playlist.syncFailed") as string)
@@ -273,11 +205,7 @@ export const usePlaylistStore = defineStore("playlist-store", {
       })
       if (!confirmed) return
       try {
-        await client.delete({
-          responseType: "json",
-          security: [{ scheme: "bearer", type: "http" }],
-          url: `/api/v1/playlists/${playlist.id}`,
-        })
+        await PlaylistService.removePlaylist({ playlist_id: playlist.id })
         if (this.detail?.id === playlist.id) this.clearDetail()
         await this.listPlaylists()
         useToastStore().success(i18n.global.t("pages.playlist.removeSuccess") as string)

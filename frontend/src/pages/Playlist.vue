@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import type {
-  PlaylistPublic,
-  PlexPlaylistCandidate,
-} from "@/stores/playlist.store"
+import type { PlaylistPublic, PlexPlaylistCandidate } from "@/client"
 import { usePlaylistStore } from "@/stores/playlist.store"
 import { useToastStore } from "@/stores/toast.store"
 import { computed, onMounted, ref } from "vue"

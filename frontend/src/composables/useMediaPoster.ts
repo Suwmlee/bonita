@@ -16,7 +16,11 @@ export type PosterSource = Partial<Pick<
   | "series_tmdb_id"
   | "external_item_id"
   | "updatetime"
->>
+>> & {
+  external_id?: string | null
+  image_tag?: string | null
+  name?: string | null
+}
 
 export function getItemImdbId(item: PosterSource): string | null {
   const raw = item.media_type === "episode" ? item.series_imdb_id : item.imdb_id
@@ -48,7 +52,9 @@ export function getPosterUrl(item: PosterSource): string {
 
   params.append(
     "title",
-    isEpisode ? item.original_title || item.title || "" : item.title || "",
+    isEpisode
+      ? item.original_title || item.title || item.name || ""
+      : item.title || item.name || "",
   )
 
   const imdbId = isEpisode ? item.series_imdb_id : item.imdb_id
@@ -58,9 +64,12 @@ export function getPosterUrl(item: PosterSource): string {
   if (tmdbId) params.append("tmdb_id", tmdbId.toString())
 
   if (item.number) params.append("number", item.number)
-  if (item.media_type === "video" && item.external_item_id) {
-    params.append("external_id", item.external_item_id)
-  }
+
+  const externalId = item.external_id || (
+    item.media_type === "video" ? item.external_item_id : null
+  )
+  if (externalId) params.append("external_id", externalId)
+  if (item.image_tag) params.append("image_tag", item.image_tag)
   if (item.updatetime) params.append("t", item.updatetime)
 
   return `${client.getConfig().baseURL}/api/v1/resource/poster?${params.toString()}`

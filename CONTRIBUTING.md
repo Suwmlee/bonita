@@ -66,15 +66,23 @@ pnpm dev
 
 图标来自 [Boxicons](https://boxicons.com/)。新增图标后执行 `pnpm run build:icons`。
 
-## 前端接口
+## 前端接口（强制 generate-client）
 
-页面调用的是 `frontend/src/client` 里由 [openapi-ts](https://github.com/hey-api/openapi-ts) 生成的客户端，例如 `MetadataService`、`SubtitleService`。不要在 `frontend/src` 里另写一套请求封装。
+页面只能调用 `frontend/src/client` 里由 [openapi-ts](https://github.com/hey-api/openapi-ts) 生成的 `*Service`（如 `MetadataService`、`PlaylistService`）。**禁止**在 `stores` / `pages` 里用 raw `client.get/post` 拼 `/api/v1/...`，也禁止手写与 OpenAPI 平行的请求类型。
 
-后端接口有变动时，先保证 API 在 8000 端口运行，再在 `frontend` 重新生成：
+### 后端改接口时的检查清单
+
+1. 改 `backend` 路由 / schema
+2. 启动 API（或等价导出 OpenAPI），在 `frontend` 执行：
 
 ```sh
 curl -o openapi.json http://localhost:8000/api/v1/openapi.json
 pnpm run generate-client
+# 可选：检查 stores 是否又手写了业务 API
+pnpm run check:api-client
 ```
 
-`generate-client` 会先用 `modify-openapi-operationids.js` 整理 operationId，再按 `openapi-ts.config.ts` 输出到 `src/client`。把生成结果和后端改动一起提交。`openapi.json` 只是生成时的输入，不必提交。
+3. 前端改用新生成的 `*Service` 方法与类型
+4. **同一 PR / 同一提交集**里带上 `frontend/src/client` 的生成结果；`openapi.json` 已在 `frontend/.gitignore`，不必提交
+
+`generate-client` 会先跑 `modify-openapi-operationids.js`，再按 `openapi-ts.config.ts` 输出到 `src/client`。

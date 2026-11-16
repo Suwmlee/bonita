@@ -1,24 +1,15 @@
 import { SettingsService } from "@/client"
 import type {
   EmbySettings,
+  PlexSettings,
   ProxySettings,
   QBittorrentSettings,
   TransmissionSettings,
 } from "@/client"
-import { client } from "@/client/client.gen"
 import { defineStore } from "pinia"
 import { useToastStore } from "./toast.store"
 
-export type PlexSettings = {
-  plex_host: string
-  plex_token: string
-  enabled?: boolean | null
-}
-
-type ApiResponse = {
-  success: boolean
-  message?: string | null
-}
+export type { PlexSettings }
 
 interface SettingState {
   /** 代理设置 */
@@ -198,11 +189,7 @@ export const useSettingStore = defineStore("setting-store", {
       const toast = useToastStore()
       this.loading = true
       try {
-        const { data: response } = await client.get<PlexSettings>({
-          responseType: "json",
-          security: [{ scheme: "bearer", type: "http" }],
-          url: "/api/v1/settings/plex",
-        })
+        const { data: response } = await SettingsService.getPlexSettings()
         this.plexApiSettings = response
         return response
       } catch (error) {
@@ -217,12 +204,8 @@ export const useSettingStore = defineStore("setting-store", {
     async savePlexApiSettings() {
       this.saving = true
       try {
-        const { data: response } = await client.post<ApiResponse>({
-          responseType: "json",
-          security: [{ scheme: "bearer", type: "http" }],
-          url: "/api/v1/settings/plex",
-          body: this.plexApiSettings,
-          headers: { "Content-Type": "application/json" },
+        const { data: response } = await SettingsService.updatePlexSettings({
+          plexSettings: this.plexApiSettings,
         })
         return response
       } catch (error) {
@@ -236,16 +219,12 @@ export const useSettingStore = defineStore("setting-store", {
     async testPlexConnection(token: string) {
       this.testingPlex = true
       try {
-        const { data: response } = await client.post<ApiResponse>({
-          responseType: "json",
-          security: [{ scheme: "bearer", type: "http" }],
-          url: "/api/v1/settings/plex/test",
-          body: {
+        const { data: response } = await SettingsService.testPlexConnection({
+          plexSettings: {
             plex_host: this.plexApiSettings.plex_host,
             plex_token: token,
             enabled: this.plexApiSettings.enabled,
           },
-          headers: { "Content-Type": "application/json" },
         })
         return response
       } catch (error) {

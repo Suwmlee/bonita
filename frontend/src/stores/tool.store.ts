@@ -1,12 +1,10 @@
-import { ToolsService } from "@/client"
+﻿import { ToolsService } from "@/client"
 import type {
   ScrapinglibVersion,
   SyncDirection,
-  TaskStatus,
   ToolArgsParam,
   TransRecordsPathSyncParam,
-} from "@/client/types.gen"
-import { client } from "@/client/client.gen"
+} from "@/client"
 import { i18n } from "@/plugins/i18n"
 import { defineStore } from "pinia"
 import { useTaskStore } from "./task.store"
@@ -16,6 +14,7 @@ export const useToolStore = defineStore("tool-store", {
   state: () => ({
     importNfoInProgress: false,
     syncEmbyInProgress: false,
+    syncPlexInProgress: false,
     syncActorEmbyPhotosInProgress: false,
     cleaningInProgress: false,
     scrapinglibChecking: false,
@@ -54,82 +53,66 @@ export const useToolStore = defineStore("tool-store", {
       }
     },
 
-    async syncEmbyWatchHistory(direction: SyncDirection = "from_server", force = false) {
-      this.syncEmbyInProgress = true
+    async _runWatchSync(options: {
+      progressKey: "syncEmbyInProgress" | "syncPlexInProgress"
+      failKey: string
+      okKey: string
+      logLabel: string
+      start: () => Promise<{ data: { task_id?: string } | null }>
+    }) {
+      this[options.progressKey] = true
       try {
         const toastStore = useToastStore()
         const taskStore = useTaskStore()
-
-        const { data: task } = await ToolsService.syncEmbyWatchHistory({
-          embySyncParam: {
-            direction,
-            force,
-            sources: ["emby"],
-          },
-        })
+        const { data: task } = await options.start()
         if (!task?.task_id) {
-          toastStore.error(i18n.global.t("pages.tools.embyFailed") as string)
+          toastStore.error(i18n.global.t(options.failKey) as string)
           return task
         }
         const finished = await taskStore.waitForTask(task.task_id)
         if (finished?.status === "FAILURE" || finished?.status === "REVOKED") {
           toastStore.error(
             finished.error_message
-              || (i18n.global.t("pages.tools.embyFailed") as string),
+              || (i18n.global.t(options.failKey) as string),
           )
           return finished
         }
-        toastStore.success(i18n.global.t("pages.tools.embySuccess") as string)
+        toastStore.success(i18n.global.t(options.okKey) as string)
         return finished || task
       } catch (error) {
-        console.error("Error syncing Emby watch history:", error)
-        const toastStore = useToastStore()
-        toastStore.error(
-          error instanceof Error
-            ? error.message
-            : (i18n.global.t("pages.tools.embyFailed") as string),
-        )
-      } finally {
-        this.syncEmbyInProgress = false
-      }
-    },
-
-    async syncPlexWatchHistory(direction: SyncDirection = "from_server", force = false) {
-      this.syncEmbyInProgress = true
-      try {
-        const toastStore = useToastStore()
-        const taskStore = useTaskStore()
-        const { data: task } = await client.post<TaskStatus>({
-          responseType: "json",
-          security: [{ scheme: "bearer", type: "http" }],
-          url: "/api/v1/tools/sync/plex",
-          body: { direction, force },
-          headers: { "Content-Type": "application/json" },
-        })
-        if (!task?.task_id) {
-          toastStore.error(i18n.global.t("pages.tools.plexFailed") as string)
-          return task
-        }
-        const finished = await taskStore.waitForTask(task.task_id)
-        if (finished?.status === "FAILURE" || finished?.status === "REVOKED") {
-          toastStore.error(
-            finished.error_message
-              || (i18n.global.t("pages.tools.plexFailed") as string),
-          )
-          return finished
-        }
-        toastStore.success(i18n.global.t("pages.tools.plexSuccess") as string)
-        return finished || task
-      } catch (error) {
-        console.error("Error syncing Plex watch history:", error)
+        console.error(`Error syncing ${options.logLabel} watch history:`, error)
         useToastStore().error(
           error instanceof Error
             ? error.message
-            : (i18n.global.t("pages.tools.plexFailed") as string),
+            : (i18n.global.t(options.failKey) as string),
         )
       } finally {
-        this.syncEmbyInProgress = false
+        this[options.progressKey] = false
       }
+    },
+
+    async syncEmbyWatchHistory(direction: SyncDirection = "from_server", force = false) {
+      return this._runWatchSync({
+        progressKey: "syncEmbyInProgress",
+        failKey: "pages.tools.embyFailed",
+        okKey: "pages.tools.embySuccess",
+        logLabel: "Emby",
+        start: () => ToolsService.syncEmbyWatchHistory({
+          watchSyncParam: { direction, force, sources: ["emby"] },
+        }),
+      })
+    },
+
+    async syncPlexWatchHistory(direction: SyncDirection = "from_server", force = false) {
+      return this._runWatchSync({
+        progressKey: "syncPlexInProgress",
+        failKey: "pages.tools.plexFailed",
+        okKey: "pages.tools.plexSuccess",
+        logLabel: "Plex",
+        start: () => ToolsService.syncPlexWatchHistory({
+          watchSyncParam: { direction, force },
+        }),
+      })
     },
 
     async syncRecordPath(params: TransRecordsPathSyncParam) {
@@ -296,6 +279,7 @@ export const useToolStore = defineStore("tool-store", {
   getters: {
     isImportNfoInProgress: (state) => state.importNfoInProgress,
     isSyncEmbyInProgress: (state) => state.syncEmbyInProgress,
+    isSyncPlexInProgress: (state) => state.syncPlexInProgress,
     isSyncActorEmbyPhotosInProgress: (state) => state.syncActorEmbyPhotosInProgress,
     isCleaningInProgress: (state) => state.cleaningInProgress,
   },

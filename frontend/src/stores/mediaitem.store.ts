@@ -3,7 +3,6 @@ import {
   type MediaItemWithWatches,
   MediaitemService,
 } from "@/client"
-import { client } from "@/client/client.gen"
 import { i18n } from "@/plugins/i18n"
 import { defineStore } from "pinia"
 import { useCollectionStore } from "./collection.store"
@@ -310,14 +309,10 @@ export const useMediaItemStore = defineStore("mediaitem-store", {
       const toastStore = useToastStore()
       const collectionStore = useCollectionStore()
       try {
-        const { data } = await client.post<{ ids: number[] }>({
-          responseType: "json",
-          security: [{ scheme: "bearer", type: "http" }],
-          url: "/api/v1/mediaitems/batch-delete",
-          body: { ids },
-          headers: { "Content-Type": "application/json" },
+        const { data } = await MediaitemService.deleteMediaItems({
+          mediaItemBatchDelete: { ids },
         })
-        const deletedIds = data?.ids ?? []
+        const deletedIds = (data as { ids?: number[] } | undefined)?.ids ?? []
         for (const id of deletedIds) {
           collectionStore.onMediaDeleted(id)
         }

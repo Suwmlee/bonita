@@ -4,10 +4,9 @@ import type {
   EmbyCollectionCandidate,
   MediaItemWithWatches,
 } from "@/client"
-import { client } from "@/client/client.gen"
 import PosterFrame from "@/components/common/PosterFrame.vue"
 import MediaItemDetailDialog from "@/components/mediaitem/MediaItemDetailDialog.vue"
-import { useMediaPoster } from "@/composables/useMediaPoster"
+import { getPosterUrl, useMediaPoster } from "@/composables/useMediaPoster"
 import { useCollectionStore } from "@/stores/collection.store"
 import { useMediaItemStore } from "@/stores/mediaitem.store"
 import { useToastStore } from "@/stores/toast.store"
@@ -117,11 +116,7 @@ function backToList() {
 }
 
 function getCollectionPosterUrl(item: { name: string; external_id: string; image_tag?: string | null }) {
-  const params = new URLSearchParams()
-  params.append("title", item.name)
-  params.append("external_id", item.external_id)
-  if (item.image_tag) params.append("image_tag", item.image_tag)
-  return `${client.getConfig().baseURL}/api/v1/resource/poster?${params.toString()}`
+  return getPosterUrl(item)
 }
 
 function getMediaTypeLabel(mediaType: string) {
