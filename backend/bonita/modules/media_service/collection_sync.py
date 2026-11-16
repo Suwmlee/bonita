@@ -235,7 +235,7 @@ def sync_collection_from_server(session, collection: Collection) -> Collection:
 
 
 def _sync_collection_from_server(session, collection: Collection, ctx) -> Collection:
-    """从远端拉取并对齐本地成员：远端没有的本地成员会被删除。"""
+    """从远端拉取并对齐本地成员：远端没有的本地成员会被保留。"""
     source = collection_source(collection)
     client = require_collection_client(source)
     label = source_label(source)
@@ -256,7 +256,6 @@ def _sync_collection_from_server(session, collection: Collection, ctx) -> Collec
         for row in existing.values()
         if row.external_item_id
     }
-    wanted_media_ids = set()
     added = 0
     unmatched = 0
     for item in boxset_items:
@@ -266,7 +265,6 @@ def _sync_collection_from_server(session, collection: Collection, ctx) -> Collec
             remote_id = item.remote_id
             if remote_id and remote_id in existing_by_remote:
                 row = existing_by_remote[remote_id]
-                wanted_media_ids.add(row.media_item_id)
                 continue
             media_item = resolve_collection_member(session, item, client)
             if not media_item:
@@ -276,7 +274,6 @@ def _sync_collection_from_server(session, collection: Collection, ctx) -> Collec
                     f"{item.title or item.remote_id} path={item.path}"
                 )
                 continue
-            wanted_media_ids.add(media_item.id)
             row = existing.get(media_item.id)
             if row:
                 if remote_id and row.external_item_id != remote_id:
@@ -298,12 +295,6 @@ def _sync_collection_from_server(session, collection: Collection, ctx) -> Collec
         finally:
             ctx.tick(session)
 
-    removed = 0
-    for media_id, row in list(existing.items()):
-        if media_id in wanted_media_ids:
-            continue
-        session.delete(row)
-        removed += 1
     session.flush()
     ctx.mark_touched()
     _refresh_member_counts(
@@ -314,7 +305,7 @@ def _sync_collection_from_server(session, collection: Collection, ctx) -> Collec
     )
     logger.info(
         f"    ✓ 合集 {collection.name}: 从 {label} 新增 {added} 项, "
-        f"移除 {removed} 项, 未匹配 {unmatched} 项, 本地 {collection.matched_count} 项, "
+        f"未匹配 {unmatched} 项, 本地 {collection.matched_count} 项, "
         f"{label} {collection.item_count} 项"
     )
     return collection
