@@ -4,8 +4,10 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from bonita import schemas
+from bonita.modules.media_service.client import SOURCE_EMBY
 from bonita.tasks import (
     celery_import_nfo,
+    celery_media_library_scan,
     celery_reload_scrapinglib,
     celery_sync_actor_emby_photos,
     celery_sync_watch_history,
@@ -14,6 +16,7 @@ from bonita.services.record_service import RecordService
 from bonita.services.celery_service import (
     CeleryTaskService,
     TASK_ACTOR_EMBY_PHOTO_SYNC,
+    TASK_MEDIA_LIBRARY_SCAN,
     TASK_WATCH_HISTORY_SYNC,
 )
 from bonita.core.enums import TaskStatusEnum
@@ -68,25 +71,25 @@ class ToolService:
                 error_message='缺少必要参数'
             )
 
-    def emby_scan(self, folder_args: schemas.ToolArgsParam) -> schemas.TaskStatus:
-        """扫描Emby
-
-        Args:
-            folder_args: 工具参数
-
-        Returns:
-            schemas.TaskStatus: 任务状态
-        """
-        logger.info("Run emby scan")
-        # 目前这个功能尚未实现，返回失败状态
-        return schemas.TaskStatus(
-            task_id=str(uuid.uuid4()),
-            name="emby scan",
-            status=TaskStatusEnum.FAILURE,
-            task_type='EmbyScan',
-            progress=0.0,
-            step='功能未实现',
-            error_message='该功能尚未实现'
+    def media_library_scan(
+        self,
+        folder_args: schemas.ToolArgsParam = None,
+        source: str = SOURCE_EMBY,
+    ) -> schemas.TaskStatus:
+        """入队媒体库扫描（arg1 为可选路径，逗号分隔；source 默认 emby）。"""
+        paths = None
+        if folder_args and folder_args.arg1:
+            paths = [p.strip() for p in folder_args.arg1.split(",") if p.strip()] or None
+        detail = ",".join(paths) if paths else "all"
+        logger.info("Enqueue media library scan source=%s paths=%s", source, detail)
+        return CeleryTaskService(self.session).enqueue_unique(
+            celery_media_library_scan,
+            TASK_MEDIA_LIBRARY_SCAN,
+            detail=detail,
+            name="媒体库扫描",
+            task_json={},
+            paths=paths,
+            source=source,
         )
 
     def sync_record_path(

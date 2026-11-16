@@ -13,6 +13,7 @@ TASK_WATCH_HISTORY_SYNC = "WatchHistorySync"
 TASK_COLLECTION_SYNC = "CollectionSync"
 TASK_PLAYLIST_SYNC = "PlaylistSync"
 TASK_ACTOR_EMBY_PHOTO_SYNC = "ActorEmbyPhotoSync"
+TASK_MEDIA_LIBRARY_SCAN = "MediaLibraryScan"
 
 
 logger = logging.getLogger(__name__)

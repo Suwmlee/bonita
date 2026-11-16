@@ -4,9 +4,11 @@ from celery import shared_task
 
 from bonita.db import SessionFactory
 from bonita.modules.media_service.factory import ensure_media_client
+from bonita.modules.media_service.client import SOURCE_EMBY, source_label
 from bonita.services.celery_service import (
     TASK_ACTOR_EMBY_PHOTO_SYNC,
     TASK_COLLECTION_SYNC,
+    TASK_MEDIA_LIBRARY_SCAN,
     TASK_PLAYLIST_SYNC,
     TASK_WATCH_HISTORY_SYNC,
     TaskProgressTracker,
@@ -19,27 +21,26 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},
-             name='emby:scan')
-def celery_emby_scan(self, task_json, paths=None):
-    logger.info("## [Emby扫描] START")
-    try:
-        client = ensure_media_client()
-        if not client:
-            logger.warning("## [Emby扫描] ⊘ 服务未初始化")
-            return
-        if paths:
-            try:
-                if client.refresh_libraries_for_paths(paths):
-                    logger.info("## [Emby扫描] END")
-                    return
-            except Exception as e:
-                logger.warning(f"## [Emby扫描] 按库刷新失败，改为全库刷新: {e}")
-            else:
-                logger.info("## [Emby扫描] 未能按库刷新，改为全库刷新")
-        client.trigger_library_scan()
-        logger.info("## [Emby扫描] END")
-    except Exception as e:
-        logger.error(f"## [Emby扫描] ✗ 失败: {str(e)}")
+             name="media:library_scan")
+@manage_celery_task(TASK_MEDIA_LIBRARY_SCAN)
+def celery_media_library_scan(self, task_json=None, paths=None, source=SOURCE_EMBY):
+    label = source_label(source)
+    logger.info(f"## [{label}扫描] START source={source}")
+    client = ensure_media_client(source)
+    if not client:
+        raise RuntimeError(f"{label}服务未初始化")
+    if paths and hasattr(client, "refresh_libraries_for_paths"):
+        try:
+            if client.refresh_libraries_for_paths(paths):
+                logger.info(f"## [{label}扫描] END")
+                return {"paths": list(paths), "mode": "by_path", "source": source}
+        except Exception as e:
+            logger.warning(f"## [{label}扫描] 按库刷新失败，改为全库刷新: {e}")
+        else:
+            logger.info(f"## [{label}扫描] 未能按库刷新，改为全库刷新")
+    client.trigger_library_scan()
+    logger.info(f"## [{label}扫描] END")
+    return {"paths": list(paths) if paths else None, "mode": "full", "source": source}
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3},

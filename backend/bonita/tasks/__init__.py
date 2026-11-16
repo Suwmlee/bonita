@@ -1,7 +1,7 @@
 """Celery 任务定义。worker 通过 import bonita.tasks 注册全部任务。"""
 
 from bonita.tasks.media import (
-    celery_emby_scan,
+    celery_media_library_scan,
     celery_sync_actor_emby_photos,
     celery_sync_collection,
     celery_sync_playlist,
@@ -20,7 +20,7 @@ from bonita.tasks.transfer import (
 
 __all__ = [
     "celery_clean_others",
-    "celery_emby_scan",
+    "celery_media_library_scan",
     "celery_import_nfo",
     "celery_reload_scrapinglib",
     "celery_scrapping",

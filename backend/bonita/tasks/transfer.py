@@ -14,9 +14,9 @@ from bonita.modules.scraping.scraping import add_mark, process_cover, process_nf
 from bonita.modules.transfer.transfer import transSingleFile, transferfile
 from bonita.services.celery_service import TaskProgressTracker
 from bonita.services.subtitle_service import SubtitleService, parse_number
-from bonita.services.resource_service import cover_folder_for_number
+from bonita.utils.assets import cover_folder_for_number
 from bonita.tasks.decorators import manage_celery_task
-from bonita.tasks.media import celery_emby_scan
+from bonita.tasks.media import celery_media_library_scan
 from bonita.tasks.scraping import celery_scrapping
 from bonita.utils.downloader import download_file, process_cached_file
 from bonita.utils.filehelper import cleanFolderWithoutSuffix, findAllFilesWithSuffix, remove_previous_output, video_type
@@ -197,9 +197,9 @@ def celery_transfer_entry(self, task_json):
         if task_info.auto_watch:
             logger.info("  → 触发媒体库扫描")
             if os.environ.get("MAX_CONCURRENCY") == "1":
-                celery_emby_scan.apply(args=[task_json, done_list])
+                celery_media_library_scan.apply(args=[task_json, done_list])
             else:
-                celery_emby_scan.apply_async(args=[task_json, done_list])
+                celery_media_library_scan.apply_async(args=[task_json, done_list])
 
     progress_tracker.complete("转移任务完成")
     logger.info(f"## [转移任务] END - ID:{task_info.id}")
@@ -387,7 +387,7 @@ def celery_transfer_group(self, task_json, full_path, isEntry=False):
         progress_tracker.set_progress(95, "处理后续任务")
         if isEntry and task_info.auto_watch:
             try:
-                celery_emby_scan.apply(args=[task_json, done_list])
+                celery_media_library_scan.apply(args=[task_json, done_list])
             except Exception as e:
                 logger.error(f"    ✗ Emby 扫描失败: {e}")
 

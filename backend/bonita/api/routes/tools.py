@@ -31,14 +31,13 @@ async def run_import_nfo(
                                   error_message='缺少必要参数')
 
 
-@router.get("/embyscan", response_model=schemas.TaskStatus)
-async def run_emby_scan(
+@router.get("/mediascan", response_model=schemas.TaskStatus)
+async def run_media_library_scan(
         session: SessionDep,
-        folder_args: schemas.ToolArgsParam):
-    """ 扫描emby
-    """
+        folder_args: schemas.ToolArgsParam = schemas.ToolArgsParam()):
+    """入队媒体库扫描（可选 query：arg1=路径，逗号分隔；空则全库）。默认 Emby。"""
     tool_service = ToolService(session)
-    return tool_service.emby_scan(folder_args)
+    return tool_service.media_library_scan(folder_args)
 
 
 @router.post("/records/path", response_model=schemas.Response)
@@ -67,7 +66,7 @@ async def sync_record_path(
 @router.post("/sync/emby", response_model=schemas.TaskStatus)
 async def sync_emby_watch_history(
         session: SessionDep,
-        params: schemas.EmbySyncParam):
+        params: schemas.WatchSyncParam):
     """同步媒体服务器观看记录，立即返回后台任务。"""
     tool_service = ToolService(session)
     sources = params.sources or ["emby"]
@@ -81,7 +80,7 @@ async def sync_emby_watch_history(
 @router.post("/sync/plex", response_model=schemas.TaskStatus)
 async def sync_plex_watch_history(
         session: SessionDep,
-        params: schemas.EmbySyncParam):
+        params: schemas.WatchSyncParam):
     """同步 Plex 电影/剧观看记录，立即返回后台任务。"""
     tool_service = ToolService(session)
     return tool_service.sync_watch_history(

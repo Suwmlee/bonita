@@ -82,10 +82,8 @@ class SyncDirection(str, Enum):
     TO_SERVER = "to_server"
 
 
-class EmbySyncParam(BaseModel):
-    """
-    媒体服务器观看同步参数。路径仍为 /tools/sync/emby；也可传 sources=["plex"]。
-    """
+class WatchSyncParam(BaseModel):
+    """媒体服务器观看同步参数（Emby / Plex 共用）。"""
     direction: SyncDirection = Field(
         default=SyncDirection.FROM_SERVER,
         description="from_server: 远端 → Bonita；to_server: Bonita → 远端",
