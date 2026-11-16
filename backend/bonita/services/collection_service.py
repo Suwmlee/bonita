@@ -16,7 +16,7 @@ from bonita.modules.media_service.collection_sync import (
     sync_collection_members,
     sync_whitelisted_collections,
 )
-from bonita.modules.media_service.factory import require_media_client
+from bonita.modules.media_service.factory import require_collection_client
 from bonita.services.celery_service import CeleryTaskService, TASK_COLLECTION_SYNC
 from bonita.services.mediaitem_service import MediaItemService
 from bonita.tasks import celery_sync_collection
@@ -34,7 +34,7 @@ class CollectionService:
     def search_remote_collections(
         self, search: str = "", limit: int = 50, source: str = SOURCE_EMBY
     ) -> List[schemas.EmbyCollectionCandidate]:
-        client = require_media_client(source)
+        client = require_collection_client(source)
         refs = client.search_collections(search.strip(), limit=limit)
         added_ids = {
             (row.source, row.external_id)

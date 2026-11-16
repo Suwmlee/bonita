@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Protocol, runtime_checkable
 
 
 SOURCE_EMBY = "emby"
@@ -188,22 +188,6 @@ class MediaServerClient(ABC):
         pass
 
     @abstractmethod
-    def search_collections(self, search: str = "", limit: int = 50) -> List[CollectionRef]:
-        pass
-
-    @abstractmethod
-    def get_collection_items(self, collection_id: str) -> List[RemoteItem]:
-        pass
-
-    @abstractmethod
-    def add_items_to_collection(self, collection_id: str, item_ids: List[str]) -> tuple:
-        pass
-
-    @abstractmethod
-    def remove_items_from_collection(self, collection_id: str, item_ids: List[str]) -> tuple:
-        pass
-
-    @abstractmethod
     def mark_as_played(self, item_id: str):
         pass
 
@@ -236,3 +220,48 @@ class MediaServerClient(ABC):
     @abstractmethod
     def parse_webhook(self, payload: dict) -> WebhookEvent:
         pass
+
+
+@runtime_checkable
+class CollectionCapable(Protocol):
+    """合集（BoxSet）能力；当前由 Emby 实现。"""
+
+    def search_collections(self, search: str = "", limit: int = 50) -> List[CollectionRef]:
+        ...
+
+    def get_collection_items(self, collection_id: str) -> List[RemoteItem]:
+        ...
+
+    def add_items_to_collection(self, collection_id: str, item_ids: List[str]) -> tuple:
+        ...
+
+    def remove_items_from_collection(self, collection_id: str, item_ids: List[str]) -> tuple:
+        ...
+
+
+@runtime_checkable
+class PlaylistCapable(Protocol):
+    """音频播放列表能力；当前由 Plex 实现。"""
+
+    def list_audio_playlists(
+        self,
+        search: str = "",
+        limit: int = 50,
+        include_smart: bool = True,
+    ) -> List[PlaylistRef]:
+        ...
+
+    def get_playlist(self, rating_key: str) -> Optional[PlaylistRef]:
+        ...
+
+    def create_audio_playlist(self, title: str, track_rating_keys: List[str]) -> PlaylistRef:
+        ...
+
+    def get_playlist_items(self, rating_key: str) -> List[PlaylistTrack]:
+        ...
+
+    def add_items_to_playlist(self, playlist_rating_key: str, track_rating_keys: List[str]) -> tuple:
+        ...
+
+    def remove_items_from_playlist(self, playlist_rating_key: str, playlist_item_ids: List[str]) -> tuple:
+        ...

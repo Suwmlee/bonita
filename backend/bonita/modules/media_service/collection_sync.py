@@ -6,6 +6,7 @@ from bonita.db.models.extrainfo import ExtraInfo
 from bonita.db.models.mediaitem import MediaItem
 from bonita.db.models.record import TransRecords
 from bonita.modules.media_service.client import (
+    ITEM_COLLECTION,
     ITEM_EPISODE,
     ITEM_MOVIE,
     ITEM_SERIES,
@@ -14,7 +15,7 @@ from bonita.modules.media_service.client import (
     is_to_server,
     source_label,
 )
-from bonita.modules.media_service.factory import require_media_client
+from bonita.modules.media_service.factory import get_media_client, require_collection_client
 from bonita.modules.media_service.matching import (
     current_sync,
     find_remote_id_for_media_item,
@@ -36,7 +37,7 @@ def collection_source(collection: Collection) -> str:
 def add_and_sync_collection(
     session, external_id: str, name: str = None, source: str = SOURCE_EMBY
 ) -> Collection:
-    client = require_media_client(source)
+    client = require_collection_client(source)
     collection = (
         session.query(Collection)
         .filter(Collection.source == source, Collection.external_id == external_id)
@@ -57,8 +58,6 @@ def add_and_sync_collection(
 
 
 def refresh_collection_meta(session, collection: Collection, fallback_name: str = None):
-    from bonita.modules.media_service.factory import get_media_client
-
     client = get_media_client(collection_source(collection))
     if not client:
         return
@@ -94,7 +93,7 @@ def rebind_collection(
         raise RuntimeError("缺少 external_id")
 
     target_source = (source or "").strip() or collection_source(collection)
-    client = require_media_client(target_source)
+    client = require_collection_client(target_source)
     details = client.get_user_item(new_external_id) or client.get_item(new_external_id)
     if not details:
         raise RuntimeError(f"远端合集不存在: {new_external_id}")
@@ -236,8 +235,9 @@ def sync_collection_from_server(session, collection: Collection) -> Collection:
 
 
 def _sync_collection_from_server(session, collection: Collection, ctx) -> Collection:
+    """从远端拉取并对齐本地成员：远端没有的本地成员会被删除。"""
     source = collection_source(collection)
-    client = require_media_client(source)
+    client = require_collection_client(source)
     label = source_label(source)
     logger.info(f"  → 合集 {collection.name}: 从 {label} 拉取成员")
     refresh_collection_meta(session, collection)
@@ -251,9 +251,12 @@ def _sync_collection_from_server(session, collection: Collection, ctx) -> Collec
             CollectionItem.collection_id == collection.id
         ).all()
     }
-    existing_remote_ids = {
-        row.external_item_id for row in existing.values() if row.external_item_id
+    existing_by_remote = {
+        row.external_item_id: row
+        for row in existing.values()
+        if row.external_item_id
     }
+    wanted_media_ids = set()
     added = 0
     unmatched = 0
     for item in boxset_items:
@@ -261,7 +264,9 @@ def _sync_collection_from_server(session, collection: Collection, ctx) -> Collec
             if item.item_type not in _COLLECTION_MEMBER_TYPES:
                 continue
             remote_id = item.remote_id
-            if remote_id and remote_id in existing_remote_ids:
+            if remote_id and remote_id in existing_by_remote:
+                row = existing_by_remote[remote_id]
+                wanted_media_ids.add(row.media_item_id)
                 continue
             media_item = resolve_collection_member(session, item, client)
             if not media_item:
@@ -271,11 +276,14 @@ def _sync_collection_from_server(session, collection: Collection, ctx) -> Collec
                     f"{item.title or item.remote_id} path={item.path}"
                 )
                 continue
+            wanted_media_ids.add(media_item.id)
             row = existing.get(media_item.id)
             if row:
                 if remote_id and row.external_item_id != remote_id:
+                    if row.external_item_id:
+                        existing_by_remote.pop(row.external_item_id, None)
                     row.external_item_id = remote_id
-                    existing_remote_ids.add(remote_id)
+                    existing_by_remote[remote_id] = row
                 continue
             member = CollectionItem(
                 collection_id=collection.id,
@@ -285,10 +293,17 @@ def _sync_collection_from_server(session, collection: Collection, ctx) -> Collec
             session.add(member)
             existing[media_item.id] = member
             if remote_id:
-                existing_remote_ids.add(remote_id)
+                existing_by_remote[remote_id] = member
             added += 1
         finally:
             ctx.tick(session)
+
+    removed = 0
+    for media_id, row in list(existing.items()):
+        if media_id in wanted_media_ids:
+            continue
+        session.delete(row)
+        removed += 1
     session.flush()
     ctx.mark_touched()
     _refresh_member_counts(
@@ -299,7 +314,7 @@ def _sync_collection_from_server(session, collection: Collection, ctx) -> Collec
     )
     logger.info(
         f"    ✓ 合集 {collection.name}: 从 {label} 新增 {added} 项, "
-        f"未匹配 {unmatched} 项, 本地 {collection.matched_count} 项, "
+        f"移除 {removed} 项, 未匹配 {unmatched} 项, 本地 {collection.matched_count} 项, "
         f"{label} {collection.item_count} 项"
     )
     return collection
@@ -312,7 +327,7 @@ def sync_collection_to_server(session, collection: Collection) -> Collection:
 
 def _sync_collection_to_server(session, collection: Collection, ctx) -> Collection:
     source = collection_source(collection)
-    client = require_media_client(source)
+    client = require_collection_client(source)
     label = source_label(source)
     logger.info(f"  → 合集 {collection.name}: 开始回写 {label}")
     _ensure_library_index(ctx, client)
@@ -396,8 +411,6 @@ def _sync_collection_to_server(session, collection: Collection, ctx) -> Collecti
 
 
 def add_collection_members(session, collection: Collection, media_item_ids: list) -> int:
-    from bonita.modules.media_service.factory import get_media_client
-
     client = get_media_client(collection_source(collection))
     existing_ids = {
         row.media_item_id

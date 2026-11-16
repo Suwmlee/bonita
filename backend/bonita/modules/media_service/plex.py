@@ -14,7 +14,6 @@ from bonita.modules.media_service.client import (
     RATING_FAVORITE_WRITE,
     SOURCE_PLEX,
     WEBHOOK_IGNORED,
-    CollectionRef,
     MediaServerClient,
     PlaylistRef,
     PlaylistTrack,
@@ -497,18 +496,6 @@ class PlexClient(MediaServerClient, metaclass=Singleton):
                         if len(results) >= limit:
                             return results
         return results[:limit]
-
-    def search_collections(self, search: str = "", limit: int = 50) -> List[CollectionRef]:
-        return []
-
-    def get_collection_items(self, collection_id: str) -> List[RemoteItem]:
-        return []
-
-    def add_items_to_collection(self, collection_id: str, item_ids: List[str]) -> tuple:
-        return 0, len(item_ids or [])
-
-    def remove_items_from_collection(self, collection_id: str, item_ids: List[str]) -> tuple:
-        return 0, len(item_ids or [])
 
     def mark_as_played(self, item_id: str):
         item_id = _as_str(item_id)

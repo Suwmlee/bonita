@@ -4,7 +4,9 @@ from typing import Optional
 from bonita.modules.media_service.client import (
     SOURCE_EMBY,
     SOURCE_PLEX,
+    CollectionCapable,
     MediaServerClient,
+    PlaylistCapable,
     source_label,
 )
 from bonita.modules.media_service.emby import EmbyClient
@@ -38,6 +40,14 @@ def require_media_client(source: str = SOURCE_EMBY) -> MediaServerClient:
     return client
 
 
+def require_collection_client(source: str = SOURCE_EMBY) -> CollectionCapable:
+    """合集同步用：需已初始化且实现 CollectionCapable（当前仅 Emby）。"""
+    client = require_media_client(source)
+    if not isinstance(client, CollectionCapable):
+        raise RuntimeError(f"{source_label(source)}不支持合集同步")
+    return client
+
+
 def ensure_media_client(source: str = SOURCE_EMBY) -> Optional[MediaServerClient]:
     client = get_media_client(source)
     if client:
@@ -55,6 +65,8 @@ def require_plex_client() -> PlexClient:
     client = get_plex_client()
     if not client:
         raise RuntimeError("Plex服务未初始化")
+    if not isinstance(client, PlaylistCapable):
+        raise RuntimeError("Plex不支持播放列表同步")
     return client
 
 
