@@ -8,6 +8,7 @@ from bonita.modules.media_service.client import SOURCE_PLEX
 from bonita.modules.media_service.factory import require_plex_client
 from bonita.modules.media_service.playlist_sync import (
     add_and_sync_playlist,
+    rebind_playlist as rebind_playlist_members,
     refresh_playlist_meta,
     sync_playlist_members,
     sync_whitelisted_playlists,
@@ -73,6 +74,23 @@ class PlaylistService:
             external_id,
             name=name,
             rating_key=rating_key,
+            source=source,
+        )
+
+    def rebind_playlist(
+        self,
+        playlist: Playlist,
+        external_id: str = None,
+        name: Optional[str] = None,
+        rating_key: Optional[str] = None,
+        source: Optional[str] = None,
+    ) -> Playlist:
+        return rebind_playlist_members(
+            self.session,
+            playlist,
+            external_id=external_id,
+            rating_key=rating_key,
+            name=name,
             source=source,
         )
 

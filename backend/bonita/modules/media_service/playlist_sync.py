@@ -79,6 +79,99 @@ def refresh_playlist_meta(session, playlist: Playlist, fallback_name: str = None
     session.commit()
 
 
+def rebind_playlist(
+    session,
+    playlist: Playlist,
+    external_id: str = None,
+    rating_key: str = None,
+    name: str = None,
+    source: str = None,
+) -> Playlist:
+    """将已有播放列表改绑到新的远端列表，保留本地成员快照。"""
+    new_rating_key = (rating_key or "").strip() or None
+    new_external_id = (external_id or "").strip() or None
+    if not new_rating_key and not new_external_id:
+        raise RuntimeError("缺少 external_id")
+
+    target_source = (source or "").strip() or (playlist.source or SOURCE_PLEX)
+    if target_source != SOURCE_PLEX:
+        raise RuntimeError(f"暂不支持的播放列表源: {target_source}")
+
+    client = require_plex_client()
+    details = client.get_playlist(new_rating_key) if new_rating_key else None
+    if not details and new_external_id:
+        for ref in client.list_audio_playlists(limit=500, include_smart=True):
+            if ref.remote_id == new_external_id or ref.guid == new_external_id:
+                details = ref
+                break
+    if not details:
+        raise RuntimeError(
+            f"远端播放列表不存在: {new_rating_key or new_external_id}"
+        )
+
+    resolved_external_id = (
+        new_external_id
+        or (details.remote_id or "").strip()
+        or (details.guid or "").strip()
+        or (details.rating_key or "").strip()
+    )
+    if not resolved_external_id:
+        raise RuntimeError("缺少 external_id")
+
+    conflict = (
+        session.query(Playlist)
+        .filter(
+            Playlist.source == target_source,
+            Playlist.external_id == resolved_external_id,
+            Playlist.id != playlist.id,
+        )
+        .first()
+    )
+    if conflict:
+        raise RuntimeError(f"该远端播放列表已绑定到「{conflict.name}」")
+
+    same_binding = (
+        (playlist.source or SOURCE_PLEX) == target_source
+        and playlist.external_id == resolved_external_id
+        and (playlist.rating_key or "") == (details.rating_key or "")
+    )
+    if not same_binding:
+        playlist.source = target_source
+        playlist.external_id = resolved_external_id
+        playlist.rating_key = details.rating_key
+        playlist.write_rating_key = None
+        playlist.is_smart = bool(details.smart)
+        session.query(PlaylistItem).filter(
+            PlaylistItem.playlist_id == playlist.id
+        ).update(
+            {
+                PlaylistItem.external_item_id: None,
+                PlaylistItem.playlist_item_id: None,
+            },
+            synchronize_session=False,
+        )
+        session.flush()
+        logger.info(
+            f"  ↻ 播放列表 {playlist.name}: 重绑到 {source_label(target_source)} "
+            f"{resolved_external_id} ({details.rating_key})"
+        )
+
+    _apply_ref(session, playlist, details, fallback_name=name)
+    try:
+        playlist.item_count = len(client.get_playlist_items(playlist.rating_key))
+    except Exception:
+        if details.leaf_count:
+            playlist.item_count = details.leaf_count
+    playlist.matched_count = (
+        session.query(PlaylistItem)
+        .filter(PlaylistItem.playlist_id == playlist.id)
+        .count()
+    )
+    session.commit()
+    session.refresh(playlist)
+    return playlist
+
+
 def add_and_sync_playlist(
     session,
     external_id: str,

@@ -127,6 +127,70 @@ export const usePlaylistStore = defineStore("playlist-store", {
       }
     },
 
+    async rebindPlaylist(
+      playlistId: number,
+      externalId: string,
+      ratingKey: string,
+      name?: string,
+      push = true,
+    ) {
+      this.isLoading = true
+      try {
+        const { data: updated } = await client.post<PlaylistPublic>({
+          responseType: "json",
+          security: [{ scheme: "bearer", type: "http" }],
+          url: `/api/v1/playlists/${playlistId}/rebind`,
+          query: { push: false },
+          body: {
+            source: "plex",
+            external_id: externalId,
+            rating_key: ratingKey,
+            name,
+          },
+          headers: { "Content-Type": "application/json" },
+        })
+        await this.loadDetail(playlistId)
+        if (!push) {
+          useToastStore().success(i18n.global.t("pages.playlist.rebindSuccess") as string)
+          return updated
+        }
+      } catch (error) {
+        console.error("Error rebinding playlist:", error)
+        useToastStore().error(i18n.global.t("pages.playlist.rebindFailed") as string)
+        return undefined
+      } finally {
+        this.isLoading = false
+      }
+      this.isSyncing = true
+      try {
+        const { data: task } = await client.post<TaskStatus>({
+          responseType: "json",
+          security: [{ scheme: "bearer", type: "http" }],
+          url: `/api/v1/playlists/${playlistId}/sync`,
+          query: { direction: "to_server" },
+        })
+        if (!task?.task_id) {
+          useToastStore().error(i18n.global.t("pages.playlist.syncFailed") as string)
+          return this.detail
+        }
+        const finished = await useTaskStore().waitForTask(task.task_id)
+        if (finished?.status === "FAILURE" || finished?.status === "REVOKED") {
+          useToastStore().error(i18n.global.t("pages.playlist.syncFailed") as string)
+          return this.detail
+        }
+        await this.listPlaylists()
+        await this.loadDetail(playlistId)
+        useToastStore().success(i18n.global.t("pages.playlist.rebindAndPushSuccess") as string)
+        return this.detail
+      } catch (error) {
+        console.error("Error pushing rebound playlist:", error)
+        useToastStore().error(i18n.global.t("pages.playlist.syncFailed") as string)
+        return this.detail
+      } finally {
+        this.isSyncing = false
+      }
+    },
+
     async loadDetail(playlistId: number) {
       this.isLoading = true
       try {

@@ -4,13 +4,16 @@ import type {
   PlexPlaylistCandidate,
 } from "@/stores/playlist.store"
 import { usePlaylistStore } from "@/stores/playlist.store"
+import { useToastStore } from "@/stores/toast.store"
 import { computed, onMounted, ref } from "vue"
 import { useI18n } from "vue-i18n"
 
 const { t } = useI18n()
 const playlistStore = usePlaylistStore()
+const toastStore = useToastStore()
 
 const showAddDialog = ref(false)
+const showRebindDialog = ref(false)
 const plexSearch = ref("")
 
 const selected = computed(() => playlistStore.detail)
@@ -21,6 +24,13 @@ onMounted(async () => {
 
 async function openAddDialog() {
   showAddDialog.value = true
+  plexSearch.value = ""
+  await playlistStore.searchPlex("")
+}
+
+async function openRebindDialog() {
+  if (!selected.value) return
+  showRebindDialog.value = true
   plexSearch.value = ""
   await playlistStore.searchPlex("")
 }
@@ -49,6 +59,35 @@ async function addCandidate(candidate: PlexPlaylistCandidate) {
   }
 }
 
+function rebindCandidateLabel(candidate: PlexPlaylistCandidate) {
+  if (!selected.value) return ""
+  if (candidate.external_id === selected.value.external_id) {
+    return t("pages.playlist.currentBinding")
+  }
+  if (candidate.added) return t("pages.playlist.alreadyAdded")
+  return ""
+}
+
+async function rebindCandidate(candidate: PlexPlaylistCandidate) {
+  if (!selected.value) return
+  if (candidate.external_id === selected.value.external_id) {
+    showRebindDialog.value = false
+    return
+  }
+  if (candidate.added) {
+    toastStore.error(t("pages.playlist.rebindConflict") as string)
+    return
+  }
+  const updated = await playlistStore.rebindPlaylist(
+    selected.value.id,
+    candidate.external_id,
+    candidate.rating_key,
+    candidate.name,
+    true,
+  )
+  if (updated) showRebindDialog.value = false
+}
+
 async function openPlaylist(item: PlaylistPublic) {
   await playlistStore.loadDetail(item.id)
 }
@@ -71,6 +110,13 @@ function backToList() {
             {{ t("pages.playlist.smartBadge") }}
           </span>
         </p>
+        <VBtn
+          variant="outlined"
+          :loading="playlistStore.isLoading || playlistStore.isSyncing"
+          @click="openRebindDialog"
+        >
+          {{ t("pages.playlist.rebind") }}
+        </VBtn>
         <VBtn
           variant="outlined"
           :loading="playlistStore.isSyncing"
@@ -223,6 +269,60 @@ function backToList() {
         <VCardActions>
           <VSpacer />
           <VBtn variant="text" @click="showAddDialog = false">{{ t("common.cancel") }}</VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <VDialog v-model="showRebindDialog" max-width="760" scrollable>
+      <VCard>
+        <VCardTitle>{{ t("pages.playlist.rebind") }}</VCardTitle>
+        <VCardText>
+          <p class="text-medium-emphasis mb-3">{{ t("pages.playlist.rebindHint") }}</p>
+          <VTextField
+            v-model="plexSearch"
+            :placeholder="t('pages.playlist.searchPlex')"
+            prepend-inner-icon="bx-search"
+            :loading="playlistStore.isSearching"
+            hide-details
+            clearable
+            @keyup.enter="searchPlex"
+            @click:clear="searchPlex"
+          />
+          <VBtn class="mt-3" variant="tonal" :loading="playlistStore.isSearching" @click="searchPlex">
+            {{ t("common.search") }}
+          </VBtn>
+          <VList class="mt-2 picker-list">
+            <VListItem
+              v-for="candidate in playlistStore.plexCandidates"
+              :key="candidate.external_id"
+              class="picker-item"
+              :disabled="!!candidate.added && candidate.external_id !== selected?.external_id"
+              @click="rebindCandidate(candidate)"
+            >
+              <VListItemTitle>
+                {{ candidate.name }}
+                <span v-if="candidate.smart" class="text-medium-emphasis text-caption ms-2">
+                  {{ t("pages.playlist.smartBadge") }}
+                </span>
+              </VListItemTitle>
+              <VListItemSubtitle>
+                {{ t("pages.playlist.plexChildCount", { count: candidate.leaf_count || 0 }) }}
+                <span v-if="rebindCandidateLabel(candidate)">
+                  · {{ rebindCandidateLabel(candidate) }}
+                </span>
+              </VListItemSubtitle>
+            </VListItem>
+          </VList>
+          <p
+            v-if="!playlistStore.isSearching && playlistStore.plexCandidates.length === 0"
+            class="text-medium-emphasis mt-4"
+          >
+            {{ t("pages.playlist.noPlexResults") }}
+          </p>
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn variant="text" @click="showRebindDialog = false">{{ t("common.cancel") }}</VBtn>
         </VCardActions>
       </VCard>
     </VDialog>

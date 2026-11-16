@@ -85,6 +85,37 @@ async def sync_one_playlist(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/{playlist_id}/rebind", response_model=schemas.PlaylistPublic)
+async def rebind_playlist(
+    playlist_id: int,
+    session: SessionDep,
+    payload: schemas.PlaylistCreate,
+    push: bool = Query(default=True),
+) -> Any:
+    """将已有播放列表改绑到新的远端列表，保留本地成员；默认入队回写。"""
+    if not (payload.external_id or "").strip() and not (payload.rating_key or "").strip():
+        raise HTTPException(status_code=400, detail="缺少 external_id")
+    service = PlaylistService(session)
+    playlist = _require_playlist(service, playlist_id)
+    try:
+        playlist = service.rebind_playlist(
+            playlist,
+            external_id=(payload.external_id or "").strip() or None,
+            name=payload.name,
+            rating_key=(payload.rating_key or "").strip() or None,
+            source=payload.source,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if push:
+        try:
+            service.enqueue_sync(playlist.id, direction="to_server")
+        except Exception as e:
+            logger.exception(f"播放列表重绑后回写入队失败 {playlist_id}")
+            raise HTTPException(status_code=500, detail=str(e))
+    return _to_public(playlist)
+
+
 @router.get("/{playlist_id}", response_model=schemas.PlaylistDetail)
 async def get_playlist(playlist_id: int, session: SessionDep) -> Any:
     service = PlaylistService(session)
