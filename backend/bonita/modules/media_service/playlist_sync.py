@@ -8,7 +8,7 @@ from bonita.modules.media_service.client import (
     source_label,
 )
 from bonita.modules.media_service.factory import require_plex_client
-from bonita.modules.media_service.matching import paths_match
+from bonita.modules.media_service.path_match import best_path_match
 
 logger = logging.getLogger(__name__)
 
@@ -276,34 +276,16 @@ def sync_playlist_from_server(session, playlist: Playlist) -> Playlist:
     return playlist
 
 
-def _best_path_match(path: str, candidates):
-    """candidates: iterable of (path, payload)。返回 payload。"""
-    if not path:
-        return None
-    norm = path.replace("\\", "/").rstrip("/").lower()
-    matches = [(p, payload) for p, payload in candidates if p and paths_match(path, p)]
-    if not matches:
-        return None
-    matches.sort(
-        key=lambda row: (
-            (row[0] or "").replace("\\", "/").rstrip("/").lower() == norm,
-            len(row[0] or ""),
-        ),
-        reverse=True,
-    )
-    return matches[0][1]
-
-
 def _resolve_track_rating_key(client, member: PlaylistItem, hint_tracks, path_index_holder: list) -> str:
     """路径优先：hint 列表 → 音乐库索引 → 仍在 hint 中的缓存 ratingKey。"""
     cached = (member.external_item_id or "").strip()
     if member.path:
-        hit = _best_path_match(member.path, ((t.path, t.rating_key) for t in hint_tracks))
+        hit = best_path_match(member.path, ((t.path, t.rating_key) for t in hint_tracks))
         if hit:
             return hit
         if not path_index_holder:
             path_index_holder.append(client.build_music_track_path_index())
-        looked_up = _best_path_match(member.path, path_index_holder[0])
+        looked_up = best_path_match(member.path, path_index_holder[0])
         if looked_up:
             return looked_up
     hint_keys = {t.rating_key for t in hint_tracks if t.rating_key}

@@ -8,7 +8,7 @@ from bonita.db.models.extrainfo import ExtraInfo
 from bonita.db.models.mediaitem import MediaItem
 from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
-from bonita.services.subtitle_service import normalize_number
+from bonita.utils.numbers import normalize_number
 
 logger = logging.getLogger(__name__)
 

@@ -19,6 +19,7 @@ ACTOR_PHOTO_FOLDER = "actors"
 CACHE_FOLDER = "cache"
 LOCAL_KEY_PREFIX = "local:"
 _MD5_RE = re.compile(r"^[0-9a-f]{32}$", re.IGNORECASE)
+_DIR_FORBIDDEN = '<>:"/\\|?*'
 
 
 class AssetsFolderError(ValueError):
@@ -120,3 +121,21 @@ def content_hash_from_key(key: Optional[str]) -> str:
 def is_remote_image_key(key: Optional[str]) -> bool:
     text = (key or "").strip()
     return text.startswith(("http://", "https://"))
+
+
+def safe_dirname(name: Optional[str]) -> str:
+    """番号/演员名作目录名：去掉路径非法字符；空则返回空串。"""
+    text = (name or "").strip()
+    for ch in _DIR_FORBIDDEN:
+        text = text.replace(ch, "_")
+    return text.strip(" .")
+
+
+def cover_folder_for_number(number: Optional[str]) -> str:
+    name = safe_dirname(number)
+    return os.path.join(COVER_FOLDER, name) if name else COVER_FOLDER
+
+
+def actor_folder_for_name(name: Optional[str]) -> str:
+    safe = safe_dirname(name)
+    return os.path.join(ACTOR_PHOTO_FOLDER, safe) if safe else ACTOR_PHOTO_FOLDER

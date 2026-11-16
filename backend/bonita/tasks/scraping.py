@@ -12,7 +12,7 @@ from bonita.db.models.metadata import Metadata
 from bonita.db.models.record import TransRecords
 from bonita.modules.scraping.number_parser import FileNumInfo, merge_stored_tags, release_tags_for
 from bonita.modules.scraping.scraping import load_all_NFO_from_folder, need_crop, prepare_scraped_output, scraping
-from bonita.services.resource_service import cover_folder_for_number
+from bonita.utils.assets import cover_folder_for_number
 from bonita.utils.downloader import update_cache_from_local
 from bonita.utils.http import get_active_proxy
 

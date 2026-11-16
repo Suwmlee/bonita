@@ -83,7 +83,7 @@ def is_valid_image_file(filepath: str) -> bool:
     return False
 
 
-def _bind_filepath(session: Session, url: str, abs_filepath: str) -> str:
+def bind_image_cache(session: Session, url: str, abs_filepath: str) -> str:
     """把绝对路径以相对形式写入 ImageCache，返回绝对路径。"""
     stored = to_stored_path(abs_filepath)
     keys = cache_lookup_keys(url)
@@ -93,7 +93,7 @@ def _bind_filepath(session: Session, url: str, abs_filepath: str) -> str:
         else None
     )
     if cache:
-        if cache.url != url and url:
+        if url and cache.url != url:
             cache.url = url
         cache.filepath = stored
         session.commit()
@@ -123,7 +123,7 @@ def ensure_cached_in_folder(session: Session, url: str, folder: str, filepath: s
     if not abs_path or not is_valid_image_file(abs_path):
         return ""
     if path_under_folder(abs_path, folder):
-        return _bind_filepath(session, url, abs_path) if url else abs_path
+        return bind_image_cache(session, url, abs_path) if url else abs_path
 
     target_dir = assets_folder_abs(folder)
     os.makedirs(target_dir, exist_ok=True)
@@ -143,7 +143,7 @@ def ensure_cached_in_folder(session: Session, url: str, folder: str, filepath: s
             shutil.move(abs_path, dest)
         abs_path = dest
 
-    return _bind_filepath(session, url, abs_path) if url else abs_path
+    return bind_image_cache(session, url, abs_path) if url else abs_path
 
 
 def process_cached_file(session: Session, url: str, folder) -> str:
@@ -160,7 +160,7 @@ def process_cached_file(session: Session, url: str, folder) -> str:
         return cached
 
     filepath = download_file(url, target, get_active_proxy(session))
-    return _bind_filepath(session, url, filepath)
+    return bind_image_cache(session, url, filepath)
 
 
 def update_cache_from_local(session: Session, source_path: str, folder: str, url: str):
@@ -180,7 +180,7 @@ def update_cache_from_local(session: Session, source_path: str, folder: str, url
     if os.path.exists(source_path):
         shutil.copy2(source_path, cache_path)
 
-    return _bind_filepath(session, url, cache_path)
+    return bind_image_cache(session, url, cache_path)
 
 
 def _convert_gif_to_jpg(gif_path: str) -> str:

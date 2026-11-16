@@ -13,12 +13,12 @@ from bonita.modules.media_service.client import (
 )
 from bonita.modules.media_service.factory import ensure_media_client
 from bonita.modules.media_service.matching import (
-    _commit_or_flush,
-    _save_new,
+    commit_or_flush,
     ensure_series,
     find_transfer_record,
     media_item_label,
     resolve_media_item,
+    save_new,
     sync_scope,
 )
 
@@ -62,8 +62,7 @@ def sync_watch_history(session, direction="from_server", force=False, source=SOU
                     if to_server:
                         if sync_item_to_server(session, client, item, force):
                             synced += 1
-                    else:
-                        apply_remote_watch(session, client, item, force)
+                    elif apply_remote_watch(session, client, item, force):
                         synced += 1
                 except Exception as e:
                     logger.error(f"  ✗ 处理项目失败: {e}")
@@ -78,18 +77,17 @@ def sync_watch_history(session, direction="from_server", force=False, source=SOU
         raise
 
 
-def apply_remote_watch(session, client: MediaServerClient, item: RemoteItem, force=False):
-    """将单个远端条目同步为本地 MediaItem + WatchHistory。"""
+def apply_remote_watch(session, client: MediaServerClient, item: RemoteItem, force=False) -> bool:
+    """将单个远端条目同步为本地 MediaItem + WatchHistory。实际写入时返回 True。"""
     if not item or not item.remote_id:
-        return None
+        return False
 
     if item.item_type == ITEM_SEASON:
-        _propagate_season_favorite(session, client, item, force)
-        return None
+        return bool(_propagate_season_favorite(session, client, item, force))
 
     media_item = resolve_media_item(session, item, client, create=True)
     if not media_item:
-        return None
+        return False
 
     label = media_item_label(media_item, remote=item)
     watch = item.watch
@@ -106,6 +104,7 @@ def apply_remote_watch(session, client: MediaServerClient, item: RemoteItem, for
     watch_count = watch.play_count if watch else 1
     play_progress = watch.play_progress if watch else (100.0 if watched else 0.0)
     has_rating = rating is not None
+    wrote = False
 
     existing_record = session.query(WatchHistory).filter(
         WatchHistory.media_item_id == media_item.id
@@ -147,8 +146,9 @@ def apply_remote_watch(session, client: MediaServerClient, item: RemoteItem, for
             existing_record.duration = duration
             existing_record.has_rating = final_has_rating
             existing_record.rating = final_rating or 0.0
-            _commit_or_flush(session)
+            commit_or_flush(session)
             logger.info(f"    ✓ 更新观看记录: {label}")
+            wrote = True
     else:
         new_record = WatchHistory(
             media_item_id=media_item.id,
@@ -160,11 +160,15 @@ def apply_remote_watch(session, client: MediaServerClient, item: RemoteItem, for
             has_rating=has_rating,
             rating=rating or 0.0,
         )
-        _save_new(session, new_record)
+        save_new(session, new_record)
         logger.info(f"    ✓ 创建观看记录: {label}")
+        wrote = True
 
     if media_item.media_type == "tvshow" and is_favorite:
-        propagate_favorite_to_episodes(session, media_item.id)
+        if propagate_favorite_to_episodes(session, media_item.id):
+            wrote = True
+
+    return wrote
 
 
 def sync_item_to_server(session, client: MediaServerClient, item: RemoteItem, force=False):
@@ -231,23 +235,26 @@ def sync_item_to_server(session, client: MediaServerClient, item: RemoteItem, fo
     return updated
 
 
-def _propagate_season_favorite(session, client: MediaServerClient, item: RemoteItem, force=False):
+def _propagate_season_favorite(session, client: MediaServerClient, item: RemoteItem, force=False) -> bool:
     is_favorite = bool(item.watch and item.watch.favorite)
     if not is_favorite and not force:
-        return
+        return False
     record, _extra = find_transfer_record(session, item.path)
     series = ensure_series(session, item, record, client, create=True)
     if not series:
-        return
+        return False
     season = item.season
     if season < 0:
-        return
+        return False
     if is_favorite:
-        propagate_favorite_to_episodes(session, series.id, season)
-        logger.info(f"    ♥ 季收藏已同步到各集: {series.title} S{season:02d}")
+        wrote = propagate_favorite_to_episodes(session, series.id, season)
+        if wrote:
+            logger.info(f"    ♥ 季收藏已同步到各集: {series.title} S{season:02d}")
+        return wrote
+    return False
 
 
-def propagate_favorite_to_episodes(session, series_id, season=None):
+def propagate_favorite_to_episodes(session, series_id, season=None) -> bool:
     from bonita.db.models.mediaitem import MediaItem
 
     query = session.query(MediaItem).filter(
@@ -266,7 +273,7 @@ def propagate_favorite_to_episodes(session, series_id, season=None):
                 history.favorite = True
                 updated += 1
         else:
-            _save_new(
+            save_new(
                 session,
                 WatchHistory(
                     media_item_id=episode.id,
@@ -277,5 +284,7 @@ def propagate_favorite_to_episodes(session, series_id, season=None):
             )
             updated += 1
     if updated:
-        _commit_or_flush(session)
+        commit_or_flush(session)
         logger.info(f"    ♥ 已将收藏同步到 {updated} 集")
+        return True
+    return False

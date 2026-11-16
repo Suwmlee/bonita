@@ -17,6 +17,7 @@ from bonita.db.models.record import TransRecords
 from bonita.db.models.subtitle import Subtitle
 from bonita.modules.scraping.number_parser import FileNumInfo, rules_parser
 from bonita.utils.filehelper import subext_type
+from bonita.utils.numbers import normalize_number
 from bonita.utils.regex import matchSeries
 
 logger = logging.getLogger(__name__)
@@ -41,12 +42,6 @@ _DELIVER_SUFFIX = {
 
 _FILE_MODE = stat.S_IRWXU | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH
 _BINDABLE_TYPES = {"movie", "video", "number", "episode"}
-
-
-def normalize_number(value: Optional[str]) -> str:
-    if not value:
-        return ""
-    return value.strip().upper()
 
 
 def has_preferred_chinese_subtitle(

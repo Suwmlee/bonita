@@ -11,7 +11,7 @@ from bonita.db.models.extrainfo import ExtraInfo
 from bonita.db.models.mediaitem import MediaItem
 from bonita.db.models.metadata import Metadata
 from bonita.modules.media_service.record_link import relink_record_for_number
-from bonita.services.subtitle_service import normalize_number
+from bonita.utils.numbers import normalize_number
 from bonita.utils.filehelper import cleanFilebyFilter, cleanFolderWithoutSuffix, video_type
 
 logger = logging.getLogger(__name__)

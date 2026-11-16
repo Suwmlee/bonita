@@ -19,8 +19,10 @@ from bonita.utils.assets import (
     CACHE_FOLDER,
     COVER_FOLDER,
     AssetsFolderError,
+    actor_folder_for_name,
     assets_folder_abs,
     content_hash_from_key,
+    cover_folder_for_number,
     is_remote_image_key,
     is_specific_assets_folder,
     local_image_key,
@@ -30,6 +32,7 @@ from bonita.utils.assets import (
     to_stored_path,
 )
 from bonita.utils.downloader import (
+    bind_image_cache,
     cache_lookup_keys,
     cached_filepath,
     download_file,
@@ -41,7 +44,6 @@ from bonita.utils.http import get_active_proxy
 
 logger = logging.getLogger(__name__)
 
-_DIR_FORBIDDEN = '<>:"/\\|?*'
 _resolve_locks_guard = threading.Lock()
 _resolve_locks: Dict[str, threading.Lock] = {}
 
@@ -60,24 +62,6 @@ class PosterResult:
     kind: str
     path: str
     cache_control: str
-
-
-def _safe_dirname(name: Optional[str]) -> str:
-    """番号/演员名作目录名：去掉路径非法字符；空则返回空串。"""
-    text = (name or "").strip()
-    for ch in _DIR_FORBIDDEN:
-        text = text.replace(ch, "_")
-    return text.strip(" .")
-
-
-def cover_folder_for_number(number: Optional[str]) -> str:
-    name = _safe_dirname(number)
-    return os.path.join(COVER_FOLDER, name) if name else COVER_FOLDER
-
-
-def actor_folder_for_name(name: Optional[str]) -> str:
-    safe = _safe_dirname(name)
-    return os.path.join(ACTOR_PHOTO_FOLDER, safe) if safe else ACTOR_PHOTO_FOLDER
 
 
 class ResourceService:
@@ -136,23 +120,6 @@ class ResourceService:
                         if is_valid_image_file(fp):
                             return fp
         return ""
-
-    @staticmethod
-    def _bind_download_path(session: Session, url: str, filepath: str) -> str:
-        stored = to_stored_path(filepath)
-        keys = cache_lookup_keys(url)
-        row = (
-            session.query(ImageCache).filter(ImageCache.url.in_(keys)).first()
-            if keys
-            else None
-        )
-        if row:
-            row.url = url
-            row.filepath = stored
-            session.commit()
-        else:
-            ImageCache(url=url, filepath=stored).create(session)
-        return to_abs_path(stored)
 
     @staticmethod
     def resolve_image_path(
@@ -220,7 +187,7 @@ class ResourceService:
                     digest = content_hash_from_key(path)
                     if digest and not path.startswith("local:"):
                         bind_key = local_image_key(digest)
-                    return ResourceService._bind_download_path(session, bind_key, found)
+                    return bind_image_cache(session, bind_key, found)
 
                 proxy = get_active_proxy(session)
             finally:
@@ -234,7 +201,7 @@ class ResourceService:
 
             session = SessionFactory()
             try:
-                return ResourceService._bind_download_path(session, path, filepath)
+                return bind_image_cache(session, path, filepath)
             finally:
                 session.close()
 
