@@ -21,8 +21,9 @@ class Metadata(Base):
     country = Column(String, default="", comment="国家")
     outline = Column(String, default="", comment="简介")
     director = Column(String, default="", comment="导演")
-    actor = Column(String, default="", comment="演员")
-    actor_photo = Column(String, default="", comment="演员图片")
+    # 展示缓存：由 ActorService.rewrite_metadata_actor_fields 回写；真相在 metadata_actor
+    actor = Column(String, default="", comment="演员名缓存（逗号分隔主名）")
+    actor_photo = Column(String, default="", comment="演员图片缓存 JSON")
     cover = Column(String, default="", comment="封面海报")
     cover_small = Column(String, default="", comment="缩略图")
     crop = Column(Boolean, default=True, comment="是否裁切poster")

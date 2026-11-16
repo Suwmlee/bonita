@@ -63,7 +63,9 @@ async def list_actors(
     sort: str = "count",
 ) -> Any:
     """按 Actor 表聚合作品。sort 为 count_desc、count_asc、name_asc、name_desc，佚名固定在最后。"""
-    data, count = MetadataService(session).list_actors(
+    from bonita.services.actor_service import ActorService
+
+    data, count = ActorService(session).list_actors(
         skip=skip,
         limit=limit,
         filter_text=filter,
@@ -91,7 +93,9 @@ async def list_actor_works(
     filter: Optional[str] = None,
 ) -> Any:
     """获取某一位演员的作品，按更新时间倒序。优先 actor_id。"""
-    data, count = MetadataService(session).list_actor_works(
+    from bonita.services.actor_service import ActorService
+
+    data, count = ActorService(session).list_actor_works(
         actor_name=actor,
         skip=skip,
         limit=limit,

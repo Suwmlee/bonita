@@ -17,7 +17,3 @@ class ImageCache(Base):
     url = Column(String, nullable=False, comment="逻辑键：远程 URL 或 local:<md5>")
     filepath = Column(String, nullable=False, comment="相对 ASSETS 的文件路径")
     updatetime = Column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
-
-
-# 兼容旧导入名
-Downloads = ImageCache

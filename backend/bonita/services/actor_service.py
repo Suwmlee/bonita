@@ -1,9 +1,9 @@
 import json
 import logging
 from collections import defaultdict, deque
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
-from sqlalchemy import func
+from sqlalchemy import exists, func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from bonita.db.models.actor import Actor, ActorAlias, MetadataActor
@@ -12,9 +12,21 @@ from bonita.utils.actor_names import UNKNOWN_ACTOR, parse_actor_photos, split_ac
 
 logger = logging.getLogger(__name__)
 
+_ACTOR_COVERS = 4
+
 
 def _norm_key(name: str) -> str:
     return name.casefold()
+
+
+class _Reverse:
+    """让字符串按降序参与升序排序，同时保持佚名排在最后。"""
+
+    def __init__(self, value: str):
+        self.value = value
+
+    def __lt__(self, other: "_Reverse") -> bool:
+        return self.value > other.value
 
 
 class ActorService:
@@ -528,3 +540,168 @@ class ActorService:
     def tidy_from_metadata(self) -> dict:
         """整理：回填出演关联，并清理无出演的废弃演员。"""
         return self.sync_from_metadata(cleanup_orphans=True)
+
+    def ensure_credits_backfilled(self) -> None:
+        """旧库升级后若还没有出演行，自动从 Metadata.actor 回填一次。"""
+        if self.session.query(MetadataActor.id).limit(1).first():
+            return
+        if not self.session.query(Metadata.id).limit(1).first():
+            return
+        logger.info("检测到无出演关联，开始从 Metadata.actor 回填 metadata_actor")
+        self.sync_from_metadata()
+
+    def filter_metadata_query(self, query, filter_text: Optional[str]):
+        """按番号或演员别名过滤；不依赖 Metadata.actor 缓存列。"""
+        if not filter_text:
+            return query
+        like = f"%{filter_text}%"
+        actor_match = exists().where(
+            MetadataActor.metadata_id == Metadata.id,
+            MetadataActor.actor_id == ActorAlias.actor_id,
+            ActorAlias.name.ilike(like),
+        )
+        return query.filter(or_(Metadata.number.ilike(like), actor_match))
+
+    def list_actors(
+        self,
+        skip: int = 0,
+        limit: int = 24,
+        filter_text: Optional[str] = None,
+        sort: str = "count",
+    ) -> Tuple[List[dict], int]:
+        """按 metadata_actor.actor_id 聚合作品数。佚名始终排在最后。"""
+        if sort == "count":
+            sort = "count_desc"
+        elif sort == "name":
+            sort = "name_asc"
+        elif sort not in ("count_desc", "count_asc", "name_asc", "name_desc"):
+            sort = "count_desc"
+
+        self.ensure_credits_backfilled()
+
+        meta_query = self.filter_metadata_query(self.session.query(Metadata.id), filter_text)
+        meta_ids = [row[0] for row in meta_query.all()]
+        if not meta_ids:
+            return [], 0
+
+        credits = (
+            self.session.query(MetadataActor)
+            .join(Metadata, Metadata.id == MetadataActor.metadata_id)
+            .options(
+                joinedload(MetadataActor.actor).joinedload(Actor.aliases),
+                joinedload(MetadataActor.metadata_row),
+            )
+            .filter(MetadataActor.metadata_id.in_(meta_ids))
+            .order_by(Metadata.updatetime.desc(), Metadata.id.desc())
+            .all()
+        )
+
+        buckets: dict = {}
+        for credit in credits:
+            actor = credit.actor
+            meta = credit.metadata_row
+            if not actor or not meta:
+                continue
+            bucket = buckets.get(actor.id)
+            if bucket is None:
+                primary_key = (actor.name or "").casefold()
+                alias_names = []
+                seen_alias = set()
+                for alias in actor.aliases or []:
+                    text = (alias.name or "").strip()
+                    if not text:
+                        continue
+                    key = text.casefold()
+                    if key == primary_key or key in seen_alias:
+                        continue
+                    seen_alias.add(key)
+                    alias_names.append(text)
+                bucket = {
+                    "id": actor.id,
+                    "name": actor.name,
+                    "photo": (actor.photo or "").strip() or None,
+                    "count": 0,
+                    "covers": [],
+                    "cover_paths": set(),
+                    "seen": set(),
+                    "unknown": actor.name == UNKNOWN_ACTOR,
+                    "latest": None,
+                    "aliases": alias_names,
+                }
+                buckets[actor.id] = bucket
+            if meta.id in bucket["seen"]:
+                continue
+            bucket["seen"].add(meta.id)
+            bucket["count"] += 1
+            stamp = (meta.updatetime, meta.id)
+            if bucket["latest"] is None or stamp > bucket["latest"]:
+                bucket["latest"] = stamp
+            cover = (meta.cover or "").strip()
+            crop = True if meta.crop is None else bool(meta.crop)
+            if cover and cover not in bucket["cover_paths"] and len(bucket["covers"]) < _ACTOR_COVERS:
+                bucket["cover_paths"].add(cover)
+                bucket["covers"].append({
+                    "path": cover,
+                    "crop": crop,
+                    "number": (meta.number or "").strip() or None,
+                })
+
+        def sort_key(item: dict):
+            unknown = item["unknown"]
+            name = item["name"].casefold()
+            if sort in ("name", "name_asc"):
+                return (unknown, name)
+            if sort == "name_desc":
+                return (unknown, _Reverse(name))
+            if sort == "count_asc":
+                return (unknown, item["count"], name)
+            return (unknown, -item["count"], name)
+
+        ordered = sorted(buckets.values(), key=sort_key)
+        name_groups: dict = {}
+        for item in ordered:
+            key = (item["name"] or "").casefold()
+            name_groups[key] = name_groups.get(key, 0) + 1
+        page = [
+            {
+                "id": item["id"],
+                "name": item["name"],
+                "photo": item["photo"],
+                "count": item["count"],
+                "covers": item["covers"],
+                "aliases": item["aliases"],
+                "homonym_count": name_groups.get((item["name"] or "").casefold(), 1),
+            }
+            for item in ordered[skip:skip + limit]
+        ]
+        return page, len(ordered)
+
+    def list_actor_works(
+        self,
+        actor_name: str,
+        skip: int = 0,
+        limit: int = 24,
+        filter_text: Optional[str] = None,
+        actor_id: Optional[int] = None,
+    ) -> Tuple[List[Metadata], int]:
+        """某一位演员的作品：优先 actor_id，否则按名字解析。"""
+        actor: Optional[Actor] = None
+        if actor_id is not None:
+            actor = self.get_by_id(actor_id)
+        if actor is None:
+            name = (actor_name or "").strip()
+            if not name:
+                return [], 0
+            actor = self.find_by_name(name)
+        if actor is None:
+            return [], 0
+
+        query = (
+            self.session.query(Metadata)
+            .join(MetadataActor, MetadataActor.metadata_id == Metadata.id)
+            .filter(MetadataActor.actor_id == actor.id)
+        )
+        query = self.filter_metadata_query(query, filter_text)
+        query = query.order_by(Metadata.updatetime.desc(), Metadata.id.desc())
+        matched = query.all()
+        return matched[skip:skip + limit], len(matched)
