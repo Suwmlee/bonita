@@ -264,7 +264,6 @@ def _sync_collection_from_server(session, collection: Collection, ctx) -> Collec
                 continue
             remote_id = item.remote_id
             if remote_id and remote_id in existing_by_remote:
-                row = existing_by_remote[remote_id]
                 continue
             media_item = resolve_collection_member(session, item, client)
             if not media_item:
@@ -371,21 +370,15 @@ def _sync_collection_to_server(session, collection: Collection, ctx) -> Collecti
         ctx.media_by_id = None
         ctx.dest_paths_by_number = None
     to_add = [item_id for item_id in wanted_ids if item_id not in remote_ids]
-    to_remove = [item_id for item_id in remote_ids if item_id not in wanted_ids]
     added_ok, add_failed = 0, 0
-    removed_ok, remove_failed = 0, 0
     if to_add:
         added_ok, add_failed = client.add_items_to_collection(collection.external_id, to_add)
-    if to_remove:
-        removed_ok, remove_failed = client.remove_items_from_collection(
-            collection.external_id, to_remove
-        )
     session.flush()
     ctx.mark_touched()
-    if add_failed or remove_failed:
+    if add_failed:
         remote_count = len(client.get_collection_items(collection.external_id))
     else:
-        remote_count = base_count + added_ok - removed_ok
+        remote_count = base_count + added_ok
     _refresh_member_counts(
         session,
         collection,
@@ -394,15 +387,14 @@ def _sync_collection_to_server(session, collection: Collection, ctx) -> Collecti
     )
     logger.info(
         f"    ✓ 合集 {collection.name}: 回写 {label} 新增 {added_ok} 项, "
-        f"移除 {removed_ok} 项, 未对上 {unresolved} 项"
+        f"未对上 {unresolved} 项"
         + (f", 新增失败 {add_failed} 项" if add_failed else "")
-        + (f", 移除失败 {remove_failed} 项" if remove_failed else "")
     )
     return collection
 
 
 def add_collection_members(session, collection: Collection, media_item_ids: list) -> int:
-    client = get_media_client(collection_source(collection))
+    client = require_collection_client(collection_source(collection))
     existing_ids = {
         row.media_item_id
         for row in session.query(CollectionItem.media_item_id).filter(
@@ -417,11 +409,10 @@ def add_collection_members(session, collection: Collection, media_item_ids: list
         if not media_item:
             continue
         remote_id = None
-        if client:
-            try:
-                remote_id = find_remote_id_for_media_item(session, client, media_item)
-            except Exception as e:
-                logger.warning(f"    ⊘ 查找远端条目失败 {media_item.title}: {e}")
+        try:
+            remote_id = find_remote_id_for_media_item(session, client, media_item)
+        except Exception as e:
+            logger.warning(f"    ⊘ 查找远端条目失败 {media_item.title}: {e}")
         session.add(
             CollectionItem(
                 collection_id=collection.id,
@@ -443,8 +434,23 @@ def remove_collection_member(session, collection: Collection, media_item_id: int
     ).first()
     if not row:
         return False
+    external_item_id = row.external_item_id
     session.delete(row)
     session.flush()
+    if external_item_id:
+        try:
+            client = require_collection_client(collection_source(collection))
+            removed_ok, removed_failed = client.remove_items_from_collection(
+                collection.external_id, [external_item_id]
+            )
+            if removed_failed:
+                logger.warning(
+                    f"    ⊘ 合集 {collection.name}: 从远端移除成员失败 {external_item_id}"
+                )
+        except Exception as e:
+            logger.warning(
+                f"    ⊘ 合集 {collection.name}: 从远端移除成员异常 {external_item_id}: {e}"
+            )
     _refresh_member_counts(session, collection)
     return True
 

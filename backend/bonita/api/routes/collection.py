@@ -133,7 +133,10 @@ async def add_items_to_collection(
 ) -> Any:
     service = CollectionService(session)
     collection = _require_collection(service, collection_id)
-    collection = service.add_items(collection, payload.media_item_ids)
+    try:
+        collection = service.add_items(collection, payload.media_item_ids)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return _to_public(collection)
 
 
